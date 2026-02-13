@@ -120,10 +120,20 @@ follows real market microstructure more closely.
 Once we have enough recorded tick data, run the existing EMA crossover
 agent (or a trend-follower) against it using `BacktestTickFeed`.
 
-- [ ] Pick a simple agent (e.g., `agents/example/ema-crossover.ts`)
-- [ ] Run a tick-mode backtest against the real recorded tick data
-- [ ] Compare results to the same agent backtested on candle data for the same period
-- [ ] Document the differences — this validates whether tick-level precision matters
+- [x] Pick a simple agent (e.g., `agents/example/ema-crossover.ts`)
+- [x] Run a tick-mode backtest against the real recorded tick data
+- [x] Compare results to the same agent backtested on candle data for the same period
+- [x] Document the differences — this validates whether tick-level precision matters
+
+**Results (2026-02-03 → 2026-02-08, Trend 1m 0.25%):**
+Tick-level precision changes when stops fire, which cascades through the
+rest of the backtest:
+- Candle-only: 61 trades, 34.4% win rate, 5263 candles processed
+- Synthetic ticks: 36 trades, 25.0% win rate, 3276 candles processed
+Synthetic ticks caught stops mid-candle (before candle close), leading to
+different entry/exit sequences and ~40% fewer trades.
+Real tick comparison not possible yet (only 46 min of data, too short for
+any agent to produce signals).
 
 ---
 
