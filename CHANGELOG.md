@@ -33,6 +33,9 @@
 - **Tick data disk usage monitor** (`src/data/tick-stats.ts`, `bun run tick-stats`) — shows per-instrument tick count, date range, days of data, ticks/day growth rate, total table size on disk, bytes per tick, and projected 1-year storage.
   - *Decision*: Built as a standalone CLI script rather than an API endpoint because it's a diagnostic tool for the operator, not something agents or the UI need. Uses `pg_total_relation_size('ticks')` which includes indexes, giving the true disk footprint. Projects 1-year storage using current ticks/day rate, which is useful for capacity planning as we add more instruments.
 
+- **Multi-instrument tick recording** — tick recorder now subscribes to all instruments in `RECORDED_EPICS` (defined in `instruments.ts`) on a single WebSocket connection. Added BTCUSD alongside US100. Includes a 40-instrument guard matching Capital.com's WebSocket subscription limit.
+  - *Decision*: The `RECORDED_EPICS` list in `instruments.ts` is the single source of truth for which instruments to record. A top-level guard throws at import time if the list exceeds 40 (Capital.com's per-subscription limit, see `DECISIONS.md`). The quote payload's `epic` field identifies which instrument each tick belongs to, so no separate connections or routing logic is needed — just one subscription with multiple epics. BTCUSD added first alongside US100 because it trades 24/7 (no market hours gaps), making it useful for validating the recorder runs continuously.
+
 ### Improved
 
 - **Tick recorder: timestamped logging** — all log output now includes ISO timestamps for debugging outages.

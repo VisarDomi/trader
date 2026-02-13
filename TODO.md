@@ -145,13 +145,13 @@ Capital.com allows up to 40 instruments per WebSocket subscription (see
 `DECISIONS.md`). We should record BTCUSD alongside US100 on the same
 connection — no extra WebSocket needed, no rate limit impact.
 
-- [ ] Update `record-ticks.ts` to accept a configurable list of EPICs
-- [ ] Add BTCUSD instrument to `src/data/instruments.ts`
-- [ ] Verify single WebSocket subscription with multiple EPICs works
+- [x] Update `record-ticks.ts` to accept a configurable list of EPICs
+- [x] Add BTCUSD instrument to `src/data/instruments.ts`
+- [x] Verify single WebSocket subscription with multiple EPICs works
       (the `marketData.subscribe` payload already takes an `epics[]` array)
-- [ ] Create a config file or constant for which instruments to record
-      (e.g. `RECORDED_INSTRUMENTS` in `instruments.ts` or a separate config)
-- [ ] Test that ticks for both instruments arrive and are stored correctly
+- [x] Create a config file or constant for which instruments to record
+      (`RECORDED_EPICS` in `instruments.ts`, with 40-max guard)
+- [x] Test that ticks for both instruments arrive and are stored correctly
 
 ---
 

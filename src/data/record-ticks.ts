@@ -15,9 +15,9 @@
 
 import { CapitalSession } from '../providers/capital/CapitalSession.ts';
 import { TickRepository, type Tick } from './TickRepository.ts';
+import { RECORDED_EPICS } from './instruments.ts';
 import { sql } from './db.ts';
 
-const EPIC = 'US100';
 const FLUSH_INTERVAL_MS = 1_000;
 const PING_INTERVAL_MS = 60_000;
 const RECONNECT_DELAY_MS = 3_000;
@@ -65,7 +65,7 @@ async function flush() {
 // --- Main ---
 
 async function main() {
-  log(`Recording ${EPIC} ticks from Capital.com...`);
+  log(`Recording ${RECORDED_EPICS.length} instrument(s): ${RECORDED_EPICS.join(', ')}`);
 
   const apiKey = process.env.CAPITAL_API_KEY;
   const identifier = process.env.CAPITAL_IDENTIFIER;
@@ -158,7 +158,7 @@ async function main() {
         correlationId: '1',
         cst,
         securityToken,
-        payload: { epics: [EPIC] },
+        payload: { epics: RECORDED_EPICS },
       }));
 
       // Start ping keepalive
@@ -174,10 +174,10 @@ async function main() {
         const data = JSON.parse(String(event.data));
         if (data.destination === 'quote') {
           const p = data.payload;
-          if (typeof p?.bid === 'number' && typeof p?.ofr === 'number') {
+          if (typeof p?.epic === 'string' && typeof p?.bid === 'number' && typeof p?.ofr === 'number') {
             lastTickAt = Date.now();
             buffer.push({
-              instrument: EPIC,
+              instrument: p.epic,
               timestamp: lastTickAt,
               bid: p.bid,
               ask: p.ofr,
