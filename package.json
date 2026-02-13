@@ -10,7 +10,8 @@
     "db:migrate": "bun run src/data/migrate.ts",
     "ingest": "bun run src/data/ingest.ts",
     "record-ticks": "bun run src/data/record-ticks.ts",
-    "tick-stats": "bun run src/data/tick-stats.ts"
+    "tick-stats": "bun run src/data/tick-stats.ts",
+    "search-markets": "bun run src/data/search-markets.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

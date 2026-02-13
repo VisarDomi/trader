@@ -18,6 +18,9 @@
 
 ### Added
 
+- **Market search CLI** (`src/data/search-markets.ts`, `bun run search-markets <query>`) — searches Capital.com's `GET /markets?searchTerm=` endpoint and prints matching instruments with epic, name, type, and current bid/ask. Use this to discover epic codes before adding them to `RECORDED_EPICS`.
+  - *Decision*: Built as a thin CLI wrapper around `CapitalSession.get()` rather than a separate fetch, so it gets free auto-reauth on 401. No caching or local instrument DB — just a live search against the API, which is the simplest approach and always returns current data.
+
 - **Synthetic tick generator** (`src/core/feed/TickGenerator.ts`) — generates realistic tick data at 600 ticks/minute using an Ornstein-Uhlenbeck process with jumps.
   - *Decision*: OU process chosen over pure random walk because real tick data shows slight mean-reversion (autocorrelation -0.023). Jumps added as a separate Bernoulli-triggered component because real US100 data has fat tails (P99 move=1.5 vs σ=0.47, and extremes up to 11pts — far beyond Gaussian). Calibrated from 5,291 real ticks: σ=0.47 at 115 ticks/min, scaled to 600/min via variance-time rule (σ_target = σ_observed × √(observed_rate/target_rate)). Factory method `fromInstrument()` chosen so callers don't need to know the calibration math — just pass instrument info and get sensible defaults. 15 tests.
 
