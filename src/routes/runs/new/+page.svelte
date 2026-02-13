@@ -10,7 +10,10 @@
 	let dimSelections = $state<Record<string, Set<string>>>({});
 
 	// Run parameters
-	let mode = $state<'backtest' | 'paper' | 'live'>('backtest');
+	// UI modes: historical/tick map to backtest with tickMode flag, paper/live pass through
+	let uiMode = $state<'historical' | 'tick' | 'paper' | 'live'>('historical');
+	let backendMode = $derived(uiMode === 'historical' || uiMode === 'tick' ? 'backtest' : uiMode);
+	let isBacktest = $derived(uiMode === 'historical' || uiMode === 'tick');
 
 	function selectBlueprint(bp: BlueprintMeta | null) {
 		selectedBlueprint = bp;
@@ -164,13 +167,19 @@
 
 		<!-- Step 3: Mode & Capital -->
 		{#if selectedBlueprint}
+			<input type="hidden" name="mode" value={backendMode} />
+			{#if uiMode === 'tick'}
+				<input type="hidden" name="tickMode" value="on" />
+			{/if}
+
 			<div class="form-section">
 				<h2>Run Configuration</h2>
 				<div class="form-row">
 					<div class="form-group">
-						<label for="mode">Mode</label>
-						<select name="mode" id="mode" required bind:value={mode}>
-							<option value="backtest">Backtest</option>
+						<label for="uiMode">Mode</label>
+						<select id="uiMode" bind:value={uiMode}>
+							<option value="historical">Historical</option>
+							<option value="tick">Tick (higher accuracy, slower)</option>
 							<option value="paper">Paper</option>
 							<option value="live">Live</option>
 						</select>
@@ -182,25 +191,17 @@
 				</div>
 			</div>
 
-			{#if mode === 'backtest'}
+			{#if isBacktest}
 				<div class="form-section">
-					<h2>Backtest Period</h2>
+					<h2>Period</h2>
 					<div class="form-row">
 						<div class="form-group">
 							<label for="startDate">Start Date</label>
-							<input type="date" name="startDate" id="startDate" required value="2025-01-01" />
+							<input type="date" name="startDate" id="startDate" required value="2023-02-13" />
 						</div>
 						<div class="form-group">
 							<label for="endDate">End Date</label>
-							<input type="date" name="endDate" id="endDate" required value="2025-06-01" />
-						</div>
-					</div>
-					<div class="form-row">
-						<div class="form-group checkbox-group">
-							<label>
-								<input type="checkbox" name="tickMode" checked />
-								Tick mode (higher accuracy SL/TP, slower)
-							</label>
+							<input type="date" name="endDate" id="endDate" required value="2026-02-13" />
 						</div>
 					</div>
 				</div>
@@ -262,19 +263,6 @@
 
 	input, select {
 		width: 100%;
-	}
-
-	.checkbox-group label {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 13px;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-
-	.checkbox-group input[type="checkbox"] {
-		width: auto;
 	}
 
 	.error-banner {
