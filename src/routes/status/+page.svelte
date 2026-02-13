@@ -3,7 +3,7 @@
 
 	let { data } = $props();
 
-	const instrumentList = Object.entries(data.instruments);
+	let instrumentList = $derived(Object.entries(data.instruments));
 </script>
 
 <div class="page-header">
