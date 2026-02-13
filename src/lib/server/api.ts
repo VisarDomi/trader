@@ -1,4 +1,4 @@
-import { BACKEND_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type {
 	AgentSummary,
 	EquityPoint,
@@ -10,7 +10,7 @@ import type {
 } from '$lib/types';
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-	const url = `${BACKEND_URL}${path}`;
+	const url = `${env.BACKEND_URL ?? 'http://localhost:3001'}${path}`;
 
 	let res: Response;
 	try {
