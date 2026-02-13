@@ -12,7 +12,7 @@ export interface AgentConfig {
 	secondaryFeeds?: Timeframe[];
 	maxDrawdown?: number;
 	maxPositionSize?: number;
-	leverage?: number;
+	leverage: number;
 }
 
 export interface AgentSummary {
