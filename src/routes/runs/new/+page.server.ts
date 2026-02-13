@@ -1,14 +1,24 @@
-import { getBlueprints, startRun } from '$lib/server/api';
-import { redirect } from '@sveltejs/kit';
-import type { RunConfig } from '$lib/types';
+import { getBlueprints, startRunQueued, getQueueState } from '$lib/server/api';
+import type { BlueprintMeta, RunConfig, QueueState } from '$lib/types';
 
 export async function load() {
+	let blueprints: BlueprintMeta[] = [];
+	let error: string | null = null;
+	let queue: QueueState = { current: null, queued: [], queueLength: 0 };
+
 	try {
-		const blueprints = await getBlueprints();
-		return { blueprints, error: null };
+		blueprints = await getBlueprints();
 	} catch (e) {
-		return { blueprints: [], error: (e as Error).message };
+		error = (e as Error).message;
 	}
+
+	try {
+		queue = await getQueueState();
+	} catch {
+		// Queue unavailable — show empty
+	}
+
+	return { blueprints, error, queue };
 }
 
 export const actions = {
@@ -27,8 +37,10 @@ export const actions = {
 		const maxDrawdown = form.get('maxDrawdown') as string;
 		const tickMode = form.get('tickMode') === 'on';
 
-		const errors: string[] = [];
-		const runIds: string[] = [];
+		let queued = 0;
+		let duplicates = 0;
+		let errors = 0;
+		const errorMessages: string[] = [];
 
 		for (const agentId of agentIds) {
 			const config: RunConfig = { agentId, capital, mode };
@@ -38,22 +50,27 @@ export const actions = {
 			if (tickMode) config.tickMode = true;
 
 			try {
-				const result = await startRun(config);
-				runIds.push(result.runId);
+				const result = await startRunQueued(config);
+				if (result.duplicate) {
+					duplicates++;
+				} else {
+					queued++;
+				}
 			} catch (e) {
-				errors.push(`${agentId}: ${(e as Error).message}`);
+				errors++;
+				errorMessages.push(`${agentId}: ${(e as Error).message}`);
 			}
 		}
 
-		if (runIds.length === 1) {
-			redirect(303, `/runs/${runIds[0]}`);
-		}
-
-		if (runIds.length > 1) {
-			// Multiple runs started — redirect to home with mode filter
-			redirect(303, `/?mode=${mode}`);
-		}
-
-		return { error: errors.join('\n') };
+		return {
+			success: true,
+			summary: {
+				queued,
+				duplicates,
+				errors,
+				total: agentIds.length,
+			},
+			error: errorMessages.length > 0 ? errorMessages.join('\n') : null,
+		};
 	},
 };
