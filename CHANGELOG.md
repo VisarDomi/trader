@@ -18,6 +18,12 @@
 
 ### Added
 
+- **Donchian Channel Breakout agent** (`agents/donchian-breakout/factory.ts`) — configurable breakout agent with ATR-based stops, risk-reward targeting, and risk-based position sizing (2% equity per trade).
+  - *Decision*: Factory pattern (not a static agent file) because the Monte Carlo sweep needs to create 108 variants with different parameters. Risk-based sizing (equity × riskPct / SL distance) chosen over fixed size so the agent adapts to volatility and account equity. ATR period fixed at 14 (standard Wilder's) — not worth sweeping since it's well-established.
+
+- **Donchian Monte Carlo sweep** (`src/run/batch-donchian.ts`) — 108-combination parameter sweep across channel length (20/50/100), ATR stop multiple (1/2/3×), reward ratio (1.5/2/3×), timeframe (1m/5m), and leverage (20/200×). 3 years of US100 data, realistic slippage, 50% max drawdown cap.
+  - *Decision*: 1m runs use SyntheticTickFeed (600 ticks/candle) for sub-minute SL/TP precision. 5m runs use plain BacktestFeed because the 1m candles already provide 5 real SL/TP checks per 5m period — synthetic ticks would add minimal value at high compute cost. All 108 combinations hit the 50% drawdown cap. Best profit factor was 0.97 (5m, ch100, ATR×3, RR×3). Conclusion: Donchian breakout on US100 is not viable with these parameters over the last 3 years. The strategy dies from accumulated small losses — wider stops and longer channels get closer to breakeven but never cross it.
+
 - **Market search CLI** (`src/data/search-markets.ts`, `bun run search-markets <query>`) — searches Capital.com's `GET /markets?searchTerm=` endpoint and prints matching instruments with epic, name, type, and current bid/ask. Use this to discover epic codes before adding them to `RECORDED_EPICS`.
   - *Decision*: Built as a thin CLI wrapper around `CapitalSession.get()` rather than a separate fetch, so it gets free auto-reauth on 401. No caching or local instrument DB — just a live search against the API, which is the simplest approach and always returns current data.
 
