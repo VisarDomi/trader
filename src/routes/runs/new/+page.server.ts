@@ -1,17 +1,13 @@
-import { getAgents, getInstruments, startRun } from '$lib/server/api';
+import { getBlueprints, startRun } from '$lib/server/api';
 import { redirect } from '@sveltejs/kit';
 import type { RunConfig } from '$lib/types';
 
-export async function load({ url }) {
-	const preselectedAgent = url.searchParams.get('agentId') ?? '';
+export async function load() {
 	try {
-		const [agents, instruments] = await Promise.all([
-			getAgents(),
-			getInstruments(),
-		]);
-		return { agents, instruments, preselectedAgent, error: null };
+		const blueprints = await getBlueprints();
+		return { blueprints, error: null };
 	} catch (e) {
-		return { agents: [], instruments: {}, preselectedAgent, error: (e as Error).message };
+		return { blueprints: [], error: (e as Error).message };
 	}
 }
 
@@ -19,31 +15,47 @@ export const actions = {
 	default: async ({ request }) => {
 		const form = await request.formData();
 
-		const config: RunConfig = {
-			agentId: form.get('agentId') as string,
-			capital: Number(form.get('capital')),
-			mode: form.get('mode') as RunConfig['mode'],
-		};
+		const agentIds = form.getAll('agentId') as string[];
+		if (agentIds.length === 0) {
+			return { error: 'No agents selected' };
+		}
 
+		const mode = form.get('mode') as RunConfig['mode'];
+		const capital = Number(form.get('capital'));
 		const startDate = form.get('startDate') as string;
 		const endDate = form.get('endDate') as string;
-		if (startDate) config.startDate = startDate;
-		if (endDate) config.endDate = endDate;
-
 		const maxDrawdown = form.get('maxDrawdown') as string;
-		if (maxDrawdown) config.maxDrawdown = Number(maxDrawdown);
-
 		const leverage = form.get('leverage') as string;
-		if (leverage) config.leverage = Number(leverage);
+		const tickMode = form.get('tickMode') === 'on';
 
-		const tickMode = form.get('tickMode');
-		if (tickMode === 'on') config.tickMode = true;
+		const errors: string[] = [];
+		const runIds: string[] = [];
 
-		try {
-			const result = await startRun(config);
-			redirect(303, `/runs/${result.runId}`);
-		} catch (e) {
-			return { error: (e as Error).message };
+		for (const agentId of agentIds) {
+			const config: RunConfig = { agentId, capital, mode };
+			if (startDate) config.startDate = startDate;
+			if (endDate) config.endDate = endDate;
+			if (maxDrawdown) config.maxDrawdown = Number(maxDrawdown);
+			if (leverage) config.leverage = Number(leverage);
+			if (tickMode) config.tickMode = true;
+
+			try {
+				const result = await startRun(config);
+				runIds.push(result.runId);
+			} catch (e) {
+				errors.push(`${agentId}: ${(e as Error).message}`);
+			}
 		}
+
+		if (runIds.length === 1) {
+			redirect(303, `/runs/${runIds[0]}`);
+		}
+
+		if (runIds.length > 1) {
+			// Multiple runs started — redirect to home with mode filter
+			redirect(303, `/?mode=${mode}`);
+		}
+
+		return { error: errors.join('\n') };
 	},
 };

@@ -20,6 +20,21 @@ export interface AgentSummary {
 	path: string;
 }
 
+export interface BlueprintDimension {
+	id: string;
+	[key: string]: unknown;
+}
+
+export interface BlueprintMeta {
+	name: string;
+	version: string;
+	instrument: string;
+	directory: string;
+	agentCount: number;
+	dimensionKeys: Record<string, unknown[]>;
+	dimensions: BlueprintDimension[];
+}
+
 export interface Metrics {
 	totalTrades: number;
 	wins: number;
