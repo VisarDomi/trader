@@ -94,6 +94,19 @@ export interface RunConfig {
 	tickMode?: boolean;
 }
 
+export interface QueueEntry {
+	runId: string;
+	agentId: string;
+	agentName: string;
+	mode: string;
+}
+
+export interface QueueState {
+	current: QueueEntry | null;
+	queued: QueueEntry[];
+	queueLength: number;
+}
+
 export interface InstrumentInfo {
 	epic: string;
 	leveraged: boolean;
