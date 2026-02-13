@@ -1,5 +1,5 @@
 import { getHealth, getInstruments } from '$lib/server/api';
-import { BACKEND_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export async function load() {
 	let health = null;
@@ -15,5 +15,5 @@ export async function load() {
 		error = (e as Error).message;
 	}
 
-	return { health, instruments, backendUrl: BACKEND_URL, error };
+	return { health, instruments, backendUrl: env.BACKEND_URL ?? 'http://localhost:3001', error };
 }
