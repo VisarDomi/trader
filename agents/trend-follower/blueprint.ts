@@ -20,7 +20,7 @@ type TrendDim = Dimension & {
   tpReturn?: number;
 };
 
-const TIMEFRAMES = ['1m', '5m', '15m', '1h'] as const;
+const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h'] as const;
 const LEVERAGES = [20, 200] as const;
 
 // trendPct values per timeframe (1m stops at 2.00%, others go to 3.00%)
@@ -29,6 +29,7 @@ const TREND_PCTS: Record<string, number[]> = {
   '5m': [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.03],
   '15m': [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.03],
   '1h': [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.03],
+  '4h': [0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.03],
 };
 
 // TP-sweep: fixed trendPct, varying tpReturn

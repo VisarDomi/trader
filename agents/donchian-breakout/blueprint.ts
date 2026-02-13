@@ -17,7 +17,7 @@ type DonchianDim = Dimension & {
   leverage: number;
 };
 
-const TIMEFRAMES = ['1m', '5m'] as const;
+const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h'] as const;
 const CHANNEL_LENGTHS = [20, 50, 100];
 const ATR_MULTIPLES = [1.0, 2.0, 3.0];
 const REWARD_RATIOS = [1.5, 2.0, 3.0];

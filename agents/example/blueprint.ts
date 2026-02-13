@@ -1,7 +1,7 @@
 /**
  * Example blueprint: EMA Crossover
  *
- * Demonstrates the contract with default params × leverage.
+ * Demonstrates the contract with default params × timeframe × leverage.
  * The strategy logic is self-contained (no external factory).
  */
 import type {
@@ -13,9 +13,11 @@ import type {
   AgentResult,
   Dimension,
   Fill,
+  Timeframe,
 } from '../../src/core/agent/types.ts';
 
 type ExampleDim = Dimension & {
+  timeframe: string;
   leverage: number;
 };
 
@@ -31,6 +33,7 @@ const SLOW_PERIOD = 30;
 const STOP_LOSS_PCT = 0.01;
 const POSITION_SIZE = 0.5;
 const WARMUP_CANDLES = 30;
+const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h'] as const;
 const LEVERAGES = [20, 200] as const;
 
 function updateEma(prev: number, price: number, period: number): number {
@@ -39,12 +42,12 @@ function updateEma(prev: number, price: number, period: number): number {
   return price * k + prev * (1 - k);
 }
 
-function createEmaAgent(leverage: number): Agent<EmaState> {
+function createEmaAgent(timeframe: Timeframe, leverage: number): Agent<EmaState> {
   const config: AgentConfig = {
-    name: `EMA Crossover lev${leverage}`,
+    name: `EMA Crossover ${timeframe} lev${leverage}`,
     version: '1.0.0',
     instrument: 'US100',
-    primaryFeed: '5m',
+    primaryFeed: timeframe,
     maxDrawdown: 0.15,
     leverage,
   };
@@ -91,10 +94,17 @@ function createEmaAgent(leverage: number): Agent<EmaState> {
   return { config, init, onCandle, onFill };
 }
 
-const dimensions: ExampleDim[] = LEVERAGES.map(lev => ({
-  id: `ema-crossover-lev${lev}`,
-  leverage: lev,
-}));
+const dimensions: ExampleDim[] = [];
+
+for (const lev of LEVERAGES) {
+  for (const tf of TIMEFRAMES) {
+    dimensions.push({
+      id: `${tf}-lev${lev}`,
+      timeframe: tf,
+      leverage: lev,
+    });
+  }
+}
 
 export default {
   name: 'EMA Crossover',
@@ -102,6 +112,6 @@ export default {
   instrument: 'US100',
   dimensions,
   createAgent(dim: ExampleDim) {
-    return createEmaAgent(dim.leverage);
+    return createEmaAgent(dim.timeframe as Timeframe, dim.leverage);
   },
 } satisfies AgentBlueprint<EmaState>;

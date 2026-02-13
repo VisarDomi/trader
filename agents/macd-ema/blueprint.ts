@@ -16,7 +16,7 @@ type MacdDim = Dimension & {
   leverage: number;
 };
 
-const TIMEFRAMES = ['1m', '5m'] as const;
+const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h'] as const;
 const EMA_PERIODS = [50, 100, 200];
 const TP_RETURNS = [0.10, 0.20, 0.30, 0.40, 0.50];
 const LEVERAGES = [20, 200] as const;
