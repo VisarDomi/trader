@@ -18,7 +18,16 @@ const US100: InstrumentInfo = {
   maxSize: 200,
   sizeIncrement: 0.01,
   pricePrecision: 1,
-  tradingHours: { timezone: 'America/New_York', open: '09:30', close: '16:00' },
+  tradingHours: {
+    timezone: 'America/New_York',
+    gaps: [{ from: '2023-01-01', gapStart: '17:00', gapEnd: '18:00' }],
+  },
+};
+
+// 20× leverage: margin liquidation at 2.5% adverse (well below typical SL distances)
+const US100_20X: InstrumentInfo = {
+  ...US100,
+  leverage: 20,
 };
 
 const UNLEVERAGED: InstrumentInfo = {
@@ -292,7 +301,7 @@ describe('AgentRunner', () => {
 
   describe('stop loss', () => {
     test('triggers when price drops below stop', async () => {
-      // Open at candle 0, then price drops
+      // Use 20× leverage so margin liquidation (2.5% = 18038) is far below SL (18400)
       const candles = minuteCandles({
         date: '2024-01-16', startHour: 10, count: 10,
         basePrice: 18500, priceStep: -20,
@@ -304,6 +313,7 @@ describe('AgentRunner', () => {
       const result = await runAgent(
         buyWithStopsAgent(18400, 18700),
         candles,
+        US100_20X,
       );
 
       const closeFill = result.fills.find(f => f.action === 'CLOSED');
@@ -337,8 +347,8 @@ describe('AgentRunner', () => {
 
   describe('trading hours', () => {
     test('agent not called outside trading hours (leveraged)', async () => {
-      // 20:00 NY = outside NYSE hours (09:30-16:00)
-      const candles = minuteCandles({ date: '2024-01-16', startHour: 20, count: 5 });
+      // 17:30 NY = during maintenance gap (17:00-18:00)
+      const candles = minuteCandles({ date: '2024-01-16', startHour: 17, startMinute: 30, count: 5 });
       const result = await runAgent(buyAndSellAgent(), candles);
 
       // Agent should never be called, so no fills
@@ -363,12 +373,12 @@ describe('AgentRunner', () => {
 
   describe('market close force-close', () => {
     test('leveraged position closed at market close', async () => {
-      // Trading from 15:55 to 16:05 NY
-      // Market close at 16:00 → force close at 15:59
-      const candles = minuteCandles({ date: '2024-01-16', startHour: 15, startMinute: 55, count: 10 });
+      // Trading from 16:55 to 17:05 NY
+      // Gap starts at 17:00 → force close at 16:59
+      const candles = minuteCandles({ date: '2024-01-16', startHour: 16, startMinute: 55, count: 10 });
 
-      // Agent buys on first candle (15:55, within hours)
-      // Market close at 15:59 → force close
+      // Agent buys on first candle (16:55, within hours)
+      // Market close at 16:59 → force close
       const result = await runAgent(
         buyWithStopsAgent(18300, 18700),
         candles,
@@ -380,7 +390,7 @@ describe('AgentRunner', () => {
     });
 
     test('unleveraged position NOT closed at market close', async () => {
-      const candles = minuteCandles({ date: '2024-01-16', startHour: 15, startMinute: 55, count: 10 });
+      const candles = minuteCandles({ date: '2024-01-16', startHour: 16, startMinute: 55, count: 10 });
 
       const result = await runAgent(
         buyWithStopsAgent(18300, 18700),
@@ -443,12 +453,13 @@ describe('AgentRunner', () => {
       // Agent opens with stop 18400, then modifies to 18450
       // Price then drops to 18445 (below 18450 but above 18400)
       // If modify worked, stop should trigger at 18450
+      // Use 20× leverage so margin liquidation (2.5% = ~18038) doesn't interfere
       const candles = [
         ...minuteCandles({ date: '2024-01-16', startHour: 10, count: 3, basePrice: 18500 }),
         ...minuteCandles({ date: '2024-01-16', startHour: 10, startMinute: 3, count: 5, basePrice: 18445, priceStep: -5 }),
       ];
 
-      const result = await runAgent(modifyAgent(), candles);
+      const result = await runAgent(modifyAgent(), candles, US100_20X);
 
       const closeFill = result.fills.find(f => f.action === 'CLOSED');
       expect(closeFill).toBeDefined();
@@ -459,7 +470,7 @@ describe('AgentRunner', () => {
 
   describe('onFill callback', () => {
     test('agent receives fills for both open and trigger close', async () => {
-      // Price drops to trigger stop
+      // Price drops to trigger stop. Use 20× so margin liquidation doesn't interfere.
       const candles = minuteCandles({
         date: '2024-01-16', startHour: 10, count: 10,
         basePrice: 18500, priceStep: -20,
@@ -469,8 +480,8 @@ describe('AgentRunner', () => {
       const runner = new AgentRunner({
         agent,
         feed: new BacktestFeed(candles),
-        execution: new SimulatedExecution(US100, { type: 'none' }),
-        instrument: US100,
+        execution: new SimulatedExecution(US100_20X, { type: 'none' }),
+        instrument: US100_20X,
         capital: 10000,
       });
 
@@ -507,21 +518,22 @@ describe('AgentRunner', () => {
 
   describe('max drawdown', () => {
     test('stops run when drawdown threshold breached', async () => {
-      // Start with 1000 capital, 50% max drawdown
-      // Price drops sharply so position loses > 500
+      // Use unleveraged (leverage=1) so there's no margin liquidation — tests maxDrawdown only.
+      // Need capital >= 18500 for size-1 position at leverage=1.
+      // Price drops 300 per candle → 50% drawdown ($10k loss) around candle 34.
       const candles = minuteCandles({
         date: '2024-01-16', startHour: 10, count: 50,
-        basePrice: 18500, priceStep: -100,
+        basePrice: 18500, priceStep: -300,
       });
 
       const result = await runAgent(
-        buyWithStopsAgent(10000, 30000), // very wide stops, won't trigger
+        buyWithStopsAgent(1000, 30000), // very wide stops, won't trigger
         candles,
-        US100,
-        { capital: 1000, maxDrawdown: 0.5 },
+        UNLEVERAGED,
+        { capital: 20000, maxDrawdown: 0.5 },
       );
 
-      // Run should have stopped early
+      // Run should have stopped early (~34 candles, well before 50)
       expect(result.totalCandles).toBeLessThan(50);
       // Position should have been closed
       const closeFill = result.fills.find(f => f.action === 'CLOSED');
@@ -584,16 +596,16 @@ describe('AgentRunner', () => {
 
   describe('processTick', () => {
     test('triggers stop loss on tick', async () => {
-      // Open a position via candle processing, then trigger stop via tick
+      // Use 20× leverage so margin liquidation (2.5%) is far below SL (18400)
       const candles = minuteCandles({ date: '2024-01-16', startHour: 10, count: 1, basePrice: 18500 });
       const feed = new BacktestFeed(candles);
-      const execution = new SimulatedExecution(US100, { type: 'none' });
+      const execution = new SimulatedExecution(US100_20X, { type: 'none' });
 
       const runner = new AgentRunner({
         agent: buyWithStopsAgent(18400, 18700),
         feed,
         execution,
-        instrument: US100,
+        instrument: US100_20X,
         capital: 10000,
       });
 
@@ -614,13 +626,13 @@ describe('AgentRunner', () => {
     test('triggers take profit on tick', async () => {
       const candles = minuteCandles({ date: '2024-01-16', startHour: 10, count: 1, basePrice: 18500 });
       const feed = new BacktestFeed(candles);
-      const execution = new SimulatedExecution(US100, { type: 'none' });
+      const execution = new SimulatedExecution(US100_20X, { type: 'none' });
 
       const runner = new AgentRunner({
         agent: buyWithStopsAgent(18400, 18600),
         feed,
         execution,
-        instrument: US100,
+        instrument: US100_20X,
         capital: 10000,
       });
 
@@ -638,13 +650,13 @@ describe('AgentRunner', () => {
     test('does nothing when no position', async () => {
       const candles = minuteCandles({ date: '2024-01-16', startHour: 10, count: 1 });
       const feed = new BacktestFeed(candles);
-      const execution = new SimulatedExecution(US100, { type: 'none' });
+      const execution = new SimulatedExecution(US100_20X, { type: 'none' });
 
       const runner = new AgentRunner({
         agent: passiveAgent(),
         feed,
         execution,
-        instrument: US100,
+        instrument: US100_20X,
         capital: 10000,
       });
 
@@ -659,13 +671,13 @@ describe('AgentRunner', () => {
     test('does nothing when price is between stop and TP', async () => {
       const candles = minuteCandles({ date: '2024-01-16', startHour: 10, count: 1, basePrice: 18500 });
       const feed = new BacktestFeed(candles);
-      const execution = new SimulatedExecution(US100, { type: 'none' });
+      const execution = new SimulatedExecution(US100_20X, { type: 'none' });
 
       const runner = new AgentRunner({
         agent: buyWithStopsAgent(18400, 18700),
         feed,
         execution,
-        instrument: US100,
+        instrument: US100_20X,
         capital: 10000,
       });
 

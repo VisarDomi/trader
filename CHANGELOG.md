@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **Leverage had no effect on backtest results** — 20× and 200× leverage produced identical trade outcomes because the framework lacked position-level margin liquidation. The only liquidation check was `equity <= 0` (total account wipeout), which is effectively the same threshold regardless of leverage. Added margin liquidation: when a position opens, the framework computes a liquidation price based on `entry × (1 ± 0.5/leverage)`. At 200× leverage, a 0.25% adverse move triggers liquidation; at 20× it takes 2.5%. This makes leverage a first-class risk factor. Re-running the Donchian sweep now shows 200× leverage producing 1,398 liquidations on 5m (vs 0 at 20×) with dramatically different PnL (-$5,459 vs -$775).
+  - *Decision*: Liquidation price is computed once at position open and stored in the runner (not in the Position type, which is agent-facing). PositionMonitor checks it with highest priority (before SL/TP/account-level equity check). The 50% of margin threshold matches Capital.com's close-out rule. Using a pre-computed price level (rather than a per-tick margin calculation) is both simpler and faster — just a price comparison, same as SL/TP.
+
+- **AgentRunner test fixture used obsolete tradingHours format** — test instrument had `{ timezone, open, close }` (old format) instead of `{ timezone, gaps: [...] }` (current format). Updated to use gap-based trading hours.
+
 - **Tick recorder: dead on failed connect** — `ws.onclose` was set inside `ws.onopen`, so if the WebSocket failed to connect (DNS failure, server down, TLS error), `onopen` never fired, `onclose` had no handler, and the process went silent forever with no reconnect. Moved `onclose` outside `onopen`.
   - *Decision*: The WebSocket spec guarantees `onerror` is always followed by `onclose`, so placing the reconnect logic in `onclose` (outside `onopen`) handles both failed-connect and mid-session-disconnect cases in one place. No need for separate `onerror` reconnect logic.
 

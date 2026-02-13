@@ -164,7 +164,7 @@ describe('PositionMonitor', () => {
       });
     });
 
-    describe('liquidation', () => {
+    describe('account-level liquidation', () => {
       test('triggers when equity <= 0 (BUY)', () => {
         monitor.setPosition(buyPosition({ stopLoss: 18400 }));
 
@@ -192,6 +192,66 @@ describe('PositionMonitor', () => {
       test('does not trigger with positive equity', () => {
         monitor.setPosition(buyPosition());
         expect(monitor.check(18000, 18001.8, 1)).toBeNull();
+      });
+    });
+
+    describe('margin liquidation', () => {
+      // BUY at 18500, 200× leverage → liquidation at 18500 × (1 - 0.5/200) = 18453.75
+      const ENTRY = 18500;
+      const LIQ_BUY_200 = ENTRY * (1 - 0.5 / 200); // 18453.75
+      // BUY at 18500, 20× leverage → liquidation at 18500 × (1 - 0.5/20) = 18037.50
+      const LIQ_BUY_20 = ENTRY * (1 - 0.5 / 20);   // 18037.50
+      // SELL at 18500, 200× leverage → liquidation at 18500 × (1 + 0.5/200) = 18546.25
+      const LIQ_SELL_200 = ENTRY * (1 + 0.5 / 200);
+
+      test('BUY 200× triggers on small adverse move', () => {
+        monitor.setPosition(buyPosition(), LIQ_BUY_200);
+
+        // Bid below liquidation price
+        const trigger = monitor.check(18450, 18451.8, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_BUY_200);
+      });
+
+      test('BUY 20× does NOT trigger on same small move', () => {
+        monitor.setPosition(buyPosition(), LIQ_BUY_20);
+
+        // Same bid=18450, but 20× liquidation is at 18037.50, not hit
+        expect(monitor.check(18450, 18451.8, 10000)).toBeNull();
+      });
+
+      test('SELL 200× triggers on small adverse move', () => {
+        monitor.setPosition(sellPosition(), LIQ_SELL_200);
+
+        // Ask above liquidation price
+        const trigger = monitor.check(18548, 18550, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_SELL_200);
+      });
+
+      test('margin liquidation takes priority over SL', () => {
+        // SL at 18400, but margin liquidation at 18453.75 (200×) triggers first
+        monitor.setPosition(buyPosition({ stopLoss: 18400 }), LIQ_BUY_200);
+
+        const trigger = monitor.check(18440, 18441.8, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_BUY_200);
+      });
+
+      test('SL triggers before margin liquidation at low leverage', () => {
+        // SL at 18400, margin liquidation at 18037.50 (20×) → SL triggers first
+        monitor.setPosition(buyPosition({ stopLoss: 18400 }), LIQ_BUY_20);
+
+        const trigger = monitor.check(18390, 18391.8, 10000);
+        expect(trigger!.reason).toBe('STOP_LOSS');
+        expect(trigger!.price).toBe(18400);
+      });
+
+      test('no liquidation price set — falls through to SL/TP', () => {
+        monitor.setPosition(buyPosition({ stopLoss: 18400 }));
+
+        const trigger = monitor.check(18390, 18391.8, 10000);
+        expect(trigger!.reason).toBe('STOP_LOSS');
       });
     });
   });
@@ -280,7 +340,7 @@ describe('PositionMonitor', () => {
       });
     });
 
-    describe('liquidation in candle', () => {
+    describe('account-level liquidation in candle', () => {
       test('triggers before checking stops', () => {
         monitor.setPosition(buyPosition({ stopLoss: 18400, takeProfit: 18600 }));
 
@@ -302,6 +362,45 @@ describe('PositionMonitor', () => {
         const trigger = monitor.checkCandle(18200, 18550, SPREAD, -100);
         expect(trigger!.reason).toBe('LIQUIDATION');
         expect(trigger!.price).toBe(18550 + SPREAD);
+      });
+    });
+
+    describe('margin liquidation in candle', () => {
+      const ENTRY = 18500;
+      const LIQ_BUY_200 = ENTRY * (1 - 0.5 / 200); // 18453.75
+
+      test('BUY triggers when candle low breaches liquidation price', () => {
+        monitor.setPosition(buyPosition(), LIQ_BUY_200);
+
+        const trigger = monitor.checkCandle(18440, 18520, SPREAD, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_BUY_200);
+      });
+
+      test('BUY does not trigger when candle low stays above liquidation price', () => {
+        monitor.setPosition(buyPosition(), LIQ_BUY_200);
+
+        // Candle low at 18460, above 18453.75
+        expect(monitor.checkCandle(18460, 18520, SPREAD, 10000)).toBeNull();
+      });
+
+      test('SELL triggers when candle high + spread breaches liquidation price', () => {
+        const LIQ_SELL_200 = ENTRY * (1 + 0.5 / 200); // 18546.25
+        monitor.setPosition(sellPosition(), LIQ_SELL_200);
+
+        // candleHigh + spread = 18545 + 1.8 = 18546.8 >= 18546.25
+        const trigger = monitor.checkCandle(18480, 18545, SPREAD, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_SELL_200);
+      });
+
+      test('margin liquidation beats SL in candle', () => {
+        monitor.setPosition(buyPosition({ stopLoss: 18400 }), LIQ_BUY_200);
+
+        // Candle spans both: low hits margin liq (18453.75) AND SL (18400)
+        const trigger = monitor.checkCandle(18390, 18520, SPREAD, 10000);
+        expect(trigger!.reason).toBe('LIQUIDATION');
+        expect(trigger!.price).toBe(LIQ_BUY_200);
       });
     });
   });

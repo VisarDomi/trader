@@ -10,7 +10,7 @@ import type {
   Position,
   Timeframe,
 } from './types.ts';
-import { isWithinTradingHours, isMarketCloseCandle } from './tradingHours.ts';
+import { isWithinTradingHours, getTradingStatus } from './tradingHours.ts';
 import { AccountManager } from '../account/AccountManager.ts';
 import { CandleBuilder } from '../candle/CandleBuilder.ts';
 import { PositionMonitor } from '../position/PositionMonitor.ts';
@@ -61,6 +61,7 @@ export class AgentRunner {
   private totalMinuteCandles: number = 0;
   private lastPrice: { bid: number; ask: number } | null = null;
   private executionInFlight: boolean = false;
+  private marginLiquidationPrice: number | undefined;
 
   constructor(config: RunnerConfig) {
     this.agent = config.agent;
@@ -166,15 +167,16 @@ export class AgentRunner {
     }
 
     // 3. Check market close for leveraged instruments
-    if (
-      this.position &&
-      this.instrument.leveraged &&
-      isMarketCloseCandle(minute.timestamp, this.instrument.tradingHours)
-    ) {
+    const tradingStatus = this.instrument.leveraged
+      ? getTradingStatus(minute.timestamp, this.instrument.tradingHours)
+      : null;
+
+    if (this.position && tradingStatus?.isMarketClose) {
       const fill = await this.execution.executeClose(this.position, bid, minute.timestamp);
       const marketCloseFill: Fill = { ...fill, reason: 'MARKET_CLOSE' };
       await this.handleCloseFill(marketCloseFill);
     }
+
 
     // 4. Check framework max drawdown
     if (this.maxDrawdown !== undefined) {
@@ -187,6 +189,16 @@ export class AgentRunner {
           const liquidationFill: Fill = { ...fill, reason: 'LIQUIDATION' };
           await this.handleCloseFill(liquidationFill);
         }
+        this.feed.stop();
+        return;
+      }
+    }
+
+    // 4b. Capital depleted — can't afford minimum position, stop early
+    if (!this.position) {
+      const snap = this.account.getSnapshot();
+      const minMargin = (this.instrument.minSize * bid * this.instrument.lotSize) / this.instrument.leverage;
+      if (snap.available < minMargin) {
         this.feed.stop();
         return;
       }
@@ -211,12 +223,9 @@ export class AgentRunner {
     this.history.push(candle);
 
     // Only call agent during trading hours (leveraged instruments)
-    // Unleveraged instruments: always call
-    if (this.instrument.leveraged) {
-      if (!isWithinTradingHours(candle.timestamp, this.instrument.tradingHours)) {
-        this.recordEquity(candle.timestamp);
-        return;
-      }
+    if (this.instrument.leveraged && !isWithinTradingHours(candle.timestamp, this.instrument.tradingHours)) {
+      this.recordEquity(candle.timestamp);
+      return;
     }
 
     // Build context
@@ -277,6 +286,36 @@ export class AgentRunner {
     // Update account
     this.account.onOpen(fill);
 
+    // Compute SL/TP — margin-return targets take precedence over absolute prices
+    let stopLoss = order.stopLoss;
+    let takeProfit = order.takeProfit;
+
+    if (order.stopLossReturn !== undefined || order.takeProfitReturn !== undefined) {
+      const entry = fill.price;
+      const leverage = this.instrument.leverage;
+
+      if (order.stopLossReturn !== undefined) {
+        // returnOnMargin = (exit - entry) * L / entry  for BUY
+        // returnOnMargin = (entry - exit) * L / entry  for SELL
+        // Solve for exit price:
+        if (order.side === 'BUY') {
+          stopLoss = entry * (1 + order.stopLossReturn / leverage);
+        } else {
+          stopLoss = entry * (1 - order.stopLossReturn / leverage);
+        }
+        stopLoss = this.roundPrice(stopLoss);
+      }
+
+      if (order.takeProfitReturn !== undefined) {
+        if (order.side === 'BUY') {
+          takeProfit = entry * (1 + order.takeProfitReturn / leverage);
+        } else {
+          takeProfit = entry * (1 - order.takeProfitReturn / leverage);
+        }
+        takeProfit = this.roundPrice(takeProfit);
+      }
+    }
+
     // Build position
     this.position = {
       direction: order.side,
@@ -284,10 +323,22 @@ export class AgentRunner {
       entryPrice: fill.price,
       entryTime: timestamp,
       unrealizedPnL: 0,
-      stopLoss: order.stopLoss,
-      takeProfit: order.takeProfit,
+      stopLoss,
+      takeProfit,
     };
-    this.positionMonitor.setPosition(this.position);
+
+    // Compute margin liquidation price: liquidate at -50% of margin.
+    // BUY: entry × (1 - 0.5/leverage), SELL: entry × (1 + 0.5/leverage).
+    const leverage = this.instrument.leverage;
+    this.marginLiquidationPrice = undefined;
+    if (leverage > 1) {
+      if (order.side === 'BUY') {
+        this.marginLiquidationPrice = this.roundPrice(fill.price * (1 - 0.5 / leverage));
+      } else {
+        this.marginLiquidationPrice = this.roundPrice(fill.price * (1 + 0.5 / leverage));
+      }
+    }
+    this.positionMonitor.setPosition(this.position, this.marginLiquidationPrice);
 
     // Record and notify agent
     this.fills.push(fill);
@@ -309,12 +360,13 @@ export class AgentRunner {
       stopLoss: stopLoss ?? this.position.stopLoss,
       takeProfit: takeProfit ?? this.position.takeProfit,
     };
-    this.positionMonitor.setPosition(this.position);
+    this.positionMonitor.setPosition(this.position, this.marginLiquidationPrice);
   }
 
   private async handleCloseFill(fill: Fill): Promise<void> {
     this.account.onClose(fill);
     this.position = null;
+    this.marginLiquidationPrice = undefined;
     this.positionMonitor.setPosition(null);
     this.fills.push(fill);
     this.state = this.agent.onFill(fill, this.state);
@@ -330,6 +382,11 @@ export class AgentRunner {
     if (stepped < minSize) return null;
 
     return Math.min(stepped, maxSize);
+  }
+
+  private roundPrice(price: number): number {
+    const factor = Math.pow(10, this.instrument.pricePrecision);
+    return Math.round(price * factor) / factor;
   }
 
   private recordEquity(timestamp: number): void {

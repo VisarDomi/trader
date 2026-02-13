@@ -132,8 +132,13 @@ interface InstrumentInfo {
 
 interface TradingHours {
   timezone: string;                  // "America/New_York"
-  open: string;                      // "09:30"
-  close: string;                     // "16:00"
+  gaps: TradingGap[];                // sorted by 'from' ascending
+}
+
+interface TradingGap {
+  from: string;                      // "2023-01-01" — applies from this date
+  gapStart: string;                  // "17:00" — when gap begins
+  gapEnd: string;                    // "18:00" — when trading resumes
 }
 
 // ============================================
@@ -200,9 +205,16 @@ The framework has three layers of risk management. Understanding them is critica
 
 ### 1. Position-Level: Margin Liquidation (automatic)
 
-Every open position locks up margin: `margin = (size × price × lotSize) / leverage`. As the price moves against the position, unrealized P&L reduces equity (`equity = balance + unrealizedPnL`). When **equity reaches zero**, the position is automatically liquidated — force-closed at current price with `reason: 'LIQUIDATION'`.
+Every open position locks up margin: `margin = (size × price × lotSize) / leverage`. At position open, the framework computes a **liquidation price** — the price at which the position's unrealized loss equals 50% of its margin:
 
-With high leverage, this happens fast. At 200× leverage, a 0.5% adverse price move wipes out the margin on that position. At 20× leverage, it takes a 5% move.
+- **BUY**: `liquidationPrice = entryPrice × (1 - 0.5 / leverage)`
+- **SELL**: `liquidationPrice = entryPrice × (1 + 0.5 / leverage)`
+
+When the market price breaches the liquidation price, the position is force-closed at that price with `reason: 'LIQUIDATION'`.
+
+With high leverage, this happens fast. At 200× leverage, a **0.25% adverse move** triggers liquidation. At 20× leverage, it takes a **2.5% move**. This is why the same strategy produces dramatically different results at different leverage levels.
+
+As a fallback, if total account equity reaches zero (all capital depleted including unrealized losses), the position is also liquidated.
 
 **After liquidation, the agent keeps running.** It receives an `onFill` with `reason: 'LIQUIDATION'`, and on the next candle, `onCandle` is called with `ctx.position = null`. The agent can open a new position — just with less capital.
 

@@ -7,9 +7,11 @@ export interface Trigger {
 
 export class PositionMonitor {
   private position: Position | null = null;
+  private liquidationPrice: number | null = null;
 
-  setPosition(position: Position | null): void {
+  setPosition(position: Position | null, liquidationPrice?: number): void {
     this.position = position;
+    this.liquidationPrice = position ? (liquidationPrice ?? null) : null;
   }
 
   getPosition(): Position | null {
@@ -30,7 +32,17 @@ export class PositionMonitor {
   check(bid: number, ask: number, equity: number): Trigger | null {
     if (!this.position) return null;
 
-    // Liquidation takes highest priority
+    // Margin liquidation: position loss exceeded margin threshold
+    if (this.liquidationPrice !== null) {
+      if (this.position.direction === 'BUY' && bid <= this.liquidationPrice) {
+        return { reason: 'LIQUIDATION', price: this.liquidationPrice };
+      }
+      if (this.position.direction === 'SELL' && ask >= this.liquidationPrice) {
+        return { reason: 'LIQUIDATION', price: this.liquidationPrice };
+      }
+    }
+
+    // Account-level liquidation (fallback — entire account equity gone)
     if (equity <= 0) {
       const price = this.position.direction === 'BUY' ? bid : ask;
       return { reason: 'LIQUIDATION', price };
@@ -82,7 +94,17 @@ export class PositionMonitor {
 
     const { direction, stopLoss, takeProfit } = this.position;
 
-    // For liquidation, use worst-case price
+    // Margin liquidation: position loss exceeded margin threshold
+    if (this.liquidationPrice !== null) {
+      if (direction === 'BUY' && candleLow <= this.liquidationPrice) {
+        return { reason: 'LIQUIDATION', price: this.liquidationPrice };
+      }
+      if (direction === 'SELL' && (candleHigh + spread) >= this.liquidationPrice) {
+        return { reason: 'LIQUIDATION', price: this.liquidationPrice };
+      }
+    }
+
+    // Account-level liquidation (fallback — entire account equity gone)
     if (equity <= 0) {
       const price = direction === 'BUY' ? candleLow : candleHigh + spread;
       return { reason: 'LIQUIDATION', price };
