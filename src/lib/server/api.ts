@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type {
 	AgentSummary,
+	BlueprintMeta,
 	EquityPoint,
 	Fill,
 	InstrumentInfo,
@@ -46,6 +47,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 // Health
 export function getHealth(): Promise<{ status: string; timestamp: number }> {
 	return api('/health');
+}
+
+// Blueprints
+export function getBlueprints(): Promise<BlueprintMeta[]> {
+	return api('/blueprints');
 }
 
 // Agents
