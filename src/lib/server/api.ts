@@ -11,20 +11,36 @@ import type {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
 	const url = `${BACKEND_URL}${path}`;
-	const res = await fetch(url, {
-		...init,
-		headers: {
-			'Content-Type': 'application/json',
-			...init?.headers,
-		},
-	});
 
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		throw new Error(body.error || `API ${res.status}: ${res.statusText}`);
+	let res: Response;
+	try {
+		res = await fetch(url, {
+			...init,
+			headers: {
+				'Content-Type': 'application/json',
+				...init?.headers,
+			},
+		});
+	} catch {
+		throw new Error('Backend unreachable — is the trader-backend running?');
 	}
 
-	return res.json();
+	const text = await res.text();
+
+	if (!res.ok) {
+		let msg = `API ${res.status}: ${res.statusText}`;
+		try {
+			const body = JSON.parse(text);
+			if (body.error) msg = body.error;
+		} catch { /* not JSON */ }
+		throw new Error(msg);
+	}
+
+	try {
+		return JSON.parse(text);
+	} catch {
+		throw new Error(`Backend returned non-JSON response (${res.status})`);
+	}
 }
 
 // Health
