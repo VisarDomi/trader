@@ -33,6 +33,7 @@ export interface MacdEmaParams {
   timeframe: Timeframe;
   emaPeriod: number;
   tpReturn: number;
+  leverage: number;
   slReturn?: number;
   macdFast?: number;
   macdSlow?: number;
@@ -53,6 +54,7 @@ export function createMacdEmaAgent(params: MacdEmaParams): Agent<MacdEmaState> {
     version: '1.0.0',
     instrument: 'US100',
     primaryFeed: params.timeframe,
+    leverage: params.leverage,
   };
 
   function init(): MacdEmaState {

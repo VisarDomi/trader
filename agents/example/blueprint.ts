@@ -1,7 +1,7 @@
 /**
  * Example blueprint: EMA Crossover
  *
- * Single-dimension blueprint — demonstrates the contract with default params.
+ * Demonstrates the contract with default params × leverage.
  * The strategy logic is self-contained (no external factory).
  */
 import type {
@@ -15,6 +15,10 @@ import type {
   Fill,
 } from '../../src/core/agent/types.ts';
 
+type ExampleDim = Dimension & {
+  leverage: number;
+};
+
 interface EmaState {
   fastEma: number;
   slowEma: number;
@@ -27,6 +31,7 @@ const SLOW_PERIOD = 30;
 const STOP_LOSS_PCT = 0.01;
 const POSITION_SIZE = 0.5;
 const WARMUP_CANDLES = 30;
+const LEVERAGES = [20, 200] as const;
 
 function updateEma(prev: number, price: number, period: number): number {
   if (prev === 0) return price;
@@ -34,13 +39,14 @@ function updateEma(prev: number, price: number, period: number): number {
   return price * k + prev * (1 - k);
 }
 
-function createEmaAgent(): Agent<EmaState> {
+function createEmaAgent(leverage: number): Agent<EmaState> {
   const config: AgentConfig = {
-    name: 'EMA Crossover',
+    name: `EMA Crossover lev${leverage}`,
     version: '1.0.0',
     instrument: 'US100',
     primaryFeed: '5m',
     maxDrawdown: 0.15,
+    leverage,
   };
 
   function init(): EmaState {
@@ -85,12 +91,17 @@ function createEmaAgent(): Agent<EmaState> {
   return { config, init, onCandle, onFill };
 }
 
+const dimensions: ExampleDim[] = LEVERAGES.map(lev => ({
+  id: `ema-crossover-lev${lev}`,
+  leverage: lev,
+}));
+
 export default {
   name: 'EMA Crossover',
   version: '1.0.0',
   instrument: 'US100',
-  dimensions: [{ id: 'ema-crossover' }],
-  createAgent(_dim: Dimension) {
-    return createEmaAgent();
+  dimensions,
+  createAgent(dim: ExampleDim) {
+    return createEmaAgent(dim.leverage);
   },
 } satisfies AgentBlueprint<EmaState>;

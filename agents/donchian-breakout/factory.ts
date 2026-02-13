@@ -26,6 +26,7 @@ export interface DonchianParams {
   channelLength: number;  // N — lookback for Donchian channel
   atrMultiple: number;    // K — SL = K × ATR
   rewardRatio: number;    // R — TP = R × SL distance
+  leverage: number;
   riskPct?: number;       // fraction of equity to risk per trade (default 0.02)
 }
 
@@ -47,6 +48,7 @@ export function createDonchian(params: DonchianParams): Agent<DonchianState> {
     version: '1.0.0',
     instrument: 'US100',
     primaryFeed: timeframe,
+    leverage: params.leverage,
   };
 
   function init(): DonchianState {

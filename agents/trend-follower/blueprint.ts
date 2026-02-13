@@ -1,9 +1,10 @@
 /**
  * Trend Follower blueprint.
  *
- * Generates agents across two dimension sweeps:
+ * Generates agents across two dimension sweeps × leverage:
  *   1. trendPct sweep (4 TFs × 8–9 thresholds, default TP)
  *   2. TP sweep (4 TFs × 9 TP values, fixed trendPct=1.5%)
+ *   × 2 leverage values = 142 agents
  *
  * Factory logic lives in factory.ts (also used by batch runners).
  */
@@ -15,10 +16,12 @@ import { createAgent } from './factory.ts';
 type TrendDim = Dimension & {
   timeframe: string;
   trendPct: number;
+  leverage: number;
   tpReturn?: number;
 };
 
 const TIMEFRAMES = ['1m', '5m', '15m', '1h'] as const;
+const LEVERAGES = [20, 200] as const;
 
 // trendPct values per timeframe (1m stops at 2.00%, others go to 3.00%)
 const TREND_PCTS: Record<string, number[]> = {
@@ -41,25 +44,31 @@ function pctLabel(pct: number): string {
 const dimensions: TrendDim[] = [];
 
 // Standard trendPct sweep (default TP = +100% margin)
-for (const tf of TIMEFRAMES) {
-  for (const trendPct of TREND_PCTS[tf]!) {
-    dimensions.push({
-      id: `${tf}-${pctLabel(trendPct)}`,
-      timeframe: tf,
-      trendPct,
-    });
+for (const lev of LEVERAGES) {
+  for (const tf of TIMEFRAMES) {
+    for (const trendPct of TREND_PCTS[tf]!) {
+      dimensions.push({
+        id: `${tf}-${pctLabel(trendPct)}-lev${lev}`,
+        timeframe: tf,
+        trendPct,
+        leverage: lev,
+      });
+    }
   }
 }
 
 // TP sweep (fixed trendPct, varying TP)
-for (const tf of TIMEFRAMES) {
-  for (let i = 0; i < TP_RETURNS.length; i++) {
-    dimensions.push({
-      id: `tp-sweep/${tf}-tp${TP_LABELS[i]}`,
-      timeframe: tf,
-      trendPct: TP_SWEEP_TREND_PCT,
-      tpReturn: TP_RETURNS[i],
-    });
+for (const lev of LEVERAGES) {
+  for (const tf of TIMEFRAMES) {
+    for (let i = 0; i < TP_RETURNS.length; i++) {
+      dimensions.push({
+        id: `tp-sweep/${tf}-tp${TP_LABELS[i]}-lev${lev}`,
+        timeframe: tf,
+        trendPct: TP_SWEEP_TREND_PCT,
+        tpReturn: TP_RETURNS[i],
+        leverage: lev,
+      });
+    }
   }
 }
 
@@ -72,15 +81,16 @@ export default {
   dimensions,
   createAgent(dim: TrendDim) {
     const pctStr = (dim.trendPct * 100).toFixed(2);
-    let name = `Trend ${dim.timeframe} ${pctStr}%`;
+    let name = `Trend ${dim.timeframe} ${pctStr}% lev${dim.leverage}`;
     if (dim.tpReturn != null) {
       const tpStr = (dim.tpReturn * 100).toFixed(2);
-      name = `Trend ${dim.timeframe} t${pctStr}% tp${tpStr}%`;
+      name = `Trend ${dim.timeframe} t${pctStr}% tp${tpStr}% lev${dim.leverage}`;
     }
     return createAgent({
       name,
       timeframe: dim.timeframe as any,
       trendPct: dim.trendPct,
+      leverage: dim.leverage,
       tpReturn: dim.tpReturn,
     });
   },

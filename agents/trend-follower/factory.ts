@@ -22,6 +22,7 @@ interface Params {
   name: string;
   timeframe: Timeframe;
   trendPct: number;
+  leverage: number;
   /** Margin-return target for take profit. Default +100% of margin. */
   tpReturn?: number;
 }
@@ -37,6 +38,7 @@ export function createAgent(params: Params): Agent<TrendState> {
     instrument: 'US100',
     primaryFeed: params.timeframe,
     maxDrawdown: 0.50,
+    leverage: params.leverage,
   };
 
   function init(): TrendState {
