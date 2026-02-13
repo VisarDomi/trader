@@ -1,9 +1,18 @@
 <script lang="ts">
+	import { groupAgentsByBehavior, getDimension } from '$lib/utils/grouping';
 	import type { AgentSummary } from '$lib/types';
 
 	let { data } = $props();
 
 	let search = $state('');
+	let expanded = $state<Set<string>>(new Set());
+
+	function toggleExpand(behavior: string) {
+		const next = new Set(expanded);
+		if (next.has(behavior)) next.delete(behavior);
+		else next.add(behavior);
+		expanded = next;
+	}
 
 	let filtered = $derived(
 		data.agents.filter((a: AgentSummary) => {
@@ -16,46 +25,71 @@
 			);
 		})
 	);
+
+	let groups = $derived(groupAgentsByBehavior(filtered));
 </script>
 
 <div class="page-header">
 	<h1>Agents</h1>
 	<div class="filters">
-		<input type="text" bind:value={search} placeholder="Search agents..." class="search-input" />
-		<span class="count">{filtered.length} agents</span>
+		<input type="text" bind:value={search} placeholder="Search behaviors or dimensions..." class="search-input" />
+		<span class="count">{filtered.length} agents in {groups.length} behaviors</span>
 	</div>
 </div>
 
 {#if data.error}
 	<div class="error-state">{data.error}</div>
-{:else if filtered.length === 0}
+{:else if groups.length === 0}
 	<div class="empty-state">No agents found.</div>
 {:else}
-	<div class="agent-grid">
-		{#each filtered as agent}
-			<a href="/agents/{agent.id}" class="card agent-card">
-				<div class="agent-header">
-					<span class="agent-name">{agent.config.name}</span>
-					<span class="badge badge-neutral">v{agent.config.version}</span>
-				</div>
-				<div class="agent-meta">
-					<div class="meta-row">
-						<span class="meta-label">Instrument</span>
-						<span class="meta-value">{agent.config.instrument}</span>
-					</div>
-					<div class="meta-row">
-						<span class="meta-label">Feed</span>
-						<span class="meta-value">{agent.config.primaryFeed}</span>
-					</div>
-					{#if agent.config.secondaryFeeds?.length}
-						<div class="meta-row">
-							<span class="meta-label">Secondary</span>
-							<span class="meta-value">{agent.config.secondaryFeeds.join(', ')}</span>
+	<div class="behavior-grid">
+		{#each groups as group}
+			{@const isExpanded = expanded.has(group.behavior)}
+			<div class="card behavior-card" class:expanded={isExpanded}>
+				<button class="behavior-header" onclick={() => toggleExpand(group.behavior)}>
+					<div class="behavior-top">
+						<span class="behavior-name">{group.behavior}</span>
+						<div class="behavior-badges">
+							{#each group.instruments as inst}
+								<span class="badge badge-neutral">{inst}</span>
+							{/each}
 						</div>
-					{/if}
-				</div>
-				<div class="agent-id mono">{agent.id}</div>
-			</a>
+					</div>
+					<div class="behavior-meta">
+						<span class="dim-count">{group.agents.length} dimensions</span>
+						<span class="feeds">{group.feeds.join(', ')}</span>
+					</div>
+				</button>
+
+				{#if isExpanded}
+					<div class="dim-table-wrap">
+						<table class="dim-table">
+							<thead>
+								<tr>
+									<th>Dimension</th>
+									<th>Name</th>
+									<th>Feed</th>
+									<th>Max DD</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each group.agents as agent}
+									<tr>
+										<td class="mono dim-id">{getDimension(agent.id)}</td>
+										<td>{agent.config.name}</td>
+										<td>{agent.config.primaryFeed}</td>
+										<td>{agent.config.maxDrawdown != null ? `${(agent.config.maxDrawdown * 100).toFixed(0)}%` : '—'}</td>
+										<td>
+											<a href="/agents/{agent.id}" class="dim-arrow">→</a>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</div>
 		{/each}
 	</div>
 {/if}
@@ -79,7 +113,7 @@
 	}
 
 	.search-input {
-		width: 280px;
+		width: 320px;
 	}
 
 	.count {
@@ -87,51 +121,102 @@
 		color: var(--text-dim);
 	}
 
-	.agent-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 14px;
+	.behavior-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
 	}
 
-	.agent-card {
-		text-decoration: none;
+	.behavior-card {
+		padding: 0;
+		overflow: hidden;
+	}
+
+	.behavior-card.expanded {
+		border-color: var(--border-hover);
+	}
+
+	.behavior-header {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 20px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
 		color: var(--text);
-		transition: all 0.2s;
 	}
 
-	.agent-header {
+	.behavior-header:hover {
+		background: var(--bg-card-hover);
+	}
+
+	.behavior-top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 12px;
 	}
 
-	.agent-name {
-		font-size: 15px;
+	.behavior-name {
+		font-size: 18px;
+		font-weight: 700;
+	}
+
+	.behavior-badges {
+		display: flex;
+		gap: 6px;
+	}
+
+	.behavior-meta {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+	}
+
+	.dim-count {
+		font-size: 13px;
 		font-weight: 600;
+		color: var(--accent);
 	}
 
-	.agent-meta {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		margin-bottom: 12px;
+	.feeds {
+		font-size: 12px;
+		color: var(--text-dim);
+		font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 	}
 
-	.meta-row {
-		display: flex;
-		justify-content: space-between;
+	.dim-table-wrap {
+		border-top: 1px solid var(--border);
+		overflow-x: auto;
+	}
+
+	.dim-table {
+		width: 100%;
 		font-size: 13px;
 	}
 
-	.meta-label { color: var(--text-dim); }
-	.meta-value { color: var(--text-muted); }
+	.dim-table th {
+		background: var(--bg-elevated);
+	}
 
-	.agent-id {
-		font-size: 11px;
+	.dim-table td {
+		padding: 8px 12px;
+	}
+
+	.dim-id {
+		font-size: 12px;
+		color: var(--text-dim);
+	}
+
+	.dim-arrow {
 		color: var(--text-faint);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		text-decoration: none;
+		font-size: 14px;
+	}
+
+	.dim-arrow:hover {
+		color: var(--accent);
 	}
 </style>

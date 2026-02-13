@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatCurrency, formatPercent, formatNumber } from '$lib/utils/format';
+	import { groupRunsByBehavior, getDimension } from '$lib/utils/grouping';
 	import type { RunRecord } from '$lib/types';
 
 	let { data } = $props();
@@ -22,6 +23,14 @@
 
 	let activeTab = $state(data.mode ?? 'backtest');
 	let filterInstrument = $state('');
+	let expanded = $state<Set<string>>(new Set());
+
+	function toggleExpand(behavior: string) {
+		const next = new Set(expanded);
+		if (next.has(behavior)) next.delete(behavior);
+		else next.add(behavior);
+		expanded = next;
+	}
 
 	let byMode = $derived({
 		backtest: data.leaderboard.filter((r: RunRecord) => r.mode === 'backtest'),
@@ -44,6 +53,8 @@
 		paper: byMode.paper.length,
 		live: byMode.live.length,
 	});
+
+	let groups = $derived(groupRunsByBehavior(filtered, data.sortBy));
 </script>
 
 <div class="page-header">
@@ -54,7 +65,7 @@
 			<button
 				class="mode-tab"
 				class:active={activeTab === m.value}
-				onclick={() => { activeTab = m.value; filterInstrument = ''; }}
+				onclick={() => { activeTab = m.value; filterInstrument = ''; expanded = new Set(); }}
 			>
 				{m.label}
 				<span class="tab-count">{counts[m.value]}</span>
@@ -83,7 +94,7 @@
 
 {#if data.error}
 	<div class="error-state">{data.error}</div>
-{:else if filtered.length === 0}
+{:else if groups.length === 0}
 	<div class="empty-state">No {activeTab} runs yet.</div>
 {:else}
 	<div class="table-wrapper">
@@ -91,44 +102,69 @@
 			<thead>
 				<tr>
 					<th>#</th>
-					<th>Agent</th>
+					<th>Behavior</th>
+					<th>Best Dimension</th>
 					<th>Instrument</th>
 					<th>Return</th>
-					<th>Win Rate</th>
 					<th>Sharpe</th>
-					<th>Drawdown</th>
-					<th>PF</th>
-					<th>Trades</th>
+					<th>Win Rate</th>
 					<th>PnL</th>
+					<th>Dims</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each filtered as run, i}
-					{@const m = run.metrics}
-					<tr>
+				{#each groups as group, i}
+					{@const best = group.bestRun}
+					{@const m = best.metrics}
+					{@const isExpanded = expanded.has(group.behavior)}
+					<tr class="behavior-row" class:expanded={isExpanded} onclick={() => toggleExpand(group.behavior)}>
 						<td class="rank">{i + 1}</td>
-						<td>
-							<a href="/runs/{run.id}" class="agent-link">
-								<span class="agent-name">{run.agentName}</span>
-							</a>
-						</td>
-						<td><span class="badge badge-neutral">{run.instrument}</span></td>
+						<td class="behavior-name">{group.behavior}</td>
+						<td class="dim-name mono">{getDimension(best.agentId)}</td>
+						<td><span class="badge badge-neutral">{best.instrument}</span></td>
 						<td style="color: {m && m.totalReturn >= 0 ? 'var(--profit)' : 'var(--loss)'}">
 							{m ? formatPercent(m.totalReturn) : '—'}
 						</td>
-						<td>{m ? formatPercent(m.winRate) : '—'}</td>
 						<td style="color: {m && m.sharpe >= 0 ? 'var(--profit)' : 'var(--loss)'}">
 							{m ? formatNumber(m.sharpe) : '—'}
 						</td>
-						<td style="color: var(--loss)">
-							{m ? formatPercent(m.maxDrawdown) : '—'}
-						</td>
-						<td>{m ? formatNumber(m.profitFactor) : '—'}</td>
-						<td>{m ? m.totalTrades : '—'}</td>
+						<td>{m ? formatPercent(m.winRate) : '—'}</td>
 						<td style="color: {m && m.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)'}">
 							{m ? formatCurrency(m.totalPnL) : '—'}
 						</td>
+						<td>
+							<span class="badge badge-neutral dims-badge">{group.dimCount}</span>
+						</td>
 					</tr>
+					{#if isExpanded}
+						{#each group.runs.slice(1) as run, j}
+							{@const rm = run.metrics}
+							<tr class="dim-row">
+								<td class="rank dim-rank">{i + 1}.{j + 2}</td>
+								<td></td>
+								<td class="dim-name mono">
+									<a href="/runs/{run.id}" class="dim-link">{getDimension(run.agentId)}</a>
+								</td>
+								<td><span class="badge badge-neutral">{run.instrument}</span></td>
+								<td style="color: {rm && rm.totalReturn >= 0 ? 'var(--profit)' : 'var(--loss)'}">
+									{rm ? formatPercent(rm.totalReturn) : '—'}
+								</td>
+								<td style="color: {rm && rm.sharpe >= 0 ? 'var(--profit)' : 'var(--loss)'}">
+									{rm ? formatNumber(rm.sharpe) : '—'}
+								</td>
+								<td>{rm ? formatPercent(rm.winRate) : '—'}</td>
+								<td style="color: {rm && rm.totalPnL >= 0 ? 'var(--profit)' : 'var(--loss)'}">
+									{rm ? formatCurrency(rm.totalPnL) : '—'}
+								</td>
+								<td></td>
+							</tr>
+						{/each}
+						{#if group.runs.length === 1}
+							<tr class="dim-row">
+								<td colspan="9" class="no-more-dims">Only one dimension in this behavior</td>
+							</tr>
+						{/if}
+					{/if}
 				{/each}
 			</tbody>
 		</table>
@@ -234,16 +270,61 @@
 		width: 40px;
 	}
 
-	.agent-link {
-		text-decoration: none;
+	.behavior-row {
+		cursor: pointer;
 	}
 
-	.agent-name {
-		font-weight: 600;
+	.behavior-row:hover td {
+		background: var(--bg-card);
+	}
+
+	.behavior-row.expanded td {
+		border-bottom-color: var(--border);
+	}
+
+	.behavior-name {
+		font-size: 15px;
+		font-weight: 700;
 		color: var(--text);
 	}
 
-	.agent-link:hover .agent-name {
+	.dim-name {
+		font-size: 12px;
+		color: var(--text-dim);
+	}
+
+	.dims-badge {
+		font-size: 11px;
+	}
+
+	.dim-row td {
+		background: var(--bg-card);
+		border-bottom-color: rgba(39, 39, 42, 0.5);
+		font-size: 12px;
+	}
+
+	.dim-row:last-of-type td {
+		border-bottom-color: var(--border);
+	}
+
+	.dim-rank {
+		font-weight: 500;
+		font-size: 11px;
+	}
+
+	.dim-link {
+		color: var(--text-dim);
+		text-decoration: none;
+	}
+
+	.dim-link:hover {
 		color: var(--accent);
+	}
+
+	.no-more-dims {
+		text-align: center;
+		color: var(--text-faint);
+		font-size: 12px;
+		font-style: italic;
 	}
 </style>
