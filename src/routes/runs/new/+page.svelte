@@ -198,7 +198,7 @@
 					<div class="form-row">
 						<div class="form-group checkbox-group">
 							<label>
-								<input type="checkbox" name="tickMode" />
+								<input type="checkbox" name="tickMode" checked />
 								Tick mode (higher accuracy SL/TP, slower)
 							</label>
 						</div>
