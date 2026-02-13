@@ -36,6 +36,27 @@ export class RunRepository {
     `;
   }
 
+  static async updateRunStatus(runId: string, status: string, startedAt?: number): Promise<void> {
+    if (startedAt !== undefined) {
+      await sql`
+        UPDATE runs SET status = ${status}, started_at = ${startedAt} WHERE id = ${runId}
+      `;
+    } else {
+      await sql`
+        UPDATE runs SET status = ${status} WHERE id = ${runId}
+      `;
+    }
+  }
+
+  static async getActiveRuns(): Promise<RunRecord[]> {
+    const rows = await sql`
+      SELECT * FROM runs
+      WHERE status IN ('queued', 'running') AND mode = 'backtest'
+      ORDER BY started_at ASC NULLS LAST
+    `;
+    return rows.map(row => this.mapRow(row));
+  }
+
   static async failRun(runId: string, error: string): Promise<void> {
     await sql`
       UPDATE runs

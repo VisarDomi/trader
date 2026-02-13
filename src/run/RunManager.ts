@@ -22,6 +22,19 @@ export interface BacktestResult {
   runResult: RunResult;
 }
 
+export interface QueueEntry {
+  runId: string;
+  agentId: string;
+  agentName: string;
+  mode: string;
+}
+
+export interface QueueState {
+  current: QueueEntry | null;
+  queued: QueueEntry[];
+  queueLength: number;
+}
+
 interface LiveRunHandle {
   runner: AgentRunner;
   feed: PriceFeed;
@@ -40,9 +53,222 @@ export class RunManager {
   private readonly activeLiveRuns: Map<string, LiveRunHandle> = new Map();
   private readonly slippage: SlippageMode;
 
+  // Backtest queue
+  private backtestQueue: Array<{ runId: string; config: RunConfig; agentName: string }> = [];
+  private currentBacktest: { runId: string; config: RunConfig; agentName: string } | null = null;
+  private processing = false;
+
+  // Callbacks for WebSocket broadcast (set by server.ts)
+  onBacktestComplete?: (runId: string, metrics: Metrics) => void;
+  onBacktestError?: (runId: string, error: string) => void;
+
   constructor(agentsDir: string, slippage: SlippageMode = { type: 'none' }) {
     this.agentLoader = new AgentLoader(agentsDir);
     this.slippage = slippage;
+  }
+
+  /** Recovery on startup: mark orphaned 'running' as error, re-queue orphaned 'queued' */
+  async init(): Promise<void> {
+    const activeRuns = await RunRepository.getActiveRuns();
+    for (const run of activeRuns) {
+      if (run.status === 'running') {
+        console.log(`[queue] Marking orphaned running backtest ${run.id} as error`);
+        await RunRepository.failRun(run.id, 'Server restarted — run state lost');
+      } else if (run.status === 'queued') {
+        console.log(`[queue] Re-queuing orphaned backtest ${run.id}`);
+        const config = run.config as unknown as RunConfig;
+        this.backtestQueue.push({ runId: run.id, config, agentName: run.agentName });
+      }
+    }
+    if (this.backtestQueue.length > 0) {
+      console.log(`[queue] Recovered ${this.backtestQueue.length} queued backtest(s)`);
+      this.processNext();
+    }
+  }
+
+  /** Enqueue a backtest — returns immediately with runId and status */
+  async enqueueBacktest(config: RunConfig): Promise<{ runId: string; status: 'queued' | 'duplicate' }> {
+    // Validate agent exists
+    const loaded = await this.agentLoader.loadById(config.agentId);
+    if (!loaded) {
+      throw new Error(`Agent not found: ${config.agentId}`);
+    }
+
+    // Check for duplicate
+    if (this.isDuplicateRun(config.agentId, config.mode)) {
+      return { runId: '', status: 'duplicate' };
+    }
+
+    // Generate run ID
+    const runId = `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Create DB record with status 'queued' and no startedAt
+    await RunRepository.createRun({
+      id: runId,
+      agentId: config.agentId,
+      agentName: loaded.config.name,
+      mode: 'backtest',
+      status: 'queued',
+      capital: config.capital,
+      instrument: loaded.config.instrument,
+      config: config as unknown as Record<string, unknown>,
+      startedAt: null,
+    });
+
+    // Push to queue and kick processing
+    this.backtestQueue.push({ runId, config, agentName: loaded.config.name });
+    this.processNext();
+
+    return { runId, status: 'queued' };
+  }
+
+  /** Get current queue state */
+  getQueueState(): QueueState {
+    return {
+      current: this.currentBacktest ? {
+        runId: this.currentBacktest.runId,
+        agentId: this.currentBacktest.config.agentId,
+        agentName: this.currentBacktest.agentName,
+        mode: this.currentBacktest.config.mode,
+      } : null,
+      queued: this.backtestQueue.map(entry => ({
+        runId: entry.runId,
+        agentId: entry.config.agentId,
+        agentName: entry.agentName,
+        mode: entry.config.mode,
+      })),
+      queueLength: this.backtestQueue.length + (this.currentBacktest ? 1 : 0),
+    };
+  }
+
+  private isDuplicateRun(agentId: string, mode: string): boolean {
+    // Check current running backtest
+    if (this.currentBacktest && this.currentBacktest.config.agentId === agentId && this.currentBacktest.config.mode === mode) {
+      return true;
+    }
+    // Check queue
+    return this.backtestQueue.some(entry => entry.config.agentId === agentId && entry.config.mode === mode);
+  }
+
+  private processNext(): void {
+    if (this.processing || this.backtestQueue.length === 0) return;
+    this.processing = true;
+
+    const entry = this.backtestQueue.shift()!;
+    this.currentBacktest = entry;
+
+    this.executeBacktest(entry.runId, entry.config)
+      .then(async (result) => {
+        this.currentBacktest = null;
+        this.processing = false;
+        this.onBacktestComplete?.(entry.runId, result.metrics);
+        this.processNext();
+      })
+      .catch(async (err) => {
+        this.currentBacktest = null;
+        this.processing = false;
+        const message = err instanceof Error ? err.message : String(err);
+        this.onBacktestError?.(entry.runId, message);
+        this.processNext();
+      });
+  }
+
+  /** Core backtest execution — takes a pre-created runId */
+  private async executeBacktest(runId: string, config: RunConfig): Promise<BacktestResult> {
+    if (!config.startDate || !config.endDate) {
+      throw new Error('Backtest requires startDate and endDate');
+    }
+
+    const loaded = await this.agentLoader.loadById(config.agentId);
+    if (!loaded) {
+      throw new Error(`Agent not found: ${config.agentId}`);
+    }
+
+    const baseInstrument = getInstrument(loaded.config.instrument);
+    if (!baseInstrument) {
+      throw new Error(`Unknown instrument: ${loaded.config.instrument}`);
+    }
+    const instrument = { ...baseInstrument, leverage: loaded.config.leverage };
+
+    // Update status to running
+    await RunRepository.updateRunStatus(runId, 'running', Date.now());
+
+    try {
+      const startMs = new Date(config.startDate).getTime();
+      const endMs = new Date(config.endDate).getTime();
+      const candles = await CandleRepository.loadMinuteCandles(loaded.config.instrument, startMs, endMs);
+
+      if (candles.length === 0) {
+        throw new Error(`No candle data for ${loaded.config.instrument} between ${config.startDate} and ${config.endDate}`);
+      }
+
+      const execution = new SimulatedExecution(instrument, this.slippage);
+
+      let feed: BacktestFeed | BacktestTickFeed;
+
+      if (config.tickMode) {
+        const ticks = await TickRepository.loadTicks(loaded.config.instrument, startMs, endMs);
+        if (ticks.length === 0) {
+          throw new Error(`No tick data for ${loaded.config.instrument} between ${config.startDate} and ${config.endDate}`);
+        }
+
+        const runner = new AgentRunner({
+          agent: loaded.agent,
+          feed: null!,
+          execution,
+          instrument,
+          capital: config.capital,
+          maxDrawdown: config.maxDrawdown,
+          maxPositionSize: config.maxPositionSize,
+        });
+
+        const tickFeed = new BacktestTickFeed(
+          ticks,
+          (bid, ask, ts) => runner.processTick(bid, ask, ts),
+        );
+        (runner as any).feed = tickFeed;
+        this.activeRuns.set(runId, { runner, feed: tickFeed as any });
+
+        const runResult = await runner.run();
+        this.activeRuns.delete(runId);
+
+        const metrics = MetricsEngine.calculate(runResult.fills, runResult.equityCurve, config.capital);
+        await RunRepository.completeRun(runId, metrics);
+        await RunRepository.saveFills(runId, runResult.fills);
+        await RunRepository.saveEquityCurve(runId, runResult.equityCurve);
+
+        return { runId, metrics, runResult };
+      }
+
+      feed = new BacktestFeed(candles);
+
+      const runner = new AgentRunner({
+        agent: loaded.agent,
+        feed,
+        execution,
+        instrument,
+        capital: config.capital,
+        maxDrawdown: config.maxDrawdown,
+        maxPositionSize: config.maxPositionSize,
+      });
+
+      this.activeRuns.set(runId, { runner, feed });
+
+      const runResult = await runner.run();
+      this.activeRuns.delete(runId);
+
+      const metrics = MetricsEngine.calculate(runResult.fills, runResult.equityCurve, config.capital);
+      await RunRepository.completeRun(runId, metrics);
+      await RunRepository.saveFills(runId, runResult.fills);
+      await RunRepository.saveEquityCurve(runId, runResult.equityCurve);
+
+      return { runId, metrics, runResult };
+    } catch (err) {
+      this.activeRuns.delete(runId);
+      const message = err instanceof Error ? err.message : String(err);
+      await RunRepository.failRun(runId, message);
+      throw err;
+    }
   }
 
   async listAgents(): Promise<LoadedAgent[]> {

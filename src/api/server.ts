@@ -1,6 +1,5 @@
 import type { Server, ServerWebSocket } from 'bun';
 import type { RunConfig } from '../core/agent/types.ts';
-import type { BacktestResult } from '../run/RunManager.ts';
 import { RunManager } from '../run/RunManager.ts';
 import { RunRepository } from '../data/RunRepository.ts';
 import { INSTRUMENTS } from '../data/instruments.ts';
@@ -55,8 +54,22 @@ export function createServer(runManager: RunManager, port: number = 3001): Serve
   // Track WebSocket subscribers per run
   const runSubscribers = new Map<string, Set<ServerWebSocket<WSData>>>();
 
-  // In-flight backtests (for streaming progress)
-  const pendingBacktests = new Map<string, Promise<BacktestResult>>();
+  // Wire backtest callbacks for WebSocket broadcast
+  runManager.onBacktestComplete = (runId, metrics) => {
+    broadcastToRun(runSubscribers, runId, {
+      type: 'completed',
+      runId,
+      metrics,
+    });
+  };
+
+  runManager.onBacktestError = (runId, error) => {
+    broadcastToRun(runSubscribers, runId, {
+      type: 'error',
+      runId,
+      error,
+    });
+  };
 
   // --- Route handlers ---
 
@@ -111,32 +124,12 @@ export function createServer(runManager: RunManager, port: number = 3001): Serve
           return json({ error: 'Backtest mode requires startDate and endDate' }, 400);
         }
 
-        // Start backtest (async — returns run ID immediately, runs in background)
         try {
-          // Validate agent exists before starting
-          const agent = await runManager.getAgent(body.agentId);
-          if (!agent) return json({ error: `Agent not found: ${body.agentId}` }, 404);
-
-          // Start backtest and track promise
-          const promise = runManager.startBacktest(body);
-
-          // We don't have the runId until the promise resolves, but startBacktest
-          // creates the DB record first. Return immediately by getting the run from DB.
-          // For simplicity, await the result.
-          const result = await promise;
-
-          // Broadcast completion to any subscribers
-          broadcastToRun(runSubscribers, result.runId, {
-            type: 'completed',
-            runId: result.runId,
-            metrics: result.metrics,
-          });
-
-          return json({
-            runId: result.runId,
-            status: 'completed',
-            metrics: result.metrics,
-          }, 201);
+          const result = await runManager.enqueueBacktest(body);
+          if (result.status === 'duplicate') {
+            return json({ error: 'Run already queued or running for this agent', duplicate: true }, 409);
+          }
+          return json({ runId: result.runId, status: 'queued' }, 201);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           return json({ error: message }, 400);
@@ -154,6 +147,11 @@ export function createServer(runManager: RunManager, port: number = 3001): Serve
         const message = err instanceof Error ? err.message : String(err);
         return json({ error: message }, 400);
       }
+    }),
+
+    // Queue state (must be before /runs/:id)
+    route('GET', '/runs/queue', async () => {
+      return json(runManager.getQueueState());
     }),
 
     route('GET', '/runs', async (req) => {

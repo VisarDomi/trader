@@ -6,6 +6,7 @@ const PORT = Number(process.env.PORT ?? 3001);
 const AGENTS_DIR = resolve(import.meta.dir, '..', 'agents');
 
 const runManager = new RunManager(AGENTS_DIR);
+await runManager.init();
 const server = createServer(runManager, PORT);
 
 console.log(`trader-backend listening on http://localhost:${server.port}`);
