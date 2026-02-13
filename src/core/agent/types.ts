@@ -46,6 +46,8 @@ export interface AgentConfig {
   secondaryFeeds?: Timeframe[];
   maxDrawdown?: number;
   maxPositionSize?: number;
+  /** Agent-owned leverage — overrides the instrument default. */
+  leverage?: number;
 }
 
 export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
@@ -198,6 +200,4 @@ export interface RunConfig {
   maxPositionSize?: number;
   /** Use tick-level backtesting — replays stored ticks for accurate SL/TP resolution. */
   tickMode?: boolean;
-  /** Override instrument leverage for this run. Framework-owned — agents don't need to know. */
-  leverage?: number;
 }

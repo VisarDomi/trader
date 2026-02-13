@@ -72,13 +72,13 @@ export class RunManager {
       throw new Error(`Agent not found: ${config.agentId}`);
     }
 
-    // Get instrument (with optional leverage override)
+    // Get instrument (with agent-owned leverage override)
     const baseInstrument = getInstrument(loaded.config.instrument);
     if (!baseInstrument) {
       throw new Error(`Unknown instrument: ${loaded.config.instrument}`);
     }
-    const instrument = config.leverage
-      ? { ...baseInstrument, leverage: config.leverage }
+    const instrument = loaded.config.leverage
+      ? { ...baseInstrument, leverage: loaded.config.leverage }
       : baseInstrument;
 
     // Generate run ID
@@ -196,13 +196,13 @@ export class RunManager {
       throw new Error(`Agent not found: ${config.agentId}`);
     }
 
-    // Get instrument (with optional leverage override)
+    // Get instrument (with agent-owned leverage override)
     const baseInstrument = getInstrument(loaded.config.instrument);
     if (!baseInstrument) {
       throw new Error(`Unknown instrument: ${loaded.config.instrument}`);
     }
-    const instrument = config.leverage
-      ? { ...baseInstrument, leverage: config.leverage }
+    const instrument = loaded.config.leverage
+      ? { ...baseInstrument, leverage: loaded.config.leverage }
       : baseInstrument;
 
     // Read credentials from environment
@@ -241,9 +241,9 @@ export class RunManager {
     const session = new CapitalSession(credentials);
     await session.connect();
 
-    // Set broker leverage if overridden
-    if (config.leverage && instrument.category) {
-      await session.setLeverage(instrument.category, config.leverage);
+    // Set broker leverage if agent specifies a custom value
+    if (loaded.config.leverage && instrument.category) {
+      await session.setLeverage(instrument.category, loaded.config.leverage);
     }
 
     const execution = new CapitalLiveExecution(session, instrument);
