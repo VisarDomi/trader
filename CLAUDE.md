@@ -38,6 +38,12 @@ test("example", () => {
 });
 ```
 
+## Changelog & Commits
+
+- Every bugfix, feature, or notable improvement must be logged in `CHANGELOG.md` under the `## Unreleased` section before the task is considered done.
+- Each changelog entry must include the **decision rationale** — explain *why* this approach was chosen, what alternatives were considered, and what tradeoffs were made. Not just what changed, but why.
+- After finishing a task, commit the changes. The commit message should match what's written in the changelog for that task.
+
 ## Key commands
 
 ```bash

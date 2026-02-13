@@ -292,6 +292,173 @@ describe('SimulatedExecution', () => {
     });
   });
 
+  // ========== REALISTIC SLIPPAGE ==========
+
+  describe('realistic slippage', () => {
+    // Realistic mode generates ticks for 200-500ms and fills at the last tick's price.
+    // This naturally produces both positive and negative slippage.
+    let engine: SimulatedExecution;
+
+    beforeEach(() => {
+      engine = new SimulatedExecution(US100, {
+        type: 'realistic',
+        minDelayMs: 200,
+        maxDelayMs: 500,
+      });
+    });
+
+    test('BUY open: price is near ask but varies', async () => {
+      const prices: number[] = [];
+      for (let i = 0; i < 100; i++) {
+        const fill = await engine.executeOpen('BUY', 1, 18500, 1000);
+        prices.push(fill.price);
+      }
+
+      const baseAsk = 18500 + 1.8;
+      // All fills should be within a reasonable range of ask
+      for (const price of prices) {
+        expect(Math.abs(price - baseAsk)).toBeLessThan(10);
+      }
+
+      // Should produce varying prices (not all the same)
+      const unique = new Set(prices);
+      expect(unique.size).toBeGreaterThan(1);
+    });
+
+    test('SELL open: price is near bid but varies', async () => {
+      const prices: number[] = [];
+      for (let i = 0; i < 100; i++) {
+        const fill = await engine.executeOpen('SELL', 1, 18500, 1000);
+        prices.push(fill.price);
+      }
+
+      // All fills near bid (18500)
+      for (const price of prices) {
+        expect(Math.abs(price - 18500)).toBeLessThan(10);
+      }
+
+      const unique = new Set(prices);
+      expect(unique.size).toBeGreaterThan(1);
+    });
+
+    test('BUY close: produces both positive and negative slippage', async () => {
+      // Close a BUY position (sell at bid). Price can move up (good) or down (bad).
+      let better = 0;
+      let worse = 0;
+      const noSlipEngine = new SimulatedExecution(US100, { type: 'none' });
+
+      for (let i = 0; i < 200; i++) {
+        const realisticFill = await engine.executeClose(buyPos(), 18600, 2000);
+        const noSlipFill = await noSlipEngine.executeClose(buyPos(), 18600, 2000);
+
+        if (realisticFill.price > noSlipFill.price) better++;  // sold higher = good
+        if (realisticFill.price < noSlipFill.price) worse++;   // sold lower = bad
+      }
+
+      // Both directions should occur (with high probability over 200 trials)
+      expect(better).toBeGreaterThan(0);
+      expect(worse).toBeGreaterThan(0);
+    });
+
+    test('SELL close: produces both positive and negative slippage', async () => {
+      let better = 0;
+      let worse = 0;
+      const noSlipEngine = new SimulatedExecution(US100, { type: 'none' });
+
+      for (let i = 0; i < 200; i++) {
+        const realisticFill = await engine.executeClose(sellPos(), 18400, 2000);
+        const noSlipFill = await noSlipEngine.executeClose(sellPos(), 18400, 2000);
+
+        if (realisticFill.price < noSlipFill.price) better++;  // bought back cheaper = good
+        if (realisticFill.price > noSlipFill.price) worse++;   // bought back higher = bad
+      }
+
+      expect(better).toBeGreaterThan(0);
+      expect(worse).toBeGreaterThan(0);
+    });
+
+    test('STOP_LOSS: produces bidirectional slippage', async () => {
+      const trigger: Trigger = { reason: 'STOP_LOSS', price: 18400 };
+      let better = 0;
+      let worse = 0;
+
+      for (let i = 0; i < 200; i++) {
+        const fill = await engine.executeTrigger(trigger, buyPos(), 2000);
+        if (fill.price > trigger.price) better++;  // sold above stop = positive slippage
+        if (fill.price < trigger.price) worse++;   // sold below stop = negative slippage
+      }
+
+      expect(better).toBeGreaterThan(0);
+      expect(worse).toBeGreaterThan(0);
+    });
+
+    test('TAKE_PROFIT: fills at exactly TP level (no slippage)', async () => {
+      const trigger: Trigger = { reason: 'TAKE_PROFIT', price: 18600 };
+      const fill = await engine.executeTrigger(trigger, buyPos(), 2000);
+
+      expect(fill.price).toBe(18600);
+    });
+
+    test('LIQUIDATION: applies realistic slippage', async () => {
+      const trigger: Trigger = { reason: 'LIQUIDATION', price: 17500 };
+      const prices: number[] = [];
+
+      for (let i = 0; i < 50; i++) {
+        const fill = await engine.executeTrigger(trigger, buyPos(), 2000);
+        prices.push(fill.price);
+      }
+
+      // Should vary
+      const unique = new Set(prices);
+      expect(unique.size).toBeGreaterThan(1);
+      // Should be in reasonable range of trigger price
+      for (const price of prices) {
+        expect(Math.abs(price - 17500)).toBeLessThan(10);
+      }
+    });
+
+    test('MARKET_CLOSE: applies realistic slippage', async () => {
+      const trigger: Trigger = { reason: 'MARKET_CLOSE', price: 18550 };
+      const prices: number[] = [];
+
+      for (let i = 0; i < 50; i++) {
+        const fill = await engine.executeTrigger(trigger, buyPos(), 2000);
+        prices.push(fill.price);
+      }
+
+      const unique = new Set(prices);
+      expect(unique.size).toBeGreaterThan(1);
+    });
+
+    test('custom delay range is respected', async () => {
+      // Very short delay = very small price movement
+      const shortEngine = new SimulatedExecution(US100, {
+        type: 'realistic',
+        minDelayMs: 10,
+        maxDelayMs: 20,
+      });
+
+      const prices: number[] = [];
+      for (let i = 0; i < 100; i++) {
+        const fill = await shortEngine.executeOpen('BUY', 1, 18500, 1000);
+        prices.push(fill.price);
+      }
+
+      const baseAsk = 18500 + 1.8;
+      // Short delay = very small deviations
+      for (const price of prices) {
+        expect(Math.abs(price - baseAsk)).toBeLessThan(3);
+      }
+    });
+
+    test('prices are rounded to instrument precision', async () => {
+      for (let i = 0; i < 50; i++) {
+        const fill = await engine.executeOpen('BUY', 1, 18500, 1000);
+        expect(Math.round(fill.price * 10)).toBe(fill.price * 10);
+      }
+    });
+  });
+
   // ========== EDGE CASES ==========
 
   describe('edge cases', () => {
