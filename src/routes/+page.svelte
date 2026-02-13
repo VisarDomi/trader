@@ -4,6 +4,12 @@
 
 	let { data } = $props();
 
+	const modes = [
+		{ value: 'backtest', label: 'Backtest' },
+		{ value: 'paper', label: 'Paper' },
+		{ value: 'live', label: 'Live' },
+	] as const;
+
 	const sortOptions = [
 		{ value: 'totalReturn', label: 'Return' },
 		{ value: 'sharpe', label: 'Sharpe' },
@@ -14,22 +20,48 @@
 		{ value: 'totalTrades', label: 'Trades' },
 	];
 
+	let activeTab = $state(data.mode ?? 'backtest');
 	let filterInstrument = $state('');
-	let filterMode = $state('');
+
+	let byMode = $derived({
+		backtest: data.leaderboard.filter((r: RunRecord) => r.mode === 'backtest'),
+		paper: data.leaderboard.filter((r: RunRecord) => r.mode === 'paper'),
+		live: data.leaderboard.filter((r: RunRecord) => r.mode === 'live'),
+	});
+
+	let activeRuns = $derived(byMode[activeTab as keyof typeof byMode] ?? []);
 
 	let filtered = $derived(
-		data.leaderboard.filter((r: RunRecord) => {
-			if (filterInstrument && r.instrument !== filterInstrument) return false;
-			if (filterMode && r.mode !== filterMode) return false;
-			return true;
-		})
+		filterInstrument
+			? activeRuns.filter((r: RunRecord) => r.instrument === filterInstrument)
+			: activeRuns
 	);
 
-	let instruments = $derived([...new Set(data.leaderboard.map((r: RunRecord) => r.instrument))]);
+	let instruments = $derived([...new Set(activeRuns.map((r: RunRecord) => r.instrument))]);
+
+	let counts = $derived({
+		backtest: byMode.backtest.length,
+		paper: byMode.paper.length,
+		live: byMode.live.length,
+	});
 </script>
 
 <div class="page-header">
 	<h1>Leaderboard</h1>
+
+	<div class="mode-tabs">
+		{#each modes as m}
+			<button
+				class="mode-tab"
+				class:active={activeTab === m.value}
+				onclick={() => { activeTab = m.value; filterInstrument = ''; }}
+			>
+				{m.label}
+				<span class="tab-count">{counts[m.value]}</span>
+			</button>
+		{/each}
+	</div>
+
 	<div class="filters">
 		<select bind:value={filterInstrument}>
 			<option value="">All instruments</option>
@@ -37,16 +69,10 @@
 				<option value={inst}>{inst}</option>
 			{/each}
 		</select>
-		<select bind:value={filterMode}>
-			<option value="">All modes</option>
-			<option value="backtest">Backtest</option>
-			<option value="paper">Paper</option>
-			<option value="live">Live</option>
-		</select>
 		<div class="sort-links">
 			{#each sortOptions as opt}
 				<a
-					href="/?sortBy={opt.value}"
+					href="/?sortBy={opt.value}&mode={activeTab}"
 					class="sort-link"
 					class:active={data.sortBy === opt.value}
 				>{opt.label}</a>
@@ -58,7 +84,7 @@
 {#if data.error}
 	<div class="error-state">{data.error}</div>
 {:else if filtered.length === 0}
-	<div class="empty-state">No completed runs yet. Start a backtest to see results here.</div>
+	<div class="empty-state">No {activeTab} runs yet.</div>
 {:else}
 	<div class="table-wrapper">
 		<table>
@@ -67,7 +93,6 @@
 					<th>#</th>
 					<th>Agent</th>
 					<th>Instrument</th>
-					<th>Mode</th>
 					<th>Return</th>
 					<th>Win Rate</th>
 					<th>Sharpe</th>
@@ -88,7 +113,6 @@
 							</a>
 						</td>
 						<td><span class="badge badge-neutral">{run.instrument}</span></td>
-						<td><span class="badge badge-neutral">{run.mode}</span></td>
 						<td style="color: {m && m.totalReturn >= 0 ? 'var(--profit)' : 'var(--loss)'}">
 							{m ? formatPercent(m.totalReturn) : '—'}
 						</td>
@@ -121,6 +145,51 @@
 		font-weight: 700;
 		letter-spacing: -0.5px;
 		margin-bottom: 16px;
+	}
+
+	.mode-tabs {
+		display: flex;
+		gap: 4px;
+		margin-bottom: 16px;
+		border-bottom: 1px solid var(--border);
+		padding-bottom: 0;
+	}
+
+	.mode-tab {
+		padding: 8px 16px;
+		background: none;
+		border: none;
+		border-bottom: 2px solid transparent;
+		color: var(--text-dim);
+		font-size: 14px;
+		font-weight: 500;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: -1px;
+	}
+
+	.mode-tab:hover {
+		color: var(--text);
+	}
+
+	.mode-tab.active {
+		color: var(--accent);
+		border-bottom-color: var(--accent);
+	}
+
+	.tab-count {
+		font-size: 11px;
+		background: var(--surface-hover);
+		padding: 1px 6px;
+		border-radius: 8px;
+		color: var(--text-dim);
+	}
+
+	.mode-tab.active .tab-count {
+		background: var(--accent);
+		color: white;
 	}
 
 	.filters {
