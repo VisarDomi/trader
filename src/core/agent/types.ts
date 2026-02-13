@@ -10,6 +10,31 @@ export interface Agent<S> {
 }
 
 // ============================================
+// AGENT BLUEPRINT
+// ============================================
+
+/**
+ * A blueprint defines a strategy algorithm + its tunable dimensions.
+ * The framework generates one Agent per dimension entry.
+ *
+ * Agent IDs are formed as: <directory>/<dimension.id>
+ * e.g. "trend-follower/1m-050"
+ */
+export interface AgentBlueprint<S> {
+  name: string;
+  version: string;
+  instrument: string;
+  dimensions: Dimension[];
+  createAgent(dim: Dimension): Agent<S>;
+}
+
+export interface Dimension {
+  /** Unique ID within this blueprint — becomes part of the agent ID. */
+  id: string;
+  [key: string]: unknown;
+}
+
+// ============================================
 // AGENT CONFIG
 // ============================================
 
@@ -79,12 +104,28 @@ export interface InstrumentInfo {
   sizeIncrement: number;
   pricePrecision: number;
   tradingHours: TradingHours;
+  /** Capital.com category for leverage preferences (e.g. 'INDICES'). */
+  category?: string;
 }
 
 export interface TradingHours {
   timezone: string;
-  open: string;
-  close: string;
+  /**
+   * Gap schedule — sorted by 'from' date ascending.
+   * Each entry defines the daily maintenance/settlement gap.
+   * Framework picks the latest entry whose 'from' <= candle date.
+   * Trading is allowed outside the gap; positions force-closed 1min before gapStart.
+   */
+  gaps: TradingGap[];
+}
+
+export interface TradingGap {
+  /** ISO date — this gap schedule applies from this date onward. */
+  from: string;
+  /** HH:MM — when the gap begins (in the configured timezone). */
+  gapStart: string;
+  /** HH:MM — when trading resumes. Can be next day (e.g., '18:00' after '17:00'). */
+  gapEnd: string;
 }
 
 // ============================================
@@ -102,8 +143,14 @@ export interface OpenOrder {
   action: 'OPEN';
   side: 'BUY' | 'SELL';
   size: number;
+  /** Absolute price levels (agent-computed). */
   stopLoss?: number;
   takeProfit?: number;
+  /** Margin-return targets (framework-computed after fill).
+   *  e.g. stopLossReturn: -0.5 = -50% of margin, takeProfitReturn: 1.0 = +100%.
+   *  These take precedence over absolute stopLoss/takeProfit. */
+  stopLossReturn?: number;
+  takeProfitReturn?: number;
 }
 
 export interface CloseOrder {
@@ -149,4 +196,8 @@ export interface RunConfig {
   endDate?: string;
   maxDrawdown?: number;
   maxPositionSize?: number;
+  /** Use tick-level backtesting — replays stored ticks for accurate SL/TP resolution. */
+  tickMode?: boolean;
+  /** Override instrument leverage for this run. Framework-owned — agents don't need to know. */
+  leverage?: number;
 }

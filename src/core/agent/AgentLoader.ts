@@ -1,6 +1,6 @@
-import type { Agent, AgentConfig } from './types.ts';
+import type { Agent, AgentBlueprint, AgentConfig, Dimension } from './types.ts';
 import { Glob } from 'bun';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 
 export interface LoadedAgent {
   id: string;
@@ -10,13 +10,18 @@ export interface LoadedAgent {
 }
 
 /**
- * Scans the agents directory for .ts files and loads them.
+ * Scans the agents directory for blueprint.ts and standalone agent files.
  *
- * Each agent file must default-export an object satisfying the Agent interface:
- *   export default { config, init, onCandle, onFill } satisfies Agent<S>;
+ * Blueprint files (export default AgentBlueprint):
+ *   - Must have: name, version, instrument, dimensions[], createAgent()
+ *   - Generates one LoadedAgent per dimension entry
+ *   - Agent ID = "<directory>/<dimension.id>"
  *
- * The agent ID is derived from the filename (without extension).
- * Files in .example/ are included for reference.
+ * Standalone agent files (export default Agent):
+ *   - Must have: config, init, onCandle, onFill
+ *   - ID derived from file path (legacy behavior)
+ *
+ * Factory files and other non-matching exports are silently skipped.
  */
 export class AgentLoader {
   private readonly agentsDir: string;
@@ -31,10 +36,10 @@ export class AgentLoader {
 
     for await (const path of glob.scan({ cwd: this.agentsDir, absolute: false })) {
       try {
-        const loaded = await this.loadAgent(path);
-        if (loaded) agents.push(loaded);
+        const loaded = await this.loadFile(path);
+        agents.push(...loaded);
       } catch (err) {
-        console.error(`Failed to load agent ${path}:`, err);
+        console.error(`Failed to load ${path}:`, err);
       }
     }
 
@@ -46,25 +51,51 @@ export class AgentLoader {
     return all.find(a => a.id === id) ?? null;
   }
 
-  private async loadAgent(relativePath: string): Promise<LoadedAgent | null> {
+  private async loadFile(relativePath: string): Promise<LoadedAgent[]> {
     const fullPath = resolve(this.agentsDir, relativePath);
     const mod = await import(fullPath);
-    const agent = mod.default as Agent<unknown>;
+    const exported = mod.default;
 
-    if (!this.isValidAgent(agent)) {
-      console.warn(`Skipping ${relativePath}: does not satisfy Agent interface`);
-      return null;
+    // Try as blueprint first
+    if (this.isValidBlueprint(exported)) {
+      return this.loadBlueprint(exported, relativePath, fullPath);
     }
 
-    // Derive ID from path: "my-strategy.ts" → "my-strategy", "example/ema-crossover.ts" → "example/ema-crossover"
-    const id = relativePath.replace(/\.ts$/, '');
+    // Try as standalone agent
+    if (this.isValidAgent(exported)) {
+      const id = relativePath.replace(/\.ts$/, '');
+      return [{
+        id,
+        path: fullPath,
+        agent: exported,
+        config: exported.config,
+      }];
+    }
 
-    return {
-      id,
-      path: fullPath,
-      agent,
-      config: agent.config,
-    };
+    // Neither — skip silently (factory files, helpers, etc.)
+    return [];
+  }
+
+  private loadBlueprint(
+    blueprint: AgentBlueprint<unknown>,
+    relativePath: string,
+    fullPath: string,
+  ): LoadedAgent[] {
+    // Directory name becomes the blueprint prefix
+    // e.g. "trend-follower/blueprint.ts" → prefix "trend-follower"
+    const dir = dirname(relativePath);
+    const prefix = dir === '.' ? relativePath.replace(/\.ts$/, '') : dir;
+
+    return blueprint.dimensions.map((dim: Dimension) => {
+      const agent = blueprint.createAgent(dim);
+      const id = `${prefix}/${dim.id}`;
+      return {
+        id,
+        path: fullPath,
+        agent,
+        config: agent.config,
+      };
+    });
   }
 
   private isValidAgent(obj: unknown): obj is Agent<unknown> {
@@ -76,6 +107,19 @@ export class AgentLoader {
       typeof a.init === 'function' &&
       typeof a.onCandle === 'function' &&
       typeof a.onFill === 'function'
+    );
+  }
+
+  private isValidBlueprint(obj: unknown): obj is AgentBlueprint<unknown> {
+    if (!obj || typeof obj !== 'object') return false;
+    const b = obj as Record<string, unknown>;
+    return (
+      typeof b.name === 'string' &&
+      typeof b.version === 'string' &&
+      typeof b.instrument === 'string' &&
+      Array.isArray(b.dimensions) &&
+      b.dimensions.length > 0 &&
+      typeof b.createAgent === 'function'
     );
   }
 }
