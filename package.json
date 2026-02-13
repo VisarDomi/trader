@@ -8,7 +8,9 @@
     "start": "bun run src/index.ts",
     "test": "bun test",
     "db:migrate": "bun run src/data/migrate.ts",
-    "ingest": "bun run src/data/ingest.ts"
+    "ingest": "bun run src/data/ingest.ts",
+    "record-ticks": "bun run src/data/record-ticks.ts",
+    "tick-stats": "bun run src/data/tick-stats.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

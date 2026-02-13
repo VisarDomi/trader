@@ -163,7 +163,7 @@ As we record more instruments over longer periods, disk usage in PostgreSQL
 will grow. Need a simple way to check how much space each instrument's
 tick data is using.
 
-- [ ] Create a script or CLI command (`bun run tick-stats`) that shows:
+- [x] Create a script or CLI command (`bun run tick-stats`) that shows:
   - Per-instrument: tick count, date range, days of data, estimated disk size
   - Total ticks table size (pg_total_relation_size)
   - Growth rate (ticks/day per instrument)

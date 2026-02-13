@@ -30,6 +30,9 @@
 - **Feed comparison script** (`src/run/compare-feeds.ts`) — runs the same agent across candle-only, real tick, and synthetic tick feeds for the same period, then prints side-by-side results. Validates that tick-level SL/TP precision produces meaningfully different outcomes vs candle-only backtesting.
   - *Decision*: Built as a standalone script (not a test) because it requires DB access and produces human-readable output for analysis. Uses the trend-follower 1m agent rather than EMA crossover because EMA needs 150 min warmup (30 × 5m candles) vs trend-follower's 1 candle. Includes a Part 2 with a full week of candle data to get statistically meaningful trade counts. Results confirmed: synthetic tick mode caught stops mid-candle, producing 36 trades vs 61 in candle-only mode — a ~40% reduction in trade count for the same period, validating that tick-level precision materially changes backtest outcomes.
 
+- **Tick data disk usage monitor** (`src/data/tick-stats.ts`, `bun run tick-stats`) — shows per-instrument tick count, date range, days of data, ticks/day growth rate, total table size on disk, bytes per tick, and projected 1-year storage.
+  - *Decision*: Built as a standalone CLI script rather than an API endpoint because it's a diagnostic tool for the operator, not something agents or the UI need. Uses `pg_total_relation_size('ticks')` which includes indexes, giving the true disk footprint. Projects 1-year storage using current ticks/day rate, which is useful for capacity planning as we add more instruments.
+
 ### Improved
 
 - **Tick recorder: timestamped logging** — all log output now includes ISO timestamps for debugging outages.
