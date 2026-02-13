@@ -16,3 +16,11 @@ All notable changes to this project will be documented in this file.
 - Server-side API proxy (backend never directly exposed)
 - Deploy configuration for veron3 auto-deploy system
 - Caddy reverse proxy with Authelia SSO protection
+- Umami analytics tracking
+- Uptime Kuma monitoring with Telegram alerts
+
+### Fixed
+- API client now handles unreachable backend gracefully instead of crashing on non-JSON responses
+- CSP headers allow SvelteKit inline scripts and Umami analytics
+- Switched to dynamic env for BACKEND_URL (runtime instead of build-time)
+- All formatters handle Infinity, null, and undefined values (e.g. profitFactor=∞ when no losses)
