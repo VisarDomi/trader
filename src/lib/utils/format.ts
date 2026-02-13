@@ -1,4 +1,5 @@
 export function formatCurrency(value: number): string {
+	if (value == null || !isFinite(value)) return '—';
 	const abs = Math.abs(value);
 	const sign = value < 0 ? '-' : '';
 	if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
@@ -7,10 +8,12 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatPercent(value: number): string {
+	if (value == null || !isFinite(value)) return '—';
 	return `${(value * 100).toFixed(2)}%`;
 }
 
 export function formatDuration(ms: number): string {
+	if (ms == null || !isFinite(ms)) return '—';
 	const seconds = Math.floor(ms / 1000);
 	if (seconds < 60) return `${seconds}s`;
 	const minutes = Math.floor(seconds / 60);
@@ -22,6 +25,7 @@ export function formatDuration(ms: number): string {
 }
 
 export function formatDate(timestamp: number): string {
+	if (timestamp == null || !isFinite(timestamp)) return '—';
 	return new Date(timestamp).toLocaleDateString('en-GB', {
 		year: 'numeric',
 		month: 'short',
@@ -32,6 +36,7 @@ export function formatDate(timestamp: number): string {
 }
 
 export function formatNumber(value: number, decimals: number = 2): string {
+	if (value == null || !isFinite(value)) return value === Infinity ? '∞' : '—';
 	return value.toLocaleString('en-US', {
 		minimumFractionDigits: decimals,
 		maximumFractionDigits: decimals,
@@ -39,6 +44,7 @@ export function formatNumber(value: number, decimals: number = 2): string {
 }
 
 export function pnlColor(value: number): string {
+	if (value == null || !isFinite(value)) return 'var(--text-muted)';
 	if (value > 0) return 'var(--profit)';
 	if (value < 0) return 'var(--loss)';
 	return 'var(--text-muted)';
