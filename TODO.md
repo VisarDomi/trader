@@ -4,26 +4,27 @@
 
 | Asset | Status |
 |-------|--------|
-| **Tick recorder** | Running, but only **~46 minutes** of data recorded (5,291 ticks on Feb 10, ~115 ticks/min) |
+| **Tick recorder** | Running, capturing US100 + BTCUSD live (106k+ ticks so far) |
 | **Candle data** | 6 years of 1m candles (2.1M candles, Feb 2020 → Feb 2026) |
-| **Slippage** | Implemented but **adversarial only** — always hurts the trader |
-| **Tick generation** | **Does not exist** — framework uses real broker data only |
+| **Slippage** | Realistic bidirectional slippage implemented |
+| **Tick generation** | Statistical generator built, pending recalibration with real data |
+| **Framework validation** | Trade trace + Monte Carlo verified. See `VALIDATION.md` |
 
 ---
 
 ## 1. Fix Tick Recorder Reliability
 
-**Priority: CRITICAL — blocks tasks 4, 5, and 6**
+**Priority: CRITICAL — blocks tasks 5, 6, and 9**
 
-The tick recorder was started on Feb 10 but only captured **~46 minutes**
-of data. It's now Feb 12 — we should have ~3 days. The recorder is
-silently dying and not recovering.
+Recorder fixes shipped (reconnect, watchdog, stale-token re-auth). Now
+running continuously since Feb 13, capturing both US100 and BTCUSD.
 
 - [x] Diagnose why the recorder stops (WebSocket disconnect? crash? OOM?)
 - [x] Fix reconnection logic so it survives disconnects reliably
 - [x] Add proper logging/alerting so we know when recording drops
-- [ ] Keep `record-ticks.ts` running continuously (ideally 24/5 during market hours)
+- [x] Keep `record-ticks.ts` running continuously (24/5 during market hours)
 - [ ] Target: at least **5 full trading days** of tick data before moving to task 5
+- [ ] Verify recorder survives a full weekend gap (Feb 14-16) without dying
 
 ---
 
@@ -171,12 +172,50 @@ tick data is using.
 
 ---
 
+## 9. Paper Trading Validation with Real Tick Data
+
+**Priority: HIGH — blocked by task 1 (need 1 week of recorded data)**
+
+After collecting 1 week of real tick data (US100 + BTCUSD), re-run the
+top 10 Donchian configs as paper trades against the real data. This is the
+definitive framework validation — it tests the live execution path that
+candle-based backtesting can't reach.
+
+**Target date: ~2026-02-20** (1 week after recorder stabilized)
+
+### What this validates
+
+All four known limitations from `VALIDATION.md` disappear in this mode:
+- Position monitor checks every real tick (not candle high/low)
+- Fill timestamps are actual tick times (not candle bucket labels)
+- Entry candle gap doesn't exist (ticks are continuous)
+- Spreads come from the market (not a static constant)
+
+### Steps
+
+- [ ] Verify 5+ days of tick data exist for both US100 and BTCUSD
+- [ ] Run top 10 Donchian configs against real tick data using `BacktestTickFeed`
+- [ ] Compare results to candle-based backtests for the same period
+- [ ] Document discrepancies — these reveal where candle-based backtesting was inaccurate
+- [ ] If results diverge significantly, investigate whether the candle backtest was optimistic or pessimistic
+- [ ] Run at least one config as a live paper trade on Capital.com demo account
+- [ ] Compare paper trade fills to simulated fills — this validates `SimulatedExecution`
+
+### Stretch: BTCUSD agents
+
+- [ ] Run the top Donchian configs on BTCUSD candle data (need to ingest BTCUSD candles first)
+- [ ] Compare US100 vs BTCUSD behavior — crypto trades 24/5 with no market close, different dynamics
+
+---
+
 ## Dependency Graph
 
 ```
 [1] Collect Tick Data ──────────────┬──→ [5] Train Generator on Real Data
                                     │
-                                    └──→ [6] Test Agent on Real Ticks
+                                    ├──→ [6] Test Agent on Real Ticks
+                                    │
+                                    └──→ [9] Paper Trading Validation (top 10 Donchian)
 
 [3A] Statistical Tick Generator ───┬──→ [2] Realistic Slippage (both directions)
                                    │
@@ -187,9 +226,7 @@ tick data is using.
 
 ## Suggested Order of Execution
 
-1. **Task 1** — Start recording ticks now (just keep the recorder running)
-2. **Task 3A** — Build the statistical tick generator
-3. **Task 2** — Implement realistic bidirectional slippage using the generator
-4. **Task 4** — Build synthetic tick feed for candle backtests
-5. **Task 5** — Once we have 5+ days of ticks, train the generator on real data
-6. **Task 6** — Run agent comparison test on real vs synthetic ticks
+1. **Task 1** — Keep the recorder running (US100 + BTCUSD, currently live)
+2. **Task 5** — Once we have 5+ days of ticks (~Feb 20), train the generator on real data
+3. **Task 9** — Paper trading validation: top 10 Donchian configs on real tick data + live demo
+4. **Task 6** — Compare tick-level vs candle-level backtest results

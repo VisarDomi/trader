@@ -117,3 +117,9 @@ As documented in section 2, fill timestamps use the aggregated candle's start ti
 ### Spread is static
 
 The spread is a fixed constant from instrument config. Real spreads widen during high volatility, low liquidity, and around market open/close. This makes the backtest optimistic on spread costs during volatile periods — exactly when 200x leverage positions are most likely to get liquidated.
+
+### Resolution
+
+All four limitations are artifacts of candle-based backtesting. They disappear in live/paper trading where `PositionMonitor.check(bid, ask)` runs on every real tick, fills use actual timestamps, and spreads come from the market.
+
+**Next step:** Collect 1 week of real tick data (US100 + BTCUSD, recording since 2026-02-13), then run the top 10 Donchian configs as paper trades against real market data. This validates the framework end-to-end and exposes any bugs in the live execution path that candle-based backtesting can't catch.
