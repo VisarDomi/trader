@@ -39,7 +39,7 @@ Agent IDs follow the pattern `behavior/dimension` (e.g. `trend-follower/1h-050`)
 | `/` | Leaderboard — behavior-grouped, expandable dimensions |
 | `/agents` | Behavior cards with expandable dimension tables |
 | `/agents/[...id]` | Agent detail + runs (rest param for slashed IDs) |
-| `/runs/new` | Run launcher form |
+| `/runs/new` | Run launcher — blueprint-first, dimension multi-select, batch submit |
 | `/runs/[id]` | Run detail — metrics, equity chart, fills |
 | `/status` | System health + instruments |
 
