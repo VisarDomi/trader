@@ -25,7 +25,6 @@ export const actions = {
 		const startDate = form.get('startDate') as string;
 		const endDate = form.get('endDate') as string;
 		const maxDrawdown = form.get('maxDrawdown') as string;
-		const leverage = form.get('leverage') as string;
 		const tickMode = form.get('tickMode') === 'on';
 
 		const errors: string[] = [];
@@ -36,7 +35,6 @@ export const actions = {
 			if (startDate) config.startDate = startDate;
 			if (endDate) config.endDate = endDate;
 			if (maxDrawdown) config.maxDrawdown = Number(maxDrawdown);
-			if (leverage) config.leverage = Number(leverage);
 			if (tickMode) config.tickMode = true;
 
 			try {
