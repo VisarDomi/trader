@@ -24,20 +24,8 @@
 	let queueItems = $state<QueueEntry[]>(data.queue?.queued ?? []);
 	let queueLength = $derived((queueCurrent ? 1 : 0) + queueItems.length);
 
-	// Polling
-	let pollTimer = $state<ReturnType<typeof setInterval> | null>(null);
-
-	function startPolling() {
-		if (pollTimer) return;
-		pollTimer = setInterval(pollQueue, 3000);
-	}
-
-	function stopPolling() {
-		if (pollTimer) {
-			clearInterval(pollTimer);
-			pollTimer = null;
-		}
-	}
+	// Polling — plain variable, not reactive (timer handles don't need reactivity)
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	async function pollQueue() {
 		try {
@@ -47,20 +35,31 @@
 			queueCurrent = state.current;
 			queueItems = state.queued;
 			// Stop polling when queue is empty
-			if (!state.current && state.queued.length === 0) {
-				stopPolling();
+			if (!state.current && state.queued.length === 0 && pollTimer) {
+				clearInterval(pollTimer);
+				pollTimer = null;
 			}
 		} catch {
 			// Ignore polling errors
 		}
 	}
 
-	// Start polling if queue has items on load
+	function startPolling() {
+		if (pollTimer) return;
+		pollTimer = setInterval(pollQueue, 3000);
+	}
+
+	// Start polling on mount if queue has items, clean up on destroy
 	$effect(() => {
-		if (queueLength > 0) {
+		if ((data.queue?.current || data.queue?.queued?.length) && !pollTimer) {
 			startPolling();
 		}
-		return () => stopPolling();
+		return () => {
+			if (pollTimer) {
+				clearInterval(pollTimer);
+				pollTimer = null;
+			}
+		};
 	});
 
 	function selectBlueprint(bp: BlueprintMeta | null) {
