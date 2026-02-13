@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## 2026-02-13
 
 ### Added
+- Behavior grouping on leaderboard — agents grouped by algorithm family, click to expand dimensions
+- Behavior cards on agents page — collapsed view with dimension count and feed types, expandable detail table
+- Behavior breadcrumb on agent detail page with sibling count
 - Initial project scaffolding with SvelteKit + adapter-node
 - Dark-themed trading dashboard UI
 - Leaderboard page with sortable metrics and instrument/mode filters
