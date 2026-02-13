@@ -137,6 +137,40 @@ any agent to produce signals).
 
 ---
 
+## 7. Multi-Instrument Tick Recording (US100 + BTCUSD)
+
+**Priority: MEDIUM**
+
+Capital.com allows up to 40 instruments per WebSocket subscription (see
+`DECISIONS.md`). We should record BTCUSD alongside US100 on the same
+connection — no extra WebSocket needed, no rate limit impact.
+
+- [ ] Update `record-ticks.ts` to accept a configurable list of EPICs
+- [ ] Add BTCUSD instrument to `src/data/instruments.ts`
+- [ ] Verify single WebSocket subscription with multiple EPICs works
+      (the `marketData.subscribe` payload already takes an `epics[]` array)
+- [ ] Create a config file or constant for which instruments to record
+      (e.g. `RECORDED_INSTRUMENTS` in `instruments.ts` or a separate config)
+- [ ] Test that ticks for both instruments arrive and are stored correctly
+
+---
+
+## 8. Tick Data Disk Usage Monitor
+
+**Priority: LOW**
+
+As we record more instruments over longer periods, disk usage in PostgreSQL
+will grow. Need a simple way to check how much space each instrument's
+tick data is using.
+
+- [ ] Create a script or CLI command (`bun run tick-stats`) that shows:
+  - Per-instrument: tick count, date range, days of data, estimated disk size
+  - Total ticks table size (pg_total_relation_size)
+  - Growth rate (ticks/day per instrument)
+- [ ] Optionally add this to the health/status API endpoint
+
+---
+
 ## Dependency Graph
 
 ```

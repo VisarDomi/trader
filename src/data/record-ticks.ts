@@ -91,15 +91,27 @@ async function main() {
   let ws: WebSocket | null = null;
   let pingTimer: ReturnType<typeof setInterval> | null = null;
   let reconnectScheduled = false;
+  let consecutiveAuthFailures = 0;
 
   function scheduleReconnect(reason: string) {
     if (reconnectScheduled) return;
     reconnectScheduled = true;
-    log(`Scheduling reconnect in ${RECONNECT_DELAY_MS}ms (reason: ${reason})`);
+
+    // Exponential backoff for auth failures (Capital.com POST /session: 1 req/sec limit).
+    // Normal reconnects use fixed 3s delay. Auth failures back off: 3s, 6s, 12s, ... up to 60s.
+    let delay = RECONNECT_DELAY_MS;
+    if (reason === 'auth-failed') {
+      consecutiveAuthFailures++;
+      delay = Math.min(RECONNECT_DELAY_MS * Math.pow(2, consecutiveAuthFailures - 1), 60_000);
+    } else {
+      consecutiveAuthFailures = 0;
+    }
+
+    log(`Scheduling reconnect in ${delay}ms (reason: ${reason})`);
     setTimeout(() => {
       reconnectScheduled = false;
       connect();
-    }, RECONNECT_DELAY_MS);
+    }, delay);
   }
 
   function cleanup() {
@@ -125,6 +137,7 @@ async function main() {
     // This ensures tokens are fresh, not stale from hours ago.
     try {
       await session.connect();
+      consecutiveAuthFailures = 0;
       log('Re-authenticated session.');
     } catch (err) {
       logError('Re-authentication failed', err);

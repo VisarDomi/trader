@@ -6,6 +6,7 @@ Agent runner framework for automated trading against Capital.com.
 
 See `DESIGN.md` for full architecture and all design decisions.
 See `WORKFLOW.md` for git strategy and development workflow.
+See `DECISIONS.md` for API limits, constraints, and design rationale.
 
 - Agent contract types: `src/core/agent/types.ts`
 - Agents are `.ts` files dropped in `agents/`

@@ -36,3 +36,6 @@
 - **Tick recorder: SIGTERM handling** — added `SIGTERM` handler alongside `SIGINT` for clean shutdown when killed by process managers.
 - **Tick recorder: reconnect deduplication** — `scheduleReconnect()` guards against multiple concurrent reconnect attempts (e.g. watchdog + onclose firing at the same time).
   - *Decision*: Without dedup, the watchdog and `onclose` can both call `connect()` within the same tick, creating two parallel WebSocket connections competing for the same subscription. A simple boolean flag prevents this.
+- **Tick recorder: exponential backoff for auth failures** — auth failures now back off exponentially (3s, 6s, 12s, ... up to 60s) instead of retrying every 3s. Resets on successful auth.
+  - *Decision*: Capital.com's POST /session endpoint is limited to 1 req/sec per API key (see `DECISIONS.md`). The old 60-second reconnect loop was hammering auth and triggered a 429 rate limit after 2 days. Fixed 3-second retries could still loop too aggressively during sustained outages. Exponential backoff with a 60s cap balances recovery speed with API courtesy.
+- **Added `DECISIONS.md`** — documents Capital.com API limits and their implications for the tick recorder, WebSocket subscriptions, and session management. Referenced from `CLAUDE.md`.
