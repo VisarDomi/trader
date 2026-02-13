@@ -30,7 +30,6 @@ const TIMEFRAMES: Timeframe[] = ['1m', '5m'];
 const LEVERAGES = [20, 200];
 
 const CAPITAL = 10_000;
-const MAX_DRAWDOWN = 0.50;
 
 // Last 3 years
 const END_DATE = new Date('2026-02-13');
@@ -98,7 +97,7 @@ for (const tf of TIMEFRAMES) {
               execution,
               instrument,
               capital: CAPITAL,
-              maxDrawdown: MAX_DRAWDOWN,
+              // No maxDrawdown — let positions liquidate naturally, agent keeps trading
             });
 
             runner = tickRunner;
@@ -112,7 +111,7 @@ for (const tf of TIMEFRAMES) {
               execution,
               instrument,
               capital: CAPITAL,
-              maxDrawdown: MAX_DRAWDOWN,
+              // No maxDrawdown — let positions liquidate naturally, agent keeps trading
             });
           }
 

@@ -47,7 +47,6 @@ export function createDonchian(params: DonchianParams): Agent<DonchianState> {
     version: '1.0.0',
     instrument: 'US100',
     primaryFeed: timeframe,
-    maxDrawdown: 0.50,
   };
 
   function init(): DonchianState {

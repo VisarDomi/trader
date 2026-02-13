@@ -194,6 +194,39 @@ interface Fill {
 
 ---
 
+## Position Lifecycle & Risk Management
+
+The framework has three layers of risk management. Understanding them is critical for agent development.
+
+### 1. Position-Level: Margin Liquidation (automatic)
+
+Every open position locks up margin: `margin = (size × price × lotSize) / leverage`. As the price moves against the position, unrealized P&L reduces equity (`equity = balance + unrealizedPnL`). When **equity reaches zero**, the position is automatically liquidated — force-closed at current price with `reason: 'LIQUIDATION'`.
+
+With high leverage, this happens fast. At 200× leverage, a 0.5% adverse price move wipes out the margin on that position. At 20× leverage, it takes a 5% move.
+
+**After liquidation, the agent keeps running.** It receives an `onFill` with `reason: 'LIQUIDATION'`, and on the next candle, `onCandle` is called with `ctx.position = null`. The agent can open a new position — just with less capital.
+
+### 2. Position-Level: Agent Stops (agent-controlled)
+
+Agents set `stopLoss` and `takeProfit` on their orders. The framework checks these on every tick (live) or every minute candle (backtest). These fire before liquidation if set tighter than the liquidation level.
+
+### 3. Account-Level: Capital Depletion (automatic)
+
+After a position closes (by any reason), the framework checks if the remaining capital can afford the minimum position: `minMargin = (minSize × price × lotSize) / leverage`. If not, the run stops — the agent is out of money.
+
+### Optional: Account-Level Drawdown Cap
+
+`maxDrawdown` in RunnerConfig is an **optional safety ceiling**. If set, the framework force-closes the position AND stops the entire run when `(initialCapital - equity) / initialCapital >= maxDrawdown`. This is a kill switch — do NOT set it if you want the agent to naturally trade down to depletion.
+
+### What this means for agent developers
+
+- A position getting liquidated is **not the end of the run**. It's a single bad trade. The agent can recover.
+- With high leverage, liquidation is common and expected. An agent at 200× will get liquidated on a ~0.5% adverse move.
+- Set stop-losses tighter than the liquidation level, or accept that some positions will be liquidated.
+- The run ends when you can't afford the minimum position size, not when a single trade goes wrong.
+
+---
+
 ## Framework Architecture
 
 Seven components. Only two swap between backtest and live mode.
