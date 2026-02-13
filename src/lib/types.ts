@@ -12,6 +12,7 @@ export interface AgentConfig {
 	secondaryFeeds?: Timeframe[];
 	maxDrawdown?: number;
 	maxPositionSize?: number;
+	leverage?: number;
 }
 
 export interface AgentSummary {
@@ -91,7 +92,6 @@ export interface RunConfig {
 	maxDrawdown?: number;
 	maxPositionSize?: number;
 	tickMode?: boolean;
-	leverage?: number;
 }
 
 export interface InstrumentInfo {

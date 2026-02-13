@@ -179,10 +179,6 @@
 						<label for="capital">Capital ($)</label>
 						<input type="number" name="capital" id="capital" required value="10000" min="100" step="100" />
 					</div>
-					<div class="form-group">
-						<label for="leverage">Leverage (optional)</label>
-						<input type="number" name="leverage" id="leverage" min="1" max="500" placeholder="Default" />
-					</div>
 				</div>
 			</div>
 
