@@ -155,12 +155,24 @@
 			<h2>Queue ({queueLength})</h2>
 			<div class="queue-list">
 				{#if queueCurrent}
+					{@const pct = queueCurrent.progress && queueCurrent.progress.total > 0
+						? Math.round((queueCurrent.progress.processed / queueCurrent.progress.total) * 100)
+						: 0}
 					<div class="queue-item running">
 						<span class="queue-status-dot running"></span>
 						<span class="queue-agent">{queueCurrent.agentName}</span>
 						<span class="queue-id">{shortAgentId(queueCurrent.agentId)}</span>
-						<span class="badge badge-accent">running</span>
+						{#if queueCurrent.progress && queueCurrent.progress.total > 0}
+							<span class="queue-pct">{pct}%</span>
+						{:else}
+							<span class="badge badge-accent">starting</span>
+						{/if}
 					</div>
+					{#if queueCurrent.progress && queueCurrent.progress.total > 0}
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: {pct}%"></div>
+						</div>
+					{/if}
 				{/if}
 				{#each queueItems as item, i}
 					<div class="queue-item">
@@ -511,6 +523,30 @@
 		font-size: 11px;
 		color: var(--text-dim);
 		flex: 1;
+	}
+
+	.queue-pct {
+		font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--accent);
+		min-width: 36px;
+		text-align: right;
+	}
+
+	.progress-bar {
+		height: 4px;
+		background: var(--bg-elevated);
+		border-radius: 2px;
+		overflow: hidden;
+		margin-top: -2px;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: var(--accent);
+		border-radius: 2px;
+		transition: width 0.5s ease;
 	}
 
 	/* Blueprint cards */

@@ -94,11 +94,17 @@ export interface RunConfig {
 	tickMode?: boolean;
 }
 
+export interface QueueProgress {
+	processed: number;
+	total: number;
+}
+
 export interface QueueEntry {
 	runId: string;
 	agentId: string;
 	agentName: string;
 	mode: string;
+	progress?: QueueProgress;
 }
 
 export interface QueueState {
