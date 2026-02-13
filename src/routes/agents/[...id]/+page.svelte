@@ -7,6 +7,11 @@
 {#if data.error}
 	<div class="error-state">{data.error}</div>
 {:else if data.agent}
+	<a href="/agents" class="breadcrumb">
+		← {data.behavior}
+		<span class="breadcrumb-dim">({data.siblingCount} dimensions)</span>
+	</a>
+
 	<div class="page-header">
 		<div class="header-row">
 			<h1>{data.agent.config.name}</h1>
@@ -97,6 +102,24 @@
 {/if}
 
 <style>
+	.breadcrumb {
+		display: inline-block;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--text-dim);
+		text-decoration: none;
+		margin-bottom: 12px;
+	}
+
+	.breadcrumb:hover {
+		color: var(--accent);
+	}
+
+	.breadcrumb-dim {
+		font-weight: 400;
+		color: var(--text-faint);
+	}
+
 	.page-header { margin-bottom: 24px; }
 
 	.header-row {
