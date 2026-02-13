@@ -22,11 +22,17 @@ export interface BacktestResult {
   runResult: RunResult;
 }
 
+export interface QueueProgress {
+  processed: number;
+  total: number;
+}
+
 export interface QueueEntry {
   runId: string;
   agentId: string;
   agentName: string;
   mode: string;
+  progress?: QueueProgress;
 }
 
 export interface QueueState {
@@ -56,6 +62,7 @@ export class RunManager {
   // Backtest queue
   private backtestQueue: Array<{ runId: string; config: RunConfig; agentName: string }> = [];
   private currentBacktest: { runId: string; config: RunConfig; agentName: string } | null = null;
+  private currentFeed: (BacktestFeed | BacktestTickFeed) | null = null;
   private processing = false;
 
   // Callbacks for WebSocket broadcast (set by server.ts)
@@ -130,6 +137,10 @@ export class RunManager {
         agentId: this.currentBacktest.config.agentId,
         agentName: this.currentBacktest.agentName,
         mode: this.currentBacktest.config.mode,
+        progress: this.currentFeed ? {
+          processed: this.currentFeed.processed,
+          total: this.currentFeed.length,
+        } : undefined,
       } : null,
       queued: this.backtestQueue.map(entry => ({
         runId: entry.runId,
@@ -160,12 +171,14 @@ export class RunManager {
     this.executeBacktest(entry.runId, entry.config)
       .then(async (result) => {
         this.currentBacktest = null;
+        this.currentFeed = null;
         this.processing = false;
         this.onBacktestComplete?.(entry.runId, result.metrics);
         this.processNext();
       })
       .catch(async (err) => {
         this.currentBacktest = null;
+        this.currentFeed = null;
         this.processing = false;
         const message = err instanceof Error ? err.message : String(err);
         this.onBacktestError?.(entry.runId, message);
@@ -228,6 +241,7 @@ export class RunManager {
         );
         (runner as any).feed = tickFeed;
         this.activeRuns.set(runId, { runner, feed: tickFeed as any });
+        this.currentFeed = tickFeed;
 
         const runResult = await runner.run();
         this.activeRuns.delete(runId);
@@ -241,6 +255,7 @@ export class RunManager {
       }
 
       feed = new BacktestFeed(candles);
+      this.currentFeed = feed;
 
       const runner = new AgentRunner({
         agent: loaded.agent,

@@ -14,6 +14,7 @@ import type { MinuteCandleHandler, PriceFeed } from './types.ts';
 export class BacktestFeed implements PriceFeed {
   private readonly candles: Candle[];
   private stopped: boolean = false;
+  private processedCount: number = 0;
 
   constructor(minuteCandles: Candle[]) {
     this.candles = minuteCandles;
@@ -23,6 +24,7 @@ export class BacktestFeed implements PriceFeed {
     for (const candle of this.candles) {
       if (this.stopped) break;
       await handler(candle);
+      this.processedCount++;
     }
   }
 
@@ -32,5 +34,9 @@ export class BacktestFeed implements PriceFeed {
 
   get length(): number {
     return this.candles.length;
+  }
+
+  get processed(): number {
+    return this.processedCount;
   }
 }
