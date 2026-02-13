@@ -23,6 +23,9 @@
 
 ### Added
 
+- **Framework validation document** (`VALIDATION.md`) — documents all verification work: the leverage bug and fix, individual trade trace against raw candle data (5 trades verified with PnL match), Monte Carlo survival analysis, candle aggregation timing analysis, and known limitations (entry candle gap, candle-level precision, fill timestamp lag, static spread).
+  - *Decision*: Created a dedicated file rather than adding to DESIGN.md because validation is empirical evidence about correctness, not architecture. Includes the candle timing nuance (fill timestamps use candle start time, position actually opens up to `timeframe - 1 minute` later) which initially appeared to be a liquidation bug but is correct behavior.
+
 - **Donchian Channel Breakout agent** (`agents/donchian-breakout/factory.ts`) — configurable breakout agent with ATR-based stops, risk-reward targeting, and risk-based position sizing (2% equity per trade).
   - *Decision*: Factory pattern (not a static agent file) because the Monte Carlo sweep needs to create 108 variants with different parameters. Risk-based sizing (equity × riskPct / SL distance) chosen over fixed size so the agent adapts to volatility and account equity. ATR period fixed at 14 (standard Wilder's) — not worth sweeping since it's well-established.
 
