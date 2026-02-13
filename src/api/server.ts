@@ -71,6 +71,12 @@ export function createServer(runManager: RunManager, port: number = 3001): Serve
       return json(INSTRUMENTS);
     }),
 
+    // Blueprints
+    route('GET', '/blueprints', async () => {
+      const blueprints = await runManager.listBlueprints();
+      return json(blueprints);
+    }),
+
     // Agents
     route('GET', '/agents', async () => {
       const agents = await runManager.listAgents();

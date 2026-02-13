@@ -3,8 +3,10 @@ import type { RunResult } from '../core/agent/AgentRunner.ts';
 import type { Metrics } from '../core/metrics/MetricsEngine.ts';
 import type { PriceFeed } from '../core/feed/types.ts';
 import { AgentRunner } from '../core/agent/AgentRunner.ts';
-import { AgentLoader, type LoadedAgent } from '../core/agent/AgentLoader.ts';
+import { AgentLoader, type LoadedAgent, type BlueprintMeta } from '../core/agent/AgentLoader.ts';
 import { BacktestFeed } from '../core/feed/BacktestFeed.ts';
+import { BacktestTickFeed } from '../core/feed/BacktestTickFeed.ts';
+import { TickRepository } from '../data/TickRepository.ts';
 import { SimulatedExecution, type SlippageMode } from '../core/execution/SimulatedExecution.ts';
 import { CapitalSession, type CapitalCredentials } from '../providers/capital/CapitalSession.ts';
 import { CapitalLiveFeed } from '../providers/capital/CapitalLiveFeed.ts';
@@ -51,6 +53,10 @@ export class RunManager {
     return this.agentLoader.loadById(id);
   }
 
+  async listBlueprints(): Promise<BlueprintMeta[]> {
+    return this.agentLoader.loadBlueprints();
+  }
+
   async startBacktest(config: RunConfig): Promise<BacktestResult> {
     // Validate
     if (config.mode !== 'backtest') {
@@ -66,11 +72,14 @@ export class RunManager {
       throw new Error(`Agent not found: ${config.agentId}`);
     }
 
-    // Get instrument
-    const instrument = getInstrument(loaded.config.instrument);
-    if (!instrument) {
+    // Get instrument (with optional leverage override)
+    const baseInstrument = getInstrument(loaded.config.instrument);
+    if (!baseInstrument) {
       throw new Error(`Unknown instrument: ${loaded.config.instrument}`);
     }
+    const instrument = config.leverage
+      ? { ...baseInstrument, leverage: config.leverage }
+      : baseInstrument;
 
     // Generate run ID
     const runId = `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -99,8 +108,48 @@ export class RunManager {
       }
 
       // Build components
-      const feed = new BacktestFeed(candles);
       const execution = new SimulatedExecution(instrument, this.slippage);
+
+      let feed: BacktestFeed | BacktestTickFeed;
+
+      if (config.tickMode) {
+        // Tick-level backtest — replay real stored ticks for accurate SL/TP resolution.
+        // Each tick goes through PositionMonitor.check(bid, ask), so whichever
+        // level is hit first wins naturally (no pessimistic guessing).
+        const ticks = await TickRepository.loadTicks(loaded.config.instrument, startMs, endMs);
+        if (ticks.length === 0) {
+          throw new Error(`No tick data for ${loaded.config.instrument} between ${config.startDate} and ${config.endDate}`);
+        }
+
+        const runner = new AgentRunner({
+          agent: loaded.agent,
+          feed: null!,
+          execution,
+          instrument,
+          capital: config.capital,
+          maxDrawdown: config.maxDrawdown,
+          maxPositionSize: config.maxPositionSize,
+        });
+
+        const tickFeed = new BacktestTickFeed(
+          ticks,
+          (bid, ask, ts) => runner.processTick(bid, ask, ts),
+        );
+        (runner as any).feed = tickFeed;
+        this.activeRuns.set(runId, { runner, feed: tickFeed as any });
+
+        const runResult = await runner.run();
+        this.activeRuns.delete(runId);
+
+        const metrics = MetricsEngine.calculate(runResult.fills, runResult.equityCurve, config.capital);
+        await RunRepository.completeRun(runId, metrics);
+        await RunRepository.saveFills(runId, runResult.fills);
+        await RunRepository.saveEquityCurve(runId, runResult.equityCurve);
+
+        return { runId, metrics, runResult };
+      }
+
+      feed = new BacktestFeed(candles);
 
       const runner = new AgentRunner({
         agent: loaded.agent,
@@ -147,11 +196,14 @@ export class RunManager {
       throw new Error(`Agent not found: ${config.agentId}`);
     }
 
-    // Get instrument
-    const instrument = getInstrument(loaded.config.instrument);
-    if (!instrument) {
+    // Get instrument (with optional leverage override)
+    const baseInstrument = getInstrument(loaded.config.instrument);
+    if (!baseInstrument) {
       throw new Error(`Unknown instrument: ${loaded.config.instrument}`);
     }
+    const instrument = config.leverage
+      ? { ...baseInstrument, leverage: config.leverage }
+      : baseInstrument;
 
     // Read credentials from environment
     const apiKey = process.env.CAPITAL_API_KEY;
@@ -188,6 +240,11 @@ export class RunManager {
     // Build components
     const session = new CapitalSession(credentials);
     await session.connect();
+
+    // Set broker leverage if overridden
+    if (config.leverage && instrument.category) {
+      await session.setLeverage(instrument.category, config.leverage);
+    }
 
     const execution = new CapitalLiveExecution(session, instrument);
 

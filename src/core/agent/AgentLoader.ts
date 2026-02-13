@@ -9,6 +9,18 @@ export interface LoadedAgent {
   config: AgentConfig;
 }
 
+export interface BlueprintMeta {
+  name: string;
+  version: string;
+  instrument: string;
+  directory: string;
+  agentCount: number;
+  /** Unique values per dimension key (e.g. { timeframe: ['1m','5m'], trendPct: [0.0025, 0.005] }) */
+  dimensionKeys: Record<string, unknown[]>;
+  /** Full dimension list — each entry is one agent's dimension values */
+  dimensions: Dimension[];
+}
+
 /**
  * Scans the agents directory for blueprint.ts and standalone agent files.
  *
@@ -49,6 +61,58 @@ export class AgentLoader {
   async loadById(id: string): Promise<LoadedAgent | null> {
     const all = await this.loadAll();
     return all.find(a => a.id === id) ?? null;
+  }
+
+  async loadBlueprints(): Promise<BlueprintMeta[]> {
+    const blueprints: BlueprintMeta[] = [];
+    const glob = new Glob('**/*.ts');
+
+    for await (const path of glob.scan({ cwd: this.agentsDir, absolute: false })) {
+      try {
+        const fullPath = resolve(this.agentsDir, path);
+        const mod = await import(fullPath);
+        const exported = mod.default;
+
+        if (this.isValidBlueprint(exported)) {
+          const dir = dirname(path);
+          const directory = dir === '.' ? path.replace(/\.ts$/, '') : dir;
+
+          // Extract unique values per dimension key (excluding 'id')
+          const dimensionKeys: Record<string, unknown[]> = {};
+          for (const dim of exported.dimensions) {
+            for (const [key, value] of Object.entries(dim)) {
+              if (key === 'id') continue;
+              if (!dimensionKeys[key]) dimensionKeys[key] = [];
+              if (!dimensionKeys[key].includes(value)) {
+                dimensionKeys[key].push(value);
+              }
+            }
+          }
+
+          // Sort numeric values, leave strings in insertion order
+          for (const key of Object.keys(dimensionKeys)) {
+            const vals = dimensionKeys[key];
+            if (vals.every(v => typeof v === 'number')) {
+              vals.sort((a, b) => (a as number) - (b as number));
+            }
+          }
+
+          blueprints.push({
+            name: exported.name,
+            version: exported.version,
+            instrument: exported.instrument,
+            directory,
+            agentCount: exported.dimensions.length,
+            dimensionKeys,
+            dimensions: exported.dimensions,
+          });
+        }
+      } catch (err) {
+        console.error(`Failed to load blueprint from ${path}:`, err);
+      }
+    }
+
+    return blueprints;
   }
 
   private async loadFile(relativePath: string): Promise<LoadedAgent[]> {
