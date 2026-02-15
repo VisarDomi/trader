@@ -29,16 +29,6 @@ Default to using Bun instead of Node.js.
 - `WebSocket` is built-in. Don't use `ws`.
 - Prefer `Bun.file` over `node:fs`'s readFile/writeFile.
 
-## Testing
-
-```ts
-import { test, expect } from "bun:test";
-
-test("example", () => {
-  expect(1).toBe(1);
-});
-```
-
 ## Changelog & Commits
 
 - Every bugfix, feature, or notable improvement must be logged in `CHANGELOG.md` under the `## Unreleased` section before the task is considered done.
