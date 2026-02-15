@@ -77,6 +77,16 @@ export class CapitalSession {
     return this.authenticatedRequest<T>('DELETE', path);
   }
 
+  /**
+   * Set account leverage for a given instrument category (e.g. INDICES).
+   * Calls PUT /api/v1/accounts/preferences.
+   */
+  async setLeverage(category: string, leverage: number): Promise<void> {
+    await this.put('/api/v1/accounts/preferences', {
+      leverages: { [category]: leverage },
+    });
+  }
+
   private async authenticatedRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
     const response = await this.request(method, path, body);
 

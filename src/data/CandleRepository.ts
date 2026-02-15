@@ -76,4 +76,15 @@ export class CandleRepository {
     const latest = rows[0]?.latest;
     return latest !== null && latest !== undefined ? Number(latest) : null;
   }
+
+  static async getEarliestTimestamp(instrument: string): Promise<number | null> {
+    const rows = await sql`
+      SELECT MIN(timestamp) as earliest
+      FROM candles
+      WHERE instrument = ${instrument}
+    `;
+
+    const earliest = rows[0]?.earliest;
+    return earliest !== null && earliest !== undefined ? Number(earliest) : null;
+  }
 }
