@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- **Tick recorder rewritten from Bun/TypeScript to Go** — the Bun runtime's JavaScriptCore GC spawned 7 HeapHelper threads that consumed ~9% CPU for a workload that's fundamentally "receive WebSocket → batch INSERT to postgres." The Go rewrite does identical work at 0.2% CPU and 7 MB RAM (down from 9.2% CPU and 61 MB RAM). Binary at `cmd/record-ticks/`. Removed `src/data/record-ticks.ts`.
+  - *Decision*: Profiled per-thread CPU and found the main bun thread used only 1.9% — the remaining 7.3% was JSC's GC helper threads doing unnecessary work on a tiny heap. `--smol` flag reduced memory but not GC thread count. `CPUQuota` capping was a band-aid. Go's runtime has no equivalent overhead for this pattern (listen → buffer → batch write). Kept the same reconnect logic: exponential backoff on auth failure, 30s watchdog, 60s ping keepalive. The TypeScript version remains as the reference implementation for the agent framework's broader use of CapitalSession, but the long-running daemon is now Go.
+
 ### Fixed
 
 - **Leverage had no effect on backtest results** — 20× and 200× leverage produced identical trade outcomes because the framework lacked position-level margin liquidation. The only liquidation check was `equity <= 0` (total account wipeout), which is effectively the same threshold regardless of leverage. Added margin liquidation: when a position opens, the framework computes a liquidation price based on `entry × (1 ± 0.5/leverage)`. At 200× leverage, a 0.25% adverse move triggers liquidation; at 20× it takes 2.5%. This makes leverage a first-class risk factor. Re-running the Donchian sweep now shows 200× leverage producing 1,398 liquidations on 5m (vs 0 at 20×) with dramatically different PnL (-$5,459 vs -$775).
