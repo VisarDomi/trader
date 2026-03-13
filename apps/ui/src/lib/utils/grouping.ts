@@ -1,4 +1,4 @@
-import type { AgentSummary, RunRecord, Metrics } from '$lib/types';
+import type { AgentSummary, RunRecord, Metrics } from '@trader/shared';
 
 export function getBehavior(agentId: string): string {
 	return agentId.split('/')[0];

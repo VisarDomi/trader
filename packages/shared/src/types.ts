@@ -1,4 +1,5 @@
-// Mirrored from trader-backend types
+// Shared types between trader-ui and trader-backend
+// This is the single source of truth for API contract types.
 
 export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
@@ -113,6 +114,17 @@ export interface QueueState {
 	queueLength: number;
 }
 
+export interface TradingGap {
+	from: string;
+	gapStart: string;
+	gapEnd: string;
+}
+
+export interface TradingHours {
+	timezone: string;
+	gaps: TradingGap[];
+}
+
 export interface InstrumentInfo {
 	epic: string;
 	leveraged: boolean;
@@ -123,13 +135,6 @@ export interface InstrumentInfo {
 	maxSize: number;
 	sizeIncrement: number;
 	pricePrecision: number;
-	tradingHours: {
-		timezone: string;
-		gaps: Array<{
-			from: string;
-			gapStart: string;
-			gapEnd: string;
-		}>;
-	};
+	tradingHours: TradingHours;
 	category?: string;
 }

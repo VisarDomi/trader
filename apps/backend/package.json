@@ -1,5 +1,5 @@
 {
-  "name": "trader-backend",
+  "name": "@trader/backend",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -12,6 +12,9 @@
     "record-ticks": "bun run src/data/record-ticks.ts",
     "tick-stats": "bun run src/data/tick-stats.ts",
     "search-markets": "bun run src/data/search-markets.ts"
+  },
+  "dependencies": {
+    "@trader/shared": "*"
   },
   "devDependencies": {
     "@types/bun": "latest"

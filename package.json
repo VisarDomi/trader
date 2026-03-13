@@ -1,0 +1,8 @@
+{
+	"name": "trader",
+	"private": true,
+	"workspaces": [
+		"packages/*",
+		"apps/*"
+	]
+}

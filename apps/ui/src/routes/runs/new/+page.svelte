@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { BlueprintMeta, BlueprintDimension, QueueEntry } from '$lib/types';
+	import type { BlueprintMeta, BlueprintDimension, QueueEntry } from '@trader/shared';
 
 	let { data, form } = $props();
 
