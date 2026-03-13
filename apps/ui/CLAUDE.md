@@ -25,7 +25,7 @@ Agent IDs follow the pattern `behavior/dimension` (e.g. `trend-follower/1h-050`)
 
 ## Key Files
 
-- `src/lib/types.ts` — Mirrored types from trader-backend
+- Types imported from `@trader/shared` (see `packages/shared/`)
 - `src/lib/server/api.ts` — Server-only API client (all backend calls)
 - `src/lib/utils/format.ts` — Currency, percent, duration formatters
 - `src/lib/utils/grouping.ts` — Behavior/dimension grouping utilities

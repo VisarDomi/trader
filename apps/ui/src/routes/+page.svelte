@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatCurrency, formatPercent, formatNumber } from '$lib/utils/format';
 	import { groupRunsByBehavior, getDimension } from '$lib/utils/grouping';
-	import type { RunRecord } from '$lib/types';
+	import type { RunRecord } from '@trader/shared';
 
 	let { data } = $props();
 

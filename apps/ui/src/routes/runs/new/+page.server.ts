@@ -1,5 +1,5 @@
 import { getBlueprints, startRunQueued, getQueueState } from '$lib/server/api';
-import type { BlueprintMeta, RunConfig, QueueState } from '$lib/types';
+import type { BlueprintMeta, RunConfig, QueueState } from '@trader/shared';
 
 export async function load() {
 	let blueprints: BlueprintMeta[] = [];

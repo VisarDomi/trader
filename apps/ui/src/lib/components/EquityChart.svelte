@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { EquityPoint } from '$lib/types';
+	import type { EquityPoint } from '@trader/shared';
 
 	let { data }: { data: EquityPoint[] } = $props();
 

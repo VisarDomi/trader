@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { groupAgentsByBehavior, getDimension } from '$lib/utils/grouping';
-	import type { AgentSummary } from '$lib/types';
+	import type { AgentSummary } from '@trader/shared';
 
 	let { data } = $props();
 

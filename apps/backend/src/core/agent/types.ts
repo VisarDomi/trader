@@ -1,3 +1,17 @@
+// Re-export shared types (single source of truth in @trader/shared)
+export type {
+  AgentConfig,
+  Timeframe,
+  Fill,
+  FillReason,
+  InstrumentInfo,
+  TradingHours,
+  TradingGap,
+  RunConfig,
+} from '@trader/shared';
+
+import type { AgentConfig, Timeframe, Fill, InstrumentInfo } from '@trader/shared';
+
 // ============================================
 // AGENT CONTRACT
 // ============================================
@@ -33,23 +47,6 @@ export interface Dimension {
   id: string;
   [key: string]: unknown;
 }
-
-// ============================================
-// AGENT CONFIG
-// ============================================
-
-export interface AgentConfig {
-  name: string;
-  version: string;
-  instrument: string;
-  primaryFeed: Timeframe;
-  secondaryFeeds?: Timeframe[];
-  maxDrawdown?: number;
-  maxPositionSize?: number;
-  leverage: number;
-}
-
-export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
 // ============================================
 // MARKET DATA
@@ -94,41 +91,6 @@ export interface Position {
   takeProfit?: number;
 }
 
-export interface InstrumentInfo {
-  epic: string;
-  leveraged: boolean;
-  leverage: number;
-  spread: number;
-  lotSize: number;
-  minSize: number;
-  maxSize: number;
-  sizeIncrement: number;
-  pricePrecision: number;
-  tradingHours: TradingHours;
-  /** Capital.com category for leverage preferences (e.g. 'INDICES'). */
-  category?: string;
-}
-
-export interface TradingHours {
-  timezone: string;
-  /**
-   * Gap schedule — sorted by 'from' date ascending.
-   * Each entry defines the daily maintenance/settlement gap.
-   * Framework picks the latest entry whose 'from' <= candle date.
-   * Trading is allowed outside the gap; positions force-closed 1min before gapStart.
-   */
-  gaps: TradingGap[];
-}
-
-export interface TradingGap {
-  /** ISO date — this gap schedule applies from this date onward. */
-  from: string;
-  /** HH:MM — when the gap begins (in the configured timezone). */
-  gapStart: string;
-  /** HH:MM — when trading resumes. Can be next day (e.g., '18:00' after '17:00'). */
-  gapEnd: string;
-}
-
 // ============================================
 // AGENT RETURN TYPES
 // ============================================
@@ -162,41 +124,4 @@ export interface ModifyOrder {
   action: 'MODIFY';
   stopLoss?: number;
   takeProfit?: number;
-}
-
-// ============================================
-// FILL (framework → agent callback)
-// ============================================
-
-export interface Fill {
-  action: 'OPENED' | 'CLOSED';
-  reason: FillReason;
-  side: 'BUY' | 'SELL';
-  size: number;
-  price: number;
-  timestamp: number;
-  pnl?: number;
-}
-
-export type FillReason =
-  | 'ORDER'
-  | 'STOP_LOSS'
-  | 'TAKE_PROFIT'
-  | 'MARKET_CLOSE'
-  | 'LIQUIDATION';
-
-// ============================================
-// RUN CONFIG (framework-provided, not agent)
-// ============================================
-
-export interface RunConfig {
-  agentId: string;
-  capital: number;
-  mode: 'backtest' | 'paper' | 'live';
-  startDate?: string;
-  endDate?: string;
-  maxDrawdown?: number;
-  maxPositionSize?: number;
-  /** Use tick-level backtesting — replays stored ticks for accurate SL/TP resolution. */
-  tickMode?: boolean;
 }

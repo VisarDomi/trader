@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatCurrency, formatDate, formatNumber, pnlColor } from '$lib/utils/format';
-	import type { Fill } from '$lib/types';
+	import type { Fill } from '@trader/shared';
 
 	let { fills }: { fills: Fill[] } = $props();
 

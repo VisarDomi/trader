@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatCurrency, formatPercent, formatNumber, formatDuration, pnlColor } from '$lib/utils/format';
-	import type { Metrics } from '$lib/types';
+	import type { Metrics } from '@trader/shared';
 
 	let { metrics, capital = 10000 }: { metrics: Metrics; capital?: number } = $props();
 

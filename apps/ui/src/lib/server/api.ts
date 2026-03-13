@@ -9,7 +9,7 @@ import type {
 	QueueState,
 	RunConfig,
 	RunRecord,
-} from '$lib/types';
+} from '@trader/shared';
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
 	const url = `${env.BACKEND_URL ?? 'http://localhost:3001'}${path}`;
