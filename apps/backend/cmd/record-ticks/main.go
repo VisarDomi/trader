@@ -231,6 +231,21 @@ func run(ctx context.Context, pool *pgxpool.Pool) {
 		}
 		log.Printf("Subscribed to %v", recordedEpics)
 
+		// Ensure shutdown actively interrupts the blocking read loop.
+		shutdownDone := make(chan struct{})
+		go func() {
+			select {
+			case <-ctx.Done():
+				_ = conn.WriteControl(
+					websocket.CloseMessage,
+					websocket.FormatCloseMessage(websocket.CloseNormalClosure, "shutdown"),
+					time.Now().Add(2*time.Second),
+				)
+				_ = conn.Close()
+			case <-shutdownDone:
+			}
+		}()
+
 		// Ping keepalive
 		pingDone := make(chan struct{})
 		go func() {
@@ -276,6 +291,7 @@ func run(ctx context.Context, pool *pgxpool.Pool) {
 		// Read loop
 		func() {
 			defer func() {
+				close(shutdownDone)
 				close(pingDone)
 				close(watchdogDone)
 				conn.Close()
