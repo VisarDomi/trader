@@ -20,6 +20,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const ensureTickInstrumentStatsTableQuery = `
+CREATE TABLE IF NOT EXISTS tick_instrument_stats (
+	instrument TEXT PRIMARY KEY,
+	tick_count BIGINT NOT NULL,
+	first_timestamp BIGINT NOT NULL,
+	last_timestamp BIGINT NOT NULL
+)`
+
 // --- Config ---
 
 const (
@@ -92,7 +100,7 @@ func insertTicks(ctx context.Context, pool *pgxpool.Pool, ticks []tick) error {
 		}
 		batch := ticks[i:end]
 
-		query := "INSERT INTO ticks (instrument, timestamp, bid, ask) VALUES "
+		query := "WITH inserted AS (INSERT INTO ticks (instrument, timestamp, bid, ask) VALUES "
 		args := make([]any, 0, len(batch)*4)
 		for j, t := range batch {
 			if j > 0 {
@@ -102,11 +110,46 @@ func insertTicks(ctx context.Context, pool *pgxpool.Pool, ticks []tick) error {
 			query += fmt.Sprintf("($%d,$%d,$%d,$%d)", base+1, base+2, base+3, base+4)
 			args = append(args, t.Instrument, t.Timestamp, t.Bid, t.Ask)
 		}
-		query += " ON CONFLICT (instrument, timestamp) DO NOTHING"
+		query += ` ON CONFLICT (instrument, timestamp) DO NOTHING
+			RETURNING instrument, timestamp
+		),
+		inserted_stats AS (
+			SELECT
+				instrument,
+				COUNT(*)::bigint AS tick_count,
+				MIN(timestamp) AS first_timestamp,
+				MAX(timestamp) AS last_timestamp
+			FROM inserted
+			GROUP BY instrument
+		)
+		INSERT INTO tick_instrument_stats (
+			instrument,
+			tick_count,
+			first_timestamp,
+			last_timestamp
+		)
+		SELECT
+			instrument,
+			tick_count,
+			first_timestamp,
+			last_timestamp
+		FROM inserted_stats
+		ON CONFLICT (instrument) DO UPDATE SET
+			tick_count = tick_instrument_stats.tick_count + EXCLUDED.tick_count,
+			first_timestamp = LEAST(tick_instrument_stats.first_timestamp, EXCLUDED.first_timestamp),
+			last_timestamp = GREATEST(tick_instrument_stats.last_timestamp, EXCLUDED.last_timestamp)`
 
 		if _, err := pool.Exec(ctx, query, args...); err != nil {
 			return fmt.Errorf("insert batch: %w", err)
 		}
+	}
+	return nil
+}
+
+func ensureTickInstrumentStatsTable(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, ensureTickInstrumentStatsTableQuery)
+	if err != nil {
+		return fmt.Errorf("ensure tick_instrument_stats table: %w", err)
 	}
 	return nil
 }
@@ -370,6 +413,9 @@ func main() {
 
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("Database ping: %v", err)
+	}
+	if err := ensureTickInstrumentStatsTable(ctx, pool); err != nil {
+		log.Fatalf("Database schema: %v", err)
 	}
 	log.Println("Database connected.")
 

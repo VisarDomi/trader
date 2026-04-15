@@ -150,3 +150,20 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - **REST session 10-min expiry**: The keep-alive timer in CapitalSession pings every 5min,
   which keeps the REST session alive. If the REST session expires, we re-auth before
   the next WebSocket connect anyway.
+
+## Tick Stats Strategy
+
+- **Decision**: Maintain exact per-instrument tick stats incrementally during tick ingest,
+  instead of recomputing them from `ticks` each time `tick-stats` runs.
+- **Why**: The old approach required PostgreSQL to scan the full `ticks` table for exact
+  `COUNT(*)`, `MIN(timestamp)`, and `MAX(timestamp)` values grouped by instrument. That
+  cost grows with retained history and turns a lightweight operator CLI into a CPU-heavy
+  database job.
+- **Why not just add indexes**: Indexes help point lookups and range filters, but they do
+  not make an exact grouped count across the whole table cheap enough. PostgreSQL still
+  has to touch essentially all rows.
+- **Why not use a materialized view**: A materialized view would only move the same full
+  scan to refresh time. That is acceptable for scheduled reporting, but not for a command
+  that should stay cheap and safe to run on demand.
+- **Tradeoff accepted**: We take a small amount of extra write-path bookkeeping in exchange
+  for keeping operator stats reads effectively constant-cost as tick history grows.

@@ -18,15 +18,57 @@ interface InstrumentStats {
   ticksPerDay: number;
 }
 
+async function ensureStatsTable(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS tick_instrument_stats (
+      instrument TEXT PRIMARY KEY,
+      tick_count BIGINT NOT NULL,
+      first_timestamp BIGINT NOT NULL,
+      last_timestamp BIGINT NOT NULL
+    )
+  `;
+}
+
+async function hasInstrumentStats(): Promise<boolean> {
+  const rows = await sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM tick_instrument_stats
+    ) AS has_stats
+  `;
+  return Boolean(rows[0].has_stats);
+}
+
+async function backfillInstrumentStats(): Promise<void> {
+  await sql`
+    INSERT INTO tick_instrument_stats (
+      instrument,
+      tick_count,
+      first_timestamp,
+      last_timestamp
+    )
+    SELECT
+      ticks.instrument,
+      COUNT(*)::bigint AS tick_count,
+      MIN(ticks.timestamp) AS first_timestamp,
+      MAX(ticks.timestamp) AS last_timestamp
+    FROM ticks
+    GROUP BY ticks.instrument
+    ON CONFLICT (instrument) DO UPDATE SET
+      tick_count = EXCLUDED.tick_count,
+      first_timestamp = EXCLUDED.first_timestamp,
+      last_timestamp = EXCLUDED.last_timestamp
+  `;
+}
+
 async function getInstrumentStats(): Promise<InstrumentStats[]> {
   const rows = await sql`
     SELECT
       instrument,
-      COUNT(*)::bigint AS tick_count,
-      MIN(timestamp) AS first_ts,
-      MAX(timestamp) AS last_ts
-    FROM ticks
-    GROUP BY instrument
+      tick_count,
+      first_timestamp AS first_ts,
+      last_timestamp AS last_ts
+    FROM tick_instrument_stats
     ORDER BY instrument
   `;
 
@@ -73,6 +115,11 @@ function padLeft(s: string, width: number): string {
 }
 
 async function main() {
+  await ensureStatsTable();
+  if (!(await hasInstrumentStats())) {
+    await backfillInstrumentStats();
+  }
+
   const [stats, tableSize] = await Promise.all([
     getInstrumentStats(),
     getTableSize(),
