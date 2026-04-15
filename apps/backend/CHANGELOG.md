@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- **`tick-stats` no longer pegs PostgreSQL with a full-table aggregate** — the old CLI recomputed `COUNT(*)`, `MIN(timestamp)`, and `MAX(timestamp)` from `ticks` every run, which forced a parallel sequential scan across ~34.6M rows and saturated multiple CPU cores. Added an exact `tick_instrument_stats` summary table, update it incrementally inside the recorder's insert path, and changed `tick-stats` to read that summary instead. The CLI now stays O(number of instruments) after a one-time backfill for existing instruments.
+  - *Decision*: Indexing would not make an exact grouped `COUNT(*)` over the whole `ticks` table cheap enough; Postgres still has to touch essentially all rows. A materialized view would only move the same full scan to refresh time. Maintaining exact per-instrument counters and first/last timestamps during insert is the only approach here that removes the repeated scan entirely while preserving exact numbers.
+
 ### Changed
 
 - **Tick recorder rewritten from Bun/TypeScript to Go** — the Bun runtime's JavaScriptCore GC spawned 7 HeapHelper threads that consumed ~9% CPU for a workload that's fundamentally "receive WebSocket → batch INSERT to postgres." The Go rewrite does identical work at 0.2% CPU and 7 MB RAM (down from 9.2% CPU and 61 MB RAM). Binary at `cmd/record-ticks/`. Removed `src/data/record-ticks.ts`.

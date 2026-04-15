@@ -28,6 +28,14 @@ CREATE TABLE IF NOT EXISTS ticks (
     PRIMARY KEY (instrument, timestamp)
 );
 
+-- Exact per-instrument tick stats, maintained incrementally on insert
+CREATE TABLE IF NOT EXISTS tick_instrument_stats (
+    instrument      TEXT        PRIMARY KEY,
+    tick_count      BIGINT      NOT NULL,
+    first_timestamp BIGINT      NOT NULL,
+    last_timestamp  BIGINT      NOT NULL
+);
+
 -- ============================================
 -- RUN DATA (per agent run)
 -- ============================================
