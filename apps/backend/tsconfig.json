@@ -19,15 +19,7 @@
 
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    "baseUrl": ".",
-    "paths": {
-      "@core/*": ["src/core/*"],
-      "@api/*": ["src/api/*"],
-      "@data/*": ["src/data/*"],
-      "@run/*": ["src/run/*"]
-    }
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": ["src/**/*.ts", "agents/**/*.ts"]
 }

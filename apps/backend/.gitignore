@@ -38,3 +38,6 @@ results/
 
 # Go binaries
 cmd/record-ticks/record-ticks
+
+# Lab data (candle caches, forecasts, backtest results)
+/data/
