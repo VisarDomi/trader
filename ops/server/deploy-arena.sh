@@ -38,7 +38,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 git archive HEAD apps/backend/src apps/backend/agents apps/backend/package.json apps/backend/tsconfig.json | tar -x -C "$TMP"
 rsync -az --delete \
-  --exclude 'data/' --exclude 'node_modules/' --exclude '.env' --exclude 'cmd/' \
+  --exclude '/data/' --exclude '/node_modules/' --exclude '/.env' \
   "$TMP/apps/backend/" "$SERVER:$REMOTE/app/"
 echo "$SHA $(date -Is)" | ssh "$SERVER" "cat > $REMOTE/DEPLOYED"
 
