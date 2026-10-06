@@ -29,7 +29,8 @@ import { QuoteStream } from './stream.ts';
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
 export const HISTORY_DAYS = Number(process.env.ARENA_HISTORY_DAYS ?? 120);
-const POLL_OFFSET_MS = 4_000;
+// Capital.com still revises a minute candle a few seconds after it closes; wait for that.
+const POLL_OFFSET_MS = 10_000;
 const METRICS_EVERY_MS = 10 * MINUTE_MS;
 const MAX_PRICE_WINDOW = 1000;
 /** Quotes older than this are not used for fills. */

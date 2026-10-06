@@ -87,7 +87,7 @@ and do nothing new, and backtests wait for the next nightly job.
 
 ## Demo specifics
 
-- 1-minute candles are polled from REST at :04 past every minute — the same
+- 1-minute candles are polled from REST at :10 past every minute — the same
   source as the backtest history — so a missed minute heals on the next poll.
 - On start the arena backfills 120 days of candles, replays them so new agents
   warm up (orders disabled), and restores existing runs from their snapshot,
