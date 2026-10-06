@@ -182,7 +182,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 ### Live data
 
 - **1-minute candles from REST, quotes from WebSocket.** Building candles from WebSocket ticks made the demo bars
-  differ from the REST history the backtests use and left gaps after disconnects. Polling `/prices` at :04 past
+  differ from the REST history the backtests use and left gaps after disconnects. Polling `/prices` at :10 past
   each minute (12 requests/min) gives identical data in both modes and heals gaps automatically. Ticks are still
   used for tick-precision stops and real fill prices.
 - **Candle stop checks only for minutes that started after the entry**, because in live mode a candle for the
