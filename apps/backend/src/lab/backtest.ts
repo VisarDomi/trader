@@ -3,7 +3,7 @@
  *
  *   bun run backtest                    every agent × instrument whose code changed since its last backtest
  *   bun run backtest rsi                only agent ids starting with "rsi"
- *   bun run backtest --epic US100       only this instrument
+ *   bun run backtest --epic US100,GOLD  only these instruments
  *   bun run backtest --force            ignore cached results
  *   bun run backtest --workers 4        worker threads (default 5)
  *   bun run backtest --no-push          do not send results to the arena
@@ -19,6 +19,8 @@ import type { BacktestResult } from './backtest-core.ts';
 import { STANDARD_WINDOW } from './backtest-core.ts';
 import { DATA_DIR } from './candles.ts';
 import type { WorkerJob } from './worker.ts';
+import { DEFAULT_FORECAST_CONTEXT } from '../engine/market.ts';
+import { forecastFile, PRECOMPUTED_HORIZON } from './forecast-cache.ts';
 
 const RESULTS_DIR = join(DATA_DIR, 'backtests', STANDARD_WINDOW.id);
 const DEFAULT_WORKERS = 5;
@@ -28,7 +30,7 @@ const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 
 interface Args {
   prefix: string | null;
-  epic: string | null;
+  epics: string[] | null;
   force: boolean;
   workers: number;
   push: boolean;
@@ -36,10 +38,10 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { prefix: null, epic: null, force: false, workers: DEFAULT_WORKERS, push: true, pushOnly: false };
+  const args: Args = { prefix: null, epics: null, force: false, workers: DEFAULT_WORKERS, push: true, pushOnly: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
-    if (a === '--epic') args.epic = argv[++i] ?? null;
+    if (a === '--epic') args.epics = (argv[++i] ?? '').split(',').filter(Boolean);
     else if (a === '--force') args.force = true;
     else if (a === '--workers') args.workers = Math.max(1, Number(argv[++i]) || DEFAULT_WORKERS);
     else if (a === '--no-push') args.push = false;
@@ -123,10 +125,21 @@ async function main(): Promise<void> {
 
   const selected = agents.filter(a => !args.prefix || a.id.startsWith(args.prefix));
   const pairs: { agent: LoadedAgent; epic: string }[] = [];
+  const missingForecasts = new Set<string>();
   for (const agent of selected) {
     for (const epic of agent.def.instruments) {
-      if (!args.epic || args.epic === epic) pairs.push({ agent, epic });
+      if (args.epics && !args.epics.includes(epic)) continue;
+      // Forecast agents wait for their precomputed table; otherwise a result without forecasts would be cached.
+      const spec = agent.def.forecast;
+      if (spec && !existsSync(forecastFile(epic, agent.def.timeframe, spec.context ?? DEFAULT_FORECAST_CONTEXT, PRECOMPUTED_HORIZON))) {
+        missingForecasts.add(`${epic} ${agent.def.timeframe}`);
+        continue;
+      }
+      pairs.push({ agent, epic });
     }
+  }
+  if (missingForecasts.size > 0) {
+    console.warn(`skipping forecast agents without precomputed forecasts (${[...missingForecasts].join(', ')}); run: bun run forecasts`);
   }
   mkdirSync(RESULTS_DIR, { recursive: true });
 
