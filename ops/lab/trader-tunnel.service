@@ -1,0 +1,24 @@
+[Unit]
+Description=Trader SSH tunnel (lab forecaster -> arena, arena API -> lab)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Slice=trader.slice
+# -R: the arena on Hetzner reaches the GPU forecaster at its 127.0.0.1:4130
+# -L: lab jobs push backtests to the arena API at 127.0.0.1:4120
+ExecStart=/usr/bin/autossh -M 0 -N \
+    -o "ServerAliveInterval=15" \
+    -o "ServerAliveCountMax=3" \
+    -o "ExitOnForwardFailure=yes" \
+    -o "ConnectTimeout=10" \
+    -R 127.0.0.1:4130:127.0.0.1:4130 \
+    -L 127.0.0.1:4120:127.0.0.1:4120 \
+    erdal@157.90.28.14
+Restart=always
+RestartSec=10
+Environment=AUTOSSH_GATETIME=0
+
+[Install]
+WantedBy=default.target

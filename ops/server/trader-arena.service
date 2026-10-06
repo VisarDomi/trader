@@ -1,0 +1,22 @@
+[Unit]
+Description=Trader arena (live demo forward-testing of trading agents)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=erdal
+WorkingDirectory=/home/erdal/trader-arena/app
+EnvironmentFile=/home/erdal/trader-arena/.env
+ExecStart=/usr/local/bin/bun src/arena/main.ts
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+# The server is shared: keep the arena small and polite.
+MemoryHigh=500M
+MemoryMax=700M
+CPUQuota=100%
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
