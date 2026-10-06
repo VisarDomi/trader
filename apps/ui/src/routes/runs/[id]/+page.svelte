@@ -92,7 +92,7 @@
 							<td class="num {sign(t.pnl)}">{usd(t.pnl)}</td>
 							<td class="num muted">{usd(t.funding)}</td>
 							<td class="muted">{duration(t.exitTime - t.entryTime)}</td>
-							<td>{t.exitReason.replace('_', ' ')}</td>
+							<td>{t.exitReason.replaceAll('_', ' ')}</td>
 							<td class="muted">{t.entryReason ?? ''}</td>
 						</tr>
 					{:else}

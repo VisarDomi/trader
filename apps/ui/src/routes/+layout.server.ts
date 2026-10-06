@@ -8,7 +8,7 @@ export async function load() {
 				up: true,
 				streamConnected: status.stream.connected,
 				demoRuns: status.demoRuns,
-				forecasterOk: status.forecaster.lastSuccessAt > 0 && Date.now() - status.forecaster.lastSuccessAt < 3 * 3_600_000,
+				forecasterOk: status.forecaster.reachable,
 			},
 		};
 	} catch {
