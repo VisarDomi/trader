@@ -167,3 +167,36 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   that should stay cheap and safe to run on demand.
 - **Tradeoff accepted**: We take a small amount of extra write-path bookkeeping in exchange
   for keeping operator stats reads effectively constant-cost as tick history grows.
+
+## v2 decisions (2026-10)
+
+### Where things run
+
+- **Arena on Hetzner, heavy work on the lab PC.** The shared server has ~2 GB free RAM and 4 cores used by
+  other apps, which is plenty for the live loop (~150-250 MB) but not for backtests, ingest or TimesFM.
+  The PC (12 threads, 31 GB, RTX 3060) runs those inside `trader.slice` (50% CPU/RAM cap). An SSH tunnel
+  (`-R 4130` forecaster, `-L 4120` arena API) is the only link; both services bind to 127.0.0.1.
+- **SQLite for the arena, PostgreSQL for the lab.** The arena's store is small and single-writer; SQLite needs
+  no server process on a crowded machine. The lab keeps the existing PostgreSQL candle store.
+
+### Live data
+
+- **1-minute candles from REST, quotes from WebSocket.** Building candles from WebSocket ticks made the demo bars
+  differ from the REST history the backtests use and left gaps after disconnects. Polling `/prices` at :04 past
+  each minute (12 requests/min) gives identical data in both modes and heals gaps automatically. Ticks are still
+  used for tick-precision stops and real fill prices.
+- **Candle stop checks only for minutes that started after the entry**, because in live mode a candle for the
+  minute in which an order filled arrives after the fill.
+
+### Capital.com quirks observed
+
+- Minute history on both demo and live API starts at 2024-01-01 (rolling window). US100 data from 2020 came from
+  an earlier ingest and is kept.
+- The first `/accounts` call after creating or switching a session can report a balance of 0. Never use a single
+  reading for decisions (the broker kill switch needs two).
+- `POST /positions` confirmation: the position's id is `affectedDeals[0].dealId`, not the confirmation's `dealId`.
+- `PUT /session` (account switch) changes the active account **of that session only** (verified: another session
+  switching to Visi left the broker session on Gerti). It does, however, move the login-wide `preferred` account,
+  which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
+  The broker still verifies its session's account before every order.
+- Overnight funding is charged at 17:00 New York (21:00 UTC in summer); the daily break for US indices is 5 minutes.

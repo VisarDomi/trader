@@ -1,5 +1,10 @@
 # Framework Validation
 
+> **Historical (v1).** This describes the v1 engine, removed in October 2026. The current system is
+> documented in [`ARCHITECTURE.md`](ARCHITECTURE.md); agents are written per [`agents/GUIDE.md`](agents/GUIDE.md).
+
+> v2 correctness is covered by `src/engine/engine.test.ts` and the determinism check in `check-agent`.
+
 How we verified that the backtesting framework produces correct results.
 
 ---
