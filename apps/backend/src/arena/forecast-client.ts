@@ -40,8 +40,21 @@ export class LiveForecastProvider implements ForecastProvider {
   lastSuccessAt = 0;
   requests = 0;
   failures = 0;
+  /** Result of the periodic /health probe (independent of whether any agent asked for a forecast). */
+  reachable = false;
+  lastProbeAt = 0;
 
   constructor(private readonly baseUrl: string) {}
+
+  async probe(): Promise<void> {
+    try {
+      const res = await fetch(`${this.baseUrl}/health`, { signal: AbortSignal.timeout(5_000) });
+      this.reachable = res.ok;
+    } catch {
+      this.reachable = false;
+    }
+    this.lastProbeAt = Date.now();
+  }
 
   /** Fetch forecasts for these (series, context) pairs at the given bar. */
   async prepare(items: { series: BarSeries; spec: ForecastSpec; bar: Bar }[]): Promise<void> {

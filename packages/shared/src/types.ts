@@ -204,7 +204,7 @@ export interface ArenaStatus {
 	loadErrors: { file: string; error: string }[];
 	stream: { connected: boolean; connectedSince: number; reconnects: number };
 	quotes: Record<string, QuoteStatus>;
-	forecaster: { lastSuccessAt: number; lastError: string | null; requests: number; failures: number };
+	forecaster: { reachable: boolean; lastProbeAt: number; lastSuccessAt: number; lastError: string | null; requests: number; failures: number };
 	broker: BrokerStatus | null;
 	memoryMb: number;
 }

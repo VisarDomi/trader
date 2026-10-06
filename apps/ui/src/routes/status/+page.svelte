@@ -33,9 +33,10 @@
 			<section class="card">
 				<h2>TimesFM forecaster (lab PC GPU)</h2>
 				<div>
-					<span class="status-dot {s.forecaster.lastSuccessAt && s.now - s.forecaster.lastSuccessAt < 3 * 3_600_000 ? 'status-good' : 'status-warning'}"></span>
-					Last success {ago(s.forecaster.lastSuccessAt, s.now)}
+					<span class="status-dot {s.forecaster.reachable ? 'status-good' : 'status-critical'}"></span>
+					{s.forecaster.reachable ? 'Reachable' : 'Unreachable'} (checked {ago(s.forecaster.lastProbeAt, s.now)})
 				</div>
+				<div>Last forecast served {ago(s.forecaster.lastSuccessAt, s.now)}</div>
 				<div>{s.forecaster.requests} requests · {s.forecaster.failures} failures</div>
 				{#if s.forecaster.lastError}<div class="muted">Last error: {s.forecaster.lastError}</div>{/if}
 			</section>

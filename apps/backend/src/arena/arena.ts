@@ -34,6 +34,7 @@ const METRICS_EVERY_MS = 10 * MINUTE_MS;
 const MAX_PRICE_WINDOW = 1000;
 /** Quotes older than this are not used for fills. */
 const QUOTE_FRESH_MS = 30_000;
+const FORECASTER_PROBE_MS = 5 * MINUTE_MS;
 
 export interface ArenaOptions {
   db: ArenaDB;
@@ -65,6 +66,7 @@ export class Arena {
   stream: QuoteStream | null = null;
   startedAt = Date.now();
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private probeTimer: ReturnType<typeof setInterval> | null = null;
   private polling = false;
   private lastMetricsAt = 0;
   private lastHourWritten = 0;
@@ -97,10 +99,13 @@ export class Arena {
     this.stream = new QuoteStream(this.client, epics, q => this.onQuote(q.epic, q.bid, q.ask, q.time), (level, msg) => this.db.event(level, 'stream', msg));
     this.stream.start();
     this.schedulePoll();
+    void this.forecasts.probe();
+    this.probeTimer = setInterval(() => void this.forecasts.probe(), FORECASTER_PROBE_MS);
   }
 
   stop(): void {
     if (this.pollTimer) clearTimeout(this.pollTimer);
+    if (this.probeTimer) clearInterval(this.probeTimer);
     this.stream?.stop();
     this.persistAll(true);
   }

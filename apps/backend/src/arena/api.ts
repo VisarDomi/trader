@@ -55,6 +55,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       stream: { connected: arena.stream?.connected ?? false, connectedSince: arena.stream?.connectedSince ?? 0, reconnects: arena.stream?.reconnects ?? 0 },
       quotes,
       forecaster: {
+        reachable: arena.forecasts.reachable,
+        lastProbeAt: arena.forecasts.lastProbeAt,
         lastSuccessAt: arena.forecasts.lastSuccessAt,
         lastError: arena.forecasts.lastError,
         requests: arena.forecasts.requests,
