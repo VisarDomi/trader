@@ -1,0 +1,16 @@
+[Unit]
+Description=Trader TimesFM 3 forecaster (GPU, 127.0.0.1:4130)
+After=network.target
+
+[Service]
+Type=simple
+Slice=trader.slice
+WorkingDirectory=%h/Documents/work/trading/trader/apps/forecaster
+Environment=PYTHONUNBUFFERED=1
+Environment=FORECASTER_BATCH=256
+ExecStart=%h/Documents/work/trading/trader/apps/forecaster/.venv/bin/python server.py
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target

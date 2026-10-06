@@ -1,0 +1,11 @@
+[Unit]
+Description=Trader nightly lab job (ingest candles, precompute forecasts, backtest new agents)
+After=network-online.target trader-forecaster.service
+
+[Service]
+Type=oneshot
+Slice=trader.slice
+Nice=10
+WorkingDirectory=%h/Documents/work/trading/trader/apps/backend
+Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/Documents/work/trading/trader/ops/lab/nightly.sh

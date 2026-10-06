@@ -1,0 +1,8 @@
+[Unit]
+Description=Trader lab workloads (capped at 50% of this PC's CPU and RAM)
+
+[Slice]
+# 12 logical CPUs -> 600% = 6 CPUs; 31 GiB RAM -> 15 GiB hard cap
+CPUQuota=600%
+MemoryHigh=14G
+MemoryMax=15G
