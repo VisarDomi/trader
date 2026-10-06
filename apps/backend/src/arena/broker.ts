@@ -7,7 +7,7 @@
  * Safety rails (an older experiment wiped this account with a runaway loop):
  *   - at most one mirrored run per instrument (the account nets positions)
  *   - global order rate limit, and runs that order too often get unmirrored
- *   - kill switch: equity below KILL_FRACTION of the starting balance closes
+ *   - kill switch: equity below KILL_FRACTION of the allocation (twice in a row) closes
  *     every mirrored deal and disables the mirror
  *   - deals the arena did not open are never touched; their instrument is skipped
  */
@@ -33,6 +33,9 @@ const MIN_ORDER_GAP_MS = 1_000;
 const MAX_ORDERS_PER_MINUTE = 20;
 const MAX_ORDERS_PER_RUN_PER_HOUR = 12;
 const KILL_FRACTION = 0.5;
+const KILL_CONFIRMATIONS = 2;
+/** An order whose confirmation was lost is adopted from /positions, or marked failed after this long. */
+const ADOPT_WINDOW_MS = 5 * 60_000;
 const CONFIRM_ATTEMPTS = 8;
 const CONFIRM_DELAY_MS = 300;
 const RECONCILE_MS = 60_000;
@@ -86,6 +89,7 @@ export class BrokerMirror {
   private lastReconcileAt = 0;
   private lastError: string | null = null;
   private ready = false;
+  private lowReadings = 0;
 
   constructor(
     private readonly client: CapitalClient,
@@ -105,7 +109,8 @@ export class BrokerMirror {
   async start(): Promise<void> {
     this.accountId = await this.client.useAccount(this.accountName);
     await this.refreshAccount();
-    if (this.db.getSetting<number | null>(BROKER_SETTINGS.START_BALANCE, null) === null && this.balance !== null) {
+    const recorded = this.db.getSetting<number | null>(BROKER_SETTINGS.START_BALANCE, null);
+    if ((recorded === null || recorded === 0) && this.balance !== null && this.balance > 0) {
       this.db.setSetting(BROKER_SETTINGS.START_BALANCE, this.balance);
     }
     await this.reconcile();
@@ -213,7 +218,8 @@ export class BrokerMirror {
         await this.putStops(dealId, e.stopLoss, e.takeProfit);
       }
     } catch (err) {
-      this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: errorText(err) });
+      // The order may still have gone through; reconcile() adopts it or marks it failed.
+      this.db.updateDeal(rowId, { note: `unconfirmed: ${errorText(err)}` });
       this.fail(`open ${e.runId}`, err);
     }
   }
@@ -222,7 +228,12 @@ export class BrokerMirror {
     const current = this.db.openDeals().find(x => x.id === d.id);
     if (!current) return;
     if (!current.deal_id) {
-      this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: `${note}; never had a deal id` });
+      if (Date.now() - current.open_time < ADOPT_WINDOW_MS) {
+        // Not confirmed yet: retry after the next reconcile has had a chance to adopt it.
+        setTimeout(() => this.enqueue(() => this.closeDeal(current, note, paperPrice)), RECONCILE_MS + 5_000);
+      } else {
+        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: `${note}; never confirmed` });
+      }
       return;
     }
     try {
@@ -269,6 +280,18 @@ export class BrokerMirror {
     const open = new Map(positions.map(p => [p.position.dealId, p]));
     const tracked = this.db.openDeals();
     const trackedIds = new Set(tracked.map(d => d.deal_id).filter(Boolean));
+    for (const d of tracked.filter(d => !d.deal_id)) {
+      const direction = d.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
+      const match = positions.find(p => !trackedIds.has(p.position.dealId) && p.market.epic === d.epic && p.position.direction === direction && Math.abs(p.position.size - d.size) < 1e-9);
+      if (match) {
+        this.db.updateDeal(d.id, { deal_id: match.position.dealId, open_price: match.position.level });
+        trackedIds.add(match.position.dealId);
+        d.deal_id = match.position.dealId;
+        this.db.event('warn', 'broker', `adopted unconfirmed deal ${match.position.dealId} for ${d.run_id}`);
+      } else if (Date.now() - d.open_time > ADOPT_WINDOW_MS) {
+        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, note: `${d.note ?? ''}; no matching position at the broker` });
+      }
+    }
     for (const d of tracked) {
       if (d.deal_id && !open.has(d.deal_id) && Date.now() - d.open_time > 30_000) {
         this.db.updateDeal(d.id, { status: DEAL_STATUS.CLOSED, close_time: Date.now(), note: 'closed at broker (stop/TP or manual)' });
@@ -290,12 +313,14 @@ export class BrokerMirror {
     }
   }
 
+  /** Fires when equity is below KILL_FRACTION of the allocation on two consecutive reconciles. */
   private checkKillSwitch(): void {
-    const start = this.db.getSetting<number | null>(BROKER_SETTINGS.START_BALANCE, null);
-    if (start === null || this.equity === null || !this.enabled) return;
-    if (this.equity < start * KILL_FRACTION) {
+    if (this.equity === null || !this.enabled) return;
+    const floor = this.allocation * KILL_FRACTION;
+    this.lowReadings = this.equity < floor ? this.lowReadings + 1 : 0;
+    if (this.lowReadings >= KILL_CONFIRMATIONS) {
       this.db.setSetting(BROKER_SETTINGS.KILLED, true);
-      this.db.event('error', 'broker', `KILL SWITCH: ${this.accountName} equity ${this.equity} < ${KILL_FRACTION * 100}% of ${start}; closing all mirrored deals`);
+      this.db.event('error', 'broker', `KILL SWITCH: ${this.accountName} equity ${this.equity} < ${floor} (${KILL_FRACTION * 100}% of the ${this.allocation} allocation); closing all mirrored deals`);
       for (const d of this.db.openDeals()) this.enqueue(() => this.closeDeal(d, 'kill switch'));
     }
   }

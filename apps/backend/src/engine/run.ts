@@ -286,6 +286,8 @@ export class AgentRun {
   /** Mark history up to `time` as seen (arena warm-up), so a restart resumes after it. */
   markSynced(time: number): void {
     if (time > this.lastTime) this.lastTime = time;
+    // A brand-new run's track record starts when warm-up ends.
+    if (this.startTime === 0) this.startTime = time;
   }
 
   markToMarket(): number {
