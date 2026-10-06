@@ -134,6 +134,10 @@ is the next bar. It is computed from the last `context` closes including the cur
   instrument for 1h bars, ~8 min for 15m). Prefer `1h` or slower timeframes.
 - Use `context: 512` unless you have a reason; each distinct (instrument, timeframe, context)
   needs its own precomputed table.
+- What the first backtests showed (Oct 2026): trading the *direction* of the median forecast on
+  1h bars loses after costs on most instruments. Uses worth trying instead: the band width as a
+  volatility forecast (filters, sizing), high-conviction signals where a whole inner band sits on
+  one side of the price, and slower timeframes. See `timesfm-vol-breakout.ts`, `timesfm-swing.ts`.
 
 ## Variants
 
