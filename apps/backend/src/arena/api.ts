@@ -6,6 +6,7 @@
 import type { RunMetrics } from '../engine/metrics.ts';
 import { ALL_EPICS } from '../engine/instruments.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
+import type { ArenaStatus, LeaderboardRow } from '@trader/shared';
 import type { Arena } from './arena.ts';
 import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
@@ -22,26 +23,6 @@ interface Route {
 
 const METHOD_GET = 'GET';
 const METHOD_POST = 'POST';
-
-export interface LeaderboardRow {
-  runId: string;
-  agentId: string;
-  name: string;
-  slug: string;
-  timeframe: string;
-  epic: string;
-  status: string;
-  codeHash: string;
-  startedAt: number;
-  updatedAt: number;
-  equity: number;
-  metrics: RunMetrics | null;
-  usesForecast: boolean;
-  /** For demo rows: the backtest of the same agent/epic (null if none). */
-  backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
-  /** For demo rows: whether this run is mirrored onto the broker account. */
-  mirrored: boolean;
-}
 
 export function startApi(arena: Arena, port: number, token: string): ReturnType<typeof Bun.serve> {
   const routes: Route[] = [];
@@ -65,7 +46,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
         return [epic, { bid: q?.bid ?? null, ask: q?.ask ?? null, quoteTime: q?.time ?? null, lastCandle: arena.lastCandle.get(epic) ?? null }];
       }),
     );
-    return json({
+    const status: ArenaStatus = {
       startedAt: arena.startedAt,
       now: Date.now(),
       agents: arena.agents.length,
@@ -81,7 +62,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       },
       broker: arena.broker?.status() ?? null,
       memoryMb: Math.round(process.memoryUsage().rss / 1e6),
-    });
+    };
+    return json(status);
   });
 
   add(METHOD_GET, '/api/events', (_req, _p, url) => json(db.events(Number(url.searchParams.get('limit') ?? 200))));
@@ -125,7 +107,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       position: tracked?.run.position ?? (r.snapshot ? (JSON.parse(r.snapshot) as { position: unknown }).position : null),
       state: tracked?.run.state ?? null,
       trades: db.trades(runId, Number(url.searchParams.get('trades') ?? 1000)),
-      equity: db.equity(runId),
+      equityCurve: db.equity(runId),
       logs: db.logs(runId, 200),
       deals: db.dealsForRun(runId),
     });

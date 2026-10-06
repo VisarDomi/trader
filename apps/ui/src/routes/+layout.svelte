@@ -1,52 +1,52 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/state';
 
 	let { data, children } = $props();
-	let pathname = $derived($page.url.pathname);
-
-	import { page } from '$app/stores';
 
 	const nav = [
-		{ href: '/', label: 'Leaderboard', icon: '🏆' },
-		{ href: '/agents', label: 'Agents', icon: '🤖' },
-		{ href: '/runs/new', label: 'New Run', icon: '▶' },
-		{ href: '/status', label: 'Status', icon: '⚡' },
+		{ href: '/', label: 'Leaderboard' },
+		{ href: '/agents', label: 'Agents' },
+		{ href: '/broker', label: 'Gerti (broker)' },
+		{ href: '/status', label: 'Status' },
 	];
+
+	function active(href: string): boolean {
+		const path = page.url.pathname;
+		if (href === '/') return path === '/' || path.startsWith('/runs');
+		return path.startsWith(href);
+	}
 </script>
 
 <svelte:head>
-	<title>Trader UI</title>
+	<title>Trader</title>
 </svelte:head>
 
 <div class="app">
-	<aside class="sidebar">
-		<a href="/" class="logo">
-			<span class="logo-icon">📊</span>
-			<span class="logo-text">Trader<span class="accent">UI</span></span>
-		</a>
-
+	<aside>
+		<a href="/" class="logo">Trader <span class="muted">arena</span></a>
 		<nav>
 			{#each nav as item}
-				<a
-					href={item.href}
-					class="nav-link"
-					class:active={item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)}
-				>
-					<span class="nav-icon">{item.icon}</span>
-					{item.label}
-				</a>
+				<a href={item.href} class:active={active(item.href)}>{item.label}</a>
 			{/each}
 		</nav>
-
-		<div class="sidebar-footer">
-			<div class="health">
-				<span class="status-dot" class:ok={data.healthy} class:error={!data.healthy}></span>
-				{data.healthy ? 'Backend online' : 'Backend offline'}
-			</div>
+		<div class="health">
+			{#if data.arena.up}
+				<div>
+					<span class="status-dot {data.arena.streamConnected ? 'status-good' : 'status-warning'}"></span>
+					{data.arena.streamConnected ? 'Live feed connected' : 'Live feed reconnecting'}
+				</div>
+				<div>
+					<span class="status-dot {data.arena.forecasterOk ? 'status-good' : 'status-warning'}"></span>
+					{data.arena.forecasterOk ? 'TimesFM reachable' : 'TimesFM offline'}
+				</div>
+				<div class="muted">{data.arena.demoRuns} demo runs</div>
+			{:else}
+				<div><span class="status-dot status-critical"></span>Arena unreachable</div>
+			{/if}
 		</div>
 	</aside>
-
-	<main class="content">
+	<main>
 		{@render children()}
 	</main>
 </div>
@@ -56,115 +56,73 @@
 		display: flex;
 		min-height: 100vh;
 	}
-
-	.sidebar {
-		position: fixed;
-		top: 0;
-		left: 0;
-		bottom: 0;
+	aside {
 		width: var(--sidebar-width);
-		background: var(--bg-card);
-		border-right: 1px solid var(--border);
+		flex-shrink: 0;
+		border-right: 1px solid var(--hairline);
+		background: var(--surface);
+		padding: 18px 12px;
 		display: flex;
 		flex-direction: column;
-		padding: 20px 12px;
-		z-index: 10;
+		gap: 20px;
+		position: sticky;
+		top: 0;
+		height: 100vh;
 	}
-
 	.logo {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 8px 12px;
-		margin-bottom: 24px;
-		text-decoration: none;
-		color: var(--text);
-	}
-
-	.logo-icon { font-size: 20px; }
-
-	.logo-text {
-		font-size: 18px;
 		font-weight: 700;
-		letter-spacing: -0.5px;
+		font-size: 16px;
+		text-decoration: none;
+		padding: 0 8px;
 	}
-
-	.accent { color: var(--accent); }
-
 	nav {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 	}
-
-	.nav-link {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 10px 12px;
-		border-radius: 8px;
-		font-size: 14px;
-		font-weight: 500;
-		color: var(--text-muted);
+	nav a {
 		text-decoration: none;
-		transition: all 0.15s;
+		color: var(--ink-2);
+		padding: 6px 8px;
+		border-radius: 6px;
 	}
-
-	.nav-link:hover {
-		background: var(--bg-elevated);
-		color: var(--text);
+	nav a:hover {
+		background: var(--surface-2);
 	}
-
-	.nav-link.active {
-		background: var(--accent);
-		color: white;
+	nav a.active {
+		background: var(--surface-2);
+		color: var(--ink);
+		font-weight: 600;
 	}
-
-	.nav-icon { font-size: 16px; width: 20px; text-align: center; }
-
-	.sidebar-footer {
-		margin-top: auto;
-		padding: 12px;
-	}
-
 	.health {
-		display: flex;
-		align-items: center;
+		margin-top: auto;
 		font-size: 12px;
-		color: var(--text-dim);
+		color: var(--ink-2);
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 0 8px;
 	}
-
-	.content {
-		margin-left: var(--sidebar-width);
+	main {
 		flex: 1;
-		padding: 32px;
-		max-width: 1200px;
+		min-width: 0;
+		padding: 24px 28px 48px;
 	}
-
-	@media (max-width: 768px) {
-		.sidebar {
-			position: static;
-			width: 100%;
-			flex-direction: row;
-			padding: 12px;
-			border-right: none;
-			border-bottom: 1px solid var(--border);
+	@media (max-width: 800px) {
+		.app {
+			flex-direction: column;
 		}
-
-		.sidebar-footer { display: none; }
-
-		nav { flex-direction: row; gap: 4px; }
-
-		.nav-link { padding: 8px 12px; font-size: 13px; }
-		.nav-icon { display: none; }
-
-		.logo { margin-bottom: 0; }
-
-		.app { flex-direction: column; }
-
-		.content {
-			margin-left: 0;
-			padding: 20px;
+		aside {
+			width: 100%;
+			height: auto;
+			position: static;
+		}
+		nav {
+			flex-direction: row;
+			flex-wrap: wrap;
+		}
+		main {
+			padding: 16px;
 		}
 	}
 </style>

@@ -1,140 +1,217 @@
-// Shared types between trader-ui and trader-backend
-// This is the single source of truth for API contract types.
+// Arena API wire types — shared by the arena (apps/backend/src/arena/api.ts) and the dashboard (apps/ui).
 
-export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+export type RunKind = 'demo' | 'backtest';
+export type Side = 'long' | 'short';
 
-export type FillReason = 'ORDER' | 'STOP_LOSS' | 'TAKE_PROFIT' | 'MARKET_CLOSE' | 'LIQUIDATION';
-
-export interface AgentConfig {
-	name: string;
-	version: string;
-	instrument: string;
-	primaryFeed: Timeframe;
-	secondaryFeeds?: Timeframe[];
-	maxDrawdown?: number;
-	maxPositionSize?: number;
-	leverage: number;
+export interface MonthlyReturn {
+	month: string;
+	ret: number;
 }
 
-export interface AgentSummary {
-	id: string;
-	config: AgentConfig;
-	path: string;
-}
-
-export interface BlueprintDimension {
-	id: string;
-	[key: string]: unknown;
-}
-
-export interface BlueprintMeta {
-	name: string;
-	version: string;
-	instrument: string;
-	directory: string;
-	agentCount: number;
-	dimensionKeys: Record<string, unknown[]>;
-	dimensions: BlueprintDimension[];
-}
-
-export interface Metrics {
-	totalTrades: number;
-	wins: number;
-	losses: number;
-	winRate: number;
-	totalPnL: number;
+/** Fractions: 0.12 = +12%. */
+export interface RunMetrics {
+	startTime: number;
+	endTime: number;
+	days: number;
+	initialCapital: number;
+	finalEquity: number;
 	totalReturn: number;
+	annualReturn: number;
 	maxDrawdown: number;
 	sharpe: number;
+	sortino: number;
+	calmar: number;
+	trades: number;
+	longTrades: number;
+	shortTrades: number;
+	winRate: number;
 	profitFactor: number;
-	averageWin: number;
-	averageLoss: number;
-	averageHoldTime: number;
-	longestWinStreak: number;
-	longestLoseStreak: number;
+	avgTradePnl: number;
+	avgWin: number;
+	avgLoss: number;
+	bestTrade: number;
+	worstTrade: number;
+	tStat: number;
+	avgBarsHeld: number;
+	exposure: number;
+	funding: number;
+	profitableMonths: number;
+	totalMonths: number;
+	monthly: MonthlyReturn[];
 }
 
-export interface RunRecord {
-	id: string;
+export interface LeaderboardRow {
+	runId: string;
 	agentId: string;
-	agentName: string;
-	mode: string;
+	name: string;
+	slug: string;
+	timeframe: string;
+	epic: string;
+	status: string;
+	codeHash: string;
+	startedAt: number;
+	updatedAt: number;
+	equity: number;
+	metrics: RunMetrics | null;
+	usesForecast: boolean;
+	/** Demo rows: the backtest of the same agent and instrument. */
+	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
+	/** Demo rows: mirrored onto the broker demo account. */
+	mirrored: boolean;
+}
+
+export interface RunSummary {
+	id: string;
+	kind: RunKind;
+	agentId: string;
+	epic: string;
+	codeHash: string;
+	windowId: string | null;
 	status: string;
 	capital: number;
-	instrument: string;
-	config: Record<string, unknown>;
-	startedAt: number | null;
-	completedAt: number | null;
-	metrics: Metrics | null;
+	equity: number;
+	startedAt: number;
+	updatedAt: number;
+	endedAt: number | null;
+	metrics: RunMetrics | null;
 }
 
-export interface Fill {
-	action: 'OPENED' | 'CLOSED';
-	reason: FillReason;
-	side: 'BUY' | 'SELL';
+export interface AgentInfo {
+	id: string;
+	slug: string;
+	variant: string | null;
+	name: string;
+	description: string;
+	author: string | null;
+	timeframe: string;
+	instruments: string[];
+	params: Record<string, unknown>;
+	usesForecast: boolean;
+	codeHash: string;
+	firstSeen: number;
+	updatedAt: number;
+	active: boolean;
+}
+
+export interface AgentListItem extends AgentInfo {
+	demo: RunSummary[];
+	backtest: RunSummary[];
+}
+
+export interface AgentVersion {
+	code_hash: string;
+	source: string;
+	first_seen: number;
+}
+
+export interface AgentDetail extends AgentInfo {
+	versions: AgentVersion[];
+	runs: RunSummary[];
+}
+
+export interface Trade {
+	side: Side;
 	size: number;
-	price: number;
-	timestamp: number;
-	pnl?: number;
+	entryTime: number;
+	entryPrice: number;
+	exitTime: number;
+	exitPrice: number;
+	pnl: number;
+	funding: number;
+	exitReason: string;
+	entryReason?: string;
+	exitNote?: string;
+	barsHeld: number;
 }
 
 export interface EquityPoint {
-	timestamp: number;
+	t: number;
 	equity: number;
-	balance: number;
 }
 
-export interface RunConfig {
-	agentId: string;
-	capital: number;
-	mode: 'backtest' | 'paper' | 'live';
-	startDate?: string;
-	endDate?: string;
-	maxDrawdown?: number;
-	maxPositionSize?: number;
-	tickMode?: boolean;
+export interface LogLine {
+	time: number;
+	message: string;
 }
 
-export interface QueueProgress {
-	processed: number;
-	total: number;
-}
-
-export interface QueueEntry {
-	runId: string;
-	agentId: string;
-	agentName: string;
-	mode: string;
-	progress?: QueueProgress;
-}
-
-export interface QueueState {
-	current: QueueEntry | null;
-	queued: QueueEntry[];
-	queueLength: number;
-}
-
-export interface TradingGap {
-	from: string;
-	gapStart: string;
-	gapEnd: string;
-}
-
-export interface TradingHours {
-	timezone: string;
-	gaps: TradingGap[];
-}
-
-export interface InstrumentInfo {
+export interface Deal {
+	id: number;
+	run_id: string;
 	epic: string;
-	leveraged: boolean;
-	leverage: number;
-	spread: number;
-	lotSize: number;
-	minSize: number;
-	maxSize: number;
-	sizeIncrement: number;
-	pricePrecision: number;
-	tradingHours: TradingHours;
-	category?: string;
+	side: string;
+	size: number;
+	paper_size: number;
+	deal_id: string | null;
+	status: 'open' | 'closed' | 'failed';
+	open_time: number;
+	open_price: number | null;
+	paper_open_price: number;
+	close_time: number | null;
+	close_price: number | null;
+	paper_close_price: number | null;
+	pnl: number | null;
+	note: string | null;
+}
+
+export interface OpenPositionView {
+	side: Side;
+	size: number;
+	entryPrice: number;
+	entryTime: number;
+	stopLoss: number | null;
+	takeProfit: number | null;
+	trailingStop: number | null;
+}
+
+export interface RunDetail extends RunSummary {
+	params: Record<string, unknown>;
+	extra: Record<string, unknown> | null;
+	position: OpenPositionView | null;
+	state: unknown;
+	trades: Trade[];
+	equityCurve: EquityPoint[];
+	logs: LogLine[];
+	deals: Deal[];
+}
+
+export interface BrokerStatus {
+	enabled: boolean;
+	killed: boolean;
+	account: string;
+	accountId: string | null;
+	balance: number | null;
+	equity: number | null;
+	startBalance: number | null;
+	mirroredRuns: string[];
+	openDeals: number;
+	foreignEpics: string[];
+	lastReconcileAt: number;
+	lastError: string | null;
+}
+
+export interface QuoteStatus {
+	bid: number | null;
+	ask: number | null;
+	quoteTime: number | null;
+	lastCandle: number | null;
+}
+
+export interface ArenaStatus {
+	startedAt: number;
+	now: number;
+	agents: number;
+	demoRuns: number;
+	loadErrors: { file: string; error: string }[];
+	stream: { connected: boolean; connectedSince: number; reconnects: number };
+	quotes: Record<string, QuoteStatus>;
+	forecaster: { lastSuccessAt: number; lastError: string | null; requests: number; failures: number };
+	broker: BrokerStatus | null;
+	memoryMb: number;
+}
+
+export interface ArenaEvent {
+	time: number;
+	level: 'info' | 'warn' | 'error';
+	source: string;
+	message: string;
 }
