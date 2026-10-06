@@ -1,5 +1,8 @@
 # Trader Backend - Design Document
 
+> **Historical (v1).** This describes the v1 engine, removed in October 2026. The current system is
+> documented in [`ARCHITECTURE.md`](ARCHITECTURE.md); agents are written per [`agents/GUIDE.md`](agents/GUIDE.md).
+
 ## Overview
 
 An agent runner framework for automated trading. Developers write trading agents as TypeScript files, drop them in a folder, and the framework runs them against historical data (backtest) or live Capital.com prices (paper/live trading). Results feed into a leaderboard for comparison.

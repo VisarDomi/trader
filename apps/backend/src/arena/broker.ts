@@ -188,6 +188,7 @@ export class BrokerMirror {
       this.db.event('warn', 'broker', `skip ${e.runId}: a mirrored deal on ${inst.epic} is still open`);
       return;
     }
+    if (!(await this.onBrokerAccount())) return;
     if (!this.allowOrder(e.runId)) return;
     const size = this.scaledSize(inst, e.size, paperCapital);
     if (size === null) {
@@ -323,6 +324,22 @@ export class BrokerMirror {
       this.db.event('error', 'broker', `KILL SWITCH: ${this.accountName} equity ${this.equity} < ${floor} (${KILL_FRACTION * 100}% of the ${this.allocation} allocation); closing all mirrored deals`);
       for (const d of this.db.openDeals()) this.enqueue(() => this.closeDeal(d, 'kill switch'));
     }
+  }
+
+  /** Every order is preceded by a check that this session really is on the broker sub-account. */
+  private async onBrokerAccount(): Promise<boolean> {
+    try {
+      let session = await this.client.get<{ accountId: string }>('/api/v1/session');
+      if (session.accountId !== this.accountId) {
+        await this.client.useAccount(this.accountName);
+        session = await this.client.get<{ accountId: string }>('/api/v1/session');
+      }
+      if (session.accountId === this.accountId) return true;
+      this.db.event('error', 'broker', `session is on account ${session.accountId}, not ${this.accountName}; order skipped`);
+    } catch (err) {
+      this.fail('account check', err);
+    }
+    return false;
   }
 
   private allowOrder(runId: string): boolean {
