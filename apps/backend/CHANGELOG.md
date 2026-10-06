@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Changed
+
+- **v2 platform: agent SDK, shared-indicator engine, live demo arena, dashboard** — replaced the v1 blueprint/`AgentRunner` framework with a one-file agent contract (`defineAgent`, see `agents/GUIDE.md`), an engine shared by backtests and live demo (`src/engine`), a Hetzner service that forward-tests every agent × instrument on live Capital.com demo prices (`src/arena`), lab tooling on the PC (`src/lab`), a TimesFM 3 forecaster on the GPU (`apps/forecaster`) and a rebuilt dashboard. 12 USD-quoted instruments, 25 agents (+ variants), two control agents. See `ARCHITECTURE.md`.
+  - *Decision*: The demo leaderboard is the ranking and the backtest is context, because backtests can be overfit and live prices cannot — a coin-flip control agent landing near the top of the backtest makes the point on the dashboard itself. Every agent gets a demo run (paper fills at live quotes, $10k each) instead of real orders, because one $1,000 demo account cannot host hundreds of agents (netting, margin, min sizes); a few runs are mirrored as real orders on Gerti to measure execution drift.
+  - *Decision*: Agent code is hashed and a changed file starts a fresh demo record, so a track record always belongs to one exact version of the code.
+  - *Decision*: Indicators are streaming and cached per (instrument, timeframe), so 300+ agents share one computation; agents call `ctx.ta.ema(20)` instead of maintaining indicator state. Backtests of ~35 agents on 2.75 years of 1-minute data take ~15 s per instrument.
+  - *Decision*: Agents use mutable `ctx.state` and imperative `ctx.buy/sell/close` rather than returning orders and new state, because that is the shape LLMs write correctly on the first try; determinism is kept by `ctx.random()` and enforced by `check-agent`.
+
+### Added
+
+- **Overnight funding, margin close-out, trailing stops, intraday session close and per-minute historical spreads** in the simulation, using Capital.com's current funding rates and dealing rules.
+- **Multi-instrument ingest from the demo API** (`bun run ingest`), resumable, storing spread and tick volume per minute. The old ingest used the live API URL; no code path reaches the live API anymore.
+- **TimesFM 3 forecasts** (`ctx.forecast`): live through the SSH tunnel, precomputed for backtests (`bun run forecasts`).
+- **Gerti broker mirror** with rate limits, a kill switch at 50% of the allocation, foreign-position protection and lost-confirmation adoption.
+- **Engine tests** (`src/engine/engine.test.ts`) for bar building, indicators, fills, sizing, stops, funding, sessions and determinism.
+
+### Removed
+
+- v1 engine (`src/core`, `src/run`, `src/api`, `src/providers`), blueprints and batch scripts. The Go tick recorder (`cmd/record-ticks`) is kept but not used by v2.
+
+## Before v2
+
 ### Fixed
 
 - **`tick-stats` no longer pegs PostgreSQL with a full-table aggregate** — the old CLI recomputed `COUNT(*)`, `MIN(timestamp)`, and `MAX(timestamp)` from `ticks` every run, which forced a parallel sequential scan across ~34.6M rows and saturated multiple CPU cores. Added an exact `tick_instrument_stats` summary table, update it incrementally inside the recorder's insert path, and changed `tick-stats` to read that summary instead. The CLI now stays O(number of instruments) after a one-time backfill for existing instruments.
