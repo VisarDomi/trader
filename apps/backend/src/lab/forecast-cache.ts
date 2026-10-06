@@ -18,6 +18,9 @@ import type { BarSeries } from '../engine/series.ts';
 import type { Bar, Forecast, ForecastSpec, Timeframe } from '../sdk/types.ts';
 import { QUANTILE_LEVELS } from '../sdk/types.ts';
 import { DATA_DIR } from './candles.ts';
+import { makeForecast, PRECOMPUTED_HORIZON } from '../engine/forecast.ts';
+
+export { makeForecast, PRECOMPUTED_HORIZON };
 
 export const FORECAST_DIR = join(DATA_DIR, 'forecasts');
 const HEADER_BYTES = 12;
@@ -84,21 +87,6 @@ export class ForecastTable {
   }
 }
 
-export function makeForecast(horizon: number, mean: number[], quantiles: number[][]): Forecast {
-  const median = quantiles[QUANTILE_LEVELS.indexOf(0.5)]!;
-  return {
-    horizon,
-    mean,
-    median,
-    quantiles,
-    quantile(p: number, step: number): number {
-      const l = QUANTILE_LEVELS.findIndex(q => Math.abs(q - p) < 1e-9);
-      if (l < 0) throw new Error(`quantile level must be one of ${QUANTILE_LEVELS.join(', ')}`);
-      return quantiles[l]![step]!;
-    },
-  };
-}
-
 /** Backtest provider: serves forecasts from the precomputed files for one instrument. */
 export class CachedForecastProvider implements ForecastProvider {
   private readonly tables = new Map<string, ForecastTable | null>();
@@ -128,9 +116,6 @@ export class CachedForecastProvider implements ForecastProvider {
     return table ? table.get(bar.time, spec.horizon) : null;
   }
 }
-
-/** Precomputed horizons are 64; any shorter request reads a prefix. */
-export const PRECOMPUTED_HORIZON = 64;
 
 function findTable(epic: string, tf: Timeframe, context: number, horizon: number): string | null {
   for (const h of [PRECOMPUTED_HORIZON, horizon]) {

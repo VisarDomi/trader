@@ -9,7 +9,7 @@
 import type { ForecastProvider } from '../engine/market.ts';
 import { DEFAULT_FORECAST_CONTEXT } from '../engine/market.ts';
 import type { BarSeries } from '../engine/series.ts';
-import { makeForecast, PRECOMPUTED_HORIZON } from '../lab/forecast-cache.ts';
+import { makeForecast, PRECOMPUTED_HORIZON } from '../engine/forecast.ts';
 import type { Bar, Forecast, ForecastSpec } from '../sdk/types.ts';
 
 const REQUEST_TIMEOUT_MS = 20_000;
