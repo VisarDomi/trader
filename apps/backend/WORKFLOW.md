@@ -22,6 +22,7 @@ bun run backtest my-agent                  # full backtest, pushes to the arena
 bun run backtest --epic US100,GOLD --force # re-run selected instruments
 bun run forecasts                          # TimesFM tables for forecast agents (GPU)
 bun run ingest                             # refresh 1-minute candles (resumable)
+bun run review                             # lifecycle review: health, verdicts, what to retire
 ```
 
 Run heavy jobs inside the lab's resource cap:

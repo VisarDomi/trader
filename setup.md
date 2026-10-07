@@ -10,6 +10,7 @@ Start here, then read only what your task needs:
 | Task | Read |
 |---|---|
 | Write or change a trading agent | [`apps/backend/agents/GUIDE.md`](apps/backend/agents/GUIDE.md) |
+| Look after the arena: retire, add agents (babysitter visits) | [`apps/backend/agents/LIFECYCLE.md`](apps/backend/agents/LIFECYCLE.md), then [`JOURNAL.md`](apps/backend/agents/JOURNAL.md) |
 | Engine, arena, lab tools, broker mirror | [`apps/backend/setup.md`](apps/backend/setup.md) |
 | Dashboard | [`apps/ui/setup.md`](apps/ui/setup.md) |
 | TimesFM forecaster (GPU) | [`apps/forecaster/setup.md`](apps/forecaster/setup.md) |
@@ -67,6 +68,9 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
 | Arena logs | `ssh erdal@157.90.28.14 sudo journalctl -u trader-arena -f`; events also on the dashboard Status page |
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
+| Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
+| Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |
+| Babysitter visits | T3 Code scheduled task "Trader babysitter", Mondays and Thursdays 09:30 (fresh thread each run) |
 | Heavy job by hand | `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH <command>` |
 
 ## Secrets

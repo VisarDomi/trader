@@ -14,7 +14,10 @@
  * own deal. Every mirrored order is SCALE × the paper size, and each run
  * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
  * account that cannot be switched to hedging holds one run per instrument.
- * Runs are assigned to free slots automatically, best first (see slots.ts).
+ * Runs are assigned to free slots automatically, best demo equity first. When
+ * every slot is taken, a waiting run whose paper equity beats the weakest
+ * mirrored run by PROMOTION_MARGIN takes its slot once that run is flat
+ * (promotion/demotion; see slots.ts).
  *
  * Requests: one session switches between accounts; jobs are grouped per
  * account and paced by the RequestPacer shared with the candle poller.
@@ -93,8 +96,13 @@ const RECONCILE_IDLE_MS = 5 * CYCLE_MS;
 const RECONCILE_SLACK_MS = 5_000;
 /** Jobs for the account the session is on run first, unless an older job has waited this long. */
 const JOB_MAX_WAIT_MS = 10_000;
+/** A job whose account switch failed (e.g. a Capital.com gateway timeout) is tried once more after this. */
+const JOB_RETRY_DELAY_MS = 5_000;
 /** Do not over-size: skip when the minimum deal is more than this multiple of the scaled size. */
 const MAX_MIN_SIZE_INFLATION = 3;
+/** Paper equity a waiting run must be ahead of the weakest mirrored run to take its slot (2% of paper capital). */
+const PROMOTION_MARGIN = 0.02 * PAPER_CAPITAL;
+const MAX_PROMOTIONS_PER_CYCLE = 10;
 
 export interface BrokerOptions {
   /** Accounts whose name starts with this (case-insensitive) are used. */
@@ -201,6 +209,8 @@ interface Job {
   enqueuedAt: number;
   run: () => Promise<void>;
   tag?: typeof JOB_RECONCILE;
+  /** Set when the job was put back after its account switch failed. */
+  retried?: boolean;
 }
 
 export class BrokerMirror {
@@ -512,12 +522,21 @@ export class BrokerMirror {
     if (active.some(a => a.hedging === null)) return; // its mode is read on the next reconcile; until then keep what we have
     const usable = active
       .map(a => ({ name: a.id, slots: slotsOf(a), onePerEpic: !a.hedging, blockedEpics: a.foreignEpics }));
-    const plan = assignSlots(before, usable, live, new Set(this.excluded));
+    const flat = new Set(live.filter(c => c.side === null).map(c => c.runId));
+    const withDeal = new Set(this.db.openDeals().map(d => d.run_id));
+    const plan = assignSlots(before, usable, live, new Set(this.excluded), {
+      margin: PROMOTION_MARGIN,
+      maxSwaps: MAX_PROMOTIONS_PER_CYCLE,
+      canDemote: id => flat.has(id) && !withDeal.has(id),
+    });
     this.db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, plan.assignments);
     this.unassigned = plan.unassigned;
     const dropped = Object.keys(before).filter(id => plan.assignments[id] === undefined);
     const added = Object.keys(plan.assignments).filter(id => before[id] === undefined);
     for (const id of dropped) this.closeRunDeals(id, 'run no longer mirrored');
+    for (let i = 0; i < plan.promoted.length; i++) {
+      this.db.event('info', 'broker', `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (better demo equity)`);
+    }
     if (dropped.length > 0 || added.length > 0) {
       this.db.event(
         'info',
@@ -746,11 +765,25 @@ export class BrokerMirror {
     this.draining = true;
     while (this.queue.length > 0) {
       const job = this.nextJob();
+      const name = this.accounts.get(job.accountId)?.name ?? job.accountId;
       try {
         await this.ensureAccount(job.accountId);
+      } catch (err) {
+        if (!job.retried && this.accounts.has(job.accountId)) {
+          setTimeout(() => {
+            this.queue.push({ ...job, retried: true });
+            if (!this.draining) void this.drain();
+          }, JOB_RETRY_DELAY_MS);
+          this.db.event('warn', 'broker', `switch to ${name} failed (${errorText(err)}); retrying the job`);
+        } else {
+          this.fail(`job on ${name}`, err);
+        }
+        continue;
+      }
+      try {
         await job.run();
       } catch (err) {
-        this.fail(`job on ${this.accounts.get(job.accountId)?.name ?? job.accountId}`, err);
+        this.fail(`job on ${name}`, err);
       }
     }
     this.draining = false;

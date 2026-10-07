@@ -8,6 +8,8 @@
  *   persisted after every minute so restarts resume where they left off.
  * - A changed agent file (new code hash) retires the old demo run and starts a
  *   fresh one: a track record always belongs to one exact version of the code.
+ * - agents/roster.json retires single agent × instrument runs without touching
+ *   agent code (see src/engine/roster.ts).
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { RESOLUTION } from '../capital/client.ts';
@@ -15,6 +17,7 @@ import { DAY_MS, HOUR_MS, MINUTE_MS } from '../engine/clock.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import { loadAgents } from '../engine/loader.ts';
+import { loadRoster, retiredBy } from '../engine/roster.ts';
 import type { ClosedBar } from '../engine/market.ts';
 import { MarketEngine } from '../engine/market.ts';
 import type { AgentRun, RunEvent, RunSnapshot } from '../engine/run.ts';
@@ -117,8 +120,20 @@ export class Arena {
   private createRuns(now: number): Set<string> {
     const fresh = new Set<string>();
     const active = this.db.runs(RUN_KIND.DEMO);
+    const roster = loadRoster(this.agentsDir);
+    const rosterRetired = new Set<string>();
     for (const agent of this.agents) {
       for (const epic of agent.def.instruments) {
+        const retired = retiredBy(roster, agent.id, epic);
+        if (retired) {
+          for (const old of active.filter(r => r.agent_id === agent.id && r.epic === epic)) {
+            rosterRetired.add(old.id);
+            this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
+            this.db.appendLog(old.id, { time: now, message: `retired ${retired.date}: ${retired.reason}` });
+            this.db.event('info', 'arena', `retired ${old.id} (roster): ${retired.reason}`);
+          }
+          continue;
+        }
         const id = demoRunId(agent.id, epic, agent.codeHash);
         for (const old of active) {
           if (old.agent_id === agent.id && old.epic === epic && old.id !== id) {
@@ -148,7 +163,7 @@ export class Arena {
     // Agents that disappeared from disk: retire their demo runs.
     const live = new Set(this.tracked.keys());
     for (const old of active) {
-      if (!live.has(old.id)) {
+      if (!live.has(old.id) && !rosterRetired.has(old.id)) {
         this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
         this.db.event('info', 'arena', `retired ${old.id}: agent no longer exists`);
       }

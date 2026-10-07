@@ -9,7 +9,9 @@
     "backtest": "bun run src/lab/backtest.ts",
     "forecasts": "bun run src/lab/forecast-precompute.ts",
     "check-agent": "bun run src/lab/check-agent.ts",
-    "arena": "bun run src/arena/main.ts"
+    "arena": "bun run src/arena/main.ts",
+    "review": "bun run src/lab/review.ts",
+    "watchdog": "bun run src/lab/watchdog.ts"
   },
   "dependencies": {
     "@trader/shared": "*"

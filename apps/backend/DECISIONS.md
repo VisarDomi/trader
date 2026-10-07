@@ -208,6 +208,26 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   and position-opener. Beyond the 450-run capacity, or ~100 agent variants, mirror only the best demo runs
   (the assignment already fills best-first) or use a second Capital.com login with its own limits.
 
+### Lifecycle and babysitting
+
+- **Judged on demo trades, not backtests or calendar time alone.** A run needs 30 closed trades and 4 weeks
+  (slow agents: 90 days and 10 trades) before any verdict. Retire at a trade t-statistic of −1: an agent
+  without an edge pays the spread on every trade, so its t drifts negative, while a real edge rarely shows
+  t ≤ −1 after 30 trades. Leaders need t ≥ 2 and a return above every monkey on the instrument; the
+  monkeys double as a check on the bar itself.
+- **The policy lives in shared code** (`packages/shared/src/lifecycle.ts`) so the dashboard and the
+  babysitter's review never disagree.
+- **Retiring a single instrument goes through `agents/roster.json`,** because editing the agent's
+  instrument list would change its code hash and restart every other instrument's record.
+- **Promotion to the broker is by demo equity with a $200 margin,** applied only when slots are full and
+  only while the weaker run is flat, so the mirror never cuts a trade short and does not churn on noise.
+- **Deterministic watchdog, judgement on a schedule.** Outages need minutes, not days: a 10-minute timer on
+  the PC checks the arena, the feeds, the broker accounts and the lab services and notifies the desktop
+  (after three failed checks for transient things). Retiring and adding agents needs judgement and evidence
+  accumulates slowly, so Claude visits twice a week (Monday: full cycle including new agents; Thursday:
+  health and retirements) from a T3 Code scheduled task, one fresh thread per visit with the journal as its
+  memory.
+
 ### Live data
 
 - **1-minute candles from REST, quotes from WebSocket.** Building candles from WebSocket ticks made the demo bars

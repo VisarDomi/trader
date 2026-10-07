@@ -7,8 +7,9 @@
       add slippage to the simulation if the gap is systematic.
 - [ ] Broker mirror: watch the first top-of-hour bursts with all 392 runs mirrored (queue length on the
       Broker page, 429s in the events).
-- [ ] Beyond 450 runs (9 accounts × 50) only the best demo runs are mirrored; a second Capital.com login
-      would add 10 more accounts and its own request budget.
+- [ ] Beyond 450 runs (9 accounts × 50) only the best demo runs are mirrored (promotion by demo equity);
+      a second Capital.com login would add 10 more accounts and its own request budget.
+- [ ] First judgements around early November: check the monkey sanity line and the retire reasons make sense.
 - [ ] Arena memory on the shared server (currently ~150-210 MB; cap 700 MB).
 
 ## Next

@@ -64,3 +64,33 @@ describe('accountsNeeded', () => {
     expect(accountsNeeded(Array.from({ length: 101 }, (_, i) => run(`a${i}`, 'US100')), 50, false)).toBe(3);
   });
 });
+
+describe('promotion', () => {
+  const scored = (agent: string, epic: string, score: number) => ({ ...run(agent, epic), score });
+  const always = { margin: 200, maxSwaps: 10, canDemote: () => true };
+
+  test('a waiting run that beats the weakest mirrored one by the margin takes its slot', () => {
+    const candidates = [scored('good', 'US100', 10_500), scored('ok', 'GOLD', 10_000), scored('bad', 'US30', 9_600)];
+    const current = { 'demo:ok:GOLD:h': 'H', 'demo:bad:US30:h': 'H' };
+    const plan = assignSlots(current, [hedging('H', 2)], candidates, NONE, always);
+    expect(plan.promoted).toEqual(['demo:good:US100:h']);
+    expect(plan.demoted).toEqual(['demo:bad:US30:h']);
+    expect(Object.keys(plan.assignments).sort()).toEqual(['demo:good:US100:h', 'demo:ok:GOLD:h']);
+    expect(plan.unassigned.map(c => c.runId)).toEqual(['demo:bad:US30:h']);
+  });
+
+  test('no swap inside the margin, or while the weaker run cannot give up its slot', () => {
+    const candidates = [scored('new', 'US100', 10_000), scored('meh', 'GOLD', 9_900)];
+    const current = { 'demo:meh:GOLD:h': 'H' };
+    expect(assignSlots(current, [hedging('H', 1)], candidates, NONE, always).promoted).toEqual([]);
+    const far = [scored('new', 'US100', 10_000), scored('bad', 'GOLD', 9_000)];
+    const busy = { ...always, canDemote: () => false };
+    expect(assignSlots({ 'demo:bad:GOLD:h': 'H' }, [hedging('H', 1)], far, NONE, busy).promoted).toEqual([]);
+  });
+
+  test('swaps are capped per call', () => {
+    const candidates = [...Array.from({ length: 5 }, (_, i) => scored(`w${i}`, 'US100', 11_000)), ...Array.from({ length: 5 }, (_, i) => scored(`m${i}`, 'GOLD', 9_000))];
+    const current = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`demo:m${i}:GOLD:h`, 'H']));
+    expect(assignSlots(current, [hedging('H', 5)], candidates, NONE, { ...always, maxSwaps: 2 }).promoted).toHaveLength(2);
+  });
+});

@@ -6,7 +6,9 @@
  * the same instrument would net against the first. Assignments are sticky: a
  * run keeps its account until it stops, is excluded, or the account goes away.
  * Free slots are filled in candidate order (best first), spreading runs over
- * the accounts with the most free slots.
+ * the accounts with the most free slots. When every slot is taken, a waiting
+ * run whose score beats the weakest mirrored run by a margin takes its slot
+ * (promotion/demotion), but only while the weaker run can give it up.
  */
 
 export interface SlotAccount {
@@ -21,12 +23,24 @@ export interface SlotAccount {
 export interface SlotCandidate {
   runId: string;
   epic: string;
+  /** Higher is better; used for promotion. */
+  score?: number;
 }
 
 export interface SlotPlan {
   /** runId → account name */
   assignments: Record<string, string>;
   unassigned: SlotCandidate[];
+  promoted: string[];
+  demoted: string[];
+}
+
+export interface Promotion {
+  /** A waiting run replaces a mirrored one only if its score is higher by at least this much. */
+  margin: number;
+  maxSwaps: number;
+  /** Whether a mirrored run can give up its slot now (e.g. it holds no position). */
+  canDemote: (runId: string) => boolean;
 }
 
 export function assignSlots(
@@ -34,6 +48,7 @@ export function assignSlots(
   accounts: readonly SlotAccount[],
   candidates: readonly SlotCandidate[],
   excluded: ReadonlySet<string>,
+  promotion?: Promotion,
 ): SlotPlan {
   const state = new Map(accounts.map(a => [a.name, { ...a, used: 0, epics: new Set<string>() }]));
   const epicOf = new Map(candidates.map(c => [c.runId, c.epic]));
@@ -69,7 +84,35 @@ export function assignSlots(
     if (best === null) unassigned.push(c);
     else take(c.runId, c.epic, best);
   }
-  return { assignments, unassigned };
+  if (!promotion || unassigned.length === 0) return { assignments, unassigned, promoted: [], demoted: [] };
+
+  const score = (runId: string) => candidates.find(c => c.runId === runId)?.score ?? 0;
+  const waiting = [...unassigned].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const weakest = Object.keys(assignments)
+    .filter(promotion.canDemote)
+    .sort((a, b) => score(a) - score(b));
+  const promoted: string[] = [];
+  const demoted: string[] = [];
+  for (const w of waiting) {
+    if (promoted.length >= promotion.maxSwaps) break;
+    const i = weakest.findIndex(m => {
+      const s = state.get(assignments[m]!)!;
+      return !s.onePerEpic || epicOf.get(m) === w.epic || (!s.epics.has(w.epic) && !s.blockedEpics?.has(w.epic));
+    });
+    const m = i < 0 ? undefined : weakest[i];
+    if (m === undefined || (w.score ?? 0) < score(m) + promotion.margin) continue;
+    weakest.splice(i, 1);
+    const s = state.get(assignments[m]!)!;
+    s.epics.delete(epicOf.get(m)!);
+    s.epics.add(w.epic);
+    assignments[w.runId] = assignments[m]!;
+    delete assignments[m];
+    promoted.push(w.runId);
+    demoted.push(m);
+  }
+  const moved = new Set(promoted);
+  const rest = unassigned.filter(c => !moved.has(c.runId)).concat(candidates.filter(c => demoted.includes(c.runId)));
+  return { assignments, unassigned: rest, promoted, demoted };
 }
 
 /** How many more accounts of `slots` slots it takes to mirror every unassigned run. */

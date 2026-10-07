@@ -155,6 +155,9 @@ ten near-identical variants is how you overfit a backtest.
 - The **demo** leaderboard is the one that matters: it trades unseen, live prices. The
   **backtest** (2024-01 → 2026-09, all instruments) is for information; a large gap between
   backtest and demo means the agent was overfit.
+- After deployment an agent moves through the lifecycle in [`LIFECYCLE.md`](LIFECYCLE.md): judged
+  after 30 trades and 4 weeks, retired if it loses, mirrored on the broker while it ranks well.
+  Retiring one instrument goes in `roster.json`, never in the agent file.
 
 ## Instruments
 

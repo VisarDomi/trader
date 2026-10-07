@@ -26,6 +26,9 @@ const HEADER_SECURITY = 'X-SECURITY-TOKEN';
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_NOT_FOUND = 404;
 const HTTP_TOO_MANY = 429;
+const HTTP_SERVER_ERROR = 500;
+/** Requests safe to repeat after a gateway error (an order POST is not: it may have gone through). */
+const RETRY_ON_SERVER_ERROR = new Set(['GET']);
 
 /** Default pace for one process (~3 req/s of the login's 10), so other apps on the same login keep working. */
 const DEFAULT_MIN_INTERVAL_MS = 300;
@@ -53,7 +56,8 @@ export function credentialsFromEnv(): CapitalCredentials {
 
 export class CapitalApiError extends Error {
   constructor(readonly status: number, readonly body: string, path: string) {
-    super(`Capital.com ${status} on ${path}: ${body.slice(0, 300)}`);
+    // Gateway errors come back as HTML pages; keep only their text.
+    super(`Capital.com ${status} on ${path}: ${body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)}`);
   }
 }
 
@@ -185,12 +189,19 @@ export class CapitalClient {
   }
 
   private async switchAccountRaw(accountId: string): Promise<void> {
-    await this.pacer.wait();
-    const res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
-      method: 'PUT',
-      headers: this.authHeaders(),
-      body: JSON.stringify({ accountId }),
-    });
+    let res: Response;
+    for (let attempt = 0; ; attempt++) {
+      await this.pacer.wait();
+      res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
+        method: 'PUT',
+        headers: this.authHeaders(),
+        body: JSON.stringify({ accountId }),
+      });
+      // Switching to the same account twice is harmless, so gateway errors are retried.
+      if (res.status < HTTP_SERVER_ERROR || attempt >= MAX_RETRIES) break;
+      await res.text();
+      await Bun.sleep(1000 * 2 ** attempt);
+    }
     // 400 "error.not-different.accountId" means we are already on it.
     if (!res.ok && res.status !== 400) throw new CapitalApiError(res.status, await res.text(), 'PUT /session');
     const cst = res.headers.get(HEADER_CST);
@@ -234,7 +245,7 @@ export class CapitalClient {
         await this.login();
         continue;
       }
-      if (res.status === HTTP_TOO_MANY) {
+      if (res.status === HTTP_TOO_MANY || (res.status >= HTTP_SERVER_ERROR && RETRY_ON_SERVER_ERROR.has(method))) {
         await Bun.sleep(1000 * 2 ** attempt);
         continue;
       }

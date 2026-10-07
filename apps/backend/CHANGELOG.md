@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **Agent lifecycle and babysitting** — verdicts per demo run (early / keep / leader / retire, `packages/shared/src/lifecycle.ts`), `bun run review` (health, capacity, verdicts, what to retire), `agents/roster.json` to retire single agent × instrument runs without changing code hashes, broker promotion/demotion by demo equity once the 450 slots are full, a 10-minute watchdog with desktop notifications (`src/lab/watchdog.ts`, `ops/lab/trader-watchdog.*`), and `agents/LIFECYCLE.md` + `agents/JOURNAL.md` for the scheduled babysitter visits.
+  - *Decision*: Policy in shared code so the dashboard and the babysitter agree; watchdog deterministic and frequent, retire/add decisions by Claude twice a week. See `DECISIONS.md` → "Lifecycle and babysitting".
+
 ### Changed
+
+- **Capital.com client retries gateway errors on safe requests** (GET, account switch) and strips HTML from error messages; a broker job whose account switch fails is retried once. A 504 on `/session` had dropped one job.
 
 - **Broker mirror fits every run into nine hedging accounts** — accounts are now tracked by accountId (names can change; deals are re-attached by deal id), only "Arena…" accounts are used (`BROKER_ACCOUNTS` is gone; Visi stays the user's), every account is switched to hedging mode so it holds many runs per instrument, and orders are 0.2× the paper size with 50 runs per $100,000 account: all 392 live runs fit in 9 accounts (capacity 450). Top-ups are sized against the deposit cap and retried daily; renaming an account away from the prefix closes the arena's deals there; a run never has two open deals.
   - *Decision*: Capital.com allows 10 demo accounts per login, and netting accounts can mirror only 108 of 392 runs on nine accounts. Hedging mode removes the one-run-per-instrument limit; 0.2 is the smallest scale whose rounding stays negligible (0.7% of backtest trades below minimum size). See `DECISIONS.md`.

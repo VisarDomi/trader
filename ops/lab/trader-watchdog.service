@@ -1,0 +1,10 @@
+[Unit]
+Description=Trader watchdog (desktop notification when the platform needs attention)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Slice=trader.slice
+WorkingDirectory=%h/Documents/work/trading/trader/apps/backend
+Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.bun/bin/bun run src/lab/watchdog.ts
