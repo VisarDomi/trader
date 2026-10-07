@@ -42,6 +42,7 @@ agent's source, and a changed file retires the old demo run and starts a new one
  trader-tunnel.service       autossh  -R 4130  -L 4120  ─────────┼──►  - every agent × instrument, $10k each
  trader-lab.timer (03:30)    ingest → forecasts → backtest ─push─┘      - broker mirror (demo accounts)
  bun run backtest / check-agent / forecasts (by hand)                  - SQLite data/arena.db, API :4120
+ trader-watchdog.timer (10 min)  desktop notifications
                                                                      trader-ui.service (SvelteKit :10003)
                                                                      Caddy trader.veron3.space + Authelia
 ```
@@ -139,6 +140,16 @@ closes).
   reconcile.
 
 Toggle the mirror and exclude runs on the dashboard's Broker page.
+
+## Lifecycle
+
+Agents move Backtest → Demo → Broker → Retired ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
+Verdicts (early, keep, leader, retire) come from `packages/shared/src/lifecycle.ts`, used by both the
+dashboard's Stage column and `bun run review`. Single runs are retired through `agents/roster.json`
+(read by the arena on start; no code-hash change), whole agents by moving them to `agents/_retired/`.
+Claude applies the policy on scheduled babysitter visits and records them in
+[`agents/JOURNAL.md`](agents/JOURNAL.md), shown on the dashboard's Journal page. Between visits the
+watchdog (`src/lab/watchdog.ts`) notifies the desktop when the platform needs attention.
 
 ## Operations
 

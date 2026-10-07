@@ -1,4 +1,5 @@
 import type { LeaderboardRow, RunMetrics } from '@trader/shared';
+import { CONTROL_SLUGS, isControlSlug } from '@trader/shared';
 
 export function pct(x: number | null | undefined, digits = 1): string {
 	if (x === null || x === undefined || !Number.isFinite(x)) return '—';
@@ -60,11 +61,11 @@ export function sign(x: number | null | undefined): string {
 	return x > 0 ? 'up' : 'down';
 }
 
-/** Control agents (no edge by construction) are shown as reference rows. */
-export const CONTROL_SLUGS = new Set(['random-baseline', 'buy-hold']);
+export { CONTROL_SLUGS };
 
+/** Control agents (no edge by construction) are shown as reference rows. */
 export function isControl(row: Pick<LeaderboardRow, 'slug'>): boolean {
-	return CONTROL_SLUGS.has(row.slug);
+	return isControlSlug(row.slug);
 }
 
 export type MetricKey = keyof Pick<

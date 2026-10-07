@@ -9,6 +9,8 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 - [`agents/GUIDE.md`](agents/GUIDE.md) — writing an agent (the SDK contract, sizing, indicators, TimesFM).
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: two leaderboards, topology, code map,
   simulation model, arena, broker mirror, known limitations.
+- [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.
+- [`agents/JOURNAL.md`](agents/JOURNAL.md) — every babysitter visit and the log of agent ideas tried.
 - [`WORKFLOW.md`](WORKFLOW.md) — git conventions, everyday commands, adding an agent end to end.
 - [`DECISIONS.md`](DECISIONS.md) — why things are the way they are (v2 section first).
 - [`TODO.md`](TODO.md) — open work.
@@ -37,6 +39,8 @@ bun run check-agent agents/my-agent.ts     # determinism, speed, rejected orders
 bun run backtest my-agent                  # backtest 2024-01 → 2026-09, push to the arena
 bun run forecasts                          # precompute TimesFM tables for forecast agents (GPU)
 bun run ingest                             # gap-fill 1-minute candles into PostgreSQL
+bun run review                             # lifecycle review of the live arena (health, verdicts)
+bun run watchdog --dry-run                 # what the watchdog would notify right now
 bun run arena                              # the arena service (normally only on the server)
 ```
 

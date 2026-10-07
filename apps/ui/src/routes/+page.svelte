@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { LeaderboardRow, RunMetrics } from '@trader/shared';
+	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
+	import { assess, luckBands, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
 	import { ago, isControl, median, num, pct, pctPlain, sign } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
@@ -32,11 +33,29 @@
 
 	const filtered = $derived(rows.filter(matches));
 
+	// ------------------------------------------------------------ lifecycle stage (demo)
+	const bands = $derived(luckBands(data.demo));
+	const stages = $derived(new Map<string, Assessment>(data.demo.map(r => [r.runId, assess(r, bands)])));
+	const STAGE_RANK: Record<Verdict, number> = {
+		[VERDICT.LEADER]: 5,
+		[VERDICT.KEEP]: 4,
+		[VERDICT.EARLY]: 3,
+		[VERDICT.CONTROL]: 2,
+		[VERDICT.RETIRE]: 1,
+		[VERDICT.RETIRED]: 0,
+	};
+	const STAGE_DOT: Partial<Record<Verdict, string>> = {
+		[VERDICT.LEADER]: 'status-good',
+		[VERDICT.KEEP]: 'status-good',
+		[VERDICT.RETIRE]: 'status-critical',
+	};
+
 	// ------------------------------------------------------------ per-run rows
 	function metric(r: LeaderboardRow, key: string): number {
 		if (key === 'btSharpe') return r.backtest?.metrics?.sharpe ?? -Infinity;
 		if (key === 'btAnnual') return r.backtest?.metrics?.annualReturn ?? -Infinity;
 		if (key === 'name') return 0;
+		if (key === 'stage') return STAGE_RANK[stages.get(r.runId)?.verdict ?? VERDICT.EARLY];
 		const m = r.metrics as unknown as Record<string, number> | null;
 		const v = m?.[key];
 		return typeof v === 'number' && Number.isFinite(v) ? v : -Infinity;
@@ -238,6 +257,7 @@
 						<th class="num" title="t-statistic of trade P&L: above ~2 is unlikely to be luck"><button onclick={() => sortBy('tStat')}>t{arrow('tStat')}</button></th>
 						{#if view === 'demo'}
 							<th class="num" title="Backtest Sharpe of the same agent on the same instrument"><button onclick={() => sortBy('btSharpe')}>BT Sharpe{arrow('btSharpe')}</button></th>
+							<th title="Lifecycle stage: see the Journal page"><button onclick={() => sortBy('stage')}>Stage{arrow('stage')}</button></th>
 						{/if}
 						<th></th>
 					</tr>
@@ -268,6 +288,12 @@
 										{num(r.backtest.metrics.sharpe)}{#if !r.backtest.sameCode}<span class="muted" title="Backtest ran on an older version of this agent"> *</span>{/if}
 									{:else}<span class="muted">—</span>{/if}
 								</td>
+								{@const st = stages.get(r.runId)}
+								<td class="stage" title={st?.reason ?? ''}>
+									{#if st && st.verdict !== VERDICT.CONTROL}
+										{#if STAGE_DOT[st.verdict]}<span class="status-dot {STAGE_DOT[st.verdict]}"></span>{/if}<span class:muted={st.verdict === VERDICT.EARLY}>{st.verdict}</span>
+									{/if}
+								</td>
 							{/if}
 							<td>
 								{#if r.mirrored}<span class="badge" title="Mirrored onto a Capital.com demo account as real demo orders">broker</span>{/if}
@@ -275,7 +301,7 @@
 							</td>
 						</tr>
 					{:else}
-						<tr><td colspan="14" class="muted">No runs match.</td></tr>
+						<tr><td colspan="15" class="muted">No runs match.</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -319,6 +345,9 @@
 </div>
 
 <style>
+	td.stage {
+		white-space: nowrap;
+	}
 	tr.control td {
 		color: var(--ink-2);
 	}
