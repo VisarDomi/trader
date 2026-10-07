@@ -183,24 +183,30 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 
 ### Broker mirror across many demo accounts
 
-- **Paper runs stay the leaderboard; real demo orders are a check on them.** An account nets positions per
-  instrument, so one account can mirror at most one run per instrument. Mirroring everything therefore takes
-  about one account per agent variant (392 runs → Gerti + 40 "Arena" accounts in October 2026); the mirror
-  fills whatever accounts exist, best demo equity first, and the dashboard shows how many more are needed.
-- **Accounts are found by name** (`BROKER_ACCOUNTS` plus the `Arena` prefix) so the user can add capacity by
-  creating accounts, without a deploy, while their own accounts can never be traded by accident.
-- **$100,000 and 10 slots per "Arena" account** gives a scale of exactly 1: broker orders are the paper size,
-  so broker and paper P&L compare directly and minimum sizes never distort a mirrored trade. The arena tops
-  a new "Arena" account up to the demo maximum once; named accounts (Gerti) keep the balance the user set.
+- **Paper runs stay the leaderboard; real demo orders are a check on them.** Paper has no capacity limits and
+  treats every agent the same; the mirror measures how far real fills drift from it.
+- **Hedging mode instead of one account per agent.** Capital.com allows 10 demo accounts per login (the user
+  keeps one). In netting mode an account can hold one run per instrument, so 9 accounts would mirror at most
+  108 of 392 runs. In hedging mode every position is its own deal, closed by its deal id, so one account holds
+  any number of runs on the same instrument (verified 2026-10-07: BUY, BUY, SELL on BTCUSD gave three positions,
+  each closed separately; the mode can be switched with a position open).
+- **Scale 0.2, 50 runs per account.** Each run reserves $2,000 of a $100,000 account: 450 runs across nine
+  accounts. Smaller scales round more trades below minimum sizes (0.1: 1.3% of trades off by >10%), larger ones
+  fit fewer runs (0.25: 360, fewer than the 392 live runs). At 0.2 a whole account only reaches its kill switch
+  if its runs lose half their (scaled) capital on average, so the switch stays a runaway guard.
+- **Accounts are found by name prefix and tracked by id.** The user adds capacity by naming an account
+  "Arena…", without a deploy, and their own accounts can never be traded by accident. Names can change (the
+  first nine "Arena" accounts were renamed from older ones), so state is keyed by accountId and deals are
+  re-attached by deal id.
 - **One session switching accounts, not one session per account.** The number of concurrent sessions a login
   may hold is undocumented, and a cap would knock out the stream or position-opener. Switching costs two
-  requests per account change; jobs are grouped per account so a burst switches once per account.
+  requests per account change; jobs are grouped per account so a burst switches at most nine times.
 - **Request budget.** From the backtest trade logs (392 runs, 2.75 years): 3 orders in a typical active
   minute, 34 at p99, 61 at p99.9, 108 at the worst minute; at most ~105 opens in any hour against the demo
   limit of 1,000. At ~2.6 requests per order plus switches, the arena's 6 req/s pacer clears a p99 burst in
   ~20 s and the worst one in about a minute, leaving the rest of the login's 10 req/s to the lab (≤3.3/s)
-  and position-opener. Beyond ~100 agent variants (about 2.5× today) bursts would take minutes: then mirror
-  only the top of the demo leaderboard, or use a second Capital.com login with its own limits.
+  and position-opener. Beyond the 450-run capacity, or ~100 agent variants, mirror only the best demo runs
+  (the assignment already fills best-first) or use a second Capital.com login with its own limits.
 
 ### Live data
 

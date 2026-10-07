@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS candles (
 CREATE TABLE IF NOT EXISTS broker_deals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   account TEXT,
+  account_id TEXT,
   run_id TEXT NOT NULL,
   epic TEXT NOT NULL,
   side TEXT NOT NULL,
@@ -197,8 +198,10 @@ export interface AgentRow {
 
 export interface DealRow {
   id: number;
-  /** Capital.com demo account name the deal lives on. */
+  /** Capital.com demo account name when the deal was opened (display only; names can change). */
   account: string;
+  /** Capital.com accountId the deal lives on. */
+  account_id: string | null;
   run_id: string;
   epic: string;
   side: string;
@@ -232,6 +235,7 @@ export class ArenaDB {
   private migrate(): void {
     const dealColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`).all().map(c => c.name);
     if (!dealColumns.includes('account')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account TEXT`);
+    if (!dealColumns.includes('account_id')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account_id TEXT`);
   }
 
   tx<T>(fn: () => T): T {
@@ -445,16 +449,21 @@ export class ArenaDB {
   insertDeal(d: Omit<DealRow, 'id'>): number {
     const res = this.db
       .query(
-        `INSERT INTO broker_deals (account, run_id, epic, side, size, paper_size, deal_id, status, open_time, open_price, paper_open_price, close_time, close_price, paper_close_price, pnl, note)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO broker_deals (account, account_id, run_id, epic, side, size, paper_size, deal_id, status, open_time, open_price, paper_open_price, close_time, close_price, paper_close_price, pnl, note)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(d.account, d.run_id, d.epic, d.side, d.size, d.paper_size, d.deal_id, d.status, d.open_time, d.open_price, d.paper_open_price, d.close_time, d.close_price, d.paper_close_price, d.pnl, d.note);
+      .run(d.account, d.account_id, d.run_id, d.epic, d.side, d.size, d.paper_size, d.deal_id, d.status, d.open_time, d.open_price, d.paper_open_price, d.close_time, d.close_price, d.paper_close_price, d.pnl, d.note);
     return Number(res.lastInsertRowid);
   }
 
-  /** Deals recorded before accounts were tracked per deal all lived on `account`. */
-  claimUnownedDeals(account: string): void {
-    this.db.query(`UPDATE broker_deals SET account = ? WHERE account IS NULL`).run(account);
+  /** Deals recorded before account ids were stored: fill the id in from the account's current name. */
+  fillDealAccountIds(idByName: ReadonlyMap<string, string>): void {
+    const q = this.db.query(`UPDATE broker_deals SET account_id = ? WHERE account_id IS NULL AND account = ? AND status = 'open'`);
+    for (const [name, id] of idByName) q.run(id, name);
+  }
+
+  dealByDealId(dealId: string): DealRow | null {
+    return this.db.query<DealRow, [string]>(`SELECT * FROM broker_deals WHERE deal_id = ? ORDER BY id DESC LIMIT 1`).get(dealId) ?? null;
   }
 
   updateDeal(id: number, fields: Partial<Omit<DealRow, 'id'>>): void {

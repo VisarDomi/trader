@@ -3,35 +3,37 @@
  * accounts as real demo orders. It measures how far real fills drift from the
  * paper fills the leaderboard is built on.
  *
- * Accounts: the ones named in BROKER_ACCOUNTS (e.g. "Gerti:5") plus every
- * account whose name starts with the prefix (default "Arena"), picked up within
- * a minute of being created. Prefix accounts are topped up once to the 100k
- * demo maximum; named accounts keep the balance they have. An account nets
- * positions per instrument, so it holds at most one mirrored run per
- * instrument and at most `slots` runs; its balance when enrolled is split
- * across the slots. With $100,000 and 10 slots a mirrored order is exactly the
- * paper size.
- * Runs are assigned to free slots automatically (see slots.ts).
+ * Accounts: every demo account whose name starts with the prefix (default
+ * "Arena", case-insensitive), picked up within a minute. Other accounts (the
+ * user's) are never touched. Accounts are tracked by accountId, so renaming one
+ * keeps its deals; renaming it away from the prefix closes the arena's deals
+ * there and stops using it. Capital.com allows 10 demo accounts per login.
+ *
+ * Capacity: a new account is topped up to the 100k demo maximum and switched
+ * to hedging mode, so it can hold many runs on the same instrument, each as its
+ * own deal. Every mirrored order is SCALE × the paper size, and each run
+ * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
+ * account that cannot be switched to hedging holds one run per instrument.
+ * Runs are assigned to free slots automatically, best first (see slots.ts).
  *
  * Requests: one session switches between accounts; jobs are grouped per
  * account and paced by the RequestPacer shared with the candle poller.
  *
  * Safety rails (an older experiment wiped an account with a runaway loop):
- *   - only accounts matched above are ever touched; the session's account is
- *     verified after every switch and every re-login
+ *   - the session's account is verified after every switch and re-login
  *   - a run opening MAX_OPENS_PER_RUN_PER_HOUR times in an hour is excluded
  *   - at most MAX_OPENS_PER_HOUR opens per hour in total (demo limit is 1,000)
  *   - kill switch per account: equity below KILL_FRACTION of its allocation on
  *     two consecutive checks closes its deals and stops using it
- *   - positions the arena did not open are never touched; their instrument is
- *     skipped on that account
+ *   - one open deal per run; positions the arena did not open are never touched
+ *   - hedging mode is re-checked on every reconcile
  *   - opens from replayed history (after a restart) are not mirrored, and a
  *     deal whose paper position is gone is closed
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { CapitalApiError } from '../capital/client.ts';
 import type { Instrument } from '../engine/instruments.ts';
-import { getInstrument } from '../engine/instruments.ts';
+import { ALL_EPICS, getInstrument } from '../engine/instruments.ts';
 import type { RunEvent } from '../engine/run.ts';
 import type { Side } from '../sdk/types.ts';
 import type { ArenaDB, DealRow } from './db.ts';
@@ -41,33 +43,37 @@ import { accountsNeeded, assignSlots } from './slots.ts';
 
 export const BROKER_SETTINGS = {
   ENABLED: 'broker.enabled',
-  /** runId → account name */
-  ASSIGNMENTS: 'broker.assignments',
+  /** runId → accountId */
+  RUN_ACCOUNTS: 'broker.runAccounts',
   /** runIds never to mirror (set by hand or by the runaway guard) */
   EXCLUDED: 'broker.excluded',
-  /** account name → { allocation, killed } */
-  ACCOUNTS: 'broker.accounts',
+  /** accountId → StoredAccount */
+  ACCOUNTS: 'broker.accountState',
 } as const;
 
-/** Settings of the single-account mirror (before 2026-10-07), migrated on start. */
-const LEGACY_SETTINGS = {
-  RUNS: 'broker.runs',
-  START_BALANCE: 'broker.startBalance',
-  KILLED: 'broker.killed',
-} as const;
+/** Keys of earlier mirror versions (accounts by name), dropped on start. */
+const LEGACY_KEYS = ['broker.assignments', 'broker.accounts', 'broker.runs', 'broker.startBalance', 'broker.killed'];
 
-export const DEFAULT_SLOTS = 10;
 export const DEFAULT_ACCOUNT_PREFIX = 'Arena';
-/** Capital.com caps a demo balance at 100,000. */
-const MAX_ALLOCATION = 100_000;
-/** Paper runs are sized for this much capital; broker sizes scale from it. */
+/** Broker size = paper size × SCALE. At 0.2, 0.7% of backtest trades fall below a minimum size. */
+export const SCALE = 0.2;
+/** Paper runs are sized for this much capital. */
 const PAPER_CAPITAL = 10_000;
+/** Account balance each mirrored run reserves. */
+export const RUN_ALLOCATION = SCALE * PAPER_CAPITAL;
+/** Capital.com caps a demo account's balance, and its total deposits, at 100,000. */
+const MAX_BALANCE = 100_000;
+/** An account is used only once it can hold at least this many runs. */
+const MIN_RUNS_PER_ACCOUNT = 10;
+/** Capital.com limit observed 2026-10: 10 demo accounts per login. */
+export const MAX_ACCOUNTS_PER_LOGIN = 10;
 
 const DIRECTION_BUY = 'BUY';
 const DIRECTION_SELL = 'SELL';
 const MAX_OPENS_PER_RUN_PER_HOUR = 12;
 const MAX_OPENS_PER_HOUR = 600;
 const HOUR_MS = 3_600_000;
+const TOP_UP_RETRY_MS = 24 * HOUR_MS;
 const KILL_FRACTION = 0.5;
 const KILL_CONFIRMATIONS = 2;
 /** Paper opens older than this (replayed history) are not mirrored. */
@@ -91,23 +97,8 @@ const JOB_MAX_WAIT_MS = 10_000;
 const MAX_MIN_SIZE_INFLATION = 3;
 
 export interface BrokerOptions {
-  /** Accounts used by exact name, with their slot counts. The first one owns deals from before multi-account support. */
-  named: { name: string; slots: number }[];
-  /** Accounts whose name starts with this (case-insensitive) are used with DEFAULT_SLOTS. Empty = none. */
+  /** Accounts whose name starts with this (case-insensitive) are used. */
   prefix: string;
-}
-
-/** "Gerti:5,Other" → [{ name: 'Gerti', slots: 5 }, { name: 'Other', slots: DEFAULT_SLOTS }] */
-export function parseBrokerAccounts(spec: string): { name: string; slots: number }[] {
-  return spec
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(s => {
-      const i = s.lastIndexOf(':');
-      const slots = i > 0 ? Number(s.slice(i + 1)) : NaN;
-      return Number.isInteger(slots) && slots > 0 ? { name: s.slice(0, i).trim(), slots } : { name: s, slots: DEFAULT_SLOTS };
-    });
 }
 
 /** A live demo run the arena offers for mirroring. */
@@ -135,42 +126,52 @@ interface BrokerPosition {
 interface ApiAccount {
   accountId: string;
   accountName: string;
-  balance: { balance: number; profitLoss: number };
+  balance: { balance: number; deposit: number; profitLoss: number };
+}
+
+interface Preferences {
+  hedgingMode: boolean;
 }
 
 interface StoredAccount {
+  name: string;
   allocation: number | null;
   killed: boolean;
-  /** A top-up to MAX_ALLOCATION was attempted (prefix accounts only, once). */
-  toppedUp?: boolean;
+  /** Last hedging mode read from the account (kept so a restart does not reshuffle runs). */
+  hedging?: boolean;
+  /** Last top-up attempt (ms). */
+  topUpAt?: number;
 }
 
 interface Account {
+  id: string;
   name: string;
-  accountId: string;
-  /** Matched by prefix rather than by name: owned by the arena, so it may be topped up. */
-  auto: boolean;
-  slots: number;
+  balance: number;
+  deposit: number;
+  equity: number;
   allocation: number | null;
-  balance: number | null;
-  equity: number | null;
+  /** Null until read from the account's preferences. */
+  hedging: boolean | null;
+  /** Renamed away from the prefix: no new runs; the arena's deals there are being closed. */
+  retiring: boolean;
   lowReadings: number;
   foreignEpics: Set<string>;
   lastReconcileAt: number;
 }
 
 export interface BrokerAccountStatus {
+  id: string;
   name: string;
-  accountId: string;
-  balance: number | null;
-  equity: number | null;
+  balance: number;
+  equity: number;
   allocation: number | null;
   slots: number;
-  /** Broker size = paper size × scale. */
-  scale: number | null;
+  hedging: boolean | null;
   runs: string[];
   openDeals: number;
   killed: boolean;
+  retiring: boolean;
+  /** Instruments with positions the arena did not open. */
   foreignEpics: string[];
   lastReconcileAt: number;
 }
@@ -178,7 +179,11 @@ export interface BrokerAccountStatus {
 export interface BrokerStatus {
   enabled: boolean;
   prefix: string;
-  defaultSlots: number;
+  /** Broker size ÷ paper size. */
+  scale: number;
+  /** Runs a full ($100,000, hedging) account holds. */
+  slotsPerAccount: number;
+  maxAccountsPerLogin: number;
   accounts: BrokerAccountStatus[];
   coverage: { liveRuns: number; mirrored: number; excluded: number; unassigned: number; accountsNeeded: number };
   excluded: string[];
@@ -192,7 +197,7 @@ export interface BrokerStatus {
 const JOB_RECONCILE = 'reconcile';
 
 interface Job {
-  account: string;
+  accountId: string;
   enqueuedAt: number;
   run: () => Promise<void>;
   tag?: typeof JOB_RECONCILE;
@@ -221,7 +226,7 @@ export class BrokerMirror {
     private readonly opts: BrokerOptions,
   ) {}
 
-  /** The arena's live runs, best first. Must be set before start(). */
+  /** The arena's live runs. Must be set before start(). */
   setCandidateSource(source: () => MirrorCandidate[]): void {
     this.candidates = source;
   }
@@ -230,8 +235,8 @@ export class BrokerMirror {
     return this.db.getSetting<boolean>(BROKER_SETTINGS.ENABLED, false);
   }
 
-  private get assignments(): Record<string, string> {
-    return this.db.getSetting<Record<string, string>>(BROKER_SETTINGS.ASSIGNMENTS, {});
+  private get runAccounts(): Record<string, string> {
+    return this.db.getSetting<Record<string, string>>(BROKER_SETTINGS.RUN_ACCOUNTS, {});
   }
 
   private get excluded(): string[] {
@@ -242,23 +247,23 @@ export class BrokerMirror {
     return this.db.getSetting<Record<string, StoredAccount>>(BROKER_SETTINGS.ACCOUNTS, {});
   }
 
-  private storeAccount(name: string, patch: Partial<StoredAccount>): void {
+  private storeAccount(a: Account, patch: Partial<StoredAccount>): void {
     const all = this.stored;
-    all[name] = { ...(all[name] ?? { allocation: null, killed: false }), ...patch };
+    all[a.id] = { ...(all[a.id] ?? { name: a.name, allocation: null, killed: false }), name: a.name, ...patch };
     this.db.setSetting(BROKER_SETTINGS.ACCOUNTS, all);
   }
 
-  private isKilled(name: string): boolean {
-    return this.stored[name]?.killed ?? false;
+  private isKilled(id: string): boolean {
+    return this.stored[id]?.killed ?? false;
   }
 
   /** Run ids currently assigned to a broker account. */
   get mirroredRuns(): string[] {
-    return Object.keys(this.assignments);
+    return Object.keys(this.runAccounts);
   }
 
   async start(): Promise<void> {
-    this.migrateLegacy();
+    for (const key of LEGACY_KEYS) this.db.deleteSetting(key);
     await this.cycle();
     this.scheduleCycle();
   }
@@ -268,7 +273,7 @@ export class BrokerMirror {
   }
 
   status(): BrokerStatus {
-    const assignments = this.assignments;
+    const runAccounts = this.runAccounts;
     const open = this.db.openDeals();
     const liveIds = new Set(this.live.map(c => c.runId));
     const excluded = this.excluded.filter(id => liveIds.has(id));
@@ -276,27 +281,32 @@ export class BrokerMirror {
     return {
       enabled: this.enabled,
       prefix: this.opts.prefix,
-      defaultSlots: DEFAULT_SLOTS,
-      accounts: [...this.accounts.values()].map(a => ({
-        name: a.name,
-        accountId: a.accountId,
-        balance: a.balance,
-        equity: a.equity,
-        allocation: a.allocation,
-        slots: a.slots,
-        scale: this.scaleOf(a),
-        runs: Object.keys(assignments).filter(id => assignments[id] === a.name),
-        openDeals: open.filter(d => d.account === a.name).length,
-        killed: this.isKilled(a.name),
-        foreignEpics: [...a.foreignEpics],
-        lastReconcileAt: a.lastReconcileAt,
-      })),
+      scale: SCALE,
+      slotsPerAccount: MAX_BALANCE / RUN_ALLOCATION,
+      maxAccountsPerLogin: MAX_ACCOUNTS_PER_LOGIN,
+      accounts: [...this.accounts.values()]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(a => ({
+          id: a.id,
+          name: a.name,
+          balance: a.balance,
+          equity: a.equity,
+          allocation: a.allocation,
+          slots: slotsOf(a),
+          hedging: a.hedging,
+          runs: Object.keys(runAccounts).filter(id => runAccounts[id] === a.id),
+          openDeals: open.filter(d => d.account_id === a.id).length,
+          killed: this.isKilled(a.id),
+          retiring: a.retiring,
+          foreignEpics: [...a.foreignEpics],
+          lastReconcileAt: a.lastReconcileAt,
+        })),
       coverage: {
         liveRuns: this.live.length,
-        mirrored: Object.keys(assignments).length,
+        mirrored: Object.keys(runAccounts).length,
         excluded: excluded.length,
         unassigned: this.unassigned.length,
-        accountsNeeded: accountsNeeded(this.unassigned, DEFAULT_SLOTS),
+        accountsNeeded: accountsNeeded(this.unassigned, MAX_BALANCE / RUN_ALLOCATION, false),
       },
       excluded,
       queued: this.queue.length,
@@ -310,8 +320,10 @@ export class BrokerMirror {
   setEnabled(enabled: boolean): void {
     this.db.setSetting(BROKER_SETTINGS.ENABLED, enabled);
     if (enabled) {
-      for (const name of Object.keys(this.stored)) this.storeAccount(name, { killed: false });
-      for (const a of this.accounts.values()) a.lowReadings = 0;
+      for (const a of this.accounts.values()) {
+        this.storeAccount(a, { killed: false });
+        a.lowReadings = 0;
+      }
     } else {
       for (const d of this.db.openDeals()) this.enqueueClose(d, 'mirror disabled');
     }
@@ -335,16 +347,15 @@ export class BrokerMirror {
       this.closeRunDeals(e.runId, `paper ${e.trade.exitReason}`, e.trade.exitPrice);
       return;
     }
-    const name = this.assignments[e.runId];
-    const account = name ? this.accounts.get(name) : undefined;
-    if (!account) return;
-    if (e.type === 'open') {
-      if (Date.now() - e.time > STALE_EVENT_MS) return;
-      this.enqueue(account.name, () => this.openDeal(account, e));
-    } else if (e.type === 'stops') {
-      const deal = this.db.openDeals().find(d => d.run_id === e.runId && d.deal_id);
-      if (deal) this.enqueue(deal.account, () => this.putStops(deal.deal_id!, e.stopLoss, e.takeProfit));
+    if (e.type === 'stops') {
+      const deal = this.db.openDeals().find(d => d.run_id === e.runId && d.deal_id && d.account_id);
+      if (deal) this.enqueue(deal.account_id!, () => this.putStops(deal.deal_id!, e.stopLoss, e.takeProfit));
+      return;
     }
+    const id = this.runAccounts[e.runId];
+    const account = id ? this.accounts.get(id) : undefined;
+    if (!account || Date.now() - e.time > STALE_EVENT_MS) return;
+    this.enqueue(account.id, () => this.openDeal(account, e));
   }
 
   // ------------------------------------------------------------------ cycle
@@ -364,6 +375,7 @@ export class BrokerMirror {
     this.cycling = true;
     try {
       await this.refreshAccounts();
+      if (!this.ready) this.db.fillDealAccountIds(new Map([...this.accounts.values()].map(a => [a.name, a.id])));
       this.checkKillSwitches();
       this.rebalance();
       this.syncWithPaper();
@@ -381,74 +393,98 @@ export class BrokerMirror {
     const open = this.db.openDeals();
     const now = Date.now();
     for (const a of this.accounts.values()) {
-      const mine = open.filter(d => d.account === a.name);
+      const mine = open.filter(d => d.account_id === a.id);
       const every = mine.some(d => !d.deal_id) ? RECONCILE_UNCONFIRMED_MS : mine.length > 0 ? RECONCILE_OPEN_MS : RECONCILE_IDLE_MS;
       if (now - a.lastReconcileAt < every - RECONCILE_SLACK_MS) continue;
-      if (this.queue.some(j => j.tag === JOB_RECONCILE && j.account === a.name)) continue;
-      this.enqueue(a.name, () => this.reconcile(a), JOB_RECONCILE);
+      if (this.queue.some(j => j.tag === JOB_RECONCILE && j.accountId === a.id)) continue;
+      this.enqueue(a.id, () => this.reconcile(a), JOB_RECONCILE);
     }
   }
 
-  /** Discover accounts and read every balance with one GET /accounts. */
+  /** Discover accounts, read every balance with one GET /accounts, fund and enroll new ones. */
   private async refreshAccounts(): Promise<void> {
     const { accounts } = await this.client.get<{ accounts: ApiAccount[] }>('/api/v1/accounts');
-    const seen = new Set<string>();
+    const listed = new Set(accounts.map(a => a.accountId));
+    const prefix = this.opts.prefix.toLowerCase();
+    const now = Date.now();
     for (const api of accounts) {
-      const match = this.match(api.accountName);
-      if (match === null) continue;
-      seen.add(api.accountName);
-      let a = this.accounts.get(api.accountName);
+      const matches = api.accountName.toLowerCase().startsWith(prefix);
+      let a = this.accounts.get(api.accountId);
+      if (!matches) {
+        if (a && !a.retiring) this.retire(a, `renamed to "${api.accountName}"`);
+        if (!a) continue;
+      }
       if (!a) {
         a = {
-          name: api.accountName, accountId: api.accountId, auto: match.auto, slots: match.slots,
-          allocation: this.stored[api.accountName]?.allocation ?? null,
-          balance: null, equity: null, lowReadings: 0, foreignEpics: new Set(), lastReconcileAt: 0,
+          id: api.accountId, name: api.accountName, balance: 0, deposit: 0, equity: 0,
+          allocation: this.stored[api.accountId]?.allocation ?? null, hedging: this.stored[api.accountId]?.hedging ?? null, retiring: false,
+          lowReadings: 0, foreignEpics: new Set(), lastReconcileAt: 0,
         };
-        this.accounts.set(a.name, a);
+        this.accounts.set(a.id, a);
+      } else if (matches && a.retiring) {
+        a.retiring = false;
+        this.db.event('info', 'broker', `account ${api.accountName} matches "${this.opts.prefix}" again; using it`);
       }
-      a.accountId = api.accountId;
+      if (a.name !== api.accountName) {
+        this.db.event('info', 'broker', `account ${a.name} is now called ${api.accountName}`);
+        a.name = api.accountName;
+      }
       a.balance = api.balance.balance;
+      a.deposit = api.balance.deposit;
       a.equity = api.balance.balance + api.balance.profitLoss;
-      if (a.allocation === null && a.auto && a.balance < MAX_ALLOCATION && !this.stored[a.name]?.toppedUp) {
-        this.storeAccount(a.name, { toppedUp: true });
-        const account = a;
-        this.enqueue(a.name, () => this.topUp(account));
-        continue; // enroll on the next cycle with the new balance
+      if (a.retiring) {
+        const mine = this.db.openDeals().filter(d => d.account_id === a.id);
+        if (mine.length === 0) {
+          this.accounts.delete(a.id);
+          this.db.event('info', 'broker', `stopped using ${a.name}: no arena deals left there`);
+        } else if (!this.queue.some(j => j.accountId === a.id)) {
+          for (const d of mine) this.enqueueClose(d, 'account no longer used');
+        }
+        continue;
       }
-      // Capital.com occasionally reports 0 on a first read; only a positive balance enrolls an account.
-      if (a.allocation === null && a.balance > 0) {
-        a.allocation = Math.min(a.balance, MAX_ALLOCATION);
-        this.storeAccount(a.name, { allocation: a.allocation });
-        this.db.event('info', 'broker', `account ${a.name} enrolled: allocation ${a.allocation}, ${a.slots} slots, scale ${this.scaleOf(a)}`);
-      }
+      if (a.allocation === null && !a.retiring) this.enroll(a, now);
     }
-    for (const name of [...this.accounts.keys()]) {
-      if (seen.has(name)) continue;
-      this.accounts.delete(name);
-      if (this.sessionAccount === name) this.sessionAccount = null;
-      for (const d of this.db.openDeals().filter(d => d.account === name)) {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: 'account no longer listed by Capital.com' });
+    for (const a of [...this.accounts.values()]) {
+      if (listed.has(a.id)) continue;
+      this.accounts.delete(a.id);
+      if (this.sessionAccount === a.id) this.sessionAccount = null;
+      for (const d of this.db.openDeals().filter(d => d.account_id === a.id)) {
+        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: 'account deleted at Capital.com' });
       }
-      this.db.event('warn', 'broker', `account ${name} is no longer listed by Capital.com; its runs will be reassigned`);
+      this.db.event('warn', 'broker', `account ${a.name} no longer exists; its runs will be reassigned`);
     }
   }
 
-  private match(accountName: string): { slots: number; auto: boolean } | null {
-    const named = this.opts.named.find(n => n.name === accountName);
-    if (named) return { slots: named.slots, auto: false };
-    const prefix = this.opts.prefix.toLowerCase();
-    return prefix && accountName.toLowerCase().startsWith(prefix) ? { slots: DEFAULT_SLOTS, auto: true } : null;
+  /** Top up once (retried daily) to the demo maximum, then reserve the balance for runs. */
+  private enroll(a: Account, now: number): void {
+    const st = this.stored[a.id];
+    // Both the balance and the total deposits are capped; whichever is higher limits the top-up.
+    const funded = Math.max(a.balance, a.deposit);
+    if (funded < MAX_BALANCE - 1 && (!st?.topUpAt || now - st.topUpAt > TOP_UP_RETRY_MS)) {
+      this.storeAccount(a, { topUpAt: now });
+      this.enqueue(a.id, () => this.topUp(a, Math.floor(MAX_BALANCE - funded)));
+      return; // enroll on the next cycle with the new balance
+    }
+    // Capital.com occasionally reports 0 on a first read; only a real balance enrolls an account.
+    if (a.balance < MIN_RUNS_PER_ACCOUNT * RUN_ALLOCATION) return;
+    a.allocation = Math.min(a.balance, MAX_BALANCE);
+    this.storeAccount(a, { allocation: a.allocation });
+    this.db.event('info', 'broker', `account ${a.name} enrolled: allocation ${a.allocation}, room for ${slotsOf({ ...a, hedging: true })} runs`);
   }
 
-  /** Demo top-up of a fresh prefix account to the 100k maximum, so mirrored orders can be paper-sized. */
-  private async topUp(a: Account): Promise<void> {
-    const amount = Math.floor(MAX_ALLOCATION - (a.balance ?? 0));
+  private retire(a: Account, why: string): void {
+    a.retiring = true;
+    this.db.event('warn', 'broker', `account ${a.name} ${why}: no longer used; closing the arena's deals there`);
+    for (const d of this.db.openDeals().filter(d => d.account_id === a.id)) this.enqueueClose(d, `account ${why}`);
+  }
+
+  private async topUp(a: Account, amount: number): Promise<void> {
     if (amount <= 0) return;
     try {
       await this.client.post('/api/v1/accounts/topUp', { amount });
-      this.db.event('info', 'broker', `topped up ${a.name} by ${amount} to the ${MAX_ALLOCATION} demo maximum`);
+      this.db.event('info', 'broker', `topped up ${a.name} by ${amount} to the ${MAX_BALANCE} demo maximum`);
     } catch (err) {
-      this.db.event('warn', 'broker', `could not top up ${a.name} (${errorText(err)}); it will be used with its current balance`);
+      this.db.event('warn', 'broker', `could not top up ${a.name} (${errorText(err)}); will retry in a day, or use the current balance if it is enough`);
     }
   }
 
@@ -456,38 +492,38 @@ export class BrokerMirror {
   private checkKillSwitches(): void {
     if (!this.enabled) return;
     for (const a of this.accounts.values()) {
-      if (a.allocation === null || a.equity === null || this.isKilled(a.name)) continue;
+      if (a.allocation === null || this.isKilled(a.id)) continue;
       const floor = a.allocation * KILL_FRACTION;
       a.lowReadings = a.equity < floor ? a.lowReadings + 1 : 0;
       if (a.lowReadings < KILL_CONFIRMATIONS) continue;
-      this.storeAccount(a.name, { killed: true });
+      this.storeAccount(a, { killed: true });
       this.db.event('error', 'broker', `KILL SWITCH: ${a.name} equity ${a.equity} < ${floor} (${KILL_FRACTION * 100}% of its ${a.allocation} allocation); closing its deals`);
-      for (const d of this.db.openDeals().filter(d => d.account === a.name)) this.enqueueClose(d, 'kill switch');
+      for (const d of this.db.openDeals().filter(d => d.account_id === a.id)) this.enqueueClose(d, 'kill switch');
     }
   }
 
   /** Assign live runs to free slots; runs that lose their slot have their deals closed. */
   private rebalance(): void {
     const live = [...this.candidates()].sort((a, b) => b.score - a.score);
-    const before = this.assignments;
+    const before = this.runAccounts;
     if (live.length === 0 && Object.keys(before).length > 0) return; // arena not ready; keep what we have
     this.live = live;
-    const usable = [...this.accounts.values()]
-      .filter(a => a.allocation !== null && !this.isKilled(a.name))
-      .map(a => ({ name: a.name, slots: a.slots, blockedEpics: a.foreignEpics }));
+    const active = [...this.accounts.values()].filter(a => a.allocation !== null && !a.retiring && !this.isKilled(a.id));
+    if (active.some(a => a.hedging === null)) return; // its mode is read on the next reconcile; until then keep what we have
+    const usable = active
+      .map(a => ({ name: a.id, slots: slotsOf(a), onePerEpic: !a.hedging, blockedEpics: a.foreignEpics }));
     const plan = assignSlots(before, usable, live, new Set(this.excluded));
-    this.db.setSetting(BROKER_SETTINGS.ASSIGNMENTS, plan.assignments);
+    this.db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, plan.assignments);
     this.unassigned = plan.unassigned;
     const dropped = Object.keys(before).filter(id => plan.assignments[id] === undefined);
     const added = Object.keys(plan.assignments).filter(id => before[id] === undefined);
     for (const id of dropped) this.closeRunDeals(id, 'run no longer mirrored');
     if (dropped.length > 0 || added.length > 0) {
-      const need = accountsNeeded(plan.unassigned, DEFAULT_SLOTS);
       this.db.event(
         'info',
         'broker',
         `mirroring ${Object.keys(plan.assignments).length} of ${live.length} live runs on ${usable.length} accounts (+${added.length} −${dropped.length})` +
-          (need > 0 ? `; ${plan.unassigned.length} unassigned, ${need} more account(s) needed` : ''),
+          (plan.unassigned.length > 0 ? `; ${plan.unassigned.length} without a slot` : ''),
       );
     }
   }
@@ -497,7 +533,7 @@ export class BrokerMirror {
     if (this.live.length === 0) return;
     const side = new Map(this.live.map(c => [c.runId, c.side]));
     for (const d of this.db.openDeals()) {
-      if (!d.deal_id || !this.accounts.has(d.account)) continue;
+      if (!d.deal_id || !d.account_id || !this.accounts.has(d.account_id)) continue;
       const paper = side.get(d.run_id);
       if (paper === d.side) continue;
       this.enqueueClose(d, paper === undefined ? 'run is no longer live' : 'paper position is flat');
@@ -511,31 +547,37 @@ export class BrokerMirror {
   }
 
   private enqueueClose(d: DealRow, note: string, paperPrice?: number): void {
-    this.enqueue(d.account, () => this.closeDeal(d, note, paperPrice));
+    if (d.account_id) this.enqueue(d.account_id, () => this.closeDeal(d, note, paperPrice));
   }
 
   private async openDeal(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
     const inst = getInstrument(epicOfRun(e.runId));
-    if (this.isKilled(account.name) || this.assignments[e.runId] !== account.name) return;
-    if (account.foreignEpics.has(inst.epic)) {
-      this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} holds a position on ${inst.epic} that the arena did not open`);
+    if (account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
+    const open = this.db.openDeals();
+    if (open.some(d => d.run_id === e.runId)) {
+      this.db.event('warn', 'broker', `skip ${e.runId}: its previous deal is still open`);
       return;
     }
-    if (this.db.openDeals().some(d => d.account === account.name && d.epic === inst.epic)) {
-      this.db.event('warn', 'broker', `skip ${e.runId}: a mirrored deal on ${inst.epic} is still open on ${account.name}`);
-      return;
+    if (!account.hedging) {
+      if (account.foreignEpics.has(inst.epic)) {
+        this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} (netting) holds a position on ${inst.epic} that the arena did not open`);
+        return;
+      }
+      if (open.some(d => d.account_id === account.id && d.epic === inst.epic)) {
+        this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} (netting) already has a deal on ${inst.epic}`);
+        return;
+      }
     }
-    const scale = this.scaleOf(account);
-    if (scale === null || !this.allowOpen(e.runId)) return;
-    const size = scaledSize(inst, e.size, scale);
+    if (!this.allowOpen(e.runId)) return;
+    const size = scaledSize(inst, e.size, SCALE);
     if (size === null) {
-      this.db.event('info', 'broker', `skip ${e.runId}: scaled size of ${e.size} is below the ${inst.epic} minimum`);
+      this.db.event('info', 'broker', `skip ${e.runId}: ${SCALE} × ${e.size} is below the ${inst.epic} minimum`);
       return;
     }
     const rowId = this.db.insertDeal({
-      account: account.name, run_id: e.runId, epic: inst.epic, side: e.side, size, paper_size: e.size, deal_id: null,
-      status: DEAL_STATUS.OPEN, open_time: Date.now(), open_price: null, paper_open_price: e.price, close_time: null,
-      close_price: null, paper_close_price: null, pnl: null, note: null,
+      account: account.name, account_id: account.id, run_id: e.runId, epic: inst.epic, side: e.side, size, paper_size: e.size,
+      deal_id: null, status: DEAL_STATUS.OPEN, open_time: Date.now(), open_price: null, paper_open_price: e.price,
+      close_time: null, close_price: null, paper_close_price: null, pnl: null, note: null,
     });
     try {
       const ref = await this.client.post<{ dealReference: string }>('/api/v1/positions', {
@@ -606,12 +648,44 @@ export class BrokerMirror {
 
   // ------------------------------------------------------------------ reconcile & safety
 
+  /** Hedging mode lets one account hold many runs on the same instrument; switch it on and keep it on. */
+  private async ensureHedging(a: Account): Promise<void> {
+    let prefs = await this.client.get<Preferences>('/api/v1/accounts/preferences');
+    if (!prefs.hedgingMode && !a.retiring) {
+      try {
+        await this.client.put('/api/v1/accounts/preferences', { hedgingMode: true });
+        prefs = await this.client.get<Preferences>('/api/v1/accounts/preferences');
+      } catch (err) {
+        this.db.event('warn', 'broker', `could not switch ${a.name} to hedging mode (${errorText(err)})`);
+      }
+      this.db.event(
+        prefs.hedgingMode ? 'info' : 'warn',
+        'broker',
+        prefs.hedgingMode ? `${a.name} switched to hedging mode` : `${a.name} stays in netting mode: one run per instrument`,
+      );
+    }
+    if (a.hedging === true && !prefs.hedgingMode) this.db.event('error', 'broker', `${a.name} left hedging mode; runs there are limited to one per instrument`);
+    a.hedging = prefs.hedgingMode;
+    if (this.stored[a.id]?.hedging !== a.hedging) this.storeAccount(a, { hedging: a.hedging });
+  }
+
   /** Runs as a job on the account's session: match tracked deals with the account's positions. */
-  private async reconcile(account: Account): Promise<void> {
+  private async reconcile(a: Account): Promise<void> {
+    await this.ensureHedging(a);
     const { positions } = await this.client.get<{ positions: BrokerPosition[] }>('/api/v1/positions');
     const open = new Map(positions.map(p => [p.position.dealId, p]));
-    const tracked = this.db.openDeals().filter(d => d.account === account.name);
+    const tracked = this.db.openDeals().filter(d => d.account_id === a.id);
     const trackedIds = new Set(tracked.map(d => d.deal_id).filter(Boolean));
+    // A deal the arena lost track of (e.g. its account was renamed) is still recognisable by its deal id.
+    for (const p of positions) {
+      if (trackedIds.has(p.position.dealId)) continue;
+      const row = this.db.dealByDealId(p.position.dealId);
+      if (!row || row.status === DEAL_STATUS.OPEN) continue;
+      this.db.updateDeal(row.id, { status: DEAL_STATUS.OPEN, account: a.name, account_id: a.id, close_time: null, note: `re-attached on ${a.name}` });
+      trackedIds.add(p.position.dealId);
+      tracked.push({ ...row, status: DEAL_STATUS.OPEN, account: a.name, account_id: a.id });
+      this.db.event('warn', 'broker', `re-attached deal ${p.position.dealId} (${row.epic}, ${row.run_id}) found on ${a.name}`);
+    }
     for (const d of tracked.filter(d => !d.deal_id)) {
       const direction = d.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
       const match = positions.find(p => !trackedIds.has(p.position.dealId) && p.market.epic === d.epic && p.position.direction === direction && Math.abs(p.position.size - d.size) < 1e-9);
@@ -619,7 +693,7 @@ export class BrokerMirror {
         this.db.updateDeal(d.id, { deal_id: match.position.dealId, open_price: match.position.level });
         trackedIds.add(match.position.dealId);
         d.deal_id = match.position.dealId;
-        this.db.event('warn', 'broker', `adopted unconfirmed deal ${match.position.dealId} on ${account.name} for ${d.run_id}`);
+        this.db.event('warn', 'broker', `adopted unconfirmed deal ${match.position.dealId} on ${a.name} for ${d.run_id}`);
       } else if (Date.now() - d.open_time > ADOPT_WINDOW_MS) {
         this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, note: `${d.note ?? ''}; no matching position at the broker` });
       }
@@ -627,11 +701,11 @@ export class BrokerMirror {
     for (const d of tracked) {
       if (d.deal_id && !open.has(d.deal_id) && Date.now() - d.open_time > 30_000) {
         this.db.updateDeal(d.id, { status: DEAL_STATUS.CLOSED, close_time: Date.now(), note: 'closed at broker (stop/TP or manual)' });
-        this.db.event('warn', 'broker', `deal ${d.deal_id} (${d.epic}, ${d.run_id}) on ${account.name} was closed at the broker`);
+        this.db.event('warn', 'broker', `deal ${d.deal_id} (${d.epic}, ${d.run_id}) on ${a.name} was closed at the broker`);
       }
     }
-    account.foreignEpics = new Set(positions.filter(p => !trackedIds.has(p.position.dealId)).map(p => p.market.epic));
-    account.lastReconcileAt = Date.now();
+    a.foreignEpics = new Set(positions.filter(p => !trackedIds.has(p.position.dealId)).map(p => p.market.epic));
+    a.lastReconcileAt = Date.now();
   }
 
   private allowOpen(runId: string): boolean {
@@ -652,41 +726,17 @@ export class BrokerMirror {
     return true;
   }
 
-  private scaleOf(a: Account): number | null {
-    return a.allocation === null ? null : Math.min(1, a.allocation / (a.slots * PAPER_CAPITAL));
-  }
-
-  private migrateLegacy(): void {
-    const owner = this.opts.named[0]?.name;
-    if (!owner) return;
-    this.db.claimUnownedDeals(owner);
-    const runs = this.db.getSetting<string[] | null>(LEGACY_SETTINGS.RUNS, null);
-    if (runs === null) return;
-    if (Object.keys(this.assignments).length === 0) {
-      this.db.setSetting(BROKER_SETTINGS.ASSIGNMENTS, Object.fromEntries(runs.map(id => [id, owner])));
-    }
-    const startBalance = this.db.getSetting<number | null>(LEGACY_SETTINGS.START_BALANCE, null);
-    if (!this.stored[owner]) {
-      this.storeAccount(owner, {
-        allocation: startBalance && startBalance > 0 ? Math.min(startBalance, MAX_ALLOCATION) : null,
-        killed: this.db.getSetting<boolean>(LEGACY_SETTINGS.KILLED, false),
-      });
-    }
-    for (const key of Object.values(LEGACY_SETTINGS)) this.db.deleteSetting(key);
-    this.db.event('info', 'broker', `migrated the single-account mirror: ${runs.length} runs now assigned to ${owner}`);
-  }
-
   // ------------------------------------------------------------------ queue
 
-  private enqueue(account: string, run: () => Promise<void>, tag?: Job['tag']): void {
-    this.queue.push({ account, enqueuedAt: Date.now(), run, tag });
+  private enqueue(accountId: string, run: () => Promise<void>, tag?: Job['tag']): void {
+    this.queue.push({ accountId, enqueuedAt: Date.now(), run, tag });
     if (!this.draining) void this.drain();
   }
 
   /** Jobs for the session's current account first (fewer switches), unless the oldest job has waited too long. */
   private nextJob(): Job {
     if (Date.now() - this.queue[0]!.enqueuedAt < JOB_MAX_WAIT_MS) {
-      const i = this.queue.findIndex(j => j.account === this.sessionAccount);
+      const i = this.queue.findIndex(j => j.accountId === this.sessionAccount);
       if (i > 0) return this.queue.splice(i, 1)[0]!;
     }
     return this.queue.shift()!;
@@ -697,23 +747,22 @@ export class BrokerMirror {
     while (this.queue.length > 0) {
       const job = this.nextJob();
       try {
-        await this.ensureAccount(job.account);
+        await this.ensureAccount(job.accountId);
         await job.run();
       } catch (err) {
-        this.fail(`job on ${job.account}`, err);
+        this.fail(`job on ${this.accounts.get(job.accountId)?.name ?? job.accountId}`, err);
       }
     }
     this.draining = false;
   }
 
-  /** Put the session on `name`, verified; again after any re-login. */
-  private async ensureAccount(name: string): Promise<void> {
-    const account = this.accounts.get(name);
-    if (!account) throw new Error(`account ${name} is not available`);
-    if (this.sessionAccount === name && this.verifiedLogins === this.client.logins) return;
+  /** Put the session on the account, verified; again after any re-login. */
+  private async ensureAccount(id: string): Promise<void> {
+    if (!this.accounts.has(id)) throw new Error(`account ${id} is not available`);
+    if (this.sessionAccount === id && this.verifiedLogins === this.client.logins) return;
     this.sessionAccount = null;
-    await this.client.selectAccount(account.accountId);
-    this.sessionAccount = name;
+    await this.client.selectAccount(id);
+    this.sessionAccount = id;
     this.verifiedLogins = this.client.logins;
   }
 
@@ -734,6 +783,14 @@ export class BrokerMirror {
     this.lastError = `${what}: ${errorText(err)}`;
     this.db.event('error', 'broker', this.lastError);
   }
+}
+
+/** Runs an account can hold: its allocation in RUN_ALLOCATION units; in netting mode also one per instrument. */
+function slotsOf(a: Pick<Account, 'allocation' | 'hedging'>): number {
+  if (a.allocation === null) return 0;
+  // 1% tolerance: a $99,999.76 account still holds 50 runs.
+  const bySize = Math.floor(a.allocation / RUN_ALLOCATION + 0.01);
+  return a.hedging === false ? Math.min(bySize, ALL_EPICS.length) : bySize;
 }
 
 function scaledSize(inst: Instrument, paperSize: number, scale: number): number | null {

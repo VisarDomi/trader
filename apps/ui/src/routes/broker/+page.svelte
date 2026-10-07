@@ -6,6 +6,7 @@
 	let { data, form } = $props();
 	const status = $derived(data.broker.status);
 	const accountOf = $derived(new Map((status?.accounts ?? []).flatMap(a => a.runs.map(id => [id, a.name] as const))));
+	const capacity = $derived((status?.accounts ?? []).reduce((n, a) => n + (a.killed || a.retiring ? 0 : a.slots), 0));
 	const excluded = $derived(new Set(status?.excluded ?? []));
 	const runs = $derived(
 		[...data.demo]
@@ -27,12 +28,13 @@
 	<header class="stack" style="gap: 6px">
 		<h1>Broker mirror</h1>
 		<p class="lede">
-			Demo runs are copied onto Capital.com <strong>demo</strong> accounts as real demo orders, to measure how real fills
-			differ from the paper fills the leaderboard uses. An account nets positions per instrument, so it holds at most one
-			run per instrument. To add capacity, create a USD demo account whose name starts with
-			<strong>"{status?.prefix || '—'}"</strong>: within a minute it is topped up to $100,000 and given up to
-			{status?.defaultSlots ?? 10} runs at exactly the paper size. Safety: a run opening 12+ times in an hour is excluded,
-			at most {status?.maxOpensPerHour ?? 600} opens per hour in total, and an account whose equity falls below 50% of its
+			Demo runs are copied onto Capital.com <strong>demo</strong> accounts as real demo orders at
+			{status?.scale ?? 0.2}× the paper size, to measure how real fills differ from the paper fills the leaderboard uses.
+			Every account whose name starts with <strong>"{status?.prefix || '—'}"</strong> is used: it is topped up to $100,000,
+			switched to hedging mode (many runs per instrument, each its own deal) and holds up to
+			{status?.slotsPerAccount ?? 50} runs. Capital.com allows {status?.maxAccountsPerLogin ?? 10} demo accounts per login;
+			accounts with other names are never touched. Safety: a run opening 12+ times in an hour is excluded, at most
+			{status?.maxOpensPerHour ?? 600} opens per hour in total, and an account whose equity falls below 50% of its
 			allocation is switched off.
 		</p>
 	</header>
@@ -43,8 +45,8 @@
 	{#if status}
 		<div class="row">
 			<StatTile label="Mirrored runs" value="{status.coverage.mirrored} / {status.coverage.liveRuns}" />
-			<StatTile label="Accounts" value={String(status.accounts.length)} />
-			<StatTile label="More accounts needed" value={String(status.coverage.accountsNeeded)} />
+			<StatTile label="Capacity" value="{capacity} runs on {status.accounts.length} accounts" />
+			{#if status.coverage.accountsNeeded > 0}<StatTile label="More accounts needed" value={String(status.coverage.accountsNeeded)} />{/if}
 			<StatTile label="Opens last hour" value="{status.opensLastHour} / {status.maxOpensPerHour}" />
 			<div class="card state">
 				{#if status.enabled}
@@ -63,27 +65,28 @@
 
 		<section class="card">
 			<h2>Accounts</h2>
-			<p class="secondary small">Scale = broker size ÷ paper size (allocation ÷ slots ÷ $10,000 paper capital, at most 1).</p>
+			<p class="secondary small">Each mirrored run reserves {usd((status.scale ?? 0.2) * 10_000, 0)} of an account's allocation.</p>
 			<div class="table-wrap">
 				<table class="data">
 					<thead>
-						<tr><th>Account</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Allocation</th><th class="num">Scale</th><th class="num">Runs</th><th class="num">Open deals</th><th>State</th><th>Reconciled</th></tr>
+						<tr><th>Account</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Allocation</th><th>Mode</th><th class="num">Runs</th><th class="num">Open deals</th><th>State</th><th>Reconciled</th></tr>
 					</thead>
 					<tbody>
-						{#each status.accounts as a (a.name)}
+						{#each status.accounts as a (a.id)}
 							<tr>
 								<td>{a.name}</td>
 								<td class="num">{usd(a.balance)}</td>
-								<td class="num {sign(a.equity !== null && a.allocation !== null ? a.equity - a.allocation : null)}">{usd(a.equity)}</td>
+								<td class="num {sign(a.allocation !== null ? a.equity - a.allocation : null)}">{usd(a.equity)}</td>
 								<td class="num">{usd(a.allocation, 0)}</td>
-								<td class="num">{num(a.scale, 3)}</td>
+								<td>{a.hedging === null ? '—' : a.hedging ? 'hedging' : 'netting (1 run per instrument)'}</td>
 								<td class="num">{a.runs.length} / {a.slots}</td>
 								<td class="num">{a.openDeals}</td>
 								<td>
 									{#if a.killed}<span class="status-dot status-critical"></span>kill switch — turn the mirror on again to reset
+									{:else if a.retiring}<span class="status-dot status-warning"></span>renamed away; closing the arena's deals
 									{:else if a.allocation === null}<span class="status-dot status-warning"></span>enrolling
 									{:else}<span class="status-dot status-good"></span>ok{/if}
-									{#if a.foreignEpics.length}<div class="muted small">skipping {a.foreignEpics.join(', ')} (positions the arena did not open)</div>{/if}
+									{#if a.foreignEpics.length}<div class="muted small">also holds positions the arena did not open: {a.foreignEpics.join(', ')}</div>{/if}
 								</td>
 								<td class="muted">{ago(a.lastReconcileAt)}</td>
 							</tr>
@@ -99,8 +102,8 @@
 	<section class="card">
 		<h2>Runs</h2>
 		<p class="secondary small">
-			Every live run is mirrored while slots last, best demo return first; a run keeps its account once assigned. Excluding a
-			run closes its deals and frees its slot.
+			Every live run is mirrored while capacity lasts, best demo equity first; a run keeps its account once assigned.
+			Excluding a run closes its deal and frees its slot.
 		</p>
 		<input type="search" placeholder="Filter" bind:value={filter} style="max-width: 260px; margin-bottom: 8px" />
 		<div class="table-wrap" style="max-height: 480px">
