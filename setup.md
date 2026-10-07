@@ -70,7 +70,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
 | Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |
-| Babysitter visits | T3 Code scheduled task "Trader babysitter", Mondays and Thursdays 09:30 (fresh thread each run) |
+| Babysitter visits | T3 Code scheduled task "Trader babysitter", Mondays and Thursdays 09:30, posting into the "Build Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md` |
 | Heavy job by hand | `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH <command>` |
 
 ## Secrets
