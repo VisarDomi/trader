@@ -13,8 +13,9 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
   (buy-hold, tsmom, overnight-drift) and most on 1:200 (bollinger-fade, mtf-pullback, london-breakout,
   stoch-range); one monkey each on 1:50, 1:100 and 1:200; 49–55 runs per account, 466 in all.
 - Added: leverage-ladder (control) — hold and 20-day trend on US100, GOLD, EURUSD, BTCUSD at every tier
-  with 10% of equity as margin (0.1× at 1:1 … 20× at 1:200). 120-day check: US100 hold was wiped out at
-  1:100 and 1:200 and gained a little at 1:50 and below; BTC hold returns scaled with leverage up to its 1:20 cap.
+  with 10% of equity as margin (0.1× at 1:1 … 20× at 1:200). Backtest 2024-01 → 2026-09: US100 hold
+  +4.6% at 1:1, +93% at 1:20, +232% at 1:50 (93% drawdown), −80% at 1:100, wiped out at 1:200; BTC hold
+  +11.5% at 1:1 (no fee) but −2.4% at 1:2 and −88% at 1:20 (the fee grows with the position).
 - Added: the eight largest Nasdaq-100 shares to buy-hold, all on 1:1, as a fee-free stand-in for US100.
 - All demo runs restarted (run ids now include the leverage; they were 1.5 days old).
 - Next: watch the ladder and 1:1 vs other tiers; strategies on shares at 1:1 are a candidate for Monday.

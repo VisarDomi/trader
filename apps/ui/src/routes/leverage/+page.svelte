@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LeaderboardRow } from '@trader/shared';
+	import type { LeaderboardRow, RunMetrics } from '@trader/shared';
 	import { isControl, median, pct, pctPlain, sign, usd } from '$lib/format';
 
 	let { data } = $props();
@@ -13,6 +13,12 @@
 	const WIPED_OUT = 0.1;
 
 	const live = $derived(data.demo.filter(r => r.leverage !== null && r.status !== 'retired'));
+	const DAY_MS = 86_400_000;
+	/** Until the demo has two weeks behind it, its numbers are mostly zeros: show the backtest first. */
+	const demoDays = $derived(live.length ? (Date.now() - Math.min(...live.map(r => r.startedAt))) / DAY_MS : 0);
+	let source = $state<'demo' | 'backtest' | null>(null);
+	const shown = $derived(source ?? (demoDays < 14 ? 'backtest' : 'demo'));
+	const metricsOf = (r: LeaderboardRow | undefined): RunMetrics | null | undefined => (shown === 'demo' ? r?.metrics : r?.backtest?.metrics);
 
 	const tiers = $derived(
 		TIERS.map(leverage => {
@@ -28,6 +34,7 @@
 				traded: traded.length,
 				medianReturn: median(traded.map(r => r.metrics!.totalReturn)),
 				profitable: traded.filter(r => r.metrics!.totalReturn > 0).length,
+				btMedianReturn: median(strategies.flatMap(r => (r.backtest?.metrics ? [r.backtest.metrics.totalReturn] : []))),
 				wipedOut: rows.filter(r => r.equity < WIPED_OUT * (r.metrics?.initialCapital ?? 10_000)).length,
 			};
 		}),
@@ -39,13 +46,15 @@
 
 	const basket = $derived.by(() => {
 		const hold = live.filter(r => r.agentId === BUY_HOLD && r.leverage === 1);
-		const shares = hold.filter(r => BASKET.includes(r.epic) && r.metrics);
-		const index = (epic: string) => hold.find(r => r.epic === epic);
+		const shares = hold.filter(r => BASKET.includes(r.epic));
+		const avg = (ms: RunMetrics[], f: (m: RunMetrics) => number) => (ms.length ? ms.reduce((s, m) => s + f(m), 0) / ms.length : null);
+		const demo = shares.flatMap(r => (r.metrics ? [r.metrics] : []));
+		const bt = shares.flatMap(r => (r.backtest?.metrics ? [r.backtest.metrics] : []));
 		return {
-			shares: shares.length,
-			ret: shares.length ? shares.reduce((s, r) => s + r.metrics!.totalReturn, 0) / shares.length : null,
-			funding: shares.length ? shares.reduce((s, r) => s + r.metrics!.funding, 0) : null,
-			indices: ['US100', 'US500'].map(epic => ({ epic, row: index(epic) })),
+			live: shares.length,
+			demo: { ret: avg(demo, m => m.totalReturn), funding: avg(demo, m => m.funding) },
+			bt: { n: bt.length, ret: avg(bt, m => m.totalReturn), funding: avg(bt, m => m.funding) },
+			indices: ['US100', 'US500'].map(epic => ({ epic, row: hold.find(r => r.epic === epic) })),
 		};
 	});
 </script>
@@ -59,7 +68,7 @@
 			below half its margin. At 1:1, crypto and shares pay no overnight fee (indices, commodities and FX still do). Crypto and
 			shares go no higher than 1:20 (marked * on the leaderboard).
 		</p>
-		<p class="secondary small">
+		<p class="secondary small narrow">
 			Most agents risk about 1% of equity against a stop, so they use only the leverage the stop needs, rarely more than 1:10.
 			For them a 1:200 account behaves like a 1:20 one. Each account holds the agents whose sizing suits it, ordered by how much
 			leverage they used in backtests. The ladder below uses the leverage on purpose.
@@ -81,6 +90,7 @@
 						<th class="num">Strategies</th>
 						<th class="num" title="Median demo return of strategy runs that have traded (controls excluded)">Median return</th>
 						<th class="num">Profitable</th>
+						<th class="num" title="Median backtest return (2024-01 → 2026-09) of the same strategy runs">Backtest median</th>
 						<th class="num" title="Runs below 10% of their starting capital">Wiped out</th>
 					</tr>
 				</thead>
@@ -94,6 +104,7 @@
 							<td class="num">{t.agents}</td>
 							<td class="num {sign(t.medianReturn)}">{pct(t.medianReturn)}</td>
 							<td class="num">{t.traded ? `${t.profitable} / ${t.traded}` : '—'}</td>
+							<td class="num {sign(t.btMedianReturn)}">{pct(t.btMedianReturn)}</td>
 							<td class="num">{t.wipedOut || ''}</td>
 						</tr>
 					{/each}
@@ -107,8 +118,14 @@
 		<p class="secondary small">
 			The same signal on every leverage, each position putting up {LADDER.marginPct}% of equity as margin: 0.1× equity at 1:1,
 			1× at 1:10, 20× at 1:200. <strong>Hold</strong> stays long and buys again after a margin call; <strong>trend</strong> is
-			long while the 20-day return is positive and short while it is negative, with no stop. Demo return, max drawdown below.
+			long while the 20-day return is positive and short while it is negative, with no stop. Return, max drawdown below.
 		</p>
+		<div class="row" style="gap: 8px">
+			<div class="pill-group" aria-label="Source">
+				<button class:active={shown === 'backtest'} onclick={() => (source = 'backtest')}>Backtest 2024-01 → 2026-09</button>
+				<button class:active={shown === 'demo'} onclick={() => (source = 'demo')}>Demo ({demoDays.toFixed(1)} days)</button>
+			</div>
+		</div>
 		{#each ['hold', 'trend'] as variant}
 			<h3>{variant}</h3>
 			<div class="table-wrap">
@@ -125,9 +142,11 @@
 								<td>{epic}</td>
 								{#each ladderRow(variant, epic) as r, i}
 									{#if r}
+										{@const m = metricsOf(r)}
+										{@const runId = shown === 'demo' ? r.runId : (r.backtest?.runId ?? r.runId)}
 										<td class="num">
-											<a href="/runs/{encodeURIComponent(r.runId)}" class={sign(r.metrics?.totalReturn)}>{pct(r.metrics?.totalReturn)}</a>
-											<div class="muted small">{r.metrics ? pctPlain(r.metrics.maxDrawdown, 0) : ''}</div>
+											<a href="/runs/{encodeURIComponent(runId)}" class={sign(m?.totalReturn)}>{pct(m?.totalReturn)}</a>
+											<div class="muted small">{m ? pctPlain(m.maxDrawdown, 0) : ''}</div>
 										</td>
 									{:else}
 										<td class="num muted" title={TIERS[i]! > 20 && epic === 'BTCUSD' ? 'crypto stops at 1:20' : 'not running'}>—</td>
@@ -150,18 +169,30 @@
 		</p>
 		<div class="table-wrap">
 			<table class="data">
-				<thead><tr><th>Holding</th><th class="num">Return</th><th class="num">Overnight fees</th></tr></thead>
+				<thead>
+					<tr>
+						<th>Holding ($10,000 each)</th>
+						<th class="num">Demo return</th>
+						<th class="num">Demo fees</th>
+						<th class="num">Backtest return</th>
+						<th class="num">Backtest fees</th>
+					</tr>
+				</thead>
 				<tbody>
 					<tr>
-						<td>{BASKET.join(', ')} <span class="muted">(equal weight, {basket.shares} of {BASKET.length} live)</span></td>
-						<td class="num {sign(basket.ret)}">{pct(basket.ret)}</td>
-						<td class="num">{usd(basket.funding)}</td>
+						<td>{BASKET.join(', ')} <span class="muted">(average of {basket.live})</span></td>
+						<td class="num {sign(basket.demo.ret)}">{pct(basket.demo.ret)}</td>
+						<td class="num">{usd(basket.demo.funding)}</td>
+						<td class="num {sign(basket.bt.ret)}">{basket.bt.n ? pct(basket.bt.ret) : 'tonight'}</td>
+						<td class="num">{basket.bt.n ? usd(basket.bt.funding) : ''}</td>
 					</tr>
 					{#each basket.indices as { epic, row }}
 						<tr>
 							<td>{epic}</td>
 							<td class="num {sign(row?.metrics?.totalReturn)}">{pct(row?.metrics?.totalReturn)}</td>
 							<td class="num {sign(row?.metrics?.funding)}">{usd(row?.metrics?.funding)}</td>
+							<td class="num {sign(row?.backtest?.metrics?.totalReturn)}">{pct(row?.backtest?.metrics?.totalReturn)}</td>
+							<td class="num {sign(row?.backtest?.metrics?.funding)}">{usd(row?.backtest?.metrics?.funding)}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -173,6 +204,9 @@
 <style>
 	.small {
 		font-size: 12px;
+	}
+	.narrow {
+		max-width: 760px;
 	}
 	h3 {
 		margin: 14px 0 6px;
