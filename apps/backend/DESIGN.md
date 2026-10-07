@@ -512,6 +512,6 @@ Go is a better server language (goroutines, single binary, lower memory). But th
 - Multiple concurrent positions / scaling in/out
 - Agent marketplace (upload via API, git repo integration)
 - Notification plugins (Telegram, Discord, email)
-- Frontend integration (trader-svelte showing leaderboard + equity curves)
+- Frontend integration (position-opener showing leaderboard + equity curves)
 - Capital allocation based on leaderboard ranking
 - Multi-provider support (not just Capital.com)
