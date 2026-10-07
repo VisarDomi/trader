@@ -9,15 +9,21 @@
  * keeps its deals; renaming it away from the prefix closes the arena's deals
  * there and stops using it. Capital.com allows 10 demo accounts per login.
  *
+ * Leverage: agents/roster.json gives each account a leverage tier ("Arena 01":
+ * 1 … "Arena 09": 200). The mirror sets the account's per-asset-class leverage
+ * to match (re-checked on every reconcile) and only mirrors runs of that tier
+ * there, so a deal gets the same leverage as its paper run. Accounts without a
+ * tier get no runs.
+ *
  * Capacity: a new account is topped up to the 100k demo maximum and switched
  * to hedging mode, so it can hold many runs on the same instrument, each as its
  * own deal. Every mirrored order is SCALE × the paper size, and each run
  * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
  * account that cannot be switched to hedging holds one run per instrument.
- * Runs are assigned to free slots automatically, best demo equity first. When
+ * Runs are assigned to free slots of their tier, best demo equity first. When
  * every slot is taken, a waiting run whose paper equity beats the weakest
- * mirrored run by PROMOTION_MARGIN takes its slot once that run is flat
- * (promotion/demotion; see slots.ts).
+ * mirrored run of the tier by PROMOTION_MARGIN takes its slot once that run is
+ * flat (promotion/demotion; see slots.ts).
  *
  * Requests: one session switches between accounts; jobs are grouped per
  * account and paced by the RequestPacer shared with the candle poller.
@@ -29,7 +35,8 @@
  *   - kill switch per account: equity below KILL_FRACTION of its allocation on
  *     two consecutive checks closes its deals and stops using it
  *   - one open deal per run; positions the arena did not open are never touched
- *   - hedging mode is re-checked on every reconcile
+ *   - hedging mode and leverage are re-checked on every reconcile; no order goes
+ *     to an account whose leverage is not confirmed
  *   - opens from replayed history (after a restart) are not mirrored, and a
  *     deal whose paper position is gone is closed
  */
@@ -37,6 +44,8 @@ import type { CapitalClient } from '../capital/client.ts';
 import { CapitalApiError } from '../capital/client.ts';
 import type { Instrument } from '../engine/instruments.ts';
 import { ALL_EPICS, getInstrument } from '../engine/instruments.ts';
+import { accountLeverages } from '../engine/leverage.ts';
+import { parseDemoRunId } from '../engine/run-id.ts';
 import type { RunEvent } from '../engine/run.ts';
 import type { Side } from '../sdk/types.ts';
 import type { ArenaDB, DealRow } from './db.ts';
@@ -107,6 +116,8 @@ const MAX_PROMOTIONS_PER_CYCLE = 10;
 export interface BrokerOptions {
   /** Accounts whose name starts with this (case-insensitive) are used. */
   prefix: string;
+  /** Account name → leverage tier (agents/roster.json "accounts"). */
+  accountTiers: Readonly<Record<string, number>>;
 }
 
 /** A live demo run the arena offers for mirroring. */
@@ -115,6 +126,8 @@ export interface MirrorCandidate extends SlotCandidate {
   side: Side | null;
   /** Higher is mirrored first when slots are short. */
   score: number;
+  /** The run's leverage tier: it is mirrored on an account of that tier. */
+  tier: number;
 }
 
 interface Confirmation {
@@ -139,6 +152,8 @@ interface ApiAccount {
 
 interface Preferences {
   hedgingMode: boolean;
+  /** Capital.com asset class (INDICES, CURRENCIES, …) → current and available leverage. */
+  leverages?: Record<string, { current: number; available: number[] }>;
 }
 
 interface StoredAccount {
@@ -147,6 +162,8 @@ interface StoredAccount {
   killed: boolean;
   /** Last hedging mode read from the account (kept so a restart does not reshuffle runs). */
   hedging?: boolean;
+  /** Leverage tier last confirmed on the account. */
+  leverage?: number;
   /** Last top-up attempt (ms). */
   topUpAt?: number;
 }
@@ -160,6 +177,10 @@ interface Account {
   allocation: number | null;
   /** Null until read from the account's preferences. */
   hedging: boolean | null;
+  /** Leverage tier from the roster; null = no tier, no runs. */
+  tier: number | null;
+  /** Whether the account's leverages match its tier; null until read. */
+  leverageOk: boolean | null;
   /** Renamed away from the prefix: no new runs; the arena's deals there are being closed. */
   retiring: boolean;
   lowReadings: number;
@@ -175,6 +196,10 @@ export interface BrokerAccountStatus {
   allocation: number | null;
   slots: number;
   hedging: boolean | null;
+  /** Leverage tier (agents/roster.json); null = not used. */
+  leverage: number | null;
+  /** The account's leverage settings match the tier; null until read. */
+  leverageOk: boolean | null;
   runs: string[];
   openDeals: number;
   killed: boolean;
@@ -193,6 +218,8 @@ export interface BrokerStatus {
   slotsPerAccount: number;
   maxAccountsPerLogin: number;
   accounts: BrokerAccountStatus[];
+  /** Per leverage tier: its accounts and how many of its live runs are mirrored. */
+  tiers: { leverage: number; accounts: string[]; slots: number; liveRuns: number; mirrored: number }[];
   coverage: { liveRuns: number; mirrored: number; excluded: number; unassigned: number; accountsNeeded: number };
   excluded: string[];
   queued: number;
@@ -288,6 +315,9 @@ export class BrokerMirror {
     const liveIds = new Set(this.live.map(c => c.runId));
     const excluded = this.excluded.filter(id => liveIds.has(id));
     const now = Date.now();
+    const accounts = [...this.accounts.values()];
+    const tierList = [...new Set([...accounts.flatMap(a => (a.tier === null ? [] : [a.tier])), ...this.live.map(c => c.tier)])].sort((a, b) => a - b);
+    const accountOf = (runId: string) => this.accounts.get(runAccounts[runId] ?? '');
     return {
       enabled: this.enabled,
       prefix: this.opts.prefix,
@@ -304,6 +334,8 @@ export class BrokerMirror {
           allocation: a.allocation,
           slots: slotsOf(a),
           hedging: a.hedging,
+          leverage: a.tier,
+          leverageOk: a.leverageOk,
           runs: Object.keys(runAccounts).filter(id => runAccounts[id] === a.id),
           openDeals: open.filter(d => d.account_id === a.id).length,
           killed: this.isKilled(a.id),
@@ -311,6 +343,17 @@ export class BrokerMirror {
           foreignEpics: [...a.foreignEpics],
           lastReconcileAt: a.lastReconcileAt,
         })),
+      tiers: tierList.map(leverage => {
+        const mine = accounts.filter(a => a.tier === leverage && !a.retiring && !this.isKilled(a.id));
+        const live = this.live.filter(c => c.tier === leverage);
+        return {
+          leverage,
+          accounts: mine.map(a => a.name).sort(),
+          slots: mine.reduce((n, a) => n + slotsOf(a), 0),
+          liveRuns: live.length,
+          mirrored: live.filter(c => accountOf(c.runId)?.tier === leverage).length,
+        };
+      }),
       coverage: {
         liveRuns: this.live.length,
         mirrored: Object.keys(runAccounts).length,
@@ -404,7 +447,11 @@ export class BrokerMirror {
     const now = Date.now();
     for (const a of this.accounts.values()) {
       const mine = open.filter(d => d.account_id === a.id);
-      const every = mine.some(d => !d.deal_id) ? RECONCILE_UNCONFIRMED_MS : mine.length > 0 ? RECONCILE_OPEN_MS : RECONCILE_IDLE_MS;
+      const every =
+        a.tier !== null && a.leverageOk === null ? 0
+        : mine.some(d => !d.deal_id) ? RECONCILE_UNCONFIRMED_MS
+        : mine.length > 0 ? RECONCILE_OPEN_MS
+        : RECONCILE_IDLE_MS;
       if (now - a.lastReconcileAt < every - RECONCILE_SLACK_MS) continue;
       if (this.queue.some(j => j.tag === JOB_RECONCILE && j.accountId === a.id)) continue;
       this.enqueue(a.id, () => this.reconcile(a), JOB_RECONCILE);
@@ -427,8 +474,8 @@ export class BrokerMirror {
       if (!a) {
         a = {
           id: api.accountId, name: api.accountName, balance: 0, deposit: 0, equity: 0,
-          allocation: this.stored[api.accountId]?.allocation ?? null, hedging: this.stored[api.accountId]?.hedging ?? null, retiring: false,
-          lowReadings: 0, foreignEpics: new Set(), lastReconcileAt: 0,
+          allocation: this.stored[api.accountId]?.allocation ?? null, hedging: this.stored[api.accountId]?.hedging ?? null,
+          tier: null, leverageOk: null, retiring: false, lowReadings: 0, foreignEpics: new Set(), lastReconcileAt: 0,
         };
         this.accounts.set(a.id, a);
       } else if (matches && a.retiring) {
@@ -438,6 +485,12 @@ export class BrokerMirror {
       if (a.name !== api.accountName) {
         this.db.event('info', 'broker', `account ${a.name} is now called ${api.accountName}`);
         a.name = api.accountName;
+      }
+      const tier = this.opts.accountTiers[a.name] ?? null;
+      if (tier !== a.tier || (a.tier === null && a.leverageOk !== null)) {
+        a.tier = tier;
+        // A restart trusts the leverage confirmed last time; a new tier is checked on the next reconcile.
+        a.leverageOk = tier !== null && this.stored[a.id]?.leverage === tier ? true : null;
       }
       a.balance = api.balance.balance;
       a.deposit = api.balance.deposit;
@@ -479,7 +532,7 @@ export class BrokerMirror {
     if (a.balance < MIN_RUNS_PER_ACCOUNT * RUN_ALLOCATION) return;
     a.allocation = Math.min(a.balance, MAX_BALANCE);
     this.storeAccount(a, { allocation: a.allocation });
-    this.db.event('info', 'broker', `account ${a.name} enrolled: allocation ${a.allocation}, room for ${slotsOf({ ...a, hedging: true })} runs`);
+    this.db.event('info', 'broker', `account ${a.name} enrolled: allocation ${a.allocation}, room for ${slotsOf({ ...a, hedging: true })} runs${a.tier === null ? '; no leverage tier in agents/roster.json, so no runs yet' : ` at 1:${a.tier}`}`);
   }
 
   private retire(a: Account, why: string): void {
@@ -518,10 +571,12 @@ export class BrokerMirror {
     const before = this.runAccounts;
     if (live.length === 0 && Object.keys(before).length > 0) return; // arena not ready; keep what we have
     this.live = live;
-    const active = [...this.accounts.values()].filter(a => a.allocation !== null && !a.retiring && !this.isKilled(a.id));
-    if (active.some(a => a.hedging === null)) return; // its mode is read on the next reconcile; until then keep what we have
+    const active = [...this.accounts.values()].filter(a => a.allocation !== null && !a.retiring && !this.isKilled(a.id) && a.tier !== null);
+    // Modes are read on the next reconcile (due at once); until then keep what we have.
+    if (active.some(a => a.hedging === null || a.leverageOk === null)) return;
     const usable = active
-      .map(a => ({ name: a.id, slots: slotsOf(a), onePerEpic: !a.hedging, blockedEpics: a.foreignEpics }));
+      .filter(a => a.leverageOk)
+      .map(a => ({ name: a.id, slots: slotsOf(a), onePerEpic: !a.hedging, blockedEpics: a.foreignEpics, tier: a.tier! }));
     const flat = new Set(live.filter(c => c.side === null).map(c => c.runId));
     const withDeal = new Set(this.db.openDeals().map(d => d.run_id));
     const plan = assignSlots(before, usable, live, new Set(this.excluded), {
@@ -570,8 +625,13 @@ export class BrokerMirror {
   }
 
   private async openDeal(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
-    const inst = getInstrument(epicOfRun(e.runId));
-    if (account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
+    const run = parseDemoRunId(e.runId);
+    if (!run || account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
+    if (account.leverageOk !== true || account.tier !== run.leverage) {
+      this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} is not confirmed at 1:${run.leverage}`);
+      return;
+    }
+    const inst = getInstrument(run.epic);
     const open = this.db.openDeals();
     if (open.some(d => d.run_id === e.runId)) {
       this.db.event('warn', 'broker', `skip ${e.runId}: its previous deal is still open`);
@@ -667,30 +727,52 @@ export class BrokerMirror {
 
   // ------------------------------------------------------------------ reconcile & safety
 
-  /** Hedging mode lets one account hold many runs on the same instrument; switch it on and keep it on. */
-  private async ensureHedging(a: Account): Promise<void> {
+  /**
+   * Hedging mode lets one account hold many runs on the same instrument, and the
+   * account's leverage must match its tier; set both and keep them. A position
+   * keeps the leverage it was opened with, so changing it never touches open deals.
+   */
+  private async ensureSettings(a: Account): Promise<void> {
     let prefs = await this.client.get<Preferences>('/api/v1/accounts/preferences');
-    if (!prefs.hedgingMode && !a.retiring) {
+    const want = a.tier === null ? null : accountLeverages(a.tier);
+    const leverageWrong = () =>
+      want !== null && Object.entries(want).some(([cls, l]) => prefs.leverages?.[cls] !== undefined && prefs.leverages[cls]!.current !== l);
+    if (a.leverageOk === true && leverageWrong()) this.db.event('error', 'broker', `${a.name} leverage changed outside the arena; setting it back to 1:${a.tier}`);
+    if (!a.retiring && (!prefs.hedgingMode || leverageWrong())) {
+      const body: { hedgingMode?: boolean; leverages?: Record<string, number> } = {};
+      if (!prefs.hedgingMode) body.hedgingMode = true;
+      if (leverageWrong()) body.leverages = want!;
       try {
-        await this.client.put('/api/v1/accounts/preferences', { hedgingMode: true });
-        prefs = await this.client.get<Preferences>('/api/v1/accounts/preferences');
+        await this.client.put('/api/v1/accounts/preferences', body);
       } catch (err) {
-        this.db.event('warn', 'broker', `could not switch ${a.name} to hedging mode (${errorText(err)})`);
+        this.db.event('warn', 'broker', `could not update ${a.name} settings ${JSON.stringify(body)} (${errorText(err)})`);
       }
-      this.db.event(
-        prefs.hedgingMode ? 'info' : 'warn',
-        'broker',
-        prefs.hedgingMode ? `${a.name} switched to hedging mode` : `${a.name} stays in netting mode: one run per instrument`,
-      );
+      prefs = await this.client.get<Preferences>('/api/v1/accounts/preferences');
+      if (body.hedgingMode) {
+        this.db.event(
+          prefs.hedgingMode ? 'info' : 'warn',
+          'broker',
+          prefs.hedgingMode ? `${a.name} switched to hedging mode` : `${a.name} stays in netting mode: one run per instrument`,
+        );
+      }
+      if (body.leverages) {
+        const settings = Object.entries(body.leverages).map(([cls, l]) => `${cls} 1:${l}`).join(', ');
+        if (leverageWrong()) this.db.event('error', 'broker', `${a.name} could not be set to 1:${a.tier} (${settings}); no runs there until it is`);
+        else this.db.event('info', 'broker', `${a.name} set to 1:${a.tier}: ${settings}`);
+      }
     }
     if (a.hedging === true && !prefs.hedgingMode) this.db.event('error', 'broker', `${a.name} left hedging mode; runs there are limited to one per instrument`);
     a.hedging = prefs.hedgingMode;
-    if (this.stored[a.id]?.hedging !== a.hedging) this.storeAccount(a, { hedging: a.hedging });
+    a.leverageOk = want === null ? null : !leverageWrong();
+    const patch: Partial<StoredAccount> = {};
+    if (this.stored[a.id]?.hedging !== a.hedging) patch.hedging = a.hedging;
+    if (a.leverageOk && this.stored[a.id]?.leverage !== a.tier) patch.leverage = a.tier!;
+    if (Object.keys(patch).length > 0) this.storeAccount(a, patch);
   }
 
   /** Runs as a job on the account's session: match tracked deals with the account's positions. */
   private async reconcile(a: Account): Promise<void> {
-    await this.ensureHedging(a);
+    await this.ensureSettings(a);
     const { positions } = await this.client.get<{ positions: BrokerPosition[] }>('/api/v1/positions');
     const open = new Map(positions.map(p => [p.position.dealId, p]));
     const tracked = this.db.openDeals().filter(d => d.account_id === a.id);
@@ -835,12 +917,6 @@ function scaledSize(inst: Instrument, paperSize: number, scale: number): number 
     size = inst.minSize;
   }
   return size;
-}
-
-/** Demo run ids are "demo:<agentId>:<epic>:<hash>". */
-function epicOfRun(runId: string): string {
-  const parts = runId.split(':');
-  return parts[parts.length - 2]!;
 }
 
 function dealPnl(side: Side, size: number, open: number, close: number): number {

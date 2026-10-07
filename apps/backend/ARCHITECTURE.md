@@ -75,12 +75,17 @@ and do nothing new, and backtests wait for the next nightly job.
 - Stops: checked per minute in backtests (gap → fill at the open; stop beats
   take-profit inside one minute) and per tick in demo. Only minutes that started
   after the entry can trigger.
-- Sizing precedence: `size` → `exposure` → risk-to-stop (`riskPct`, default 1%) →
-  1× exposure; capped at 90% of equity as margin; rounded to the instrument step.
+- Every run has an **account leverage** (1:1 … 1:200; crypto and shares at most
+  1:20; `src/engine/leverage.ts`): margin = notional ÷ leverage.
+- Sizing precedence: `size` → `exposure` → `marginPct` (share of equity as margin,
+  × leverage) → risk-to-stop (`riskPct`, default 1%) → 1× exposure; capped at 90%
+  of equity as margin (0.9 × equity × leverage of notional); rounded to the
+  instrument step.
 - Margin call at equity < 50% of margin (Capital.com close-out); account floors at
   $0 (negative-balance protection) and the run is `busted`.
 - Overnight funding at each 17:00 New York rollover using Capital.com's current
-  rates (indices long ≈ −8%/yr); weekends count three nights.
+  rates (indices long ≈ −8%/yr); weekends count three nights. None at 1:1 on
+  crypto and shares (Capital.com's rule since 2024-07).
 - `intradayOnly` agents are flattened 5 minutes before 17:00 New York.
 - Indicators are computed once per bar per (instrument, timeframe) and shared.
   Series keep 5,000–10,000 bars; recursive indicators re-converge after trimming.
@@ -108,6 +113,12 @@ closes).
   within a minute and tracked by accountId. Other accounts (Visi is the user's)
   are never touched. Capital.com allows 10 demo accounts per login, so the
   arena has 9: "Arena 01" … "Arena 09".
+- **Leverage:** `agents/roster.json` gives each account a tier (Arena 01 = 1:1 …
+  Arena 09 = 1:200). The mirror sets the account's leverage per asset class to
+  match (`PUT /accounts/preferences`, re-checked on every reconcile; a position
+  keeps the leverage it was opened with) and mirrors only runs of that tier there,
+  so every demo deal has its paper run's leverage. An account without a tier, or
+  whose leverage could not be set, gets no runs.
 - **Capacity:** a new account is topped up once to the $100,000 demo maximum
   (the cap counts total deposits, so the top-up is sized from the higher of
   balance and deposits; retried daily if refused) and switched to **hedging
@@ -117,10 +128,10 @@ closes).
   runs in October 2026). At 0.2, 0.7% of backtest trades fall below an
   instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
   An account that cannot be switched to hedging holds one run per instrument.
-- **Assignment:** every live run is mirrored while capacity lasts, best demo
-  equity first, spread over the accounts with the most free slots;
-  assignments are sticky. Runs can be excluded by hand. A run never has more
-  than one open deal.
+- **Assignment:** every live run is mirrored on an account of its tier while
+  capacity lasts, best demo equity first, spread over the accounts with the most
+  free slots; assignments are sticky; promotion swaps only within a tier. Runs can
+  be excluded by hand. A run never has more than one open deal.
 - **Renames:** deals are re-attached by deal id if an account is renamed;
   renaming an account away from the prefix closes the arena's deals there and
   stops using it.
@@ -145,8 +156,10 @@ Toggle the mirror and exclude runs on the dashboard's Broker page.
 
 Agents move Backtest → Demo → Broker → Retired ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
 Verdicts (early, keep, leader, retire) come from `packages/shared/src/lifecycle.ts`, used by both the
-dashboard's Stage column and `bun run review`. Single runs are retired through `agents/roster.json`
-(read by the arena on start; no code-hash change), whole agents by moving them to `agents/_retired/`.
+dashboard's Stage column and `bun run review`. `agents/roster.json` (read by the arena and the lab;
+`src/engine/roster.ts`) holds what is decided without touching agent code: each account's leverage,
+each agent's leverage tiers, and retired single runs. A run is agent × instrument × leverage (its id
+includes all three and the code hash). Whole agents are retired by moving them to `agents/_retired/`.
 Claude applies the policy on scheduled babysitter visits and records them in
 [`agents/JOURNAL.md`](agents/JOURNAL.md), shown on the dashboard's Journal page. Between visits the
 watchdog (`src/lab/watchdog.ts`) notifies the desktop when the platform needs attention.

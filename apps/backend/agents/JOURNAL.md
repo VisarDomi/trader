@@ -3,6 +3,22 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-07 (Wed, evening) — leverage tiers
+
+- Why: the user asked for leverage as another dimension, with all nine Arena accounts on different
+  leverages, 1:1 and 1:200 the most interesting.
+- Accounts: Arena 01 … 09 = 1:1, 1:2, 1:3, 1:5, 1:10, 1:20, 1:50, 1:100, 1:200 (crypto and shares stop at
+  1:20). At 1:1, crypto and shares pay no overnight fee.
+- Allocation: agents sorted by backtest leverage use (90th percentile of position ÷ equity), least on 1:1
+  (buy-hold, tsmom, overnight-drift) and most on 1:200 (bollinger-fade, mtf-pullback, london-breakout,
+  stoch-range); one monkey each on 1:50, 1:100 and 1:200; 49–55 runs per account, 466 in all.
+- Added: leverage-ladder (control) — hold and 20-day trend on US100, GOLD, EURUSD, BTCUSD at every tier
+  with 10% of equity as margin (0.1× at 1:1 … 20× at 1:200). 120-day check: US100 hold was wiped out at
+  1:100 and 1:200 and gained a little at 1:50 and below; BTC hold returns scaled with leverage up to its 1:20 cap.
+- Added: the eight largest Nasdaq-100 shares to buy-hold, all on 1:1, as a fee-free stand-in for US100.
+- All demo runs restarted (run ids now include the leverage; they were 1.5 days old).
+- Next: watch the ladder and 1:1 vs other tiers; strategies on shares at 1:1 are a candidate for Monday.
+
 ## 2026-10-07 (Wed) — demo day 0.6: lifecycle starts
 
 - Health: all green. 40 agents, 392 demo runs, all 392 mirrored on Arena 01–09 (hedging mode, 0.2× size,
@@ -19,12 +35,13 @@ One line per idea: agent — mechanism — status (date).
 
 - adx-dmi — ADX trend strength with DI direction, 1h — live (2026-10-06)
 - bollinger-fade — fade closes outside Bollinger bands, 15m — live (2026-10-06)
-- buy-hold — passive benchmark, funding included — control
+- buy-hold — passive benchmark, funding included; on 1:1 with the 8-share Nasdaq basket (fee-free) — control
 - donchian-breakout (turtle-20, turtle-55) — channel breakouts, 4h — live (2026-10-06)
 - ema-cross (9-21, 20-50) — moving-average crossover, 1h — live (2026-10-06)
 - hma-slope — Hull MA slope turns, 1h — live (2026-10-06)
 - inside-bar — inside-bar breakouts, 4h — live (2026-10-06)
 - keltner-trend — Keltner channel trend entries, 4h — live (2026-10-06)
+- leverage-ladder (hold, trend) — one signal at every leverage tier, 10% of equity as margin — control (2026-10-07)
 - london-breakout — Asian-range breakout at the London open, 15m — live (2026-10-06)
 - macd-trend (ema50, ema200) — MACD with a trend filter, 1h — live (2026-10-06)
 - mtf-pullback — 1h pullbacks within a 4h trend — live (2026-10-06)

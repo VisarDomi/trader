@@ -12,6 +12,7 @@ import type { LogLine, RunSnapshot, RunStatus } from '../engine/run.ts';
 import type { Candle } from '../engine/series.ts';
 import type { Trade } from '../sdk/types.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
+import { backtestRunId } from '../engine/run-id.ts';
 
 export const RUN_KIND = {
   DEMO: 'demo',
@@ -165,6 +166,8 @@ export interface RunRow {
   agent_id: string;
   code_hash: string;
   epic: string;
+  /** Account leverage tier; null for runs from before leverage tiers. */
+  leverage: number | null;
   window_id: string | null;
   status: RunStatus;
   capital: number;
@@ -236,6 +239,10 @@ export class ArenaDB {
     const dealColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`).all().map(c => c.name);
     if (!dealColumns.includes('account')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account TEXT`);
     if (!dealColumns.includes('account_id')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account_id TEXT`);
+    const runColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(runs)`).all().map(c => c.name);
+    if (!runColumns.includes('leverage')) this.db.exec(`ALTER TABLE runs ADD COLUMN leverage INTEGER`);
+    // Backtests from before leverage tiers have no demo counterpart any more; the lab re-runs them per tier.
+    this.db.exec(`DELETE FROM runs WHERE kind = 'backtest' AND leverage IS NULL`);
   }
 
   tx<T>(fn: () => T): T {
@@ -314,13 +321,13 @@ export class ArenaDB {
     return this.db.query<RunRow, [string]>(`SELECT * FROM runs WHERE agent_id = ? ORDER BY kind, epic, started_at DESC`).all(agentId);
   }
 
-  createDemoRun(r: { id: string; agentId: string; codeHash: string; epic: string; capital: number; params: Record<string, unknown>; now: number }): void {
+  createDemoRun(r: { id: string; agentId: string; codeHash: string; epic: string; leverage: number; capital: number; params: Record<string, unknown>; now: number }): void {
     this.db
       .query(
-        `INSERT INTO runs (id, kind, agent_id, code_hash, epic, status, capital, params, started_at, updated_at, equity)
-         VALUES (?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
+        `INSERT INTO runs (id, kind, agent_id, code_hash, epic, leverage, status, capital, params, started_at, updated_at, equity)
+         VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
       )
-      .run(r.id, RUN_KIND.DEMO, r.agentId, r.codeHash, r.epic, r.capital, JSON.stringify(r.params), r.now, r.now, r.capital);
+      .run(r.id, RUN_KIND.DEMO, r.agentId, r.codeHash, r.epic, r.leverage, r.capital, JSON.stringify(r.params), r.now, r.now, r.capital);
   }
 
   retireRun(id: string, now: number, status: RunStatus): void {
@@ -396,18 +403,18 @@ export class ArenaDB {
       .run(cutoff);
   }
 
-  /** Store a backtest result pushed from the lab (replaces the previous one for the same agent/epic/window). */
+  /** Store a backtest result pushed from the lab (replaces the previous one for the same agent/epic/leverage/window). */
   saveBacktest(r: BacktestResult): void {
-    const id = `bt:${r.windowId}:${r.agentId}:${r.epic}`;
+    const id = backtestRunId(r.windowId, r.agentId, r.epic, r.leverage);
     this.tx(() => {
       this.db.query(`DELETE FROM runs WHERE id = ?`).run(id);
       this.db
         .query(
-          `INSERT INTO runs (id, kind, agent_id, code_hash, epic, window_id, status, capital, params, started_at, updated_at, ended_at, equity, metrics, extra)
-           VALUES (?, 'backtest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO runs (id, kind, agent_id, code_hash, epic, leverage, window_id, status, capital, params, started_at, updated_at, ended_at, equity, metrics, extra)
+           VALUES (?, 'backtest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          id, r.agentId, r.codeHash, r.epic, r.windowId, r.status, r.capital, JSON.stringify(r.params),
+          id, r.agentId, r.codeHash, r.epic, r.leverage, r.windowId, r.status, r.capital, JSON.stringify(r.params),
           r.windowStart, r.ranAt, r.windowEnd, r.metrics.finalEquity, JSON.stringify(r.metrics),
           JSON.stringify({ agentUsPerBar: r.agentUsPerBar, bars: r.bars, candles: r.candles, errors: r.errors, durationMs: r.durationMs }),
         );

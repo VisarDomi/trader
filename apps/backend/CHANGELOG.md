@@ -4,10 +4,16 @@
 
 ### Added
 
+- **Leverage as a run dimension** — every demo and backtest run trades at an account leverage (1:1 … 1:200; crypto and shares at most 1:20). The engine caps size at 0.9 × equity × leverage, closes positions at half the margin, and charges no overnight funding at 1:1 on crypto and shares. New `marginPct` sizing and `ctx.leverage` for agents that use leverage on purpose; an agent may declare `leverage: [...]`. `agents/roster.json` maps each Arena account to a tier (Arena 01 = 1:1 … Arena 09 = 1:200) and each agent to its tiers; the broker sets each account's leverage and mirrors only runs of its tier. Run ids include the tier (`demo:<agent>:<EPIC>:x<tier>:<hash>`), all demo runs restarted once. `check-agent` reports the leverage an agent uses; `review` shows runs per tier. See `DECISIONS.md` → "Leverage tiers".
+- **Leverage ladder control agent** (`agents/leverage-ladder.ts`) — buy-and-hold and 20-day trend on US100, GOLD, EURUSD and BTCUSD at every tier with 10% of equity as margin, to show what leverage alone does.
+- **Shares** — NVDA, MSFT, AAPL, AMZN, AVGO, META, GOOGL, TSLA (the largest Nasdaq-100 companies); Buy & Hold holds them on the 1:1 account as a fee-free stand-in for US100.
+
 - **Agent lifecycle and babysitting** — verdicts per demo run (early / keep / leader / retire, `packages/shared/src/lifecycle.ts`), `bun run review` (health, capacity, verdicts, what to retire), `agents/roster.json` to retire single agent × instrument runs without changing code hashes, broker promotion/demotion by demo equity once the 450 slots are full, a 10-minute watchdog with desktop notifications (`src/lab/watchdog.ts`, `ops/lab/trader-watchdog.*`), and `agents/LIFECYCLE.md` + `agents/JOURNAL.md` for the scheduled babysitter visits.
   - *Decision*: Policy in shared code so the dashboard and the babysitter agree; watchdog deterministic and frequent, retire/add decisions by Claude twice a week. See `DECISIONS.md` → "Lifecycle and babysitting".
 
 ### Changed
+
+- **Leaders are judged against the monkeys' t-statistic** instead of their return, since returns scale with leverage.
 
 - **Capital.com client retries gateway errors on safe requests** (GET, account switch) and strips HTML from error messages; a broker job whose account switch fails is retried once. A 504 on `/session` had dropped one job.
 

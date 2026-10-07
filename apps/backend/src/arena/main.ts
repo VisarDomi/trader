@@ -12,6 +12,7 @@
  */
 import { resolve } from 'node:path';
 import { CapitalClient, credentialsFromEnv, RequestPacer } from '../capital/client.ts';
+import { loadRoster } from '../engine/roster.ts';
 import { startApi } from './api.ts';
 import { Arena } from './arena.ts';
 import { BrokerMirror, DEFAULT_ACCOUNT_PREFIX } from './broker.ts';
@@ -39,7 +40,7 @@ const dataClient = new CapitalClient(creds, pacer);
 const broker =
   brokerPrefix === BROKER_OFF || brokerPrefix.trim() === ''
     ? null
-    : new BrokerMirror(new CapitalClient(creds, pacer), db, { prefix: brokerPrefix });
+    : new BrokerMirror(new CapitalClient(creds, pacer), db, { prefix: brokerPrefix, accountTiers: loadRoster().accounts });
 
 const arena = new Arena({ db, dataClient, forecasterUrl, broker });
 const api = startApi(arena, port, token);

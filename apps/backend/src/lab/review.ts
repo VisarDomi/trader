@@ -27,6 +27,7 @@ interface RunReview {
   runId: string;
   agentId: string;
   epic: string;
+  leverage: number | null;
   timeframe: string;
   days: number;
   trades: number;
@@ -62,6 +63,7 @@ const runs: RunReview[] = demo.map(r => {
     runId: r.runId,
     agentId: r.agentId,
     epic: r.epic,
+    leverage: r.leverage,
     timeframe: r.timeframe,
     days: Math.round(((now - r.startedAt) / DAY_MS) * 10) / 10,
     trades: r.metrics?.trades ?? 0,
@@ -118,7 +120,11 @@ const report = {
           mirrored: b.coverage.mirrored,
           liveRuns: b.coverage.liveRuns,
           capacity: b.accounts.reduce((n, a) => n + (a.killed || a.retiring ? 0 : a.slots), 0),
-          accounts: b.accounts.map(a => ({ name: a.name, hedging: a.hedging, runs: a.runs.length, slots: a.slots, killed: a.killed, retiring: a.retiring, equity: a.equity, allocation: a.allocation })),
+          accounts: b.accounts.map(a => ({
+            name: a.name, leverage: a.leverage, leverageOk: a.leverageOk, hedging: a.hedging, runs: a.runs.length, slots: a.slots,
+            killed: a.killed, retiring: a.retiring, equity: a.equity, allocation: a.allocation,
+          })),
+          tiers: b.tiers,
           queued: b.queued,
           opensLastHour: b.opensLastHour,
           lastError: b.lastError,
@@ -151,21 +157,29 @@ if (process.argv.includes(FLAG_JSON)) {
   if (hb) {
     lines.push(`- broker ${hb.enabled ? 'on' : 'OFF'}: ${hb.mirrored}/${hb.liveRuns} runs mirrored, capacity ${hb.capacity}, queue ${hb.queued}, opens last hour ${hb.opensLastHour}`);
     for (const a of hb.accounts) {
-      const flags = [a.killed && 'KILLED', a.retiring && 'RETIRING', a.hedging === false && 'NETTING', a.allocation === null && 'enrolling'].filter(Boolean).join(' ');
-      lines.push(`  - ${a.name}: ${a.runs}/${a.slots} runs, equity ${a.equity.toFixed(0)}${a.allocation ? ` of ${a.allocation.toFixed(0)}` : ''}${flags ? ` ${flags}` : ''}`);
+      const flags = [
+        a.killed && 'KILLED', a.retiring && 'RETIRING', a.hedging === false && 'NETTING', a.allocation === null && 'enrolling',
+        a.leverage === null && 'NO TIER (add it to agents/roster.json "accounts")', a.leverageOk === false && 'LEVERAGE NOT SET',
+      ].filter(Boolean).join(' ');
+      const tier = a.leverage === null ? '' : ` 1:${a.leverage}`;
+      lines.push(`  - ${a.name}${tier}: ${a.runs}/${a.slots} runs, equity ${a.equity.toFixed(0)}${a.allocation ? ` of ${a.allocation.toFixed(0)}` : ''}${flags ? ` ${flags}` : ''}`);
     }
+    const short = hb.tiers.filter(t => t.mirrored < t.liveRuns);
+    if (short.length) lines.push(`- tiers with runs waiting for a slot: ${short.map(t => `1:${t.leverage} ${t.mirrored}/${t.liveRuns}${t.accounts.length === 0 ? ' (NO ACCOUNT)' : ''}`).join(', ')}`);
     if (hb.lastError) lines.push(`- broker last error: ${hb.lastError}`);
   }
   lines.push(`- errors in the last 3 days: ${recentErrors.length}`);
   for (const e of errorKinds.slice(0, 8)) lines.push(`  - ${e.count}× ${e.kind}`);
   lines.push('', '## Capacity');
   lines.push(`- ${report.capacity.liveRuns} live demo runs (soft cap ${report.capacity.paperSoftCap}: room for ${report.capacity.roomForRuns})`);
+  const perTier = [...Map.groupBy(runs, r => r.leverage)].sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
+  lines.push(`- per leverage: ${perTier.map(([l, rs]) => `1:${l} ${rs.length}`).join(', ')}`);
   lines.push('', '## Verdicts');
   lines.push(`- ${Object.entries(report.verdicts).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   lines.push(`- monkey sanity: ${report.monkeySanity.wouldLead} of ${report.monkeySanity.monkeys} random monkeys pass the leader bar (should be ~0)`);
   lines.push('', '## Leaders');
   if (report.leaders.length === 0) lines.push('- none yet');
-  for (const r of report.leaders) lines.push(`- ${r.agentId} ${r.epic} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
+  for (const r of report.leaders) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
   lines.push('', '## Retire: agents (move file to agents/_retired/)');
   if (report.retireAgents.length === 0) lines.push('- none');
   for (const a of report.retireAgents) lines.push(`- ${a.agentId}: ${a.retire} of ${a.runs} runs retire (${a.judged} judged)`);
@@ -173,8 +187,8 @@ if (process.argv.includes(FLAG_JSON)) {
   const agentWide = new Set(report.retireAgents.map(a => a.agentId));
   const single = report.retireRuns.filter(r => !agentWide.has(r.agentId));
   if (single.length === 0) lines.push('- none');
-  for (const r of single) lines.push(`- ${r.agentId}:${r.epic} — ${r.reason} (${pct(r.totalReturn)})`);
+  for (const r of single) lines.push(`- ${r.agentId}:${r.epic}@${r.leverage} — ${r.reason} (${pct(r.totalReturn)})`);
   lines.push('', '## Closest to being judged');
-  for (const r of report.closestToJudgement) lines.push(`- ${r.agentId} ${r.epic}: ${r.trades} trades, ${r.days} days, ${pct(r.totalReturn)}`);
+  for (const r of report.closestToJudgement) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage}: ${r.trades} trades, ${r.days} days, ${pct(r.totalReturn)}`);
   console.log(lines.join('\n'));
 }

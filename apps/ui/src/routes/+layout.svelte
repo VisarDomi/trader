@@ -8,6 +8,7 @@
 		{ href: '/', label: 'Leaderboard' },
 		{ href: '/agents', label: 'Agents' },
 		{ href: '/broker', label: 'Broker' },
+		{ href: '/leverage', label: 'Leverage' },
 		{ href: '/journal', label: 'Journal' },
 		{ href: '/status', label: 'Status' },
 	];

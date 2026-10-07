@@ -8,7 +8,7 @@
  *
  * Fills are simulated at the current quote: BUY at ask, SELL at bid. Stops are
  * pessimistic in backtests (gap -> fill at the open; stop beats take-profit
- * inside one candle).
+ * inside one candle). Margin and funding follow the run's account leverage.
  */
 import type { DefinedAgent } from '../sdk/index.ts';
 import type {
@@ -17,6 +17,7 @@ import type {
   ExitReason,
   Fill,
   Forecast,
+  InstrumentInfo,
   OrderOptions,
   Position,
   Side,
@@ -28,6 +29,7 @@ import type {
 import { EXIT_REASON } from '../sdk/types.ts';
 import { fundingDay, isSessionBlackout, isSessionEnd, utcDay, DAY_MS } from './clock.ts';
 import type { Instrument } from './instruments.ts';
+import { effectiveLeverage, isFundingFree } from './leverage.ts';
 import type { EquityPoint, RunMetrics } from './metrics.ts';
 import { computeMetrics } from './metrics.ts';
 import type { BarSeries, Candle } from './series.ts';
@@ -75,6 +77,8 @@ export interface RunOptions {
   agent: DefinedAgent;
   params: Record<string, unknown>;
   instrument: Instrument;
+  /** Leverage of the account the run trades on (1 = unleveraged); see leverage.ts. */
+  leverage: number;
   capital: number;
   primary: BarSeries;
   extra: ReadonlyMap<Timeframe, BarSeries>;
@@ -126,6 +130,13 @@ export class AgentRun {
   readonly agent: DefinedAgent;
   readonly params: Record<string, unknown>;
   readonly instrument: Instrument;
+  /** Account leverage tier. */
+  readonly leverage: number;
+  /** Leverage on this instrument (the tier, capped per asset class). */
+  readonly effectiveLeverage: number;
+  private readonly marginFactor: number;
+  private readonly fundingFree: boolean;
+  private readonly instrumentInfo: InstrumentInfo;
   readonly capital: number;
   readonly primary: BarSeries;
   readonly extra: ReadonlyMap<Timeframe, BarSeries>;
@@ -166,6 +177,15 @@ export class AgentRun {
     this.agent = opts.agent;
     this.params = opts.params;
     this.instrument = opts.instrument;
+    this.leverage = opts.leverage;
+    this.effectiveLeverage = effectiveLeverage(opts.instrument, opts.leverage);
+    this.marginFactor = 1 / this.effectiveLeverage;
+    this.fundingFree = isFundingFree(opts.instrument, opts.leverage);
+    const i = opts.instrument;
+    this.instrumentInfo = {
+      epic: i.epic, name: i.name, assetClass: i.assetClass, pricePrecision: i.pricePrecision, minSize: i.minSize,
+      sizeStep: i.sizeStep, maxSize: i.maxSize, marginFactor: this.marginFactor, typicalSpread: i.typicalSpread,
+    };
     this.capital = opts.capital;
     this.primary = opts.primary;
     this.extra = opts.extra;
@@ -423,11 +443,14 @@ export class AgentRun {
     if (opts.stopLoss !== undefined) stopDistance = Math.abs(entry - opts.stopLoss);
     else if (opts.trailingStop !== undefined) stopDistance = opts.trailingStop;
 
-    // Precedence: explicit size, then explicit exposure, then risk-to-stop, then 1x exposure.
+    // Precedence: explicit size, exposure, margin share, risk-to-stop, then 1x exposure.
     let size: number;
     if (opts.size !== undefined) {
       if (!(opts.size > 0)) return `size must be positive, got ${opts.size}`;
       size = opts.size;
+    } else if (opts.exposure === undefined && opts.marginPct !== undefined) {
+      if (!(opts.marginPct > 0)) return `marginPct must be positive, got ${opts.marginPct}`;
+      size = (equity * (opts.marginPct / 100) * this.effectiveLeverage) / entry;
     } else if (opts.exposure === undefined && stopDistance !== null && stopDistance > 0) {
       const risk = clamp(opts.riskPct ?? DEFAULT_RISK_PCT, 0, MAX_RISK_PCT);
       size = (equity * risk) / 100 / stopDistance;
@@ -436,7 +459,7 @@ export class AgentRun {
       if (!(exposure > 0)) return `exposure must be positive, got ${exposure}`;
       size = (equity * exposure) / entry;
     }
-    const maxByMargin = (equity * MAX_MARGIN_USE) / (entry * inst.marginFactor);
+    const maxByMargin = (equity * MAX_MARGIN_USE) / (entry * this.marginFactor);
     size = Math.min(size, maxByMargin, inst.maxSize);
     size = Math.floor(size / inst.sizeStep + SIZE_EPSILON) * inst.sizeStep;
     size = roundTo(size, decimalsOf(inst.sizeStep));
@@ -527,7 +550,7 @@ export class AgentRun {
 
   private marginBreached(exitPrice: number): boolean {
     const pos = this.position!;
-    const margin = pos.size * exitPrice * this.instrument.marginFactor;
+    const margin = pos.size * exitPrice * this.marginFactor;
     const pnl = pos.side === SIDE_LONG ? (exitPrice - pos.entryPrice) * pos.size : (pos.entryPrice - exitPrice) * pos.size;
     return this.balance + pnl < MARGIN_CLOSE_OUT * margin;
   }
@@ -538,6 +561,7 @@ export class AgentRun {
     if (day <= pos.lastFundingDay) return;
     const nights = day - pos.lastFundingDay;
     pos.lastFundingDay = day;
+    if (this.fundingFree) return;
     const ratePct = pos.side === SIDE_LONG ? this.instrument.overnightLongPct : this.instrument.overnightShortPct;
     const amount = pos.size * price * (ratePct / 100) * nights;
     pos.funding += amount;
@@ -630,7 +654,8 @@ export class AgentRun {
     const isWarmup = !this.allowOrders || this.primary.closedCount < this.warmup;
     return {
       epic: this.instrument.epic,
-      instrument: this.instrument,
+      instrument: this.instrumentInfo,
+      leverage: this.effectiveLeverage,
       timeframe: this.primary.timeframe,
       params: this.params,
       get state() {

@@ -4,12 +4,13 @@
  * - 1-minute candles: polled from the REST API every minute (same source as
  *   the backtest history; gaps heal on the next poll).
  * - Quotes: streamed over WebSocket for tick-precision stops and fill prices.
- * - Each agent × instrument is a demo run with $10,000 of virtual capital,
- *   persisted after every minute so restarts resume where they left off.
+ * - Each agent × instrument × account leverage is a demo run with $10,000 of
+ *   virtual capital, persisted after every minute so restarts resume where
+ *   they left off.
  * - A changed agent file (new code hash) retires the old demo run and starts a
  *   fresh one: a track record always belongs to one exact version of the code.
- * - agents/roster.json retires single agent × instrument runs without touching
- *   agent code (see src/engine/roster.ts).
+ * - agents/roster.json sets each agent's leverage tiers and retires single runs
+ *   without touching agent code (see src/engine/roster.ts).
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { RESOLUTION } from '../capital/client.ts';
@@ -17,7 +18,9 @@ import { DAY_MS, HOUR_MS, MINUTE_MS } from '../engine/clock.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import { loadAgents } from '../engine/loader.ts';
-import { loadRoster, retiredBy } from '../engine/roster.ts';
+import type { Roster } from '../engine/roster.ts';
+import { loadRoster, planRuns } from '../engine/roster.ts';
+import { demoRunId } from '../engine/run-id.ts';
 import type { ClosedBar } from '../engine/market.ts';
 import { MarketEngine } from '../engine/market.ts';
 import type { AgentRun, RunEvent, RunSnapshot } from '../engine/run.ts';
@@ -52,6 +55,7 @@ interface Tracked {
   run: AgentRun;
   agent: LoadedAgent;
   epic: string;
+  leverage: number;
   persistedTrades: number;
   dirty: boolean;
 }
@@ -66,6 +70,7 @@ export class Arena {
   readonly tracked = new Map<string, Tracked>();
   readonly lastCandle = new Map<string, number>();
   agents: LoadedAgent[] = [];
+  roster: Roster | null = null;
   loadErrors: { file: string; error: string }[] = [];
   stream: QuoteStream | null = null;
   startedAt = Date.now();
@@ -91,6 +96,7 @@ export class Arena {
     for (const e of errors) this.db.event('error', 'loader', `${e.file}: ${e.error}`);
     for (const a of agents) this.db.upsertAgent(a, now);
     this.db.deactivateMissingAgents(agents.map(a => a.id));
+    this.roster = loadRoster(this.agentsDir);
 
     const epics = [...new Set(agents.flatMap(a => a.def.instruments))];
     for (const epic of epics) this.engines.set(epic, new MarketEngine(getInstrument(epic), this.forecasts));
@@ -116,57 +122,53 @@ export class Arena {
 
   // ------------------------------------------------------------------ runs
 
-  /** Create or restore one demo run per agent × instrument. Returns ids of brand-new runs. */
+  /** Create or restore one demo run per agent × instrument × leverage tier. Returns ids of brand-new runs. */
   private createRuns(now: number): Set<string> {
     const fresh = new Set<string>();
     const active = this.db.runs(RUN_KIND.DEMO);
-    const roster = loadRoster(this.agentsDir);
+    const plan = planRuns(this.agents, this.roster!);
     const rosterRetired = new Set<string>();
-    for (const agent of this.agents) {
-      for (const epic of agent.def.instruments) {
-        const retired = retiredBy(roster, agent.id, epic);
-        if (retired) {
-          for (const old of active.filter(r => r.agent_id === agent.id && r.epic === epic)) {
-            rosterRetired.add(old.id);
-            this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
-            this.db.appendLog(old.id, { time: now, message: `retired ${retired.date}: ${retired.reason}` });
-            this.db.event('info', 'arena', `retired ${old.id} (roster): ${retired.reason}`);
-          }
-          continue;
-        }
-        const id = demoRunId(agent.id, epic, agent.codeHash);
-        for (const old of active) {
-          if (old.agent_id === agent.id && old.epic === epic && old.id !== id) {
-            this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
-            this.db.event('info', 'arena', `retired ${old.id}: agent code changed`);
-          }
-        }
-        const engine = this.engines.get(epic)!;
-        const run = engine.addRun({
-          runId: id,
-          agent,
-          capital: DEMO_CAPITAL,
-          checkStopsOnCandles: true,
-          onEvent: e => this.onRunEvent(e),
-        });
-        const row = this.db.run(id);
-        if (row && !row.retired && row.snapshot) {
-          run.restore(JSON.parse(row.snapshot) as RunSnapshot, this.db.trades(id, 100_000), this.dailyEquity(id));
-        } else {
-          if (!row) this.db.createDemoRun({ id, agentId: agent.id, codeHash: agent.codeHash, epic, capital: DEMO_CAPITAL, params: agent.params, now });
-          run.allowOrders = false;
-          fresh.add(id);
-        }
-        this.tracked.set(id, { run, agent, epic, persistedTrades: run.trades.length, dirty: true });
+    for (const { agent, epic, leverage, entry } of plan.retired) {
+      for (const old of active.filter(r => r.agent_id === agent.id && r.epic === epic && r.leverage === leverage)) {
+        rosterRetired.add(old.id);
+        this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
+        this.db.appendLog(old.id, { time: now, message: `retired ${entry.date}: ${entry.reason}` });
+        this.db.event('info', 'arena', `retired ${old.id} (roster): ${entry.reason}`);
       }
     }
-    // Agents that disappeared from disk: retire their demo runs.
-    const live = new Set(this.tracked.keys());
-    for (const old of active) {
-      if (!live.has(old.id) && !rosterRetired.has(old.id)) {
-        this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
-        this.db.event('info', 'arena', `retired ${old.id}: agent no longer exists`);
+    for (const { agent, epic, leverage } of plan.runs) {
+      const id = demoRunId(agent.id, epic, leverage, agent.codeHash);
+      const engine = this.engines.get(epic)!;
+      const run = engine.addRun({
+        runId: id,
+        agent,
+        leverage,
+        capital: DEMO_CAPITAL,
+        checkStopsOnCandles: true,
+        onEvent: e => this.onRunEvent(e),
+      });
+      const row = this.db.run(id);
+      if (row && !row.retired && row.snapshot) {
+        run.restore(JSON.parse(row.snapshot) as RunSnapshot, this.db.trades(id, 100_000), this.dailyEquity(id));
+      } else {
+        if (!row) this.db.createDemoRun({ id, agentId: agent.id, codeHash: agent.codeHash, epic, leverage, capital: DEMO_CAPITAL, params: agent.params, now });
+        run.allowOrders = false;
+        fresh.add(id);
       }
+      this.tracked.set(id, { run, agent, epic, leverage, persistedTrades: run.trades.length, dirty: true });
+    }
+    // Runs no longer planned: their agent changed or disappeared, or their leverage tier moved.
+    const agentHash = new Map(this.agents.map(a => [a.id, a.codeHash]));
+    for (const old of active) {
+      if (this.tracked.has(old.id) || rosterRetired.has(old.id)) continue;
+      const hash = agentHash.get(old.agent_id);
+      const why =
+        hash === undefined ? 'agent no longer exists'
+        : hash !== old.code_hash ? 'agent code changed'
+        : old.leverage === null ? 'runs now trade at an account leverage; restarted per tier'
+        : 'its leverage tier is no longer planned (agents/roster.json)';
+      this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
+      this.db.event('info', 'arena', `retired ${old.id}: ${why}`);
     }
     return fresh;
   }
@@ -368,7 +370,7 @@ export class Arena {
     const out: MirrorCandidate[] = [];
     for (const t of this.tracked.values()) {
       if (t.run.status !== RUN_STATUS.RUNNING) continue;
-      out.push({ runId: t.run.runId, epic: t.epic, side: t.run.position?.side ?? null, score: t.run.markToMarket() });
+      out.push({ runId: t.run.runId, epic: t.epic, tier: t.leverage, side: t.run.position?.side ?? null, score: t.run.markToMarket() });
     }
     return out;
   }
@@ -376,8 +378,4 @@ export class Arena {
   runIdsForEpic(epic: string): string[] {
     return [...this.tracked.values()].filter(t => t.epic === epic).map(t => t.run.runId);
   }
-}
-
-export function demoRunId(agentId: string, epic: string, codeHash: string): string {
-  return `demo:${agentId}:${epic}:${codeHash}`;
 }

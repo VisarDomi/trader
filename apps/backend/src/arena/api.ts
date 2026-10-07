@@ -7,6 +7,9 @@ import type { RunMetrics } from '../engine/metrics.ts';
 import { ALL_EPICS } from '../engine/instruments.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
 import type { ArenaStatus, LeaderboardRow } from '@trader/shared';
+import { getInstrument } from '../engine/instruments.ts';
+import { effectiveLeverage } from '../engine/leverage.ts';
+import { runKey } from '../engine/run-id.ts';
 import type { Arena } from './arena.ts';
 import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
@@ -147,9 +150,10 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     '/api/backtests',
     async req => {
       const body = (await req.json()) as { results?: BacktestResult[] };
-      const results = body.results ?? [];
+      // Results from a lab without leverage tiers cannot be matched to a demo run.
+      const results = (body.results ?? []).filter(r => typeof r.leverage === 'number');
       for (const r of results) db.saveBacktest(r);
-      return json({ stored: results.length });
+      return json({ stored: results.length, ignored: (body.results?.length ?? 0) - results.length });
     },
     true,
   );
@@ -180,11 +184,11 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
 function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.BACKTEST, includeRetired: boolean): LeaderboardRow[] {
   const db = arena.db;
   const agents = new Map(db.agents().map(a => [a.id, a]));
-  const backtests = new Map(db.runs(RUN_KIND.BACKTEST).map(r => [`${r.agent_id}:${r.epic}`, r]));
+  const backtests = new Map(db.runs(RUN_KIND.BACKTEST).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
   return db.runs(kind, includeRetired).map(r => {
     const a = agents.get(r.agent_id);
-    const bt = kind === RUN_KIND.DEMO ? backtests.get(`${r.agent_id}:${r.epic}`) : undefined;
+    const bt = kind === RUN_KIND.DEMO ? backtests.get(runKey(r.agent_id, r.epic, r.leverage ?? 0)) : undefined;
     return {
       runId: r.id,
       agentId: r.agent_id,
@@ -192,6 +196,8 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       slug: a?.slug ?? r.agent_id,
       timeframe: a?.timeframe ?? '',
       epic: r.epic,
+      leverage: r.leverage,
+      effectiveLeverage: r.leverage === null ? null : effectiveLeverage(getInstrument(r.epic), r.leverage),
       status: r.retired ? 'retired' : r.status,
       codeHash: r.code_hash,
       startedAt: r.started_at,
@@ -232,6 +238,7 @@ function runSummary(r: RunRow) {
     kind: r.kind,
     agentId: r.agent_id,
     epic: r.epic,
+    leverage: r.leverage,
     codeHash: r.code_hash,
     windowId: r.window_id,
     status: r.retired ? 'retired' : r.status,

@@ -47,6 +47,10 @@ export interface LeaderboardRow {
 	slug: string;
 	timeframe: string;
 	epic: string;
+	/** Account leverage tier (1 = 1:1, unleveraged); null for runs from before leverage tiers. */
+	leverage: number | null;
+	/** Leverage on this instrument: the tier, capped at 20 for crypto and shares. */
+	effectiveLeverage: number | null;
 	status: string;
 	codeHash: string;
 	startedAt: number;
@@ -54,7 +58,7 @@ export interface LeaderboardRow {
 	equity: number;
 	metrics: RunMetrics | null;
 	usesForecast: boolean;
-	/** Demo rows: the backtest of the same agent and instrument. */
+	/** Demo rows: the backtest of the same agent, instrument and leverage. */
 	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
 	/** Demo rows: mirrored onto a broker demo account. */
 	mirrored: boolean;
@@ -65,6 +69,8 @@ export interface RunSummary {
 	kind: RunKind;
 	agentId: string;
 	epic: string;
+	/** Account leverage tier; null for runs from before leverage tiers. */
+	leverage: number | null;
 	codeHash: string;
 	windowId: string | null;
 	status: string;
@@ -189,6 +195,10 @@ export interface BrokerAccountStatus {
 	slots: number;
 	/** Hedging mode: many runs per instrument. Netting (false): one per instrument. Null until read. */
 	hedging: boolean | null;
+	/** Leverage tier from agents/roster.json (1 = 1:1); null = the account gets no runs. */
+	leverage: number | null;
+	/** The account's leverage settings match its tier; null until read. */
+	leverageOk: boolean | null;
 	runs: string[];
 	openDeals: number;
 	killed: boolean;
@@ -210,6 +220,8 @@ export interface BrokerStatus {
 	/** Capital.com allows this many demo accounts per login. */
 	maxAccountsPerLogin: number;
 	accounts: BrokerAccountStatus[];
+	/** Per leverage tier: its accounts and how many of its live runs are mirrored. */
+	tiers: { leverage: number; accounts: string[]; slots: number; liveRuns: number; mirrored: number }[];
 	coverage: {
 		liveRuns: number;
 		mirrored: number;
