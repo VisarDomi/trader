@@ -1,6 +1,7 @@
 # Development workflow
 
-Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md). Writing agents: [`agents/GUIDE.md`](agents/GUIDE.md).
+Repo map and hard rules: [`../../setup.md`](../../setup.md). Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Writing agents: [`agents/GUIDE.md`](agents/GUIDE.md).
 
 ## Git
 

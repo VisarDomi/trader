@@ -9,7 +9,7 @@ An agent is **one TypeScript file** in this folder. Nothing else needs to change
 2. Fill in `name`, `description`, `instruments`, `timeframe`, `params`, and `onBar`.
 3. Check it: `cd apps/backend && bun run check-agent agents/<file>.ts`
 4. Backtest it: `bun run backtest <agent-id>`
-5. Commit and deploy (`scripts/deploy-arena.sh`). The arena starts its demo run automatically.
+5. Commit and deploy (`ops/server/deploy-arena.sh`). The arena starts its demo run automatically.
 
 ```ts
 import { defineAgent } from '../src/sdk';
