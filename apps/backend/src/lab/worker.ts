@@ -1,5 +1,5 @@
 /**
- * Backtest worker: runs one (instrument, agent subset) job and posts results back.
+ * Backtest worker: runs one (instrument, agent × leverage subset) job and posts results back.
  */
 import { loadAgents } from '../engine/loader.ts';
 import type { BacktestWindow } from './backtest-core.ts';
@@ -10,20 +10,23 @@ declare const self: Worker;
 
 export interface WorkerJob {
   epic: string;
-  agentIds: string[];
+  runs: { agentId: string; leverage: number }[];
   window: BacktestWindow;
 }
 
 self.onmessage = async (event: MessageEvent<WorkerJob>) => {
-  const { epic, agentIds, window } = event.data;
+  const { epic, runs, window } = event.data;
   try {
     const { agents } = await loadAgents();
-    const wanted = new Set(agentIds);
-    const selected = agents.filter(a => wanted.has(a.id));
-    const forecastSpecs = selected.flatMap(a => (a.def.forecast ? [{ tf: a.def.timeframe, spec: a.def.forecast }] : []));
+    const byId = new Map(agents.map(a => [a.id, a]));
+    const specs = runs.flatMap(r => {
+      const agent = byId.get(r.agentId);
+      return agent ? [{ agent, leverage: r.leverage }] : [];
+    });
+    const forecastSpecs = specs.flatMap(({ agent: a }) => (a.def.forecast ? [{ tf: a.def.timeframe, spec: a.def.forecast }] : []));
     const forecasts = forecastSpecs.length > 0 ? await CachedForecastProvider.open(epic) : null;
     await forecasts?.preload(forecastSpecs);
-    const results = await backtestEpic(epic, selected, window, forecasts);
+    const results = await backtestEpic(epic, specs, window, forecasts);
     self.postMessage({ ok: true, results });
   } catch (err) {
     self.postMessage({ ok: false, error: err instanceof Error ? `${err.message}\n${err.stack}` : String(err) });

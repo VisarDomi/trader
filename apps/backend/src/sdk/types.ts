@@ -56,8 +56,14 @@ export interface OrderOptions {
    * Default 1 when a stop is given.
    */
   riskPct?: number;
-  /** Notional exposure as a multiple of equity (1 = 100%). Takes precedence over riskPct. Default 1 when no stop is given. */
+  /** Notional exposure as a multiple of equity (1 = 100%). Takes precedence over marginPct and riskPct. Default 1 when no stop is given. */
   exposure?: number;
+  /**
+   * Percent of equity put up as margin: notional = marginPct/100 × equity × ctx.leverage.
+   * The way to use leverage on purpose: marginPct 10 is 0.1× equity at 1:1 and 20× at 1:200.
+   * Takes precedence over riskPct.
+   */
+  marginPct?: number;
   /** Absolute stop-loss price. */
   stopLoss?: number;
   /** Absolute take-profit price. */
@@ -224,6 +230,11 @@ export interface AgentContext<P = Record<string, unknown>, S = Record<string, un
   /** Instrument code, e.g. "US100". */
   readonly epic: string;
   readonly instrument: InstrumentInfo;
+  /**
+   * Leverage of this run's account on this instrument (1 = unleveraged; crypto and shares at most 20).
+   * Positions are capped at about 0.9 × equity × leverage. See `leverage` in the definition.
+   */
+  readonly leverage: number;
   readonly timeframe: Timeframe;
   /** This agent's parameters (defaults merged with the variant). */
   readonly params: P;
@@ -280,6 +291,11 @@ export interface AgentDefinition<P extends Record<string, unknown> = Record<stri
   variants?: Record<string, Partial<P>>;
   /** Bars of history before orders are allowed. Default 100. */
   warmup?: number;
+  /**
+   * Account leverages to run at, each its own run and leaderboard row (1, 2, 3, 5, 10, 20, 50, 100, 200).
+   * Omit it unless the idea depends on leverage: agents/roster.json then decides (see LIFECYCLE.md).
+   */
+  leverage?: readonly number[];
   /** Force-close any position before the daily session break. Default false. */
   intradayOnly?: boolean;
   /** Ask the platform for a TimesFM forecast every bar (ctx.forecast). */

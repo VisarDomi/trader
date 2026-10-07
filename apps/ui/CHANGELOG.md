@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
+- **Leverage page** — runs, mirroring and median return per leverage tier and account, the leverage ladder (return and drawdown per tier), and the 1:1 share basket against US100.
+- **Leverage on every run** — a Lev. column and filter on the leaderboard (`?leverage=` works too), the tier on run pages and the broker page's accounts and runs.
 - **Lifecycle stage column** on the demo leaderboard (early / keep / leader / retire, reason on hover), from the shared policy in `@trader/shared`.
 - **Journal page** — the babysitter's visit log (`apps/backend/agents/JOURNAL.md`, bundled at build) and a summary of how agents move between stages.
 

@@ -6,6 +6,7 @@
  * See agents/GUIDE.md.
  */
 import { INSTRUMENTS } from '../engine/instruments.ts';
+import { isLeverageTier, LEVERAGE_TIERS } from '../engine/leverage.ts';
 import type { AgentDefinition } from './types.ts';
 import { TIMEFRAMES } from './types.ts';
 
@@ -44,6 +45,12 @@ export function defineAgent<P extends Record<string, unknown>, S = Record<string
   if (definition.params === null || typeof definition.params !== 'object') problems.push('params must be an object (use {} for none)');
   for (const name of Object.keys(definition.variants ?? {})) {
     if (!VARIANT_NAME.test(name)) problems.push(`variant name "${name}" must be lowercase letters, digits and dashes`);
+  }
+  if (definition.leverage !== undefined) {
+    if (!Array.isArray(definition.leverage) || definition.leverage.length === 0) problems.push('leverage must list at least one tier');
+    for (const l of definition.leverage ?? []) {
+      if (!isLeverageTier(l)) problems.push(`leverage ${l} is not one of ${LEVERAGE_TIERS.join(', ')}`);
+    }
   }
   if (definition.forecast) {
     const { horizon, context = 512 } = definition.forecast;

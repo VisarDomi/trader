@@ -39,7 +39,8 @@ export default defineAgent({
 
 - `onBar(ctx)` is called once per **closed** bar of `timeframe` (`1m 5m 15m 30m 1h 4h 1d`).
   Bars are built from 1-minute bid candles; bar boundaries are UTC-aligned.
-- Each instrument in `instruments` is a separate run with its own **$10,000** virtual account.
+- Each instrument in `instruments`, at each account leverage the agent runs at, is a separate run with its own
+  **$10,000** virtual account (see [Leverage](#leverage)).
 - **One position per run.** `buy()` while short closes the short and opens a long (a reversal).
   `buy()` while already long is ignored.
 - Orders fill **immediately at the current price**: buys at the ask (bid + spread), sells at the bid.
@@ -48,7 +49,8 @@ export default defineAgent({
   (every tick in demo). Gaps fill at the open (worse). If stop and take-profit are both touched in
   the same minute, the stop wins.
 - Overnight funding is charged at 17:00 New York time on open positions (real Capital.com rates;
-  longs on indices pay ~8%/year of notional). Holding for days costs money.
+  longs on indices pay ~8%/year of notional). Holding for days costs money, except at 1:1 leverage on
+  crypto and shares, which pay none.
 - `intradayOnly: true` closes positions 5 minutes before the daily break (17:00 New York) and
   blocks new entries around it.
 - If equity falls below 50% of the margin in use, the position is closed (`margin_call`).
@@ -63,13 +65,14 @@ The first that applies wins:
 |---|---|
 | `size` | exactly that many units |
 | `exposure` | notional = `exposure` × equity (a stop, if given, is just a stop) |
+| `marginPct` | notional = `marginPct`% of equity × `ctx.leverage`: that share of equity is put up as margin |
 | `stopLoss` (or `trailingStop`), optional `riskPct` (default 1) | loses `riskPct`% of equity if the stop is hit |
 | nothing | notional = 1 × equity |
 
-Size is then capped by margin (at most ~18× leverage on indices, gold and AUDUSD, 9× on
-silver/oil/gas, 27× on EURUSD/GBPUSD, 1.8× on crypto) and rounded down to the instrument's step. Orders below the minimum size are
-rejected (see the run log). Prefer `stopLoss` + `riskPct`: it adapts to volatility and price level,
-so the same agent works on US100 (≈30,000) and EURUSD (≈1.1).
+Size is then capped by margin, at most 0.9 × equity × `ctx.leverage` of notional (0.9× equity at 1:1),
+and rounded down to the instrument's step. Orders below the minimum size are rejected (see the run log).
+Prefer `stopLoss` + `riskPct`: it adapts to volatility and price level, so the same agent works on US100
+(≈30,000) and EURUSD (≈1.1). Use `marginPct` only when the idea is about using leverage.
 
 ## The `ctx` object
 
@@ -86,8 +89,9 @@ so the same agent works on US100 (≈30,000) and EURUSD (≈1.1).
 | `ctx.tf('4h')` | `{ bars, ta }` for another timeframe; list it in `extraTimeframes` |
 | `ctx.forecast` | TimesFM 3 forecast (see below) or `null` |
 | `ctx.isWarmup` | true while history is replayed before trading; orders are ignored then |
-| `ctx.instrument` | `{ epic, minSize, sizeStep, pricePrecision, typicalSpread, ... }` |
-| `ctx.buy(opts)`, `ctx.sell(opts)` | open long / short: `{ stopLoss?, takeProfit?, trailingStop?, riskPct?, exposure?, size?, reason? }` |
+| `ctx.instrument` | `{ epic, assetClass, minSize, sizeStep, pricePrecision, typicalSpread, marginFactor, ... }` |
+| `ctx.leverage` | this run's leverage on this instrument: 1 … 200 (crypto and shares at most 20) |
+| `ctx.buy(opts)`, `ctx.sell(opts)` | open long / short: `{ stopLoss?, takeProfit?, trailingStop?, riskPct?, marginPct?, exposure?, size?, reason? }` |
 | `ctx.close(reason?)` | close the position |
 | `ctx.setStops({ stopLoss?, takeProfit?, trailingStop? })` | move stops; `null` removes one |
 | `ctx.log(...)` | write to the run log (shown on the dashboard) |
@@ -139,6 +143,23 @@ is the next bar. It is computed from the last `context` closes including the cur
   volatility forecast (filters, sizing), high-conviction signals where a whole inner band sits on
   one side of the price, and slower timeframes. See `timesfm-vol-breakout.ts`, `timesfm-swing.ts`.
 
+## Leverage
+
+Each of the nine Arena demo accounts trades at one leverage: 1:1, 1:2, 1:3, 1:5, 1:10, 1:20, 1:50,
+1:100 or 1:200. Every run belongs to one of them, and its paper account follows the same rules:
+
+- margin = notional ÷ leverage; a position is capped at 0.9 × equity × leverage and is closed when
+  equity falls below half its margin, so high leverage lets a loss run much further;
+- at 1:1, crypto and shares pay no overnight funding (indices, commodities and FX still do);
+- crypto and shares go no higher than 1:20, so on a 1:50+ account they trade at 1:20.
+
+An agent that risks 1% against a stop uses only the leverage its stop needs (most use under 5×), so for
+it the account leverage is just a ceiling. **Which tiers an agent runs at is decided in
+`agents/roster.json`, not in the agent file** (see `LIFECYCLE.md`), so moving an agent never changes its
+code hash. Declare `leverage: [1, 200]` in the definition only when the idea itself depends on leverage
+(e.g. a fee-free 1:1 holder, or an agent that sizes with `marginPct`); each listed tier becomes its own
+run. `check-agent` reports how much leverage an agent actually uses.
+
 ## Variants
 
 `variants: { fast: { period: 10 }, slow: { period: 50 } }` creates agents `<file>/fast` and
@@ -157,13 +178,15 @@ ten near-identical variants is how you overfit a backtest.
   backtest and demo means the agent was overfit.
 - After deployment an agent moves through the lifecycle in [`LIFECYCLE.md`](LIFECYCLE.md): judged
   after 30 trades and 4 weeks, retired if it loses, mirrored on the broker while it ranks well.
-  Retiring one instrument goes in `roster.json`, never in the agent file.
+  Retiring one instrument (or one leverage) goes in `roster.json`, never in the agent file.
 
 ## Instruments
 
 All quoted in USD: `US100 US500 US30` (indices), `GOLD SILVER OIL_CRUDE NATURALGAS`
-(commodities), `EURUSD GBPUSD AUDUSD` (FX), `BTCUSD ETHUSD` (crypto, trade 7 days).
-Indices, commodities and FX trade ~23h/day, 5 days/week.
+(commodities), `EURUSD GBPUSD AUDUSD` (FX), `BTCUSD ETHUSD` (crypto, trade 7 days),
+`NVDA MSFT AAPL AMZN AVGO META GOOGL TSLA` (shares: the largest Nasdaq-100 companies; trade 24h on
+weekdays, history from 2024; dividends are not modelled). Indices, commodities and FX trade ~23h/day,
+5 days/week.
 
 ## Files
 

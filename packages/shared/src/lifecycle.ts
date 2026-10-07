@@ -4,8 +4,11 @@
 
 import type { LeaderboardRow } from './types.ts';
 
-/** Agents with no edge by construction; they are never judged or retired. */
-export const CONTROL_SLUGS: ReadonlySet<string> = new Set(['random-baseline', 'buy-hold']);
+/**
+ * Agents that are yardsticks, not strategies; they are never judged or retired: random entries,
+ * buy and hold, and the leverage ladder (one signal at every leverage, to show what leverage does).
+ */
+export const CONTROL_SLUGS: ReadonlySet<string> = new Set(['random-baseline', 'buy-hold', 'leverage-ladder']);
 /** Random-entry agents whose results show what luck looks like. */
 export const RANDOM_BASELINE_SLUG = 'random-baseline';
 
@@ -20,7 +23,7 @@ export const LIFECYCLE = {
 	SILENT_DAYS: 60,
 	/** Judged runs with a trade t-statistic at or below this are retired: with no edge the spread drags t below zero. */
 	RETIRE_TSTAT: -1,
-	/** Judged runs at or above this, and above every random monkey on the same instrument, lead. */
+	/** Judged runs at or above this, and above every random monkey's t on the same instrument, lead. */
 	LEADER_TSTAT: 2,
 	/** An agent is retired as a whole when at least this share of its judged runs (and at least 3) are retired. */
 	AGENT_RETIRE_SHARE: 2 / 3,
@@ -46,7 +49,10 @@ export interface Assessment {
 	reason: string;
 }
 
-/** Range of random-monkey returns per instrument. */
+/**
+ * Range of random-monkey trade t-statistics per instrument. The t-statistic, unlike the return,
+ * does not grow with position size, so monkeys on one leverage tier are a yardstick for every tier.
+ */
 export type LuckBands = Map<string, { min: number; max: number; n: number }>;
 
 const DAY_MS = 86_400_000;
@@ -62,10 +68,10 @@ export function luckBands(rows: readonly LeaderboardRow[]): LuckBands {
 	const bands: LuckBands = new Map();
 	for (const r of rows) {
 		if (r.slug !== RANDOM_BASELINE_SLUG || !r.metrics || r.status === STATUS_RETIRED) continue;
-		const ret = r.metrics.totalReturn;
+		const t = r.metrics.tStat;
 		const b = bands.get(r.epic);
-		if (!b) bands.set(r.epic, { min: ret, max: ret, n: 1 });
-		else bands.set(r.epic, { min: Math.min(b.min, ret), max: Math.max(b.max, ret), n: b.n + 1 });
+		if (!b) bands.set(r.epic, { min: t, max: t, n: 1 });
+		else bands.set(r.epic, { min: Math.min(b.min, t), max: Math.max(b.max, t), n: b.n + 1 });
 	}
 	return bands;
 }
@@ -80,7 +86,6 @@ export function assess(row: LeaderboardRow, bands: LuckBands, now = Date.now()):
 	const days = (now - row.startedAt) / DAY_MS;
 	const trades = row.metrics?.trades ?? 0;
 	const t = row.metrics?.tStat ?? 0;
-	const ret = row.metrics?.totalReturn ?? 0;
 	if (trades === 0 && days >= LIFECYCLE.SILENT_DAYS) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
 
 	const judged =
@@ -93,7 +98,7 @@ export function assess(row: LeaderboardRow, bands: LuckBands, now = Date.now()):
 	}
 	if (t <= LIFECYCLE.RETIRE_TSTAT) return { verdict: VERDICT.RETIRE, reason: `losing: t = ${t.toFixed(2)} over ${trades} trades` };
 	const band = bands.get(row.epic);
-	if (t >= LIFECYCLE.LEADER_TSTAT && (!band || ret > band.max)) {
+	if (t >= LIFECYCLE.LEADER_TSTAT && (!band || t > band.max)) {
 		return { verdict: VERDICT.LEADER, reason: `t = ${t.toFixed(2)} over ${trades} trades${band ? ', above every monkey' : ''}` };
 	}
 	return { verdict: VERDICT.KEEP, reason: `t = ${t.toFixed(2)} over ${trades} trades` };

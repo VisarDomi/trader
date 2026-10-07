@@ -142,6 +142,12 @@ async function check(state: State, now: number): Promise<Alert[]> {
       if (a.retiring) {
         alerts.push({ key: `retiring:${a.id}`, title: `${a.name} renamed away`, body: `The arena is closing its deals on ${a.name} and will stop using it. Intended?`, userAction: true });
       }
+      if (a.leverageOk === false) {
+        alerts.push({ key: `leverage:${a.id}`, title: `${a.name} leverage not set`, body: `Capital.com refused to set ${a.name} to 1:${a.leverage}, so its runs are not mirrored. ${ASK_CLAUDE}`, userAction: false });
+      }
+      if (a.leverage === null && !a.retiring) {
+        alerts.push({ key: `no-tier:${a.id}`, title: `${a.name} has no leverage tier`, body: `${a.name} is not listed in agents/roster.json "accounts", so it gets no runs. ${ASK_CLAUDE}`, userAction: false });
+      }
       if (a.hedging === false) {
         alerts.push({ key: `netting:${a.id}`, title: `${a.name} left hedging mode`, body: `${a.name} can only hold one run per instrument. Switch it back to hedging in Capital.com, or ${ASK_CLAUDE.toLowerCase()}`, userAction: true });
       }

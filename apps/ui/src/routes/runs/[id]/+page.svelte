@@ -13,7 +13,11 @@
 <div class="stack">
 	<header class="stack" style="gap: 4px">
 		<div class="muted"><a href="/?view={run.kind}">Leaderboard</a> / <a href="/agents/{run.agentId}">{data.agentName}</a></div>
-		<h1>{data.agentName} · {run.epic} <span class="badge">{run.kind}</span> <span class="badge">{run.status}</span></h1>
+		<h1>
+			{data.agentName} · {run.epic} <span class="badge">{run.kind}</span>
+			{#if run.leverage !== null}<span class="badge" title="Leverage of the demo account this run trades on">1:{run.leverage}</span>{/if}
+			<span class="badge">{run.status}</span>
+		</h1>
 		<div class="secondary" style="font-size: 13px">
 			{#if run.kind === 'demo'}
 				Live since {utc(run.startedAt)} · updated {ago(run.updatedAt)} · code {run.codeHash}

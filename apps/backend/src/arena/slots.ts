@@ -1,7 +1,8 @@
 /**
  * Which demo run is mirrored on which broker account.
  *
- * An account holds at most `slots` runs. An account in netting mode (hedging
+ * A run only goes to an account of its leverage tier (accounts and runs
+ * without a tier match each other). An account holds at most `slots` runs. An account in netting mode (hedging
  * off) also holds at most one run per instrument, because a second position on
  * the same instrument would net against the first. Assignments are sticky: a
  * run keeps its account until it stops, is excluded, or the account goes away.
@@ -18,6 +19,8 @@ export interface SlotAccount {
   onePerEpic: boolean;
   /** Instruments this account cannot take (netting mode with a position the arena did not open). */
   blockedEpics?: ReadonlySet<string>;
+  /** Account leverage: only runs of this tier. */
+  tier?: number;
 }
 
 export interface SlotCandidate {
@@ -25,6 +28,8 @@ export interface SlotCandidate {
   epic: string;
   /** Higher is better; used for promotion. */
   score?: number;
+  /** Leverage tier the run trades at. */
+  tier?: number;
 }
 
 export interface SlotPlan {
@@ -51,10 +56,11 @@ export function assignSlots(
   promotion?: Promotion,
 ): SlotPlan {
   const state = new Map(accounts.map(a => [a.name, { ...a, used: 0, epics: new Set<string>() }]));
+  const byId = new Map(candidates.map(c => [c.runId, c]));
   const epicOf = new Map(candidates.map(c => [c.runId, c.epic]));
   const assignments: Record<string, string> = {};
-  const fits = (s: SlotAccount & { used: number; epics: Set<string> }, epic: string) =>
-    s.used < s.slots && (!s.onePerEpic || (!s.epics.has(epic) && !s.blockedEpics?.has(epic)));
+  const fits = (s: SlotAccount & { used: number; epics: Set<string> }, c: SlotCandidate) =>
+    s.tier === c.tier && s.used < s.slots && (!s.onePerEpic || (!s.epics.has(c.epic) && !s.blockedEpics?.has(c.epic)));
   const take = (runId: string, epic: string, name: string) => {
     const s = state.get(name)!;
     s.used++;
@@ -63,10 +69,10 @@ export function assignSlots(
   };
 
   for (const [runId, name] of Object.entries(current)) {
-    const epic = epicOf.get(runId);
+    const c = byId.get(runId);
     const s = state.get(name);
-    if (epic === undefined || !s || excluded.has(runId) || !fits(s, epic)) continue;
-    take(runId, epic, name);
+    if (c === undefined || !s || excluded.has(runId) || !fits(s, c)) continue;
+    take(runId, c.epic, name);
   }
 
   const unassigned: SlotCandidate[] = [];
@@ -76,7 +82,7 @@ export function assignSlots(
     let bestFree = 0;
     for (const s of state.values()) {
       const free = s.slots - s.used;
-      if (fits(s, c.epic) && free > bestFree) {
+      if (fits(s, c) && free > bestFree) {
         best = s.name;
         bestFree = free;
       }
@@ -97,6 +103,7 @@ export function assignSlots(
     if (promoted.length >= promotion.maxSwaps) break;
     const i = weakest.findIndex(m => {
       const s = state.get(assignments[m]!)!;
+      if (s.tier !== w.tier) return false;
       return !s.onePerEpic || epicOf.get(m) === w.epic || (!s.epics.has(w.epic) && !s.blockedEpics?.has(w.epic));
     });
     const m = i < 0 ? undefined : weakest[i];
@@ -115,12 +122,18 @@ export function assignSlots(
   return { assignments, unassigned: rest, promoted, demoted };
 }
 
-/** How many more accounts of `slots` slots it takes to mirror every unassigned run. */
+/** How many more accounts of `slots` slots it takes to mirror every unassigned run (one tier per account). */
 export function accountsNeeded(unassigned: readonly SlotCandidate[], slots: number, onePerEpic: boolean): number {
-  if (unassigned.length === 0) return 0;
-  const bySlots = Math.ceil(unassigned.length / slots);
-  if (!onePerEpic) return bySlots;
-  const perEpic = new Map<string, number>();
-  for (const c of unassigned) perEpic.set(c.epic, (perEpic.get(c.epic) ?? 0) + 1);
-  return Math.max(Math.max(...perEpic.values()), bySlots);
+  let total = 0;
+  for (const group of Map.groupBy(unassigned, c => c.tier).values()) {
+    const bySlots = Math.ceil(group.length / slots);
+    if (!onePerEpic) {
+      total += bySlots;
+      continue;
+    }
+    const perEpic = new Map<string, number>();
+    for (const c of group) perEpic.set(c.epic, (perEpic.get(c.epic) ?? 0) + 1);
+    total += Math.max(Math.max(...perEpic.values()), bySlots);
+  }
+  return total;
 }

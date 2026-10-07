@@ -2,7 +2,7 @@
 	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
 	import { assess, luckBands, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
-	import { ago, isControl, median, num, pct, pctPlain, sign } from '$lib/format';
+	import { ago, isControl, lev, levTitle, median, num, pct, pctPlain, sign } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
 
 	let { data } = $props();
@@ -14,6 +14,7 @@
 	let group = $state<Group>('run');
 	let epic = $state('');
 	let timeframe = $state('');
+	let leverage = $state(page.url.searchParams.get('leverage') ?? '');
 	let query = $state('');
 	let hideControls = $state(false);
 	let sortKey = $state<string>('totalReturn');
@@ -22,10 +23,14 @@
 	const rows = $derived(view === 'backtest' ? data.backtest : data.demo);
 	const epics = $derived([...new Set([...data.demo, ...data.backtest].map(r => r.epic))].sort());
 	const timeframes = $derived([...new Set([...data.demo, ...data.backtest].map(r => r.timeframe))]);
+	const leverages = $derived(
+		[...new Set([...data.demo, ...data.backtest].map(r => r.leverage).filter((l): l is number => l !== null))].sort((a, b) => a - b),
+	);
 
 	function matches(r: LeaderboardRow): boolean {
 		if (epic && r.epic !== epic) return false;
 		if (timeframe && r.timeframe !== timeframe) return false;
+		if (leverage && String(r.leverage) !== leverage) return false;
 		if (hideControls && isControl(r)) return false;
 		if (query && !`${r.name} ${r.agentId}`.toLowerCase().includes(query.toLowerCase())) return false;
 		return true;
@@ -56,6 +61,7 @@
 		if (key === 'btAnnual') return r.backtest?.metrics?.annualReturn ?? -Infinity;
 		if (key === 'name') return 0;
 		if (key === 'stage') return STAGE_RANK[stages.get(r.runId)?.verdict ?? VERDICT.EARLY];
+		if (key === 'leverage') return r.leverage ?? -Infinity;
 		const m = r.metrics as unknown as Record<string, number> | null;
 		const v = m?.[key];
 		return typeof v === 'number' && Number.isFinite(v) ? v : -Infinity;
@@ -175,8 +181,8 @@
 		{#if view === 'demo'}
 			<p class="lede">
 				Every agent trades live Capital.com demo prices from the moment it is deployed, with $10,000 of virtual capital per
-				instrument. This is out-of-sample: nobody could have tuned an agent to these prices. Treat results with fewer than
-				~30 trades as noise.
+				instrument and leverage (see <a href="/leverage">Leverage</a>). This is out-of-sample: nobody could have tuned an agent
+				to these prices. Treat results with fewer than ~30 trades as noise.
 			</p>
 		{:else if view === 'backtest'}
 			<p class="lede">
@@ -215,6 +221,10 @@
 			<option value="">All timeframes</option>
 			{#each timeframes as t}<option value={t}>{t}</option>{/each}
 		</select>
+		<select bind:value={leverage} aria-label="Leverage">
+			<option value="">All leverages</option>
+			{#each leverages as l}<option value={String(l)}>1:{l}</option>{/each}
+		</select>
 		<input type="search" placeholder="Search agents" bind:value={query} />
 		<label class="row" style="gap: 4px"><input type="checkbox" bind:checked={hideControls} /> Hide control agents</label>
 	</div>
@@ -245,6 +255,7 @@
 					<tr>
 						<th><button onclick={() => sortBy('name')}>Agent{arrow('name')}</button></th>
 						<th>Instrument</th>
+						<th title="Leverage of the demo account the run trades on: see the Leverage page"><button onclick={() => sortBy('leverage')}>Lev.{arrow('leverage')}</button></th>
 						<th>TF</th>
 						<th class="num"><button onclick={() => sortBy('days')}>Days{arrow('days')}</button></th>
 						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
@@ -272,6 +283,7 @@
 								{#if r.usesForecast}<span class="badge">TimesFM</span>{/if}
 							</td>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
+							<td class="lev" title={levTitle(r)}>{lev(r)}</td>
 							<td class="muted">{r.timeframe}</td>
 							<td class="num">{num(m?.days, 1)}</td>
 							<td class="num">{m?.trades ?? 0}</td>
@@ -301,7 +313,7 @@
 							</td>
 						</tr>
 					{:else}
-						<tr><td colspan="15" class="muted">No runs match.</td></tr>
+						<tr><td colspan="16" class="muted">No runs match.</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -345,7 +357,8 @@
 </div>
 
 <style>
-	td.stage {
+	td.stage,
+	td.lev {
 		white-space: nowrap;
 	}
 	tr.control td {

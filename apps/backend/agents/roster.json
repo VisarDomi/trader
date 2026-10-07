@@ -1,3 +1,53 @@
 {
+  "accounts": {
+    "Arena 01": 1,
+    "Arena 02": 2,
+    "Arena 03": 3,
+    "Arena 04": 5,
+    "Arena 05": 10,
+    "Arena 06": 20,
+    "Arena 07": 50,
+    "Arena 08": 100,
+    "Arena 09": 200
+  },
+  "leverage": {
+    "default": 20,
+    "agents": {
+      "tsmom": [1],
+      "overnight-drift": [1],
+      "swing-reversal": [2],
+      "supertrend/20x5": [2],
+      "volatility-breakout/k08": [2],
+      "timesfm-swing": [2],
+      "zscore-fade": [3],
+      "donchian-breakout": [3],
+      "keltner-trend": [3],
+      "volatility-breakout/k05": [5],
+      "supertrend/10x3": [5],
+      "inside-bar": [5],
+      "ema-cross/20-50": [5],
+      "ema-cross/9-21": [10],
+      "timesfm-vol-breakout": [10],
+      "rsi2-reversion": [10],
+      "timesfm-band": [20],
+      "adx-dmi": [20],
+      "timesfm-trend": [20],
+      "timesfm-drift/h16": [20],
+      "timesfm-drift/h4": [50],
+      "timesfm-drift/h8": [50],
+      "hma-slope": [50],
+      "orb-ny/30min": [50],
+      "random-baseline/monkey-a": [50],
+      "macd-trend": [100],
+      "squeeze-breakout": [100],
+      "orb-ny/15min": [100],
+      "random-baseline/monkey-b": [100],
+      "stoch-range": [200],
+      "london-breakout": [200],
+      "mtf-pullback": [200],
+      "bollinger-fade": [200],
+      "random-baseline/monkey-c": [200]
+    }
+  },
   "retired": {}
 }

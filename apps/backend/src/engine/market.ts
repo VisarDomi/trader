@@ -51,6 +51,8 @@ export class MarketEngine {
   addRun(opts: {
     runId: string;
     agent: LoadedAgent;
+    /** Account leverage tier (see leverage.ts). */
+    leverage: number;
     capital: number;
     checkStopsOnCandles: boolean;
     onEvent?: (e: RunEvent) => void;
@@ -65,6 +67,7 @@ export class MarketEngine {
       agent: def,
       params: opts.agent.params,
       instrument: this.instrument,
+      leverage: opts.leverage,
       capital: opts.capital,
       primary,
       extra,

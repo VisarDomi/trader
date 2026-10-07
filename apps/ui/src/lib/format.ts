@@ -63,6 +63,18 @@ export function sign(x: number | null | undefined): string {
 
 export { CONTROL_SLUGS };
 
+/** "1:200"; "1:200*" when the instrument trades at less (crypto and shares stop at 1:20). */
+export function lev(r: Pick<LeaderboardRow, 'leverage' | 'effectiveLeverage'>): string {
+	if (r.leverage === null) return '—';
+	return r.effectiveLeverage !== null && r.effectiveLeverage < r.leverage ? `1:${r.leverage}*` : `1:${r.leverage}`;
+}
+
+export function levTitle(r: Pick<LeaderboardRow, 'leverage' | 'effectiveLeverage'>): string {
+	if (r.leverage === null) return 'from before leverage tiers';
+	if (r.effectiveLeverage !== null && r.effectiveLeverage < r.leverage) return `1:${r.leverage} account; crypto and shares trade at most 1:${r.effectiveLeverage}`;
+	return r.leverage === 1 ? '1:1 account: no leverage (no overnight fee on crypto and shares)' : `1:${r.leverage} account`;
+}
+
 /** Control agents (no edge by construction) are shown as reference rows. */
 export function isControl(row: Pick<LeaderboardRow, 'slug'>): boolean {
 	return isControlSlug(row.slug);

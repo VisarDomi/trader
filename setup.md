@@ -28,8 +28,9 @@ Start here, then read only what your task needs:
   Authelia rule.
 - **The Capital.com login is shared** with other apps (position-opener). Of its 10 demo accounts (the
   maximum), "Arena 01" … "Arena 09" belong to the arena and **Visi is the user's**: the arena trades
-  only on accounts whose name starts with "Arena". The login's limits apply to everything on it:
-  10 requests/s, 1 login/s, 1,000 demo opens/hour.
+  only on accounts whose name starts with "Arena". Each Arena account has one leverage (1:1 … 1:200),
+  set by the arena from `apps/backend/agents/roster.json`; change it there, not in Capital.com. The
+  login's limits apply to everything on it: 10 requests/s, 1 login/s, 1,000 demo opens/hour.
 - `AGENTS.md`, `readme.md` and `test.txt` files are edited only by the user.
 
 ## Where things run

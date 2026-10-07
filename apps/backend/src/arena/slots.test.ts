@@ -94,3 +94,31 @@ describe('promotion', () => {
     expect(assignSlots(current, [hedging('H', 5)], candidates, NONE, { ...always, maxSwaps: 2 }).promoted).toHaveLength(2);
   });
 });
+
+describe('leverage tiers', () => {
+  const always = { margin: 200, maxSwaps: 10, canDemote: () => true };
+  const tiered = (agent: string, epic: string, tier: number, score = 10_000) => ({ ...run(agent, epic), tier, score });
+  const account = (name: string, slots: number, tier: number) => ({ name, slots, onePerEpic: false, tier });
+
+  test('runs only go to accounts of their tier', () => {
+    const plan = assignSlots({}, [account('L1', 5, 1), account('L200', 5, 200)], [tiered('a', 'US100', 1), tiered('b', 'US100', 200), tiered('c', 'GOLD', 50)], NONE);
+    expect(plan.assignments).toEqual({ 'demo:a:US100:h': 'L1', 'demo:b:US100:h': 'L200' });
+    expect(plan.unassigned.map(c => c.runId)).toEqual(['demo:c:GOLD:h']);
+  });
+
+  test('a run on an account of another tier moves', () => {
+    const plan = assignSlots({ 'demo:a:US100:h': 'L200' }, [account('L1', 5, 1), account('L200', 5, 200)], [tiered('a', 'US100', 1)], NONE);
+    expect(plan.assignments).toEqual({ 'demo:a:US100:h': 'L1' });
+  });
+
+  test('promotion only swaps runs of the same tier', () => {
+    const candidates = [tiered('weak', 'GOLD', 1, 9_000), tiered('mid', 'US30', 2, 10_000), tiered('strong', 'US100', 2, 12_000)];
+    const plan = assignSlots({ 'demo:weak:GOLD:h': 'L1', 'demo:mid:US30:h': 'L2' }, [account('L1', 1, 1), account('L2', 1, 2)], candidates, NONE, always);
+    expect(plan.promoted).toEqual(['demo:strong:US100:h']);
+    expect(plan.demoted).toEqual(['demo:mid:US30:h']);
+  });
+
+  test('accounts needed are counted per tier', () => {
+    expect(accountsNeeded([tiered('a', 'US100', 1), tiered('b', 'US100', 2)], 50, false)).toBe(2);
+  });
+});

@@ -208,6 +208,33 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   and position-opener. Beyond the 450-run capacity, or ~100 agent variants, mirror only the best demo runs
   (the assignment already fills best-first) or use a second Capital.com login with its own limits.
 
+### Leverage tiers (2026-10-07)
+
+- **Leverage is a dimension of every run, one tier per demo account.** The user's login offers 1, 2, 3, 4, 5,
+  10, 20, (30 on FX), 50, 100 and 200 on indices, commodities and FX, and up to 20 on crypto and shares; it is
+  set per account and asset class (`PUT /accounts/preferences {leverages}`), and a position keeps the
+  leverage it was opened with (verified: changing an account with open positions left them at their old
+  leverage). Nine accounts, nine tiers: 1, 2, 3, 5, 10, 20, 50, 100, 200 (4 and 30 left out; 30 exists only
+  on FX). Mirroring a run only on an account of its tier keeps every demo deal at its paper run's leverage.
+- **The paper engine models what leverage changes:** the margin cap on size, the 50%-of-margin close-out,
+  and no overnight funding at 1:1 on crypto and shares (Capital.com, since 2024-07-08; indices, commodities
+  and FX still pay at 1:1).
+- **Leverage is a ceiling, not a multiplier.** Agents that risk 1% against a stop used a median of 0.7–3×
+  and a 90th percentile of 1.5–5× equity in backtests (FX the most), so the account leverage changes their
+  results only on the low tiers (at 1:1 89% of index and 99% of FX trades would be capped). The starting
+  allocation therefore sorts agents by their backtest leverage use, the least on 1:1 and the most on 1:200,
+  ~50 runs per account. To show what *using* leverage does, `marginPct` sizing (a share of equity put up as
+  margin, so exposure grows with the tier) and a control agent, the leverage ladder, run one signal at
+  every tier.
+- **Shares, for fee-free index exposure.** A 1:1 index position still pays ~8%/year on a long; the eight
+  largest Nasdaq-100 companies held at 1:1 pay nothing (the cost is the cash to own them outright). Their
+  minimum sizes are small enough (0.01–0.1 share) to mirror at 0.2×. Buy-and-hold holds them on 1:1 next to
+  US100 and US500.
+- **Leaders are compared with monkeys on t, not return,** because returns scale with position size and so
+  with leverage; a trade t-statistic does not.
+- **The roster decides tiers, not agent files,** so moving an agent between tiers never changes its code
+  hash. All demo runs restarted once on 2026-10-07 when tiers were introduced (they were 1.5 days old).
+
 ### Lifecycle and babysitting
 
 - **Judged on demo trades, not backtests or calendar time alone.** A run needs 30 closed trades and 4 weeks

@@ -3,6 +3,7 @@ import { defineAgent } from '../sdk/index.ts';
 import type { AgentContext, Bar, OrderOptions } from '../sdk/types.ts';
 import { EXIT_REASON } from '../sdk/types.ts';
 import { IndicatorCache } from '../sdk/ta.ts';
+import type { Instrument } from './instruments.ts';
 import { INSTRUMENTS } from './instruments.ts';
 import type { LoadedAgent } from './loader.ts';
 import { MarketEngine } from './market.ts';
@@ -43,9 +44,9 @@ function scripted(actions: Action[], opts: { warmup?: number; timeframe?: '1m' |
   return { id: 'scripted', slug: 'scripted', variant: null, file: 'x', def, params: {}, codeHash: 'h', source: '' };
 }
 
-function setup(agent: LoadedAgent, capital = 10_000) {
-  const engine = new MarketEngine(US100);
-  const run = engine.addRun({ runId: 'r1', agent, capital, checkStopsOnCandles: true });
+function setup(agent: LoadedAgent, capital = 10_000, leverage = 20, instrument: Instrument = US100) {
+  const engine = new MarketEngine(instrument);
+  const run = engine.addRun({ runId: 'r1', agent, leverage, capital, checkStopsOnCandles: true });
   return { engine, run };
 }
 
@@ -151,7 +152,7 @@ describe('AgentRun fills and sizing', () => {
   });
 
   test('size is capped by margin', () => {
-    // 5% margin, 90% of equity usable -> max notional 180,000 at ask 102 -> 1764.705 units, capped by maxSize 1250
+    // 1:20 -> 5% margin, 90% of equity usable -> max notional 180,000 at ask 102 -> 1764.705 units, capped by maxSize 1250
     const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1_000_000 }) }]));
     engine.processCandle(flat(0, 100));
     expect(run.position?.size).toBe(US100.maxSize);
@@ -236,6 +237,50 @@ describe('AgentRun stops', () => {
   });
 });
 
+describe('AgentRun leverage', () => {
+  const BTCUSD = INSTRUMENTS.BTCUSD!;
+
+  test('at 1:1 a position is at most 0.9 × equity', () => {
+    const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1_000_000 }) }]), 10_000, 1);
+    engine.processCandle(flat(0, 100)); // ask 102 -> 9,000 / 102 = 88.235 units
+    expect(run.position?.size).toBe(88.235);
+  });
+
+  test('marginPct puts that share of equity up as margin, so size grows with leverage', () => {
+    for (const [leverage, size] of [[1, 0.1], [200, 20]] as const) {
+      const { engine, run } = setup(scripted([{ at: 1, do: buy({ marginPct: 10 }) }]), 10_000, leverage);
+      engine.processCandle(flat(0, 9998)); // ask 10,000; 1,000 of margin
+      expect(run.position?.size).toBe(size);
+    }
+  });
+
+  test('crypto is capped at 1:20 whatever the account tier', () => {
+    let seen = 0;
+    const { engine } = setup(scripted([{ at: 1, do: ctx => (seen = ctx.leverage) }]), 10_000, 200, BTCUSD);
+    engine.processCandle(flat(0, 60_000));
+    expect(seen).toBe(20);
+  });
+
+  test('1:1 crypto pays no overnight funding; leveraged crypto and 1:1 indices do', () => {
+    const night = (instrument: Instrument, leverage: number) => {
+      const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 0.1 }) }]), 100_000, leverage, instrument);
+      engine.processCandle(flat(0, 1_000));
+      engine.processCandle({ ...flat(1, 1_000), time: T0 + 24 * 60 * MIN });
+      return run.balance - 100_000;
+    };
+    expect(night(BTCUSD, 1)).toBe(0);
+    expect(night(BTCUSD, 2)).toBeLessThan(0);
+    expect(night(US100, 1)).toBeLessThan(0);
+  });
+
+  test('at 1:200 a fully margined position is closed after a 0.3% move', () => {
+    const { engine, run } = setup(scripted([{ at: 1, do: buy({ marginPct: 90 }) }]), 10_000, 200);
+    engine.processCandle(flat(0, 9998)); // 180 units at 10,000: margin 9,000, closed below equity 4,500
+    engine.processCandle(candle(1, 9998, 9998, 9960, 9965));
+    expect(run.trades[0]?.exitReason).toBe(EXIT_REASON.MARGIN_CALL);
+  });
+});
+
 describe('AgentRun funding and sessions', () => {
   test('overnight funding is charged once per 17:00 New York rollover, three times over a weekend', () => {
     const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1 }) }]));
@@ -271,7 +316,7 @@ describe('determinism', () => {
         },
       });
       const engine = new MarketEngine(US100);
-      engine.addRun({ runId: 'same-id', agent: { id: 'rng', slug: 'rng', variant: null, file: 'x', def, params: {}, codeHash: 'h', source: '' }, capital: 1, checkStopsOnCandles: true });
+      engine.addRun({ runId: 'same-id', agent: { id: 'rng', slug: 'rng', variant: null, file: 'x', def, params: {}, codeHash: 'h', source: '' }, leverage: 20, capital: 1, checkStopsOnCandles: true });
       for (let i = 0; i < 5; i++) engine.processCandle(flat(i, 100));
     }
     expect(draws[0]).toEqual(draws[1]!);

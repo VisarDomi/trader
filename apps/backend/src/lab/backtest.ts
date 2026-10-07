@@ -1,7 +1,7 @@
 /**
  * Backtest CLI (runs on the lab PC).
  *
- *   bun run backtest                    every agent × instrument whose code changed since its last backtest
+ *   bun run backtest                    every agent × instrument × leverage (agents/roster.json) not backtested at its current code
  *   bun run backtest rsi                only agent ids starting with "rsi"
  *   bun run backtest --epic US100,GOLD  only these instruments
  *   bun run backtest --force            ignore cached results
@@ -14,7 +14,8 @@
  */
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadAgents, type LoadedAgent } from '../engine/loader.ts';
+import { loadAgents } from '../engine/loader.ts';
+import { loadRoster, planRuns, type PlannedRun } from '../engine/roster.ts';
 import type { BacktestResult } from './backtest-core.ts';
 import { STANDARD_WINDOW } from './backtest-core.ts';
 import { DATA_DIR } from './candles.ts';
@@ -24,7 +25,7 @@ import { forecastFile, PRECOMPUTED_HORIZON } from './forecast-cache.ts';
 
 const RESULTS_DIR = join(DATA_DIR, 'backtests', STANDARD_WINDOW.id);
 const DEFAULT_WORKERS = 5;
-const AGENTS_PER_JOB = 20;
+const RUNS_PER_JOB = 20;
 const PUSH_BATCH = 8;
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 
@@ -51,12 +52,12 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-export function resultPath(agentId: string, epic: string): string {
-  return join(RESULTS_DIR, `${agentId.replaceAll('/', '__')}__${epic}.json`);
+export function resultPath(agentId: string, epic: string, leverage: number): string {
+  return join(RESULTS_DIR, `${agentId.replaceAll('/', '__')}__${epic}__x${leverage}.json`);
 }
 
-async function readResult(agentId: string, epic: string): Promise<BacktestResult | null> {
-  const path = resultPath(agentId, epic);
+async function readResult(agentId: string, epic: string, leverage: number): Promise<BacktestResult | null> {
+  const path = resultPath(agentId, epic, leverage);
   if (!existsSync(path)) return null;
   return (await Bun.file(path).json()) as BacktestResult;
 }
@@ -109,11 +110,11 @@ function pct(x: number): string {
 
 function printSummary(results: BacktestResult[]): void {
   const rows = [...results].sort((a, b) => b.metrics.sharpe - a.metrics.sharpe);
-  console.log('\n agent                                  epic        return   cagr    maxDD  sharpe trades  win   pf     t     µs/bar status');
+  console.log('\n agent                                  epic       lev     return   cagr    maxDD  sharpe trades  win   pf     t     µs/bar status');
   for (const r of rows) {
     const m = r.metrics;
     console.log(
-      ` ${r.agentId.padEnd(38)} ${r.epic.padEnd(10)} ${pct(m.totalReturn).padStart(8)} ${pct(m.annualReturn).padStart(7)} ${pct(m.maxDrawdown).padStart(6)} ${m.sharpe.toFixed(2).padStart(6)} ${String(m.trades).padStart(6)} ${pct(m.winRate).padStart(5)} ${m.profitFactor.toFixed(2).padStart(5)} ${m.tStat.toFixed(1).padStart(5)} ${String(r.agentUsPerBar).padStart(6)} ${r.status}`,
+      ` ${r.agentId.padEnd(38)} ${r.epic.padEnd(10)} ${`1:${r.leverage}`.padEnd(6)} ${pct(m.totalReturn).padStart(8)} ${pct(m.annualReturn).padStart(7)} ${pct(m.maxDrawdown).padStart(6)} ${m.sharpe.toFixed(2).padStart(6)} ${String(m.trades).padStart(6)} ${pct(m.winRate).padStart(5)} ${m.profitFactor.toFixed(2).padStart(5)} ${m.tStat.toFixed(1).padStart(5)} ${String(r.agentUsPerBar).padStart(6)} ${r.status}`,
     );
   }
 }
@@ -124,19 +125,18 @@ async function main(): Promise<void> {
   for (const e of errors) console.error(`✗ ${e.file}: ${e.error}`);
 
   const selected = agents.filter(a => !args.prefix || a.id.startsWith(args.prefix));
-  const pairs: { agent: LoadedAgent; epic: string }[] = [];
+  const pairs: PlannedRun[] = [];
   const missingForecasts = new Set<string>();
-  for (const agent of selected) {
-    for (const epic of agent.def.instruments) {
-      if (args.epics && !args.epics.includes(epic)) continue;
-      // Forecast agents wait for their precomputed table; otherwise a result without forecasts would be cached.
-      const spec = agent.def.forecast;
-      if (spec && !existsSync(forecastFile(epic, agent.def.timeframe, spec.context ?? DEFAULT_FORECAST_CONTEXT, PRECOMPUTED_HORIZON))) {
-        missingForecasts.add(`${epic} ${agent.def.timeframe}`);
-        continue;
-      }
-      pairs.push({ agent, epic });
+  for (const p of planRuns(selected, loadRoster()).runs) {
+    const { agent, epic } = p;
+    if (args.epics && !args.epics.includes(epic)) continue;
+    // Forecast agents wait for their precomputed table; otherwise a result without forecasts would be cached.
+    const spec = agent.def.forecast;
+    if (spec && !existsSync(forecastFile(epic, agent.def.timeframe, spec.context ?? DEFAULT_FORECAST_CONTEXT, PRECOMPUTED_HORIZON))) {
+      missingForecasts.add(`${epic} ${agent.def.timeframe}`);
+      continue;
     }
+    pairs.push(p);
   }
   if (missingForecasts.size > 0) {
     console.warn(`skipping forecast agents without precomputed forecasts (${[...missingForecasts].join(', ')}); run: bun run forecasts`);
@@ -144,7 +144,7 @@ async function main(): Promise<void> {
   mkdirSync(RESULTS_DIR, { recursive: true });
 
   if (args.pushOnly) {
-    const cached = (await Promise.all(pairs.map(p => readResult(p.agent.id, p.epic))))
+    const cached = (await Promise.all(pairs.map(p => readResult(p.agent.id, p.epic, p.leverage))))
       .filter((r, i): r is BacktestResult => r !== null && r.codeHash === pairs[i]!.agent.codeHash);
     console.log(`pushing ${cached.length} cached results`);
     const ok = await pushResults(cached);
@@ -154,18 +154,18 @@ async function main(): Promise<void> {
 
   const todo: typeof pairs = [];
   for (const p of pairs) {
-    const cached = args.force ? null : await readResult(p.agent.id, p.epic);
+    const cached = args.force ? null : await readResult(p.agent.id, p.epic, p.leverage);
     if (!cached || cached.codeHash !== p.agent.codeHash) todo.push(p);
   }
-  console.log(`${selected.length} agents, ${pairs.length} agent×instrument pairs, ${todo.length} to run (window ${STANDARD_WINDOW.id})`);
+  console.log(`${selected.length} agents, ${pairs.length} agent×instrument×leverage runs, ${todo.length} to run (window ${STANDARD_WINDOW.id})`);
   if (todo.length === 0) process.exit(0);
 
-  const byEpic = new Map<string, string[]>();
-  for (const p of todo) byEpic.set(p.epic, [...(byEpic.get(p.epic) ?? []), p.agent.id]);
+  const byEpic = new Map<string, WorkerJob['runs']>();
+  for (const p of todo) byEpic.set(p.epic, [...(byEpic.get(p.epic) ?? []), { agentId: p.agent.id, leverage: p.leverage }]);
   const jobs: WorkerJob[] = [];
-  for (const [epic, ids] of byEpic) {
-    for (let i = 0; i < ids.length; i += AGENTS_PER_JOB) {
-      jobs.push({ epic, agentIds: ids.slice(i, i + AGENTS_PER_JOB), window: STANDARD_WINDOW });
+  for (const [epic, runs] of byEpic) {
+    for (let i = 0; i < runs.length; i += RUNS_PER_JOB) {
+      jobs.push({ epic, runs: runs.slice(i, i + RUNS_PER_JOB), window: STANDARD_WINDOW });
     }
   }
 
@@ -177,14 +177,14 @@ async function main(): Promise<void> {
     for (let job = queue.shift(); job; job = queue.shift()) {
       try {
         const results = await runJob(job);
-        for (const r of results) await Bun.write(resultPath(r.agentId, r.epic), JSON.stringify(r));
+        for (const r of results) await Bun.write(resultPath(r.agentId, r.epic, r.leverage), JSON.stringify(r));
         all.push(...results);
         done++;
         const secs = ((Date.now() - started) / 1000).toFixed(0);
         console.log(`[${done}/${jobs.length}] ${job.epic}: ${results.length} agents in ${(results[0]?.durationMs ?? 0) / 1000}s (elapsed ${secs}s)`);
         if (args.push) await pushResults(results);
       } catch (err) {
-        console.error(`job ${job.epic} [${job.agentIds.join(', ')}] failed:`, err);
+        console.error(`job ${job.epic} [${job.runs.map(r => `${r.agentId}@${r.leverage}`).join(', ')}] failed:`, err);
       }
     }
   };

@@ -1,9 +1,10 @@
 /**
- * Backtest one instrument for many agents in a single pass over its candles.
+ * Backtest one instrument for many agent × leverage runs in a single pass over its candles.
  */
 import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import type { ForecastProvider } from '../engine/market.ts';
+import { backtestRunId } from '../engine/run-id.ts';
 import { MarketEngine } from '../engine/market.ts';
 import type { EquityPoint, RunMetrics } from '../engine/metrics.ts';
 import type { LogLine, RunStatus } from '../engine/run.ts';
@@ -34,6 +35,8 @@ export interface BacktestResult {
   agentId: string;
   codeHash: string;
   epic: string;
+  /** Account leverage tier. */
+  leverage: number;
   windowId: string;
   windowStart: number;
   windowEnd: number;
@@ -55,17 +58,18 @@ export interface BacktestResult {
 
 export async function backtestEpic(
   epic: string,
-  agents: LoadedAgent[],
+  specs: { agent: LoadedAgent; leverage: number }[],
   window: BacktestWindow,
   forecasts: ForecastProvider | null = null,
 ): Promise<BacktestResult[]> {
   const started = Date.now();
   const instrument = getInstrument(epic);
   const engine = new MarketEngine(instrument, forecasts);
-  const runs = agents.map(agent =>
+  const runs = specs.map(({ agent, leverage }) =>
     engine.addRun({
-      runId: `bt:${window.id}:${agent.id}:${epic}`,
+      runId: backtestRunId(window.id, agent.id, epic, leverage),
       agent,
+      leverage,
       capital: BACKTEST_CAPITAL,
       checkStopsOnCandles: true,
     }),
@@ -79,11 +83,12 @@ export async function backtestEpic(
 
   const durationMs = Date.now() - started;
   return runs.map((run, i) => {
-    const agent = agents[i]!;
+    const { agent, leverage } = specs[i]!;
     return {
       agentId: agent.id,
       codeHash: agent.codeHash,
       epic,
+      leverage,
       windowId: window.id,
       windowStart: window.start,
       windowEnd: window.end,

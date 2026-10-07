@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import StatTile from '$lib/components/StatTile.svelte';
-	import { ago, num, pct, price, sign, usd, utc } from '$lib/format';
+	import { ago, lev, levTitle, num, pct, price, sign, usd, utc } from '$lib/format';
 
 	let { data, form } = $props();
 	const status = $derived(data.broker.status);
@@ -32,7 +32,9 @@
 			{status?.scale ?? 0.2}× the paper size, to measure how real fills differ from the paper fills the leaderboard uses.
 			Every account whose name starts with <strong>"{status?.prefix || '—'}"</strong> is used: it is topped up to $100,000,
 			switched to hedging mode (many runs per instrument, each its own deal) and holds up to
-			{status?.slotsPerAccount ?? 50} runs. Capital.com allows {status?.maxAccountsPerLogin ?? 10} demo accounts per login;
+			{status?.slotsPerAccount ?? 50} runs. Each account has one leverage (set in <code>agents/roster.json</code> and applied by
+			the arena) and holds only runs of that leverage, so a demo deal is opened at the same leverage as its paper run; see
+			<a href="/leverage">Leverage</a>. Capital.com allows {status?.maxAccountsPerLogin ?? 10} demo accounts per login;
 			accounts with other names are never touched. Safety: a run opening 12+ times in an hour is excluded, at most
 			{status?.maxOpensPerHour ?? 600} opens per hour in total, and an account whose equity falls below 50% of its
 			allocation is switched off.
@@ -69,12 +71,16 @@
 			<div class="table-wrap">
 				<table class="data">
 					<thead>
-						<tr><th>Account</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Allocation</th><th>Mode</th><th class="num">Runs</th><th class="num">Open deals</th><th>State</th><th>Reconciled</th></tr>
+						<tr><th>Account</th><th>Leverage</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Allocation</th><th>Mode</th><th class="num">Runs</th><th class="num">Open deals</th><th>State</th><th>Reconciled</th></tr>
 					</thead>
 					<tbody>
 						{#each status.accounts as a (a.id)}
 							<tr>
 								<td>{a.name}</td>
+								<td>
+									{#if a.leverage === null}<span class="muted" title="Not in agents/roster.json: gets no runs">none</span>
+									{:else}1:{a.leverage}{#if a.leverageOk === false}<span class="status-dot status-critical" style="margin-left: 6px"></span>not set{:else if a.leverageOk === null}<span class="muted"> (checking)</span>{/if}{/if}
+								</td>
 								<td class="num">{usd(a.balance)}</td>
 								<td class="num {sign(a.allocation !== null ? a.equity - a.allocation : null)}">{usd(a.equity)}</td>
 								<td class="num">{usd(a.allocation, 0)}</td>
@@ -91,7 +97,7 @@
 								<td class="muted">{ago(a.lastReconcileAt)}</td>
 							</tr>
 						{:else}
-							<tr><td colspan="9" class="muted">No accounts found.</td></tr>
+							<tr><td colspan="10" class="muted">No accounts found.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -102,18 +108,19 @@
 	<section class="card">
 		<h2>Runs</h2>
 		<p class="secondary small">
-			Every live run is mirrored while capacity lasts, best demo equity first; a run keeps its account once assigned.
-			Excluding a run closes its deal and frees its slot.
+			Every live run is mirrored on an account of its leverage while capacity lasts, best demo equity first; a run keeps its
+			account once assigned. Excluding a run closes its deal and frees its slot.
 		</p>
 		<input type="search" placeholder="Filter" bind:value={filter} style="max-width: 260px; margin-bottom: 8px" />
 		<div class="table-wrap" style="max-height: 480px">
 			<table class="data">
-				<thead><tr><th>Agent</th><th>Instrument</th><th>Account</th><th class="num">Demo trades</th><th class="num">Demo return</th><th></th></tr></thead>
+				<thead><tr><th>Agent</th><th>Instrument</th><th>Lev.</th><th>Account</th><th class="num">Demo trades</th><th class="num">Demo return</th><th></th></tr></thead>
 				<tbody>
 					{#each runs as r (r.runId)}
 						<tr class:hidden={filter !== '' && !`${r.name} ${r.epic} ${accountOf.get(r.runId) ?? ''}`.toLowerCase().includes(filter.toLowerCase())}>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.name}</a></td>
 							<td>{r.epic}</td>
+							<td title={levTitle(r)}>{lev(r)}</td>
 							<td class:muted={!accountOf.has(r.runId)}>{excluded.has(r.runId) ? 'excluded' : (accountOf.get(r.runId) ?? 'no free slot')}</td>
 							<td class="num">{r.metrics?.trades ?? 0}</td>
 							<td class="num {sign(r.metrics?.totalReturn)}">{pct(r.metrics?.totalReturn)}</td>
