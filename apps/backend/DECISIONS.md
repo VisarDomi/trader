@@ -277,3 +277,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
   The broker verifies its session's account after every switch and every re-login.
 - Overnight funding is charged at 17:00 New York (21:00 UTC in summer); the daily break for US indices is 5 minutes.
+- Account leverage is per asset class and is stamped on each position when it opens (`position.leverage`);
+  `GET /markets/{epic}` keeps reporting the default margin factor whatever the account's setting. Some
+  instruments stop below the class setting: NATURALGAS opened at 1:149 on the 1:200 account (2026-10-07). The
+  paper engine uses the class setting; this matters only for agents sizing with `marginPct` on such instruments.
