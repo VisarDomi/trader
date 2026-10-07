@@ -10,25 +10,24 @@ export async function load() {
 	}
 }
 
+async function attempt(action: () => Promise<unknown>, message: string) {
+	try {
+		await action();
+		return { ok: true, message };
+	} catch (err) {
+		return fail(400, { ok: false, message: err instanceof Error ? err.message : String(err) });
+	}
+}
+
 export const actions = {
-	mirror: async ({ request }) => {
-		const form = await request.formData();
-		const runIds = form.getAll('runId').map(String);
-		try {
-			await arena.setMirror({ runIds });
-			return { ok: true, message: `Mirroring ${runIds.length} run(s).` };
-		} catch (err) {
-			return fail(400, { ok: false, message: err instanceof Error ? err.message : String(err) });
-		}
-	},
 	toggle: async ({ request }) => {
+		const enabled = (await request.formData()).get('enabled') === 'true';
+		return attempt(() => arena.setMirror(enabled), enabled ? 'Mirror enabled.' : 'Mirror disabled; open deals are being closed.');
+	},
+	exclude: async ({ request }) => {
 		const form = await request.formData();
-		const enabled = form.get('enabled') === 'true';
-		try {
-			await arena.setMirror({ enabled });
-			return { ok: true, message: enabled ? 'Mirror enabled.' : 'Mirror disabled; open deals are being closed.' };
-		} catch (err) {
-			return fail(400, { ok: false, message: err instanceof Error ? err.message : String(err) });
-		}
+		const runId = String(form.get('runId'));
+		const excluded = form.get('excluded') === 'true';
+		return attempt(() => arena.setExcluded(runId, excluded), excluded ? 'Run excluded; its deals are being closed.' : 'Run allowed back into the mirror.');
 	},
 };

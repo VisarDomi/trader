@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Broker mirror spans many demo accounts** — the mirror now uses Gerti plus every Capital.com demo account whose name starts with "Arena" (picked up within a minute, topped up once to $100,000, 10 runs each at exactly the paper size), assigns every live run to a free slot (one run per instrument per account, best demo equity first, sticky), and closes deals whose paper position is gone. One session switches between accounts, verified after every switch and re-login. The dashboard's Broker page lists accounts, coverage and how many more accounts are needed, and runs can be excluded by hand. Env: `BROKER_ACCOUNTS` (`Gerti:5`) and `BROKER_ACCOUNT_PREFIX` replace `BROKER_ACCOUNT`/`BROKER_ALLOCATION`.
+  - *Decision*: One account nets positions per instrument, so mirroring all 392 runs takes ~40 accounts; finding accounts by name lets the user add capacity without a deploy and keeps their own accounts out of reach. See `DECISIONS.md` → "Broker mirror across many demo accounts" for the request budget.
+- **Shared request pacing** — the arena's candle poller and broker share one `RequestPacer` (~6 req/s of the login's 10); lab tools default to ~3.3 req/s; logins are spaced ≥1.1 s (Capital.com allows 1/s per API key). The per-minute order cap (20) is gone: bursts queue instead of being dropped; opens are capped at 600/hour (demo limit 1,000).
+
 - **v2 platform: agent SDK, shared-indicator engine, live demo arena, dashboard** — replaced the v1 blueprint/`AgentRunner` framework with a one-file agent contract (`defineAgent`, see `agents/GUIDE.md`), an engine shared by backtests and live demo (`src/engine`), a Hetzner service that forward-tests every agent × instrument on live Capital.com demo prices (`src/arena`), lab tooling on the PC (`src/lab`), a TimesFM 3 forecaster on the GPU (`apps/forecaster`) and a rebuilt dashboard. 12 USD-quoted instruments, 25 agents (+ variants), two control agents. See `ARCHITECTURE.md`.
   - *Decision*: The demo leaderboard is the ranking and the backtest is context, because backtests can be overfit and live prices cannot — a coin-flip control agent landing near the top of the backtest makes the point on the dashboard itself. Every agent gets a demo run (paper fills at live quotes, $10k each) instead of real orders, because one $1,000 demo account cannot host hundreds of agents (netting, margin, min sizes); a few runs are mirrored as real orders on Gerti to measure execution drift.
   - *Decision*: Agent code is hashed and a changed file starts a fresh demo record, so a track record always belongs to one exact version of the code.
@@ -20,7 +24,8 @@
 
 ### Removed
 
-- v1 engine (`src/core`, `src/run`, `src/api`, `src/providers`), blueprints and batch scripts. The Go tick recorder (`cmd/record-ticks`) is kept but not used by v2.
+- v1 engine (`src/core`, `src/run`, `src/api`, `src/providers`), blueprints and batch scripts.
+- **v1 database and tick recorder** — dropped the v1 PostgreSQL tables (`ticks`, `tick_instrument_stats`, `tick_bench`, `runs`, `fills`, `equity_snapshots`, `agent_states`) and a duplicate candles index (12 GB → 1.7 GB), and removed the Go tick recorder (`cmd/record-ticks`) and `src/data/schema.sql`. `bun run ingest` now creates the only table, `candles`.
 
 ## Before v2
 

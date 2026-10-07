@@ -1,7 +1,7 @@
 /**
  * Arena storage (SQLite via bun:sqlite) — the single source of truth for the
  * leaderboard: agents, backtest results pushed from the lab, live demo runs,
- * broker deals on the demo account, and a rolling 1-minute candle store.
+ * broker deals on the demo accounts, and a rolling 1-minute candle store.
  */
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS candles (
 
 CREATE TABLE IF NOT EXISTS broker_deals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account TEXT,
   run_id TEXT NOT NULL,
   epic TEXT NOT NULL,
   side TEXT NOT NULL,
@@ -196,6 +197,8 @@ export interface AgentRow {
 
 export interface DealRow {
   id: number;
+  /** Capital.com demo account name the deal lives on. */
+  account: string;
   run_id: string;
   epic: string;
   side: string;
@@ -223,6 +226,12 @@ export class ArenaDB {
     mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true });
     this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const dealColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`).all().map(c => c.name);
+    if (!dealColumns.includes('account')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account TEXT`);
   }
 
   tx<T>(fn: () => T): T {
@@ -436,11 +445,16 @@ export class ArenaDB {
   insertDeal(d: Omit<DealRow, 'id'>): number {
     const res = this.db
       .query(
-        `INSERT INTO broker_deals (run_id, epic, side, size, paper_size, deal_id, status, open_time, open_price, paper_open_price, close_time, close_price, paper_close_price, pnl, note)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO broker_deals (account, run_id, epic, side, size, paper_size, deal_id, status, open_time, open_price, paper_open_price, close_time, close_price, paper_close_price, pnl, note)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(d.run_id, d.epic, d.side, d.size, d.paper_size, d.deal_id, d.status, d.open_time, d.open_price, d.paper_open_price, d.close_time, d.close_price, d.paper_close_price, d.pnl, d.note);
+      .run(d.account, d.run_id, d.epic, d.side, d.size, d.paper_size, d.deal_id, d.status, d.open_time, d.open_price, d.paper_open_price, d.close_time, d.close_price, d.paper_close_price, d.pnl, d.note);
     return Number(res.lastInsertRowid);
+  }
+
+  /** Deals recorded before accounts were tracked per deal all lived on `account`. */
+  claimUnownedDeals(account: string): void {
+    this.db.query(`UPDATE broker_deals SET account = ? WHERE account IS NULL`).run(account);
   }
 
   updateDeal(id: number, fields: Partial<Omit<DealRow, 'id'>>): void {
@@ -483,6 +497,10 @@ export class ArenaDB {
 
   setSetting(key: string, value: unknown): void {
     this.db.query(`INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)`).run(key, JSON.stringify(value));
+  }
+
+  deleteSetting(key: string): void {
+    this.db.query(`DELETE FROM kv WHERE key = ?`).run(key);
   }
 }
 

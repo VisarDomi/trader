@@ -20,7 +20,7 @@ import { MarketEngine } from '../engine/market.ts';
 import type { AgentRun, RunEvent, RunSnapshot } from '../engine/run.ts';
 import { RUN_STATUS } from '../engine/run.ts';
 import type { Candle } from '../engine/series.ts';
-import type { BrokerMirror } from './broker.ts';
+import type { BrokerMirror, MirrorCandidate } from './broker.ts';
 import type { ArenaDB } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { LiveForecastProvider } from './forecast-client.ts';
@@ -346,6 +346,16 @@ export class Arena {
       this.db.pruneLogs();
       this.db.thinEquity(now);
     }
+  }
+
+  /** Running demo runs for the broker mirror; better demo equity is mirrored first when accounts are short. */
+  mirrorCandidates(): MirrorCandidate[] {
+    const out: MirrorCandidate[] = [];
+    for (const t of this.tracked.values()) {
+      if (t.run.status !== RUN_STATUS.RUNNING) continue;
+      out.push({ runId: t.run.runId, epic: t.epic, side: t.run.position?.side ?? null, score: t.run.markToMarket() });
+    }
+    return out;
   }
 
   runIdsForEpic(epic: string): string[] {

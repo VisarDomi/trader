@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+- **v2 dashboard** for the arena: Demo / Backtest / Overfit leaderboards with a luck band from the control agents, agent pages with versioned source, run pages with equity, trades, logs and broker deals, a status page, and tokens validated for light and dark mode. Data comes server-side from the arena API (`$lib/server/arena.ts`).
+- **Broker page covers many demo accounts** — accounts with balance, allocation, scale and slots; coverage and how many more "Arena" accounts are needed; per-run account and an Exclude/Allow action; deals show their account. The nav item is now "Broker".
+
 ## 2026-02-13
 
 ### Added

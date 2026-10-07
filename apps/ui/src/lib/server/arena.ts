@@ -49,10 +49,14 @@ export const arena = {
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
 	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
-	setMirror: (body: { runIds?: string[]; enabled?: boolean }) =>
-		call<BrokerStatus>('/api/broker/mirror', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.ARENA_TOKEN ?? ''}` },
-			body: JSON.stringify(body),
-		}),
+	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),
+	setExcluded: (runId: string, excluded: boolean) => post<BrokerStatus>('/api/broker/exclude', { runId, excluded }),
 };
+
+function post<T>(path: string, body: unknown): Promise<T> {
+	return call<T>(path, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.ARENA_TOKEN ?? ''}` },
+		body: JSON.stringify(body),
+	});
+}

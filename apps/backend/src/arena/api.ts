@@ -122,11 +122,21 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     '/api/broker/mirror',
     async req => {
       if (!arena.broker) return json({ error: 'broker disabled' }, 400);
-      const body = (await req.json()) as { runIds?: string[]; enabled?: boolean };
-      if (Array.isArray(body.runIds)) {
-        arena.broker.setMirroredRuns(body.runIds, id => arena.tracked.get(id)?.epic ?? null);
-      }
+      const body = (await req.json()) as { enabled?: boolean };
       if (typeof body.enabled === 'boolean') arena.broker.setEnabled(body.enabled);
+      return json(arena.broker.status());
+    },
+    true,
+  );
+
+  add(
+    METHOD_POST,
+    '/api/broker/exclude',
+    async req => {
+      if (!arena.broker) return json({ error: 'broker disabled' }, 400);
+      const body = (await req.json()) as { runId?: string; excluded?: boolean };
+      if (typeof body.runId !== 'string' || typeof body.excluded !== 'boolean') return json({ error: 'runId and excluded are required' }, 400);
+      arena.broker.setExcluded(body.runId, body.excluded);
       return json(arena.broker.status());
     },
     true,

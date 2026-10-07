@@ -7,7 +7,7 @@
 	const nav = [
 		{ href: '/', label: 'Leaderboard' },
 		{ href: '/agents', label: 'Agents' },
-		{ href: '/broker', label: 'Gerti (broker)' },
+		{ href: '/broker', label: 'Broker' },
 		{ href: '/status', label: 'Status' },
 	];
 
