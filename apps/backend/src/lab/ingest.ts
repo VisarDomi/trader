@@ -21,9 +21,20 @@ const SEARCH_FLOOR_MS = Date.parse('2020-01-01T00:00:00Z');
 const FLAG_ENRICH = '--enrich';
 const CONCURRENCY = 4;
 
+/** The only PostgreSQL table: 1-minute bid candles, spread = ask - bid at the close. */
 async function ensureSchema(): Promise<void> {
-  await sql`ALTER TABLE candles ADD COLUMN IF NOT EXISTS spread REAL`;
-  await sql`ALTER TABLE candles ADD COLUMN IF NOT EXISTS volume REAL`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS candles (
+      instrument TEXT    NOT NULL,
+      timestamp  BIGINT  NOT NULL,
+      open       NUMERIC NOT NULL,
+      high       NUMERIC NOT NULL,
+      low        NUMERIC NOT NULL,
+      close      NUMERIC NOT NULL,
+      spread     REAL,
+      volume     REAL,
+      PRIMARY KEY (instrument, timestamp)
+    )`;
 }
 
 async function bounds(epic: string): Promise<{ earliest: number | null; latest: number | null }> {
