@@ -225,8 +225,9 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   the PC checks the arena, the feeds, the broker accounts and the lab services and notifies the desktop
   (after three failed checks for transient things). Retiring and adding agents needs judgement and evidence
   accumulates slowly, so Claude visits twice a week (Monday: full cycle including new agents; Thursday:
-  health and retirements) from a T3 Code scheduled task, one fresh thread per visit with the journal as its
-  memory.
+  health and retirements) from a T3 Code scheduled task. Visits post into the thread that built the
+  platform (fresh threads would need a git worktree of the T3 project root, which is not a repository);
+  the runbook and the journal, not the thread's memory, are the source of truth.
 
 ### Live data
 
