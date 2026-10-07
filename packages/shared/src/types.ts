@@ -56,7 +56,7 @@ export interface LeaderboardRow {
 	usesForecast: boolean;
 	/** Demo rows: the backtest of the same agent and instrument. */
 	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
-	/** Demo rows: mirrored onto the broker demo account. */
+	/** Demo rows: mirrored onto a broker demo account. */
 	mirrored: boolean;
 }
 
@@ -136,6 +136,8 @@ export interface LogLine {
 
 export interface Deal {
 	id: number;
+	/** Capital.com demo account the deal lives on. */
+	account: string;
 	run_id: string;
 	epic: string;
 	side: string;
@@ -174,18 +176,45 @@ export interface RunDetail extends RunSummary {
 	deals: Deal[];
 }
 
-export interface BrokerStatus {
-	enabled: boolean;
-	killed: boolean;
-	account: string;
-	accountId: string | null;
+export interface BrokerAccountStatus {
+	name: string;
+	accountId: string;
 	balance: number | null;
 	equity: number | null;
-	startBalance: number | null;
-	mirroredRuns: string[];
+	/** Balance when the account was first seen (≤ 100,000), split across its slots. Null until enrolled. */
+	allocation: number | null;
+	/** Most runs this account mirrors; at most one per instrument. */
+	slots: number;
+	/** Broker size = paper size × scale (1 = exactly the paper size). */
+	scale: number | null;
+	runs: string[];
 	openDeals: number;
+	killed: boolean;
+	/** Instruments with positions the arena did not open; skipped on this account. */
 	foreignEpics: string[];
 	lastReconcileAt: number;
+}
+
+export interface BrokerStatus {
+	enabled: boolean;
+	/** Accounts whose name starts with this are used automatically. */
+	prefix: string;
+	/** Slots of an automatically used account. */
+	defaultSlots: number;
+	accounts: BrokerAccountStatus[];
+	coverage: {
+		liveRuns: number;
+		mirrored: number;
+		excluded: number;
+		unassigned: number;
+		/** More accounts (of defaultSlots) needed to mirror every live run. */
+		accountsNeeded: number;
+	};
+	excluded: string[];
+	queued: number;
+	opensLastHour: number;
+	maxOpensPerHour: number;
+	lastCycleAt: number;
 	lastError: string | null;
 }
 

@@ -270,7 +270,7 @@
 								</td>
 							{/if}
 							<td>
-								{#if r.mirrored}<span class="badge" title="Mirrored onto the Gerti demo account">Gerti</span>{/if}
+								{#if r.mirrored}<span class="badge" title="Mirrored onto a Capital.com demo account as real demo orders">broker</span>{/if}
 								{#if r.status !== 'running' && r.status !== 'completed'}<span class="badge">{r.status}</span>{/if}
 							</td>
 						</tr>

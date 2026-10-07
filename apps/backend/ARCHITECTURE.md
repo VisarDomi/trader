@@ -4,6 +4,7 @@ A place to collect many trading agents, run them forward on live demo prices,
 and rank them. The **demo** leaderboard is the one that matters; the
 **backtest** leaderboard is there to show how much each agent was overfit.
 
+- Repo map, hard rules, operations: [`../../setup.md`](../../setup.md).
 - Writing an agent: [`agents/GUIDE.md`](agents/GUIDE.md) (one file, no other changes).
 - Dashboard: <https://trader.veron3.space> (Authelia login).
 - v1 (blueprints, `AgentRunner`, tick recorder) is described in `DESIGN.md` / `VALIDATION.md`;
@@ -39,7 +40,7 @@ agent's source, and a changed file retires the old demo run and starts a new one
              US100 since 2020)                                         - REST 1m candles every minute
  trader-forecaster.service   TimesFM 3 on the RTX 3060 :4130  ◄─┐      - WebSocket quotes (stops, fills)
  trader-tunnel.service       autossh  -R 4130  -L 4120  ─────────┼──►  - every agent × instrument, $10k each
- trader-lab.timer (03:30)    ingest → forecasts → backtest ─push─┘      - Gerti broker mirror
+ trader-lab.timer (03:30)    ingest → forecasts → backtest ─push─┘      - broker mirror (demo accounts)
  bun run backtest / check-agent / forecasts (by hand)                  - SQLite data/arena.db, API :4120
                                                                      trader-ui.service (SvelteKit :10003)
                                                                      Caddy trader.veron3.space + Authelia
@@ -94,17 +95,43 @@ and do nothing new, and backtests wait for the next nightly job.
   catching up on candles they missed while the service was down.
 - Runs are persisted every minute; hourly equity points (thinned to daily after 30 days).
 
-## Broker mirror (Gerti)
+## Broker mirror
 
-Selected demo runs are copied as real orders onto the Capital.com **demo**
-sub-account "Gerti", scaled to `BROKER_ALLOCATION` ($1,000) split across the
-mirrored runs. It measures execution drift (real vs paper fills). Rails: one
-mirrored run per instrument (the account nets), ≤20 orders/minute, a run placing
-≥12 orders in an hour is dropped, kill switch below 50% of the allocation (two
-consecutive readings), positions the arena did not open are never touched,
-broker-side stop/target copies protect deals if the arena is down, and lost
-order confirmations are adopted from `/positions` on the next reconcile.
-Choose runs and toggle the mirror on the dashboard's Gerti page.
+Demo runs are copied as real orders onto Capital.com **demo** accounts
+(`src/arena/broker.ts`, `src/arena/slots.ts`). Paper stays the leaderboard; the
+mirror measures execution drift (real vs paper fills, rejections, broker-side
+closes).
+
+- **Accounts:** those named in `BROKER_ACCOUNTS` (default `Gerti:5`) plus every
+  account whose name starts with `BROKER_ACCOUNT_PREFIX` (default `Arena`,
+  case-insensitive), discovered within a minute. "Arena" accounts are topped up
+  once to the $100,000 demo maximum; named accounts keep their balance.
+  Accounts with other names (the user's) are never touched.
+- **Slots:** an account nets positions per instrument (hedging off), so it holds
+  at most one mirrored run per instrument, and at most `slots` runs (10 for
+  "Arena" accounts). Its balance when enrolled is split across its slots:
+  broker size = paper size × allocation ÷ (slots × $10,000), at most 1. A
+  $100,000 "Arena" account mirrors at exactly the paper size; Gerti ($1,000,
+  5 slots) at 0.02.
+- **Assignment:** every live run is mirrored while slots last, best demo equity
+  first; assignments are sticky. Covering all runs takes about one "Arena"
+  account per agent variant (October 2026: 392 runs → Gerti + 40). The Broker
+  page shows how many more are needed. Runs can be excluded by hand.
+- **Requests:** one session switches between accounts (verified after every
+  switch and re-login); jobs are grouped per account and share a ~6 req/s pacer
+  with the candle poller. Backtest trade logs put the load at 3 orders in a
+  typical active minute, 34 at the 99th percentile and ~108 at the worst
+  top-of-hour minute (all 392 runs); the queue spreads a burst over seconds to
+  a minute instead of exceeding Capital.com's 10 req/s.
+- **Rails:** a run opening ≥12 times in an hour is excluded; ≤600 opens/hour in
+  total (demo limit 1,000/hour); per-account kill switch below 50% of its
+  allocation (two consecutive readings); positions the arena did not open block
+  that instrument on that account; opens replayed from history after a restart
+  are not mirrored; a deal whose paper position is gone is closed; broker-side
+  stop/target copies protect deals if the arena is down; lost order
+  confirmations are adopted from `/positions` on the next reconcile.
+
+Toggle the mirror and exclude runs on the dashboard's Broker page.
 
 ## Operations
 

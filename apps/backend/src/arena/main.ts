@@ -7,50 +7,56 @@
  *   ARENA_PORT           default 4120 (bound to 127.0.0.1)
  *   ARENA_DB             default ./data/arena.db
  *   FORECASTER_URL       default http://127.0.0.1:4130 (SSH tunnel to the lab GPU)
- *   BROKER_ACCOUNT       demo sub-account for the mirror, default "Gerti"; "off" disables it
- *   BROKER_ALLOCATION    USD of the broker account the mirror may use, default 1000
+ *   BROKER_ACCOUNTS      demo accounts for the mirror by name, with slot counts, default "Gerti:5";
+ *                        "off" disables the mirror
+ *   BROKER_ACCOUNT_PREFIX  accounts whose name starts with this are used too, default "Arena";
+ *                        empty = only BROKER_ACCOUNTS
  */
 import { resolve } from 'node:path';
-import { CapitalClient, credentialsFromEnv } from '../capital/client.ts';
+import { CapitalClient, credentialsFromEnv, RequestPacer } from '../capital/client.ts';
 import { startApi } from './api.ts';
 import { Arena } from './arena.ts';
-import { BrokerMirror } from './broker.ts';
+import { BrokerMirror, DEFAULT_ACCOUNT_PREFIX, parseBrokerAccounts } from './broker.ts';
 import { ArenaDB } from './db.ts';
 
 const BROKER_OFF = 'off';
+const DEFAULT_BROKER_ACCOUNTS = 'Gerti:5';
+/**
+ * ~6 requests/s of the login's 10, shared by candle polling and the broker.
+ * The lab (≤3.3/s, mostly at night) and position-opener use the rest.
+ */
+const ARENA_REQUEST_INTERVAL_MS = 170;
 
 const token = process.env.ARENA_TOKEN;
 if (!token) throw new Error('ARENA_TOKEN is required');
 const port = Number(process.env.ARENA_PORT ?? 4120);
 const dbPath = resolve(process.env.ARENA_DB ?? resolve(import.meta.dir, '..', '..', 'data', 'arena.db'));
 const forecasterUrl = process.env.FORECASTER_URL ?? 'http://127.0.0.1:4130';
-const brokerAccount = process.env.BROKER_ACCOUNT ?? 'Gerti';
-const brokerAllocation = Number(process.env.BROKER_ALLOCATION ?? 1000);
+const brokerAccounts = process.env.BROKER_ACCOUNTS ?? DEFAULT_BROKER_ACCOUNTS;
+const brokerPrefix = process.env.BROKER_ACCOUNT_PREFIX ?? DEFAULT_ACCOUNT_PREFIX;
 
 const db = new ArenaDB(dbPath);
 const creds = credentialsFromEnv();
-const dataClient = new CapitalClient(creds);
+const pacer = new RequestPacer(ARENA_REQUEST_INTERVAL_MS);
+const dataClient = new CapitalClient(creds, pacer);
 
-let broker: BrokerMirror | null = null;
-if (brokerAccount !== BROKER_OFF) {
-  broker = new BrokerMirror(new CapitalClient(creds), db, brokerAccount, brokerAllocation);
-}
+const broker =
+  brokerAccounts === BROKER_OFF
+    ? null
+    : new BrokerMirror(new CapitalClient(creds, pacer), db, { named: parseBrokerAccounts(brokerAccounts), prefix: brokerPrefix });
 
 const arena = new Arena({ db, dataClient, forecasterUrl, broker });
 const api = startApi(arena, port, token);
 console.log(`arena api on http://127.0.0.1:${api.port} (db ${dbPath})`);
 
-if (broker) {
-  try {
-    await broker.start();
-  } catch (err) {
-    db.event('error', 'broker', `broker failed to start; mirror disabled for this session: ${err instanceof Error ? err.message : err}`);
-    broker = null;
-  }
-}
-
 await arena.start();
 console.log(`arena live: ${arena.tracked.size} demo runs`);
+
+if (broker) {
+  // After the arena: the mirror needs the live runs, and replayed history is never mirrored.
+  broker.setCandidateSource(() => arena.mirrorCandidates());
+  await broker.start();
+}
 
 let stopping = false;
 function shutdown(signal: string): void {

@@ -4,8 +4,16 @@
  * The base URL is a constant on purpose: this platform never trades real
  * money, so there is no code path that can point it at the live API.
  *
- * Handles: session auth, re-auth on 401, account switching, a global request
- * rate limiter, and 429 back-off.
+ * Handles: session auth, re-auth on 401, account switching, request pacing,
+ * and 429 back-off.
+ *
+ * Capital.com limits (open-api.capital.com, checked 2026-10-07). They apply per
+ * login, so every process using these credentials (arena, lab, position-opener)
+ * shares them:
+ *   - 10 requests/s per user; opening positions/orders at most 1 per 0.1 s
+ *   - POST /session 1 per second per API key; a session expires after 10 min idle
+ *   - demo: POST /positions + POST /workingorders 1,000 per hour
+ *   - WebSocket: at most 40 instruments per subscription
  */
 
 export const DEMO_BASE_URL = 'https://demo-api-capital.backend-capital.com';
@@ -19,8 +27,10 @@ const HTTP_UNAUTHORIZED = 401;
 const HTTP_NOT_FOUND = 404;
 const HTTP_TOO_MANY = 429;
 
-/** Capital.com allows 10 req/s per user; stay well below so other apps on the same login keep working. */
-const DEFAULT_MIN_INTERVAL_MS = 250;
+/** Default pace for one process (~3 req/s of the login's 10), so other apps on the same login keep working. */
+const DEFAULT_MIN_INTERVAL_MS = 300;
+/** POST /session is limited to 1 per second per API key. */
+const LOGIN_MIN_INTERVAL_MS = 1_100;
 const MAX_RETRIES = 5;
 /** Session expires after 10 min idle; refresh at 8. */
 const SESSION_REFRESH_MS = 8 * 60_000;
@@ -78,17 +88,38 @@ export const RESOLUTION = {
 } as const;
 export type Resolution = (typeof RESOLUTION)[keyof typeof RESOLUTION];
 
+/**
+ * Spaces requests at least `minIntervalMs` apart. Clients that share one pacer
+ * share one request budget (e.g. the arena's data client and broker client).
+ */
+export class RequestPacer {
+  private nextSlot = 0;
+
+  constructor(readonly minIntervalMs: number) {}
+
+  async wait(): Promise<void> {
+    const now = Date.now();
+    const slot = Math.max(now, this.nextSlot);
+    this.nextSlot = slot + this.minIntervalMs;
+    if (slot > now) await Bun.sleep(slot - now);
+  }
+}
+
+/** Every client in this process shares the login limit. */
+const loginPacer = new RequestPacer(LOGIN_MIN_INTERVAL_MS);
+
 export class CapitalClient {
   private cst = '';
   private securityToken = '';
   private authedAt = 0;
   private accountId: string | null = null;
-  private nextSlot = 0;
   private authPromise: Promise<void> | null = null;
+  /** Incremented on every successful login, so callers can tell when to re-verify the active account. */
+  logins = 0;
 
   constructor(
     private readonly creds: CapitalCredentials,
-    private readonly minIntervalMs = DEFAULT_MIN_INTERVAL_MS,
+    private readonly pacer = new RequestPacer(DEFAULT_MIN_INTERVAL_MS),
   ) {}
 
   tokens(): { cst: string; securityToken: string } {
@@ -105,7 +136,8 @@ export class CapitalClient {
   }
 
   private async doLogin(): Promise<void> {
-    await this.throttle();
+    await loginPacer.wait();
+    await this.pacer.wait();
     const res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
       method: 'POST',
       headers: { [HEADER_API_KEY]: this.creds.apiKey, 'Content-Type': 'application/json' },
@@ -120,6 +152,7 @@ export class CapitalClient {
     if (this.accountId && body.currentAccountId !== this.accountId) {
       await this.switchAccountRaw(this.accountId);
     }
+    this.logins++;
   }
 
   /** Select a sub-account by its display name (e.g. "Gerti"). Session-scoped. */
@@ -127,17 +160,32 @@ export class CapitalClient {
     const { accounts } = await this.get<{ accounts: { accountId: string; accountName: string }[] }>('/api/v1/accounts');
     const match = accounts.find(a => a.accountName === accountName);
     if (!match) throw new Error(`Capital.com sub-account "${accountName}" not found`);
-    this.accountId = match.accountId;
-    await this.switchAccountRaw(match.accountId);
-    const session = await this.get<{ accountId: string }>('/api/v1/session');
-    if (session.accountId !== match.accountId) {
-      throw new Error(`Account switch to ${accountName} did not stick (session on ${session.accountId})`);
-    }
+    await this.selectAccount(match.accountId);
     return match.accountId;
   }
 
+  /**
+   * Put this session on `accountId` and verify it with GET /session. The choice
+   * survives re-logins. Note: Capital.com also makes it the login's "preferred"
+   * account, which is where new logins (web, other apps) start.
+   */
+  async selectAccount(accountId: string): Promise<void> {
+    if (!this.cst) await this.login();
+    this.accountId = accountId;
+    try {
+      await this.switchAccountRaw(accountId);
+    } catch (err) {
+      if (!(err instanceof CapitalApiError && err.status === HTTP_UNAUTHORIZED)) throw err;
+      await this.login(); // re-login switches to this.accountId
+    }
+    const session = await this.get<{ accountId: string }>('/api/v1/session');
+    if (session.accountId !== accountId) {
+      throw new Error(`Account switch to ${accountId} did not stick (session on ${session.accountId})`);
+    }
+  }
+
   private async switchAccountRaw(accountId: string): Promise<void> {
-    await this.throttle();
+    await this.pacer.wait();
     const res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
       method: 'PUT',
       headers: this.authHeaders(),
@@ -169,7 +217,7 @@ export class CapitalClient {
   async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     if (!this.cst || Date.now() - this.authedAt > SESSION_REFRESH_MS) await this.login();
     for (let attempt = 0; ; attempt++) {
-      await this.throttle();
+      await this.pacer.wait();
       const res = await fetch(`${DEMO_BASE_URL}${path}`, {
         method,
         headers: this.authHeaders(),
@@ -233,13 +281,6 @@ export class CapitalClient {
       [HEADER_SECURITY]: this.securityToken,
       'Content-Type': 'application/json',
     };
-  }
-
-  private async throttle(): Promise<void> {
-    const now = Date.now();
-    const slot = Math.max(now, this.nextSlot);
-    this.nextSlot = slot + this.minIntervalMs;
-    if (slot > now) await Bun.sleep(slot - now);
   }
 }
 

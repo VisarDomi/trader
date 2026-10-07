@@ -108,15 +108,16 @@
 
 	{#if run.deals.length > 0}
 		<section class="card">
-			<h2>Gerti demo-account deals (real orders mirrored from this run)</h2>
+			<h2>Broker deals (real demo orders mirrored from this run)</h2>
 			<table class="data">
 				<thead>
-					<tr><th>Opened</th><th>Side</th><th class="num">Size</th><th class="num">Broker open</th><th class="num">Paper open</th><th class="num">Broker close</th><th class="num">Paper close</th><th class="num">P&L</th><th>Status</th><th>Note</th></tr>
+					<tr><th>Opened</th><th>Account</th><th>Side</th><th class="num">Size</th><th class="num">Broker open</th><th class="num">Paper open</th><th class="num">Broker close</th><th class="num">Paper close</th><th class="num">P&L</th><th>Status</th><th>Note</th></tr>
 				</thead>
 				<tbody>
 					{#each run.deals as d}
 						<tr>
 							<td class="muted">{utc(d.open_time)}</td>
+							<td>{d.account}</td>
 							<td>{d.side}</td>
 							<td class="num">{d.size}</td>
 							<td class="num">{price(d.open_price)}</td>

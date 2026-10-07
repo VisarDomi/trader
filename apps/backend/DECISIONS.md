@@ -2,7 +2,8 @@
 
 ## Capital.com API Limits
 
-Source: https://open-api.capital.com/
+Source: https://open-api.capital.com/ (re-checked 2026-10-07). All limits apply per login: every demo
+account on it and every app using it (arena, lab, position-opener) share them.
 
 | Limit | Value |
 |-------|-------|
@@ -17,6 +18,7 @@ Source: https://open-api.capital.com/
 | POST /accounts/topUp | 10/sec, 100/day |
 | Demo account balance | Max 100,000 |
 | WebSocket streaming | Falls off on PUT /session (account switch) |
+| Demo accounts per login | Not documented (live: one account + up to 10 sub-accounts) |
 
 ## Capital.com API Response Formats
 
@@ -138,7 +140,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 
 ---
 
-### Implications for Tick Recorder
+### Implications for Tick Recorder (v1; the recorder and its tables were removed 2026-10)
 
 - **WebSocket 10-min timeout**: We ping every 60s. Should be plenty but if Capital.com
   is strict about it, we may need to lower to 30s or check that pings actually extend
@@ -151,7 +153,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   which keeps the REST session alive. If the REST session expires, we re-auth before
   the next WebSocket connect anyway.
 
-## Tick Stats Strategy
+## Tick Stats Strategy (v1, removed 2026-10)
 
 - **Decision**: Maintain exact per-instrument tick stats incrementally during tick ingest,
   instead of recomputing them from `ticks` each time `tick-stats` runs.
@@ -179,6 +181,27 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - **SQLite for the arena, PostgreSQL for the lab.** The arena's store is small and single-writer; SQLite needs
   no server process on a crowded machine. The lab keeps the existing PostgreSQL candle store.
 
+### Broker mirror across many demo accounts
+
+- **Paper runs stay the leaderboard; real demo orders are a check on them.** An account nets positions per
+  instrument, so one account can mirror at most one run per instrument. Mirroring everything therefore takes
+  about one account per agent variant (392 runs → Gerti + 40 "Arena" accounts in October 2026); the mirror
+  fills whatever accounts exist, best demo equity first, and the dashboard shows how many more are needed.
+- **Accounts are found by name** (`BROKER_ACCOUNTS` plus the `Arena` prefix) so the user can add capacity by
+  creating accounts, without a deploy, while their own accounts can never be traded by accident.
+- **$100,000 and 10 slots per "Arena" account** gives a scale of exactly 1: broker orders are the paper size,
+  so broker and paper P&L compare directly and minimum sizes never distort a mirrored trade. The arena tops
+  a new "Arena" account up to the demo maximum once; named accounts (Gerti) keep the balance the user set.
+- **One session switching accounts, not one session per account.** The number of concurrent sessions a login
+  may hold is undocumented, and a cap would knock out the stream or position-opener. Switching costs two
+  requests per account change; jobs are grouped per account so a burst switches once per account.
+- **Request budget.** From the backtest trade logs (392 runs, 2.75 years): 3 orders in a typical active
+  minute, 34 at p99, 61 at p99.9, 108 at the worst minute; at most ~105 opens in any hour against the demo
+  limit of 1,000. At ~2.6 requests per order plus switches, the arena's 6 req/s pacer clears a p99 burst in
+  ~20 s and the worst one in about a minute, leaving the rest of the login's 10 req/s to the lab (≤3.3/s)
+  and position-opener. Beyond ~100 agent variants (about 2.5× today) bursts would take minutes: then mirror
+  only the top of the demo leaderboard, or use a second Capital.com login with its own limits.
+
 ### Live data
 
 - **1-minute candles from REST, quotes from WebSocket.** Building candles from WebSocket ticks made the demo bars
@@ -198,5 +221,5 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - `PUT /session` (account switch) changes the active account **of that session only** (verified: another session
   switching to Visi left the broker session on Gerti). It does, however, move the login-wide `preferred` account,
   which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
-  The broker still verifies its session's account before every order.
+  The broker verifies its session's account after every switch and every re-login.
 - Overnight funding is charged at 17:00 New York (21:00 UTC in summer); the daily break for US indices is 5 minutes.

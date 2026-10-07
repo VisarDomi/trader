@@ -8,7 +8,7 @@
 # Layout on the server (all under /home/erdal/trader-arena):
 #   app/      apps/backend source + agents (replaced on every deploy)
 #   data/     arena.db (SQLite; never touched by deploys)
-#   .env      credentials and settings (created once, by hand; see .env.example)
+#   .env      credentials and settings (created once, by hand; keys: apps/backend/.env.template)
 #   DEPLOYED  commit that is running
 set -euo pipefail
 
