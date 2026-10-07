@@ -102,21 +102,27 @@ Demo runs are copied as real orders onto Capital.com **demo** accounts
 mirror measures execution drift (real vs paper fills, rejections, broker-side
 closes).
 
-- **Accounts:** those named in `BROKER_ACCOUNTS` (default `Gerti:5`) plus every
-  account whose name starts with `BROKER_ACCOUNT_PREFIX` (default `Arena`,
-  case-insensitive), discovered within a minute. "Arena" accounts are topped up
-  once to the $100,000 demo maximum; named accounts keep their balance.
-  Accounts with other names (the user's) are never touched.
-- **Slots:** an account nets positions per instrument (hedging off), so it holds
-  at most one mirrored run per instrument, and at most `slots` runs (10 for
-  "Arena" accounts). Its balance when enrolled is split across its slots:
-  broker size = paper size × allocation ÷ (slots × $10,000), at most 1. A
-  $100,000 "Arena" account mirrors at exactly the paper size; Gerti ($1,000,
-  5 slots) at 0.02.
-- **Assignment:** every live run is mirrored while slots last, best demo equity
-  first; assignments are sticky. Covering all runs takes about one "Arena"
-  account per agent variant (October 2026: 392 runs → Gerti + 40). The Broker
-  page shows how many more are needed. Runs can be excluded by hand.
+- **Accounts:** every demo account whose name starts with
+  `BROKER_ACCOUNT_PREFIX` (default `Arena`, case-insensitive), discovered
+  within a minute and tracked by accountId. Other accounts (Visi is the user's)
+  are never touched. Capital.com allows 10 demo accounts per login, so the
+  arena has 9: "Arena 01" … "Arena 09".
+- **Capacity:** a new account is topped up once to the $100,000 demo maximum
+  (the cap counts total deposits, so the top-up is sized from the higher of
+  balance and deposits; retried daily if refused) and switched to **hedging
+  mode**, so it holds many runs on the same instrument, each as its own deal.
+  Every mirrored order is **0.2 × the paper size**, and each run reserves
+  $2,000 of an account: 50 runs per account, 450 across the nine (392 live
+  runs in October 2026). At 0.2, 0.7% of backtest trades fall below an
+  instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
+  An account that cannot be switched to hedging holds one run per instrument.
+- **Assignment:** every live run is mirrored while capacity lasts, best demo
+  equity first, spread over the accounts with the most free slots;
+  assignments are sticky. Runs can be excluded by hand. A run never has more
+  than one open deal.
+- **Renames:** deals are re-attached by deal id if an account is renamed;
+  renaming an account away from the prefix closes the arena's deals there and
+  stops using it.
 - **Requests:** one session switches between accounts (verified after every
   switch and re-login); jobs are grouped per account and share a ~6 req/s pacer
   with the candle poller. Backtest trade logs put the load at 3 orders in a
@@ -125,11 +131,12 @@ closes).
   a minute instead of exceeding Capital.com's 10 req/s.
 - **Rails:** a run opening ≥12 times in an hour is excluded; ≤600 opens/hour in
   total (demo limit 1,000/hour); per-account kill switch below 50% of its
-  allocation (two consecutive readings); positions the arena did not open block
-  that instrument on that account; opens replayed from history after a restart
-  are not mirrored; a deal whose paper position is gone is closed; broker-side
-  stop/target copies protect deals if the arena is down; lost order
-  confirmations are adopted from `/positions` on the next reconcile.
+  allocation (two consecutive readings); hedging mode re-checked on every
+  reconcile; positions the arena did not open are left alone; opens replayed
+  from history after a restart are not mirrored; a deal whose paper position
+  is gone is closed; broker-side stop/target copies protect deals if the arena
+  is down; lost order confirmations are adopted from `/positions` on the next
+  reconcile.
 
 Toggle the mirror and exclude runs on the dashboard's Broker page.
 

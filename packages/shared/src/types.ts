@@ -136,8 +136,9 @@ export interface LogLine {
 
 export interface Deal {
 	id: number;
-	/** Capital.com demo account the deal lives on. */
+	/** Capital.com demo account name when the deal was opened. */
 	account: string;
+	account_id: string | null;
 	run_id: string;
 	epic: string;
 	side: string;
@@ -177,37 +178,44 @@ export interface RunDetail extends RunSummary {
 }
 
 export interface BrokerAccountStatus {
+	/** Capital.com accountId (stable; names can change). */
+	id: string;
 	name: string;
-	accountId: string;
-	balance: number | null;
-	equity: number | null;
-	/** Balance when the account was first seen (≤ 100,000), split across its slots. Null until enrolled. */
+	balance: number;
+	equity: number;
+	/** Balance reserved for mirrored runs when the account was enrolled (≤ 100,000). Null until enrolled. */
 	allocation: number | null;
-	/** Most runs this account mirrors; at most one per instrument. */
+	/** Runs this account can hold. */
 	slots: number;
-	/** Broker size = paper size × scale (1 = exactly the paper size). */
-	scale: number | null;
+	/** Hedging mode: many runs per instrument. Netting (false): one per instrument. Null until read. */
+	hedging: boolean | null;
 	runs: string[];
 	openDeals: number;
 	killed: boolean;
-	/** Instruments with positions the arena did not open; skipped on this account. */
+	/** Renamed away from the prefix: the arena is closing its deals there. */
+	retiring: boolean;
+	/** Instruments with positions the arena did not open. */
 	foreignEpics: string[];
 	lastReconcileAt: number;
 }
 
 export interface BrokerStatus {
 	enabled: boolean;
-	/** Accounts whose name starts with this are used automatically. */
+	/** Accounts whose name starts with this are used. */
 	prefix: string;
-	/** Slots of an automatically used account. */
-	defaultSlots: number;
+	/** Broker size ÷ paper size. */
+	scale: number;
+	/** Runs a full ($100,000, hedging) account holds. */
+	slotsPerAccount: number;
+	/** Capital.com allows this many demo accounts per login. */
+	maxAccountsPerLogin: number;
 	accounts: BrokerAccountStatus[];
 	coverage: {
 		liveRuns: number;
 		mirrored: number;
 		excluded: number;
 		unassigned: number;
-		/** More accounts (of defaultSlots) needed to mirror every live run. */
+		/** More full accounts needed to mirror every live run. */
 		accountsNeeded: number;
 	};
 	excluded: string[];

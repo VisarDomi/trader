@@ -25,9 +25,10 @@ Start here, then read only what your task needs:
 - **Hetzner is shared.** Touch only what the trader needs: `trader-arena` and `trader-ui` services,
   `/home/erdal/trader-arena`, `/home/erdal/trader-ui`, the `trader.veron3.space` Caddy block and its
   Authelia rule.
-- **The Capital.com login is shared** with other apps (position-opener) and other demo accounts
-  (Visi, Eri, Andi, Roni, Endri). The arena trades only on Gerti and on accounts whose name starts
-  with "Arena". Its limits apply to the whole login: 10 requests/s, 1 login/s, 1,000 demo opens/hour.
+- **The Capital.com login is shared** with other apps (position-opener). Of its 10 demo accounts (the
+  maximum), "Arena 01" … "Arena 09" belong to the arena and **Visi is the user's**: the arena trades
+  only on accounts whose name starts with "Arena". The login's limits apply to everything on it:
+  10 requests/s, 1 login/s, 1,000 demo opens/hour.
 - `AGENTS.md`, `readme.md` and `test.txt` files are edited only by the user.
 
 ## Where things run

@@ -1,17 +1,20 @@
 /**
  * Which demo run is mirrored on which broker account.
  *
- * An account nets positions per instrument, so it can hold at most one
- * mirrored run per instrument, and at most `slots` runs in total (its balance
- * is split across them). Assignments are sticky: a run keeps its account until
- * it stops, is excluded, or the account goes away. Free slots are filled in
- * candidate order (best first).
+ * An account holds at most `slots` runs. An account in netting mode (hedging
+ * off) also holds at most one run per instrument, because a second position on
+ * the same instrument would net against the first. Assignments are sticky: a
+ * run keeps its account until it stops, is excluded, or the account goes away.
+ * Free slots are filled in candidate order (best first), spreading runs over
+ * the accounts with the most free slots.
  */
 
 export interface SlotAccount {
   name: string;
   slots: number;
-  /** Instruments this account cannot take (e.g. it holds a position the arena did not open). */
+  /** Netting mode: one run per instrument. */
+  onePerEpic: boolean;
+  /** Instruments this account cannot take (netting mode with a position the arena did not open). */
   blockedEpics?: ReadonlySet<string>;
 }
 
@@ -35,8 +38,8 @@ export function assignSlots(
   const state = new Map(accounts.map(a => [a.name, { ...a, used: 0, epics: new Set<string>() }]));
   const epicOf = new Map(candidates.map(c => [c.runId, c.epic]));
   const assignments: Record<string, string> = {};
-  const fits = (s: { slots: number; used: number; epics: Set<string>; blockedEpics?: ReadonlySet<string> }, epic: string) =>
-    s.used < s.slots && !s.epics.has(epic) && !s.blockedEpics?.has(epic);
+  const fits = (s: SlotAccount & { used: number; epics: Set<string> }, epic: string) =>
+    s.used < s.slots && (!s.onePerEpic || (!s.epics.has(epic) && !s.blockedEpics?.has(epic)));
   const take = (runId: string, epic: string, name: string) => {
     const s = state.get(name)!;
     s.used++;
@@ -69,10 +72,12 @@ export function assignSlots(
   return { assignments, unassigned };
 }
 
-/** How many more accounts of `slots` slots it takes to mirror every unassigned run (one per instrument per account). */
-export function accountsNeeded(unassigned: readonly SlotCandidate[], slots: number): number {
+/** How many more accounts of `slots` slots it takes to mirror every unassigned run. */
+export function accountsNeeded(unassigned: readonly SlotCandidate[], slots: number, onePerEpic: boolean): number {
   if (unassigned.length === 0) return 0;
+  const bySlots = Math.ceil(unassigned.length / slots);
+  if (!onePerEpic) return bySlots;
   const perEpic = new Map<string, number>();
   for (const c of unassigned) perEpic.set(c.epic, (perEpic.get(c.epic) ?? 0) + 1);
-  return Math.max(Math.max(...perEpic.values()), Math.ceil(unassigned.length / slots));
+  return Math.max(Math.max(...perEpic.values()), bySlots);
 }

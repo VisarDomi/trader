@@ -55,7 +55,6 @@ Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.
 ## Broker mirror (real demo orders)
 
 Paper runs are the leaderboard; the mirror copies them onto Capital.com demo accounts to measure
-real fills. Accounts: Gerti (5 runs, $1,000) and every account named "Arena…" (10 runs each,
-topped up to $100,000, so orders are exactly paper-sized). One run per instrument per account.
-Mirroring all live runs takes about one "Arena" account per agent variant. The dashboard's Broker page
-shows the number still needed. Details: [`ARCHITECTURE.md`](ARCHITECTURE.md#broker-mirror).
+real fills. It uses the nine accounts named "Arena…" (Visi is the user's): each is topped up to
+$100,000 and runs in hedging mode, holding up to 50 runs at 0.2× the paper size, 450 in total.
+Details: [`ARCHITECTURE.md`](ARCHITECTURE.md#broker-mirror).

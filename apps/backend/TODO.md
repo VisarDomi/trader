@@ -5,10 +5,10 @@
 - [ ] Demo: confirm every instrument trades through a full week (weekend gap, daily breaks, DST change on 2026-11-01).
 - [ ] Broker mirror: compare broker vs paper fills once ~20 deals have closed; calibrate `typicalSpread` and
       add slippage to the simulation if the gap is systematic.
-- [ ] Broker mirror: create the "Arena" demo accounts (40 for full coverage today) and watch the first
-      top-of-hour bursts (queue length on the Broker page, 429s in the events).
-- [ ] If Capital.com caps demo accounts per login below what full coverage needs, mirror only the best demo
-      runs (the mirror already fills slots best-first) or add a second login.
+- [ ] Broker mirror: watch the first top-of-hour bursts with all 392 runs mirrored (queue length on the
+      Broker page, 429s in the events).
+- [ ] Beyond 450 runs (9 accounts × 50) only the best demo runs are mirrored; a second Capital.com login
+      would add 10 more accounts and its own request budget.
 - [ ] Arena memory on the shared server (currently ~150-210 MB; cap 700 MB).
 
 ## Next
