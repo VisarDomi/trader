@@ -3,6 +3,22 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-08 (Thu) — demo day 0.6
+
+- Health: green after one broker fix. An open Capital.com rejected was never retried, so buy-hold AVGO
+  (1:1, rejected without a reason at 00:00 UTC) had no demo deal; and 3 closes that hit the 21:00–21:05 UTC
+  break were retried every minute and went through at 21:05, but logged 18 errors. Now rejected opens are
+  tried again up to 4 times, 5 minutes apart, while the paper position lasts, and closed-market closes are
+  logged once. AVGO opened on Arena 01 at 07:33 UTC (373.28, paper 377.05). Nightly lab job fine (share
+  backtests pushed). Arena 101 MB, 448/466 runs mirrored.
+- Verdicts: control 122, early 344, keep 0, leader 0, retire 0; monkey sanity 0 of 36.
+- Retired: none. Added: none (Thursday).
+- Leverage: the 1:200 account is down 0.9% after 15 hours, mostly the ladder's 20× positions; too early to read.
+- Share basket backtest (1:1, no fees): +123% on average (NVDA +340%, MSFT +35%) against US100 +46% after
+  $2,697 of fees. Most of the gap is hindsight: these are today's eight largest companies because they rose.
+  The fees are about 27 points of it. The demo is the fair comparison.
+- Next: Monday 2026-10-12, first new agents (candidate: a strategy on the shares at 1:1).
+
 ## 2026-10-07 (Wed, evening) — leverage tiers
 
 - Why: the user asked for leverage as another dimension, with all nine Arena accounts on different
