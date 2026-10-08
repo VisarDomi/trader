@@ -13,6 +13,8 @@
 
 ### Changed
 
+- **Broker retries rejected opens** — an open Capital.com rejects (a market's daily break, or an unexplained rejection like buy-hold AVGO's at 00:00 UTC) is tried again up to 4 times, 5 minutes apart, while the paper position is still open; a 4xx on `POST /positions` is recorded as rejected at once instead of waiting for reconcile. Closes refused because the market is closed are logged once as waiting (they already went through when it reopened) instead of as errors every minute.
+
 - **Leaders are judged against the monkeys' t-statistic** instead of their return, since returns scale with leverage.
 
 - **Capital.com client retries gateway errors on safe requests** (GET, account switch) and strips HTML from error messages; a broker job whose account switch fails is retried once. A 504 on `/session` had dropped one job.

@@ -370,7 +370,15 @@ export class Arena {
     const out: MirrorCandidate[] = [];
     for (const t of this.tracked.values()) {
       if (t.run.status !== RUN_STATUS.RUNNING) continue;
-      out.push({ runId: t.run.runId, epic: t.epic, tier: t.leverage, side: t.run.position?.side ?? null, score: t.run.markToMarket() });
+      const p = t.run.position;
+      out.push({
+        runId: t.run.runId,
+        epic: t.epic,
+        tier: t.leverage,
+        side: p?.side ?? null,
+        entry: p ? { size: p.size, price: p.entryPrice, time: p.entryTime, stopLoss: p.stopLoss, takeProfit: p.takeProfit } : null,
+        score: t.run.markToMarket(),
+      });
     }
     return out;
   }
