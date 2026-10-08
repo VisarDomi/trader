@@ -148,7 +148,9 @@ closes).
   from history after a restart are not mirrored; a deal whose paper position
   is gone is closed; broker-side stop/target copies protect deals if the arena
   is down; lost order confirmations are adopted from `/positions` on the next
-  reconcile.
+  reconcile; an open the broker rejects (e.g. inside a market's daily break) is
+  retried up to 4 times, 5 minutes apart, while the paper position lasts, and a
+  close is retried every minute until the market reopens.
 
 Toggle the mirror and exclude runs on the dashboard's Broker page.
 

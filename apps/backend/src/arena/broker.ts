@@ -39,6 +39,9 @@
  *     to an account whose leverage is not confirmed
  *   - opens from replayed history (after a restart) are not mirrored, and a
  *     deal whose paper position is gone is closed
+ *   - an open the broker rejected (e.g. inside a market's daily break) is tried
+ *     again OPEN_RETRIES times, OPEN_RETRY_MS apart, while the paper position
+ *     lasts; a close is retried every cycle until it goes through
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { CapitalApiError } from '../capital/client.ts';
@@ -112,6 +115,12 @@ const MAX_MIN_SIZE_INFLATION = 3;
 /** Paper equity a waiting run must be ahead of the weakest mirrored run to take its slot (2% of paper capital). */
 const PROMOTION_MARGIN = 0.02 * PAPER_CAPITAL;
 const MAX_PROMOTIONS_PER_CYCLE = 10;
+/** A rejected open is tried again this many times, this far apart, while its paper position is open. */
+const OPEN_RETRIES = 4;
+const OPEN_RETRY_MS = 5 * 60_000;
+/** Capital.com's rejection while an instrument is in its daily break or closed. */
+const MARKET_CLOSED = /currently closed/i;
+const NOTE_REJECTED = 'rejected:';
 
 export interface BrokerOptions {
   /** Accounts whose name starts with this (case-insensitive) are used. */
@@ -128,6 +137,8 @@ export interface MirrorCandidate extends SlotCandidate {
   score: number;
   /** The run's leverage tier: it is mirrored on an account of that tier. */
   tier: number;
+  /** The paper position, when there is one (to retry an open the broker rejected). */
+  entry: { size: number; price: number; time: number; stopLoss: number | null; takeProfit: number | null } | null;
 }
 
 interface Confirmation {
@@ -252,6 +263,8 @@ export class BrokerMirror {
   private live: MirrorCandidate[] = [];
   private unassigned: SlotCandidate[] = [];
   private cycleTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Deals whose close waits for their market to reopen (logged once). */
+  private readonly closeWaiting = new Set<number>();
   private cycling = false;
   private lastCycleAt = 0;
   private lastError: string | null = null;
@@ -602,15 +615,32 @@ export class BrokerMirror {
     }
   }
 
-  /** Close confirmed deals whose paper position is gone or on the other side. */
+  /** Close confirmed deals whose paper position is gone or on the other side; retry opens the broker rejected. */
   private syncWithPaper(): void {
     if (this.live.length === 0) return;
     const side = new Map(this.live.map(c => [c.runId, c.side]));
-    for (const d of this.db.openDeals()) {
+    const open = this.db.openDeals();
+    for (const d of open) {
       if (!d.deal_id || !d.account_id || !this.accounts.has(d.account_id)) continue;
       const paper = side.get(d.run_id);
       if (paper === d.side) continue;
       this.enqueueClose(d, paper === undefined ? 'run is no longer live' : 'paper position is flat');
+    }
+    const withDeal = new Set(open.map(d => d.run_id));
+    const runAccounts = this.runAccounts;
+    const now = Date.now();
+    for (const c of this.live) {
+      if (!c.side || !c.entry || withDeal.has(c.runId)) continue;
+      const account = this.accounts.get(runAccounts[c.runId] ?? '');
+      if (!account) continue;
+      // Attempts for this paper position (the first follows the paper entry within seconds).
+      const tries = this.db.dealsForRun(c.runId).filter(d => d.open_time >= c.entry!.time - STALE_EVENT_MS);
+      const rejected = tries.filter(d => d.status === DEAL_STATUS.FAILED && d.note?.startsWith(NOTE_REJECTED));
+      if (rejected.length === 0 || rejected.length !== tries.length || rejected.length > OPEN_RETRIES) continue;
+      if (now - Math.max(...rejected.map(d => d.open_time)) < OPEN_RETRY_MS) continue;
+      const { size, price, stopLoss, takeProfit } = c.entry;
+      this.db.event('info', 'broker', `retrying the rejected open for ${c.runId} (attempt ${rejected.length + 1} of ${OPEN_RETRIES + 1})`);
+      this.enqueue(account.id, () => this.openDeal(account, { type: 'open', runId: c.runId, side: c.side!, size, price, time: now, stopLoss, takeProfit }));
     }
   }
 
@@ -666,8 +696,8 @@ export class BrokerMirror {
       });
       const conf = await this.confirm(ref.dealReference);
       if (conf.dealStatus !== 'ACCEPTED') {
-        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: `rejected: ${conf.reason ?? 'unknown'}` });
-        this.db.event('warn', 'broker', `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'}`);
+        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: `${NOTE_REJECTED} ${conf.reason ?? 'unknown'}` });
+        this.db.event('warn', 'broker', `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'} (retried while the paper position lasts)`);
         return;
       }
       const dealId = conf.affectedDeals?.[0]?.dealId ?? conf.dealId ?? null;
@@ -675,6 +705,12 @@ export class BrokerMirror {
       this.db.event('info', 'broker', `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`);
       if (dealId && (e.stopLoss !== null || e.takeProfit !== null)) await this.putStops(dealId, e.stopLoss, e.takeProfit);
     } catch (err) {
+      if (err instanceof CapitalApiError && err.status >= 400 && err.status < 500) {
+        // Refused outright (e.g. the market is in its daily break): nothing was placed.
+        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: `${NOTE_REJECTED} ${errorText(err)}` });
+        this.db.event('warn', 'broker', `open refused for ${e.runId} on ${account.name}${MARKET_CLOSED.test(err.body) ? ': market closed' : `: ${errorText(err)}`} (retried while the paper position lasts)`);
+        return;
+      }
       // The order may still have gone through; reconcile() adopts it or marks it failed.
       this.db.updateDeal(rowId, { note: `unconfirmed: ${errorText(err)}` });
       this.fail(`open ${e.runId}`, err);
@@ -703,9 +739,16 @@ export class BrokerMirror {
         note,
       });
       this.db.event('info', 'broker', `closed ${current.epic} deal on ${current.account} for ${current.run_id} @ ${price} (${note})`);
+      this.closeWaiting.delete(d.id);
     } catch (err) {
       if (err instanceof CapitalApiError && err.status === 404) {
         this.db.updateDeal(d.id, { status: DEAL_STATUS.CLOSED, close_time: Date.now(), paper_close_price: paperPrice ?? null, note: `${note}; already closed at broker` });
+        return;
+      }
+      if (err instanceof CapitalApiError && MARKET_CLOSED.test(err.body)) {
+        // The next cycles retry it; it goes through when the market reopens.
+        if (!this.closeWaiting.has(d.id)) this.db.event('info', 'broker', `close of ${current.epic} for ${current.run_id} waits for the market to reopen`);
+        this.closeWaiting.add(d.id);
         return;
       }
       this.fail(`close ${current.run_id}`, err);
