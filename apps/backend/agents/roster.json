@@ -22,6 +22,7 @@
       "zscore-fade": [3],
       "donchian-breakout": [3],
       "keltner-trend": [3],
+      "vol-target": [3],
       "volatility-breakout/k05": [5],
       "supertrend/10x3": [5],
       "inside-bar": [5],
