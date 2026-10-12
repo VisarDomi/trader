@@ -31,7 +31,15 @@ Start here, then read only what your task needs:
   only on accounts whose name starts with "Arena". Each Arena account has one leverage (1:1 … 1:200),
   set by the arena from `apps/backend/agents/roster.json`; change it there, not in Capital.com. The
   login's limits apply to everything on it: 10 requests/s, 1 login/s, 1,000 demo opens/hour.
-- `AGENTS.md`, `readme.md` and `test.txt` files are edited only by the user.
+
+## Who does what
+
+- **Coding agents own the repository and the running process:** every file (`AGENTS.md`, `README.md` and
+  `test.txt` included), the agents, deploys, the lifecycle and its rules. Decide, act and record why in
+  the journal or `apps/backend/DECISIONS.md`; do not wait for approval.
+- **The user guides the project** (direction, priorities) and gives **physical help**: Capital.com
+  accounts and credentials, hardware, anything only a person can do. Contact them only for that, by
+  desktop notification (see the runbook in `apps/backend/agents/LIFECYCLE.md`).
 
 ## Where things run
 

@@ -8,7 +8,11 @@ It was easier to create a framework from scratch than to find a suitable framewo
 
 # How
 
-The framework itself hot loads the agents you write in a specific folder, so the deployment of trading agents for now is just drag and drop. Then, on the ui, you can make the agent run against the backtest. Demo plays are still a WIP so that's not available now. The backtest data is formed by HLOC minute data and by tick data. The tick data is starts recording from the moment you set this repo up. 
+Each agent is one TypeScript file in `apps/backend/agents/`. Agents are backtested on 1-minute candles
+(2024 onwards) and then trade forward on live Capital.com **demo** prices, each instrument and leverage
+(1:1 … 1:200) as its own run; the best runs are mirrored as real orders on nine demo accounts. Claude
+looks after the arena twice a week: it retires agents that lose, adds new ones and keeps a journal.
+Dashboard: <https://trader.veron3.space>.
 
 # setup
 [setup.md](./setup.md)
