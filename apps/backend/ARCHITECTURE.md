@@ -148,9 +148,11 @@ closes).
   from history after a restart are not mirrored; a deal whose paper position
   is gone is closed; broker-side stop/target copies protect deals if the arena
   is down; lost order confirmations are adopted from `/positions` on the next
-  reconcile; an open the broker rejects (e.g. inside a market's daily break) is
-  retried up to 4 times, 5 minutes apart, while the paper position lasts, and a
-  close is retried every minute until the market reopens.
+  reconcile; an open the broker rejects is retried up to 4 times, 5 minutes
+  apart, while the paper position lasts (one refused because the market is
+  closed waits until `GET /markets/{epic}` says it trades again, without using
+  up the retries), and a close, refused or rejected, is retried every minute
+  until it goes through.
 
 Toggle the mirror and exclude runs on the dashboard's Broker page.
 

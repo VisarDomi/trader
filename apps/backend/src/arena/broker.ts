@@ -39,9 +39,11 @@
  *     to an account whose leverage is not confirmed
  *   - opens from replayed history (after a restart) are not mirrored, and a
  *     deal whose paper position is gone is closed
- *   - an open the broker rejected (e.g. inside a market's daily break) is tried
- *     again OPEN_RETRIES times, OPEN_RETRY_MS apart, while the paper position
- *     lasts; a close is retried every cycle until it goes through
+ *   - an open the broker rejected is tried again OPEN_RETRIES times,
+ *     OPEN_RETRY_MS apart, while the paper position lasts; one refused because
+ *     the market is closed (daily break, weekend) waits until the market trades
+ *     again, without using up the retries; a close is retried every cycle until
+ *     it goes through
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { CapitalApiError } from '../capital/client.ts';
@@ -119,8 +121,10 @@ const MAX_PROMOTIONS_PER_CYCLE = 10;
 const OPEN_RETRIES = 4;
 const OPEN_RETRY_MS = 5 * 60_000;
 /** Capital.com's rejection while an instrument is in its daily break or closed. */
-const MARKET_CLOSED = /currently closed/i;
+const MARKET_CLOSED = /currently closed|market_closed/i;
 const NOTE_REJECTED = 'rejected:';
+/** GET /markets/{epic} snapshot.marketStatus while the market takes orders. */
+const MARKET_TRADEABLE = 'TRADEABLE';
 
 export interface BrokerOptions {
   /** Accounts whose name starts with this (case-insensitive) are used. */
@@ -265,6 +269,8 @@ export class BrokerMirror {
   private cycleTimer: ReturnType<typeof setTimeout> | null = null;
   /** Deals whose close waits for their market to reopen (logged once). */
   private readonly closeWaiting = new Set<number>();
+  /** Run → when its market was last checked for reopening (an open refused because the market was closed). */
+  private readonly reopenChecks = new Map<string, number>();
   private cycling = false;
   private lastCycleAt = 0;
   private lastError: string | null = null;
@@ -636,11 +642,36 @@ export class BrokerMirror {
       // Attempts for this paper position (the first follows the paper entry within seconds).
       const tries = this.db.dealsForRun(c.runId).filter(d => d.open_time >= c.entry!.time - STALE_EVENT_MS);
       const rejected = tries.filter(d => d.status === DEAL_STATUS.FAILED && d.note?.startsWith(NOTE_REJECTED));
-      if (rejected.length === 0 || rejected.length !== tries.length || rejected.length > OPEN_RETRIES) continue;
-      if (now - Math.max(...rejected.map(d => d.open_time)) < OPEN_RETRY_MS) continue;
+      if (rejected.length === 0 || rejected.length !== tries.length) continue;
+      // Refusals while the market was closed do not count: those wait for it to trade again.
+      const counted = rejected.filter(d => !MARKET_CLOSED.test(d.note ?? '')).length;
+      if (counted > OPEN_RETRIES) continue;
+      if (now - Math.max(...rejected.map(d => d.open_time), this.reopenChecks.get(c.runId) ?? 0) < OPEN_RETRY_MS) continue;
       const { size, price, stopLoss, takeProfit } = c.entry;
-      this.db.event('info', 'broker', `retrying the rejected open for ${c.runId} (attempt ${rejected.length + 1} of ${OPEN_RETRIES + 1})`);
-      this.enqueue(account.id, () => this.openDeal(account, { type: 'open', runId: c.runId, side: c.side!, size, price, time: now, stopLoss, takeProfit }));
+      const retry = () => this.openDeal(account, { type: 'open', runId: c.runId, side: c.side!, size, price, time: now, stopLoss, takeProfit });
+      if (MARKET_CLOSED.test(rejected.at(-1)!.note ?? '')) {
+        this.reopenChecks.set(c.runId, now);
+        // Checked on whichever account the session is on (no switch), opened on the run's own.
+        this.enqueue(this.sessionAccount ?? account.id, async () => {
+          if (!(await this.marketTradeable(c.epic))) return;
+          this.db.event('info', 'broker', `retrying the open for ${c.runId}: ${c.epic} trades again`);
+          this.enqueue(account.id, retry);
+        });
+        continue;
+      }
+      this.db.event('info', 'broker', `retrying the rejected open for ${c.runId} (attempt ${counted + 1} of ${OPEN_RETRIES + 1})`);
+      this.enqueue(account.id, retry);
+    }
+    for (const id of this.reopenChecks.keys()) if (!side.get(id)) this.reopenChecks.delete(id);
+  }
+
+  /** Whether Capital.com takes orders on this market now (not in its daily break or weekend). */
+  private async marketTradeable(epic: string): Promise<boolean> {
+    try {
+      const m = await this.client.get<{ snapshot?: { marketStatus?: string } }>(`/api/v1/markets/${epic}`);
+      return m.snapshot?.marketStatus === MARKET_TRADEABLE;
+    } catch {
+      return false;
     }
   }
 
@@ -732,6 +763,14 @@ export class BrokerMirror {
     try {
       const ref = await this.client.delete<{ dealReference: string }>(`/api/v1/positions/${current.deal_id}`);
       const conf = await this.confirm(ref.dealReference);
+      if (conf.dealStatus !== 'ACCEPTED') {
+        // Still open at the broker (e.g. its market has not reopened yet): the next cycle tries again.
+        if (!this.closeWaiting.has(d.id)) {
+          this.db.event('warn', 'broker', `close of ${current.epic} for ${current.run_id} rejected: ${conf.reason ?? 'unknown'} (retried every cycle)`);
+        }
+        this.closeWaiting.add(d.id);
+        return;
+      }
       const price = conf.level ?? null;
       this.db.updateDeal(d.id, {
         status: DEAL_STATUS.CLOSED, close_time: Date.now(), close_price: price, paper_close_price: paperPrice ?? null,

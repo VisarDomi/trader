@@ -13,6 +13,8 @@
 
 ### Changed
 
+- **Broker waits out closed markets and checks close confirmations** — an open refused because its market is closed (a weekend, not just the daily break) no longer uses up its 4 retries: the broker checks the market status every 5 minutes and opens once it trades again (monkey-b US500 had stayed unmirrored after Friday's close). A close whose confirmation comes back REJECTED stays open and is retried, instead of being recorded as closed and re-attached by the next reconcile (two GBPUSD deals at Sunday's reopen).
+
 - **Broker retries rejected opens** — an open Capital.com rejects (a market's daily break, or an unexplained rejection like buy-hold AVGO's at 00:00 UTC) is tried again up to 4 times, 5 minutes apart, while the paper position is still open; a 4xx on `POST /positions` is recorded as rejected at once instead of waiting for reconcile. Closes refused because the market is closed are logged once as waiting (they already went through when it reopened) instead of as errors every minute.
 
 - **Leaders are judged against the monkeys' t-statistic** instead of their return, since returns scale with leverage.
