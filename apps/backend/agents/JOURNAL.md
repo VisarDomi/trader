@@ -3,6 +3,38 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-12 (Mon) — demo day 5
+
+- Health: green after one broker fix. Capital.com's price stream dropped on Saturday 05:00–07:00 UTC (it
+  reconnected every minute; candles kept arriving over REST, so only live quotes were missing). The watchdog
+  raised 2 alerts and cleared them by itself; if this repeats next Saturday, it is weekly maintenance and the
+  watchdog should stay quiet then. Broker fix: at Friday's 21:00 close the paper engine still traded, and the
+  three opens it sent were refused ("market closed") and used up all 4 retries in 25 minutes, so monkey-b US500
+  stayed unmirrored all weekend. Now an open refused by a closed market waits for `GET /markets/{epic}` to say
+  the market trades again, without using up its retries (monkey-b US500 opened at 07:39). Also, two GBPUSD
+  closes at Sunday's reopen were rejected but recorded as closed, and the next reconcile re-attached and closed
+  them; a rejected close now stays open and is retried. Seen once since: a stoch-range GBPUSD deal hit its
+  broker stop and Capital.com still listed it for ~4 minutes, so it was re-attached twice before a 404 settled
+  it (harmless; watch for more). Nightly lab job fine. Arena 144 MB, 448/480 runs mirrored, 0 errors in 3 days.
+- Verdicts: control 122, early 358, keep 0, leader 0, retire 0; monkey sanity 0 of 36.
+- Retired: none (nothing can be judged before early November).
+- Added: turn-of-month — the turn-of-the-month effect (Ariel 1987, Lakonishok & Smidt 1988, McConnell & Xu
+  2008): long from the 16:00 New York close two weekdays before month end to the close of the third trading
+  day of the next month; US500, US100, US30 and the 8 shares; 1:1 (shares fee-free); no variants. Backtest
+  median Sharpe 0.42, 31–33 trades per run (META +59%, TSLA −32%).
+- Added: vol-target — volatility targeting (Moreira & Muir 2017): long US500, US100, US30 at 15% ÷ last
+  month's realized volatility, 0–2× equity, rebalanced monthly; 1:3 (uses up to 2×). Backtest median Sharpe
+  0.40, 34 trades per run (US100 +31%, US30 −0.3%).
+- Rejected: intraday-momentum — market intraday momentum (Gao, Han, Li & Zhou 2018): trade 15:30–16:00 New
+  York in the direction of the previous close → 10:00 return, sized with marginPct 20 at 1:5, 1:50 and 1:200.
+  Backtest median Sharpe −0.55 (gate −0.5): 704 trades, 47% won; on US500 at 1× the gross edge was about +2%
+  over 33 months against about 7% of spread, so leverage only multiplied the loss (−99% at 1:200).
+- Leverage after 5 days: tier averages fall with leverage (1:1 −0.1%, 1:20 −0.5%, 1:200 −1.9%). The ladder
+  scales almost exactly with leverage so far, with no margin calls: GOLD hold +32.6% at 1:200, US100 hold
+  −34.3%. The share basket (−0.6% average) is ahead of US100 (−1.6%) at 1:1.
+- Tiers: 1:1 now has 66 runs for 50 slots, 1:3 has 55; promotion decides who is mirrored.
+- Next: Thursday visit; Monday 2026-10-19 may add 1–3 agents (candidates in the idea log).
+
 ## 2026-10-08 (Thu) — demo day 0.6
 
 - Health: green after one broker fix. An open Capital.com rejected was never retried, so buy-hold AVGO
@@ -57,6 +89,7 @@ One line per idea: agent — mechanism — status (date).
 - ema-cross (9-21, 20-50) — moving-average crossover, 1h — live (2026-10-06)
 - hma-slope — Hull MA slope turns, 1h — live (2026-10-06)
 - inside-bar — inside-bar breakouts, 4h — live (2026-10-06)
+- intraday-momentum — last half hour follows the first (Gao et al. 2018), marginPct at 1:5/1:50/1:200, 30m — rejected (2026-10-12): backtest median Sharpe −0.55, spread larger than the edge
 - keltner-trend — Keltner channel trend entries, 4h — live (2026-10-06)
 - leverage-ladder (hold, trend) — one signal at every leverage tier, 10% of equity as margin — control (2026-10-07)
 - london-breakout — Asian-range breakout at the London open, 15m — live (2026-10-06)
@@ -76,5 +109,10 @@ One line per idea: agent — mechanism — status (date).
 - timesfm-trend — TimesFM direction as a trend confirmation, 1h — live (2026-10-06)
 - timesfm-vol-breakout — channel breakouts when TimesFM forecasts wide ranges, 1h — live (2026-10-07)
 - tsmom (5d, 20d) — time-series momentum, 4h — live (2026-10-06)
+- turn-of-month — long from 2 weekdays before month end to the 3rd trading day, indices + 8 shares at 1:1, 30m — live (2026-10-12)
+- vol-target — long US indices at 15% ÷ realized volatility (0–2×), monthly rebalance, 1d, 1:3 — live (2026-10-12)
 - volatility-breakout (k05, k08) — open ± k × previous range, 15m — live (2026-10-06); best backtest
 - zscore-fade — z-score mean reversion, 1h — live (2026-10-06)
+
+Candidates (not built yet): volatility-managed shares at 1:1 (fee-free, ≤ 0.9×); a weekend-gap or
+Monday effect on crypto; a funding-aware FX carry check (do any FX longs or shorts earn funding on Capital.com?).
