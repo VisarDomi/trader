@@ -1,0 +1,322 @@
+[
+  {
+    "id": "leverage-01",
+    "title": "A New Interpretation of Information Rate",
+    "authors": "J. L. Kelly Jr.",
+    "year": 1956,
+    "kind": "paper",
+    "url": "https://www.princeton.edu/~wbialek/rome/refs/kelly_56.pdf",
+    "file": null,
+    "summary": "Original Kelly paper: maximizing expected log wealth maximizes long-run growth; for an even-money bet with win probability p, bet 2p - 1."
+  },
+  {
+    "id": "leverage-02",
+    "title": "The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market",
+    "authors": "E. O. Thorp",
+    "year": 2006,
+    "kind": "paper",
+    "url": "https://www.gwern.net/doc/statistics/decision/2006-thorp.pdf",
+    "file": "files/leverage/thorp-2006-kelly-criterion-blackjack-sports-stock-market.pdf",
+    "summary": "Practitioner Kelly formulas: f* = (m - r)/s^2 (2.2x for the S&P 500 at r = 6%, 1.33x if borrowing costs 8%), fractional Kelly c gives c(2-c) of max growth and P(ever halving) = 0.5^(2/c-1)."
+  },
+  {
+    "id": "leverage-03",
+    "title": "Good and bad properties of the Kelly criterion",
+    "authors": "L. MacLean, E. Thorp, W. Ziemba",
+    "year": 2010,
+    "kind": "paper",
+    "url": "https://www.stat.berkeley.edu/~aldous/157/Papers/Good_Bad_Kelly.pdf",
+    "file": null,
+    "summary": "Lists Kelly's good (max asymptotic growth, no ruin) and bad (huge bets, rough short-run paths, 700 bets with 14% edge can turn $1000 into $18) properties; argues for fractional Kelly."
+  },
+  {
+    "id": "leverage-04",
+    "title": "Rational Decision-Making Under Uncertainty: Observed Betting Patterns on a Biased Coin",
+    "authors": "V. Haghani, R. Dewey",
+    "year": 2016,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/1701.01427",
+    "file": "files/leverage/haghani-2016-betting-patterns-biased-coin.pdf",
+    "summary": "61 finance-trained subjects with a 60% coin and $25: 28% went bust, 21% hit the $250 cap, average payout $91; Kelly (20% per flip) was almost unknown and martingale beliefs common."
+  },
+  {
+    "id": "leverage-05",
+    "title": "Optimal leverage from non-ergodicity",
+    "authors": "O. Peters",
+    "year": 2011,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/0902.2965",
+    "file": "files/leverage/peters-2011-optimal-leverage-from-non-ergodicity.pdf",
+    "summary": "Time-average growth of a leveraged GBM investment has a unique optimal leverage (mu - r)/sigma^2, while ensemble-average returns rise linearly with leverage and invite overleverage; the Sharpe ratio is leverage-invariant."
+  },
+  {
+    "id": "leverage-06",
+    "title": "Leverage efficiency",
+    "authors": "O. Peters, A. Adamou",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/1101.4548",
+    "file": "files/leverage/peters-2020-leverage-efficiency.pdf",
+    "summary": "Hypothesis that markets drive the market portfolio's optimal leverage to 1; S&P 500 1927-2020 l_opt = 1.1 (s.e. 0.6), Bitcoin 1.5 (0.3), both about 1.0 after costs; Madoff's fake returns imply 100-300."
+  },
+  {
+    "id": "leverage-07",
+    "title": "George Costanza at It Again: The Leveraged ETF Episode",
+    "authors": "V. Haghani, J. White (Elm Wealth)",
+    "year": 2020,
+    "kind": "blog",
+    "url": "https://elmwealth.com/george-costanza-at-it-again/",
+    "file": "files/leverage/elmwealth-2020-leveraged-etf-costanza.md",
+    "summary": "Daily-reset leverage suffers volatility drag, static leverage risks wipeout; over 1927-2020 about 1.5x leverage ended with the most money and a Merton investor (risk aversion 2.5) would hold about 85% equities."
+  },
+  {
+    "id": "leverage-08",
+    "title": "Path-Dependence of Leveraged ETF Returns",
+    "authors": "M. Avellaneda, S. Zhang",
+    "year": 2010,
+    "kind": "paper",
+    "url": "https://math.nyu.edu/%7Eavellane/SIAMLETFS.pdf.pdf",
+    "file": "files/leverage/avellaneda-2010-path-dependence-of-leveraged-etf-returns.pdf",
+    "summary": "Exact formula: L-times daily-reset fund log return = L x index log return - (L^2 - L)/2 x realized variance - costs; confirmed on 56 US LETFs from 2008; unsuitable for buy-and-hold without rebalancing."
+  },
+  {
+    "id": "leverage-09",
+    "title": "Leverage for the Long Run: A Systematic Approach to Managing Risk and Magnifying Returns in Stocks",
+    "authors": "M. Gayed, C. Bilello",
+    "year": 2016,
+    "kind": "paper",
+    "url": "https://docs.cmtassociation.org/dow-award/2016-gayed-bilello.pdf",
+    "file": "files/leverage/gayed-2016-leverage-for-the-long-run.pdf",
+    "summary": "S&P 500 1928-2015: hold 1.25/2/3x above the 200-day SMA, T-bills below; Sharpe 0.53/0.51/0.47 vs 0.30 buy-and-hold, max drawdown -59/-79/-92% vs -86%, with an optimistic 1% annual leverage cost."
+  },
+  {
+    "id": "leverage-10",
+    "title": "Leveraging the U.S. Stock Market Based on SMA Rules (review of Gayed & Bilello)",
+    "authors": "CXO Advisory",
+    "year": 2016,
+    "kind": "blog",
+    "url": "https://www.cxoadvisory.com/volatility-effects/leveraging-the-u-s-stock-market-based-on-sma-rules/",
+    "file": "files/leverage/cxoadvisory-gayed-bilello-sma-leverage-review.md",
+    "summary": "Critical review: the 1% leverage cost and ignored switching costs overstate results and the 1928 start flatters SMA rules; 2x LRS Sharpe 0.51 (-78%) vs 0.30 (-86%)."
+  },
+  {
+    "id": "leverage-11",
+    "title": "Hedgefundie's Excellent Adventure: a 3x leveraged ETF portfolio",
+    "authors": "T. Dong (ETF Central)",
+    "year": 2022,
+    "kind": "blog",
+    "url": "https://www.etfcentral.com/news/hedgefundies-excellent-adventure-3x-leveraged-etf-portfolio",
+    "file": "files/leverage/etfcentral-2022-hfea.md",
+    "summary": "HFEA (55% UPRO / 45% TMF, quarterly rebalance, 165/135 effective exposure) was down about 53% by October 2022 when bonds failed as a hedge; snapshot also records TQQQ's -81.7% 2021-22 drawdown vs QQQ -32.7%."
+  },
+  {
+    "id": "leverage-12",
+    "title": "Hacker News threads: Kelly Criterion; 3x leveraged ETFs; Towards a new leveraged ETF",
+    "authors": "Hacker News",
+    "year": 2021,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=26834333",
+    "file": "files/leverage/hn-kelly-and-leveraged-etf-threads.md",
+    "summary": "Practitioner comments: half Kelly as common practice, Kelly in HFT sizing, LETFs as covert short-volatility instruments, path dependence of daily reset."
+  },
+  {
+    "id": "leverage-13",
+    "title": "Diversification Across Time",
+    "authors": "I. Ayres, B. Nalebuff",
+    "year": 2010,
+    "kind": "paper",
+    "url": "https://ianayres.yale.edu/sites/default/files/files/Diversification%20Across%20T%20ime(1).pdf",
+    "file": "files/leverage/ayres-2010-diversification-across-time.pdf",
+    "summary": "Lifecycle investing: up to 2:1 leverage when young, de-lever with age; since 1871 it matches a 75% stock mean with 21% lower standard deviation and a 37% certainty-equivalent gain (CRRA 4)."
+  },
+  {
+    "id": "leverage-14",
+    "title": "Leverage Aversion and Risk Parity",
+    "authors": "C. Asness, A. Frazzini, L. Pedersen",
+    "year": 2012,
+    "kind": "paper",
+    "url": "https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/Leverage-Aversion-and-Risk-Parity.pdf",
+    "file": "files/leverage/asness-2012-leverage-aversion-and-risk-parity.pdf",
+    "summary": "Leverage-averse investors overpay for risky assets, so levered safe assets win: risk parity Sharpe 0.52-0.53 vs 0.25 market and 0.40 60/40 (1926-2010), 0.61 vs 0.43 (1973-2010)."
+  },
+  {
+    "id": "leverage-15",
+    "title": "Betting Against Beta",
+    "authors": "A. Frazzini, L. Pedersen",
+    "year": 2014,
+    "kind": "paper",
+    "url": "https://www.nber.org/system/files/working_papers/w16601/w16601.pdf",
+    "file": null,
+    "summary": "Funding-constraint model; long levered low-beta, short high-beta earns a US Sharpe of 0.75 (1926-2009) and works across 20 countries, bonds and futures."
+  },
+  {
+    "id": "leverage-16",
+    "title": "Betting against betting against beta",
+    "authors": "R. Novy-Marx, M. Velikov",
+    "year": 2022,
+    "kind": "paper",
+    "url": "https://mysimon.rochester.edu/novy-marx/research/BABAB.pdf",
+    "file": null,
+    "summary": "BAB's performance comes from non-standard construction that effectively equal-weights micro caps (about $1.05 per $1 in the bottom 1% by size); net returns are explained by profitability and investment tilts."
+  },
+  {
+    "id": "leverage-17",
+    "title": "What is return stacking? / Return Stacking: Strategies for Overcoming a Low Return Environment",
+    "authors": "C. Hoffstein, R. Gordillo et al. (Return Stacked)",
+    "year": 2021,
+    "kind": "doc",
+    "url": "https://www.returnstacked.com/what-is-return-stacking/",
+    "file": "files/leverage/returnstacked-what-is-return-stacking.md",
+    "summary": "Portable-alpha style leverage: $1 of core beta via futures plus $1 of an uncorrelated strategy per $1 invested; risks are stacked losses, financing cost and correlations rising in crises."
+  },
+  {
+    "id": "leverage-18",
+    "title": "Volatility-Managed Portfolios",
+    "authors": "A. Moreira, T. Muir",
+    "year": 2017,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w22208",
+    "file": "files/leverage/moreira-2017-volatility-managed-portfolios.pdf",
+    "summary": "Scaling exposure by inverse past-month variance earns a 4.9% alpha and a 25% higher Sharpe on the US market (weights median ~1, 99th percentile 6.4x); works across equity factors and FX carry."
+  },
+  {
+    "id": "leverage-19",
+    "title": "The Impact of Volatility Targeting",
+    "authors": "C. Harvey, E. Hoyle, R. Korgaonkar, S. Rattray, M. Sargaison, O. Van Hemert",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://people.duke.edu/~charvey/Research/Published_Papers/P135_The_impact_of.pdf",
+    "file": "files/leverage/harvey-2018-impact-of-volatility-targeting.pdf",
+    "summary": "Across 60+ assets since 1926, volatility targeting raises Sharpe only for risk assets with a leverage effect (US equities 0.40 to 0.48-0.51) and thins left tails everywhere; no Sharpe gain for bonds, FX, commodities."
+  },
+  {
+    "id": "leverage-20",
+    "title": "On the performance of volatility-managed portfolios",
+    "authors": "S. Cederburg, M. O'Doherty, F. Wang, X. Yan",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://www.lehigh.edu/~xuy219/research/COWY.pdf",
+    "file": "files/leverage/cederburg-2020-performance-of-volatility-managed-portfolios.pdf",
+    "summary": "Across 103 equity strategies volatility-managed versions do not systematically outperform (45 better, 58 worse); real-time combinations earn lower certainty-equivalent returns in 72 of 103 cases."
+  },
+  {
+    "id": "leverage-21",
+    "title": "ESMA agrees to prohibit binary options and restrict CFDs to protect retail investors",
+    "authors": "ESMA",
+    "year": 2018,
+    "kind": "doc",
+    "url": "https://www.esma.europa.eu/press-news/esma-news/esma-agrees-prohibit-binary-options-and-restrict-cfds-protect-retail-investors",
+    "file": "files/leverage/esma-2018-cfd-product-intervention.md",
+    "summary": "74-89% of retail CFD accounts lose money (average loss EUR 1,600-29,000); caps of 30:1 major FX, 20:1 gold and major indices, 10:1 commodities, 5:1 shares, 2:1 crypto; 50% margin close-out."
+  },
+  {
+    "id": "leverage-22",
+    "title": "FCA proposes stricter rules for contract for difference products (CP16/40)",
+    "authors": "FCA",
+    "year": 2016,
+    "kind": "doc",
+    "url": "https://www.fca.org.uk/news/press-releases/fca-proposes-stricter-rules-contract-difference-products",
+    "file": "files/leverage/fca-2016-cfd-proposals.md",
+    "summary": "82% of a representative sample of UK retail CFD clients lost money while leverage over 200:1 was on offer; proposed 50:1 cap (25:1 for inexperienced clients)."
+  },
+  {
+    "id": "leverage-23",
+    "title": "Traders' performance will improve under new ESMA leverage limits, finds research from Capital.com",
+    "authors": "Finance Magnates / Capital.com",
+    "year": 2018,
+    "kind": "doc",
+    "url": "https://directory.financemagnates.com/forex-brokers/capitalcom/traders-performance-will-improve-under-new-esma-leverage-limits-finds-research-from-capitalcom/",
+    "file": "files/leverage/financemagnates-2018-capitalcom-esma-leverage-research.md",
+    "summary": "Capital.com internal data: lower leverage cut users margin-called within 15 days from about 30% to 5% and the average loss by over 80%; current risk warning says 79.75% of retail accounts lose money."
+  },
+  {
+    "id": "leverage-24",
+    "title": "Should Retail Investors' Leverage Be Limited?",
+    "authors": "R. Heimer, A. Simsek",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w24176",
+    "file": "files/leverage/heimer-2019-should-retail-investors-leverage-be-limited.pdf",
+    "summary": "The 2010 US 50:1 retail FX cap cut volume 23% and high-leverage traders' losses 40%; before it the top leverage quintile lost 44% a month vs 3% for the bottom; spreads unchanged."
+  },
+  {
+    "id": "leverage-25",
+    "title": "The leverage substitution",
+    "authors": "M. Pelster",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://en.wiwi.uni-paderborn.de/fileadmin-wiwi/cetar/TAF_Working_Paper_Series/TAF_WP_065_Pelster2024_rev.pdf",
+    "file": "files/leverage/pelster-2024-leverage-substitution.pdf",
+    "summary": "ESMA's 2018 CFD cap cut treated traders' leverage from 6.6 to 4.7 and large losses, but they shifted to more volatile stocks and crypto, partly substituting risk for leverage."
+  },
+  {
+    "id": "leverage-26",
+    "title": "Leverage Is a Double-Edged Sword",
+    "authors": "A. Subrahmanyam, K. Tang, J. Wang, X. Yang",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://doi.org/10.1111/jofi.13316",
+    "file": null,
+    "summary": "Chinese futures traders: one more unit of leverage costs about 5.3 bp a day, via trading costs and margin-call liquidations (most of unskilled traders' losses); skilled traders gain from leverage."
+  },
+  {
+    "id": "leverage-27",
+    "title": "Liquidation, Leverage and Optimal Margin in Bitcoin Futures Markets",
+    "authors": "Z. Cheng, J. Deng, T. Wang, M. Yu",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2102.04591",
+    "file": "files/leverage/cheng-2021-liquidation-leverage-optimal-margin-bitcoin-futures.pdf",
+    "summary": "BitMEX perpetuals: daily forced liquidations 3.51% (long) and 1.89% (short) of open interest, liquidated traders averaged 60x, and a 1% daily margin-call probability needs 3x (long) / 5x (short) leverage limits."
+  },
+  {
+    "id": "leverage-28",
+    "title": "The Leverage Cycle",
+    "authors": "J. Geanakoplos",
+    "year": 2009,
+    "kind": "paper",
+    "url": "https://cowles.yale.edu/sites/default/files/2022-08/d1715-r.pdf",
+    "file": null,
+    "summary": "Equilibrium sets leverage (margins) as well as interest rates; leverage rises in calm booms and collapses in crises, amplifying price swings, so it should be regulated."
+  },
+  {
+    "id": "leverage-29",
+    "title": "Carry Trades and Currency Crashes",
+    "authors": "M. Brunnermeier, S. Nagel, L. Pedersen",
+    "year": 2008,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w14473",
+    "file": null,
+    "summary": "Leveraged currency carry trades have negatively skewed returns and crash when risk appetite and funding liquidity fall and carry positions unwind together."
+  },
+  {
+    "id": "leverage-30",
+    "title": "Improving on bold play when the gambler is restricted",
+    "authors": "J. Schweinsberg",
+    "year": 2004,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/math/0412362",
+    "file": null,
+    "summary": "States Dubins and Savage's theorem that bold play (stake min(fortune, goal - fortune)) maximizes the chance of reaching a goal in a subfair game, and shows it is not optimal when the stake per bet is capped."
+  },
+  {
+    "id": "leverage-31",
+    "title": "Theory of constant proportion portfolio insurance",
+    "authors": "F. Black, A. Perold",
+    "year": 1992,
+    "kind": "paper",
+    "url": "https://doi.org/10.1016/0165-1889(92)90043-E",
+    "file": null,
+    "summary": "CPPI: risky exposure = multiplier x (wealth - floor), a constant leverage on the cushion that adds exposure after gains and protects a floor except against gaps larger than 1/multiplier."
+  },
+  {
+    "id": "leverage-32",
+    "title": "Arena leverage statistics from our 1-minute candles, 2024-01 to 2026-09",
+    "authors": "this project",
+    "year": 2026,
+    "kind": "doc",
+    "url": "apps/backend/data/candles + apps/backend/src/engine/instruments.ts",
+    "file": "files/leverage/arena-leverage-stats.md",
+    "summary": "Our own numbers: volatility, funding, in-sample Kelly and l_opt per instrument, margin-call hit rates by tier, the Sharpe ratio each tier would need under Kelly, and volatility-drag tables."
+  }
+]

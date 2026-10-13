@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
+- **Research tab** — the research report, one page per topic note and a searchable library of every source, from the repo's `research/` folder (bundled at build). Saved papers and page snapshots are served from the server's `research/files` (not in git; `ops/server/sync-research.sh`). Notes render with tables; citations like `[leverage-03]` link to the library.
 - **Leverage page** — runs, mirroring and median return per leverage tier and account, the leverage ladder (return and drawdown per tier), and the 1:1 share basket against US100.
 - **Leverage on every run** — a Lev. column and filter on the leaderboard (`?leverage=` works too), the tier on run pages and the broker page's accounts and runs.
 - **Lifecycle stage column** on the demo leaderboard (early / keep / leader / retire, reason on hover), from the shared policy in `@trader/shared`.

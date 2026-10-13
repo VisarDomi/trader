@@ -13,6 +13,7 @@ Start here, then read only what your task needs:
 | Look after the arena: retire, add agents (babysitter visits) | [`apps/backend/agents/LIFECYCLE.md`](apps/backend/agents/LIFECYCLE.md), then [`JOURNAL.md`](apps/backend/agents/JOURNAL.md) |
 | Engine, arena, lab tools, broker mirror | [`apps/backend/setup.md`](apps/backend/setup.md) |
 | Dashboard | [`apps/ui/setup.md`](apps/ui/setup.md) |
+| Research library (ideas, papers, notes) | [`research/README.md`](research/README.md) |
 | TimesFM forecaster (GPU) | [`apps/forecaster/setup.md`](apps/forecaster/setup.md) |
 | Services, deploys, logs | [Operations](#operations) below |
 
@@ -64,6 +65,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | `apps/ui/` | SvelteKit dashboard |
 | `apps/forecaster/` | Python TimesFM 3 HTTP service |
 | `packages/shared/` | API wire types shared by the arena and the dashboard |
+| `research/` | research report, topic notes and sources (saved copies in `research/files/`, not in git) |
 | `ops/lab/` | Lab PC systemd user units, installer, nightly job |
 | `ops/server/` | Arena systemd unit and deploy script |
 
@@ -73,6 +75,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 |---|---|
 | Deploy the arena | commit, then `ops/server/deploy-arena.sh` (typechecks, tests, uploads, restarts; runs resume) |
 | Deploy the dashboard | push `main`; the veron3 deploy watcher builds `apps/ui` and restarts `trader-ui` |
+| Publish research files | `ops/server/sync-research.sh` (papers and snapshots to the server's Research tab) |
 | Install/refresh lab services | `ops/lab/install.sh` |
 | Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
 | Arena logs | `ssh erdal@157.90.28.14 sudo journalctl -u trader-arena -f`; events also on the dashboard Status page |

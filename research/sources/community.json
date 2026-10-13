@@ -1,0 +1,442 @@
+[
+ {
+  "id": "community-01",
+  "title": "freqtrade: docs (strategy-101, backtesting, hyperopt, lookahead-analysis, recursive-analysis, protections)",
+  "authors": "freqtrade",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/freqtrade/freqtrade",
+  "file": "files/community/freqtrade-docs-backtest-pitfalls.md",
+  "summary": ""
+ },
+ {
+  "id": "community-02",
+  "title": "freqtrade-strategies and NostalgiaForInfinity",
+  "authors": "freqtrade; iterativv",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/freqtrade/freqtrade-strategies",
+  "file": "files/community/freqtrade-docs-backtest-pitfalls.md",
+  "summary": ""
+ },
+ {
+  "id": "community-03",
+  "title": "Jesse: rule significance testing and Monte Carlo analysis",
+  "authors": "jesse-ai",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/jesse-ai/jesse",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-04",
+  "title": "Hummingbot (strategy_v2 position executor, triple barrier)",
+  "authors": "hummingbot",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/hummingbot/hummingbot",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-05",
+  "title": "NautilusTrader",
+  "authors": "Nautech Systems",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/nautechsystems/nautilus_trader",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-06",
+  "title": "vectorbt",
+  "authors": "polakowo",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/polakowo/vectorbt",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-07",
+  "title": "Alpha Streams Refactoring 2.0 (and LEAN engine)",
+  "authors": "Jared Broad / QuantConnect",
+  "year": 2022,
+  "kind": "doc",
+  "url": "https://www.quantconnect.com/forum/discussion/13441/alpha-streams-refactoring-2-0/",
+  "file": "files/community/quantconnect-alpha-streams-shutdown.md",
+  "summary": ""
+ },
+ {
+  "id": "community-08",
+  "title": "backtrader and Zipline",
+  "authors": "mementum; Quantopian",
+  "year": 2024,
+  "kind": "repo",
+  "url": "https://github.com/quantopian/zipline",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-09",
+  "title": "awesome-quant",
+  "authors": "wilsonfreitas",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/wilsonfreitas/awesome-quant",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-10",
+  "title": "awesome-systematic-trading (replication record)",
+  "authors": "paperswithbacktest",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/paperswithbacktest/awesome-systematic-trading",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-11",
+  "title": "awesome-ai-in-finance",
+  "authors": "georgezouq",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/georgezouq/awesome-ai-in-finance",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-12",
+  "title": "TradingAgents: multi-agent LLM financial trading framework",
+  "authors": "Tauric Research (Xiao et al.)",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/TauricResearch/TradingAgents",
+  "file": "files/ai-trading/xiao-2024-tradingagents.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-13",
+  "title": "ai-hedge-fund",
+  "authors": "virattt",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/virattt/ai-hedge-fund",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-14",
+  "title": "Evaluating ChatGPT as a Portfolio Decision-Maker in Micro-Cap Equities (LLM-Trading-Lab)",
+  "authors": "Nathan Smith",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/LuckyOne7777/LLM-Trading-Lab",
+  "file": "files/community/github-llm-trading-lab-chatgpt-microcap.md",
+  "summary": ""
+ },
+ {
+  "id": "community-15",
+  "title": "QSX Strategy Score",
+  "authors": "jianweiweng05",
+  "year": 2026,
+  "kind": "repo",
+  "url": "https://github.com/jianweiweng05/qsx-strategy-score",
+  "file": "files/community/github-trading-repos-2026.md",
+  "summary": ""
+ },
+ {
+  "id": "community-16",
+  "title": "Can I build a scalping bot? / the cost speed limit",
+  "authors": "Rob Carver (qoppac blog)",
+  "year": 2025,
+  "kind": "blog",
+  "url": "https://qoppac.blogspot.com/2025/05/can-i-build-scalping-bot-blogpost-with.html",
+  "file": "files/community/qoppac-scalping-bot-and-speed-limit.md",
+  "summary": ""
+ },
+ {
+  "id": "community-17",
+  "title": "All that glitters is not gold: backtest vs out-of-sample on 888 algorithms",
+  "authors": "Wiecki, Campbell, Lent, Stauth (Quantopian)",
+  "year": 2016,
+  "kind": "paper",
+  "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2745220",
+  "file": "files/community/wiecki-2016-all-that-glitters-backtest-vs-oos.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-18",
+  "title": "The IBS Effect: Mean Reversion in Equity ETFs",
+  "authors": "Pagonidis (QUSMA)",
+  "year": 2013,
+  "kind": "paper",
+  "url": "http://qusma.com/wp-content/uploads/2013/09/The-IBS-Effect-Mean-Reversion-in-Equity-ETFs.pdf",
+  "file": "files/community/pagonidis-2013-ibs-effect-equity-etfs.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-19",
+  "title": "Using Internal Bar Strength as a Key Indicator for Trading Country ETFs",
+  "authors": "Pandey & Joshi (NYU)",
+  "year": 2023,
+  "kind": "paper",
+  "url": "https://arxiv.org/abs/2306.12434",
+  "file": "files/community/pandey-2023-ibs-country-etfs.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-20",
+  "title": "Max Dama on Automated Trading",
+  "authors": "Max Dama",
+  "year": 2011,
+  "kind": "book",
+  "url": "http://isomorphisms.sdf.org/maxdama.pdf",
+  "file": "files/community/dama-2011-on-automated-trading.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-21",
+  "title": "Kalshi and the Rise of Macro Markets (FEDS 2026-010)",
+  "authors": "Diercks, Katz, Wright",
+  "year": 2026,
+  "kind": "paper",
+  "url": "https://www.federalreserve.gov/econres/feds/files/2026010pap.pdf",
+  "file": "files/community/diercks-2026-kalshi-rise-of-macro-markets.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-22",
+  "title": "The Unintended Consequences of Rebalancing",
+  "authors": "Harvey, Mazzoleni, Melone",
+  "year": 2026,
+  "kind": "paper",
+  "url": "https://www.nber.org/papers/w33554",
+  "file": "files/anomalies/harvey-2026-unintended-consequences-rebalancing.pdf",
+  "summary": ""
+ },
+ {
+  "id": "community-23",
+  "title": "Prediction market microstructure (Kalshi) and prediction-market-analysis dataset",
+  "authors": "Jon Becker",
+  "year": 2025,
+  "kind": "blog",
+  "url": "https://www.jbecker.dev/research/prediction-market-microstructure",
+  "file": "files/community/prediction-markets-as-data.md",
+  "summary": ""
+ },
+ {
+  "id": "community-24",
+  "title": "Ask HN: Anyone making money through algorithmic trading?",
+  "authors": "Hacker News",
+  "year": 2018,
+  "kind": "thread",
+  "url": "https://news.ycombinator.com/item?id=16922538",
+  "file": "files/community/hn-ask-anyone-making-money-algo-trading.md",
+  "summary": ""
+ },
+ {
+  "id": "community-25",
+  "title": "Exploring the limits of LLMs as quant traders (Alpha Arena) + \"Why Alpha Arena was a bad benchmark\"",
+  "authors": "Nof1; HN; borisagain",
+  "year": 2025,
+  "kind": "thread",
+  "url": "https://news.ycombinator.com/item?id=45976832",
+  "file": "files/community/hn-alpha-arena-llm-traders.md",
+  "summary": ""
+ },
+ {
+  "id": "community-26",
+  "title": "Nothing Ever Happens: Polymarket bot that always buys No",
+  "authors": "sterlingcrispin; HN",
+  "year": 2026,
+  "kind": "thread",
+  "url": "https://news.ycombinator.com/item?id=47753472",
+  "file": "files/community/prediction-markets-as-data.md",
+  "summary": ""
+ },
+ {
+  "id": "community-27",
+  "title": "Show HN: I discovered a trading algorithm that returns ~24.85% annually",
+  "authors": "Hacker News",
+  "year": 2021,
+  "kind": "thread",
+  "url": "https://news.ycombinator.com/item?id=27414677",
+  "file": "files/community/hn-backtest-postmortems.md",
+  "summary": ""
+ },
+ {
+  "id": "community-28",
+  "title": "Financial Backtesting: A Cautionary Tale",
+  "authors": "Philosophical Economics",
+  "year": 2015,
+  "kind": "blog",
+  "url": "http://www.philosophicaleconomics.com/2015/12/backtesting/",
+  "file": "files/community/hn-backtest-postmortems.md",
+  "summary": ""
+ },
+ {
+  "id": "community-29",
+  "title": "I backtested 100+ retail trading strategies (~700 versions) … here is what survived",
+  "authors": "u/tanweer919, r/algotrading",
+  "year": 2026,
+  "kind": "thread",
+  "url": "https://www.reddit.com/r/algotrading/comments/1x2owmo/",
+  "file": "files/community/reddit-algotrading-100-strategies-what-survived.md",
+  "summary": ""
+ },
+ {
+  "id": "community-30",
+  "title": "Buy-the-dip / IBS mean reversion threads",
+  "authors": "u/Russ_CW, u/vaanam-dev, r/algotrading",
+  "year": 2026,
+  "kind": "thread",
+  "url": "https://www.reddit.com/r/algotrading/comments/1rjvxjy/",
+  "file": "files/community/reddit-algotrading-ibs-dip-buying.md",
+  "summary": ""
+ },
+ {
+  "id": "community-31",
+  "title": "Selecting TAA strategies on recent performance; Surfing the equity curve; Wisdom of 100 strategies",
+  "authors": "Allocate Smartly",
+  "year": 2026,
+  "kind": "blog",
+  "url": "https://allocatesmartly.com/selecting-taa-strategies-based-on-recent-performance-part-1/",
+  "file": "files/community/allocatesmartly-strategy-selection-lessons.md",
+  "summary": ""
+ },
+ {
+  "id": "community-32",
+  "title": "Papers and articles (intraday momentum, crypto trends, tranching, opportunity-set bias, production lessons, Bitcoin seasonality)",
+  "authors": "Concretum Group (Zarattini et al.)",
+  "year": 2026,
+  "kind": "blog",
+  "url": "https://concretumgroup.com/papers/",
+  "file": "files/community/concretum-research-and-lessons.md",
+  "summary": ""
+ },
+ {
+  "id": "community-33",
+  "title": "More of the Disease, Faster; To Trend or Not To Trend; Brave New Backtest",
+  "authors": "Kris Longmore (Robot Wealth)",
+  "year": 2026,
+  "kind": "blog",
+  "url": "https://robotwealth.com/more-of-the-disease-faster-what-happens-when-you-ask-an-llm-to-find-you-an-edge/",
+  "file": "files/community/robotwealth-edge-needs-a-why.md",
+  "summary": ""
+ },
+ {
+  "id": "community-34",
+  "title": "15 Ideas, Frameworks, and Lessons from 15 Years",
+  "authors": "Corey Hoffstein (Flirting with Models)",
+  "year": 2023,
+  "kind": "blog",
+  "url": "https://blog.thinknewfound.com/2023/08/15-ideas-frameworks-and-lessons-from-15-years/",
+  "file": "files/community/thinknewfound-15-lessons.md",
+  "summary": ""
+ },
+ {
+  "id": "community-35",
+  "title": "Return Stacked research and primer",
+  "authors": "Return Stacked (Hoffstein, Gordillo)",
+  "year": 2026,
+  "kind": "blog",
+  "url": "https://www.returnstacked.com/",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-36",
+  "title": "Quantocracy quant blog mashup",
+  "authors": "Quantocracy",
+  "year": 2026,
+  "kind": "blog",
+  "url": "https://quantocracy.com/",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-37",
+  "title": "How To Profitably Trade Bitcoin's Overnight Sessions? (and the strategy screener)",
+  "authors": "Quantpedia",
+  "year": 2024,
+  "kind": "blog",
+  "url": "https://quantpedia.com/how-to-profitably-trade-bitcoins-overnight-sessions/",
+  "file": "files/anomalies/quantpedia-bitcoin-seasonality.md",
+  "summary": ""
+ },
+ {
+  "id": "community-38",
+  "title": "Avoiding the Big Drawdown with Trend-Following Investment Strategies",
+  "authors": "Gray & Vogel (Alpha Architect)",
+  "year": 2015,
+  "kind": "blog",
+  "url": "https://alphaarchitect.com/avoiding-the-big-drawdown-with-trend-following-investment-strategies/",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-39",
+  "title": "The Internal Bar Strength (IBS) indicator; Classical mean reversion strategy",
+  "authors": "Quantified Strategies",
+  "year": 2024,
+  "kind": "blog",
+  "url": "https://quantifiedstrategies.substack.com/p/the-internal-bar-strength-ibs-indicator",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-40",
+  "title": "Quantitative Trading blog",
+  "authors": "Ernest P. Chan",
+  "year": 2025,
+  "kind": "blog",
+  "url": "https://epchan.blogspot.com/",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-41",
+  "title": "Kevin Davey: It's All About Process in Algo Trading (Algo Advantage ep. 36)",
+  "authors": "Algo Advantage / Kevin Davey",
+  "year": 2025,
+  "kind": "video",
+  "url": "https://algoadvantage.substack.com/p/036-kevin-davey-part-i-its-all-about",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-42",
+  "title": "Top Traders Unplugged, Systematic Investor series",
+  "authors": "Niels Kaastrup-Larsen et al.",
+  "year": 2026,
+  "kind": "video",
+  "url": "https://www.toptradersunplugged.com/",
+  "file": null,
+  "summary": ""
+ },
+ {
+  "id": "community-43",
+  "title": "Capital.com Open API: Client Sentiment",
+  "authors": "Capital.com",
+  "year": 2026,
+  "kind": "doc",
+  "url": "https://open-api.capital.com/",
+  "file": "files/community/capitalcom-client-sentiment-api.md",
+  "summary": ""
+ },
+ {
+  "id": "community-44",
+  "title": "Lab descriptive checks: IBS on US session; crypto 19:00 NY weekday windows (2024-01 → 2026-09)",
+  "authors": "this project",
+  "year": 2026,
+  "kind": "doc",
+  "url": "",
+  "file": "files/community/lab-descriptive-checks-ibs-and-crypto-weekday.md",
+  "summary": ""
+ }
+]

@@ -10,6 +10,7 @@
 		{ href: '/broker', label: 'Broker' },
 		{ href: '/leverage', label: 'Leverage' },
 		{ href: '/journal', label: 'Journal' },
+		{ href: '/research', label: 'Research' },
 		{ href: '/status', label: 'Status' },
 	];
 
