@@ -65,7 +65,7 @@
 		<p class="lede">
 			Every demo run trades at the leverage of one Capital.com demo account, from 1:1 to 1:200, and is mirrored on that account.
 			Leverage is a ceiling: margin is the position size divided by the leverage, and a position is closed when equity falls
-			below half its margin. At 1:1, crypto and shares pay no overnight fee (indices, commodities and FX still do). Crypto and
+			below half its margin. At 1:1 there is no overnight fee, except on natural gas. Crypto and
 			shares go no higher than 1:20 (marked * on the leaderboard).
 		</p>
 		<p class="secondary small narrow">
@@ -161,11 +161,12 @@
 	</section>
 
 	<section class="card">
-		<h2>Shares instead of the index, at 1:1</h2>
+		<h2>The largest shares against the index, at 1:1</h2>
 		<p class="secondary small">
-			A 1:1 index position still pays the overnight fee (about 8% a year on a long US100). The eight largest Nasdaq-100
-			companies, about half of the index, pay none at 1:1: the price is the cash to buy them outright. Both are held by
-			Buy &amp; Hold on the 1:1 account at 0.9× equity, $10,000 each.
+			The eight largest Nasdaq-100 companies, about half of the index, against US100 and US500, all held by Buy &amp; Hold
+			on the 1:1 account at 0.9× equity, $10,000 each. At 1:1 none of them pays the overnight fee (about 8% a year on a
+			leveraged long): Capital.com waives it on most 1:1 positions. Until 2026-10-13 the paper engine still charged the
+			indices, so their demo fees below are from those first days.
 		</p>
 		<div class="table-wrap">
 			<table class="data">

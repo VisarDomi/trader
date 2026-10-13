@@ -84,8 +84,9 @@ and do nothing new, and backtests wait for the next nightly job.
 - Margin call at equity < 50% of margin (Capital.com close-out); account floors at
   $0 (negative-balance protection) and the run is `busted`.
 - Overnight funding at each 17:00 New York rollover using Capital.com's current
-  rates (indices long ≈ −8%/yr); weekends count three nights. None at 1:1 on
-  crypto and shares (Capital.com's rule since 2024-07).
+  rates (indices long ≈ −8%/yr); weekends count three nights. None at 1:1
+  except on natural gas (Capital.com waives it on 1:1 positions on most markets;
+  verified on the demo accounts 2026-10-13).
 - `intradayOnly` agents are flattened 5 minutes before 17:00 New York.
 - Indicators are computed once per bar per (instrument, timeframe) and shared.
   Series keep 5,000–10,000 bars; recursive indicators re-converge after trimming.

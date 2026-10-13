@@ -72,7 +72,7 @@ export function lev(r: Pick<LeaderboardRow, 'leverage' | 'effectiveLeverage'>): 
 export function levTitle(r: Pick<LeaderboardRow, 'leverage' | 'effectiveLeverage'>): string {
 	if (r.leverage === null) return 'from before leverage tiers';
 	if (r.effectiveLeverage !== null && r.effectiveLeverage < r.leverage) return `1:${r.leverage} account; crypto and shares trade at most 1:${r.effectiveLeverage}`;
-	return r.leverage === 1 ? '1:1 account: no leverage (no overnight fee on crypto and shares)' : `1:${r.leverage} account`;
+	return r.leverage === 1 ? '1:1 account: no leverage and no overnight fee (natural gas aside)' : `1:${r.leverage} account`;
 }
 
 /** Control agents (no edge by construction) are shown as reference rows. */
