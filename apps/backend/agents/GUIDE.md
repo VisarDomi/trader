@@ -49,8 +49,8 @@ export default defineAgent({
   (every tick in demo). Gaps fill at the open (worse). If stop and take-profit are both touched in
   the same minute, the stop wins.
 - Overnight funding is charged at 17:00 New York time on open positions (real Capital.com rates;
-  longs on indices pay ~8%/year of notional). Holding for days costs money, except at 1:1 leverage on
-  crypto and shares, which pay none.
+  longs on indices pay ~8%/year of notional). Holding for days costs money, except at 1:1 leverage, where
+  nothing but natural gas pays it.
 - `intradayOnly: true` closes positions 5 minutes before the daily break (17:00 New York) and
   blocks new entries around it.
 - If equity falls below 50% of the margin in use, the position is closed (`margin_call`).
@@ -150,7 +150,7 @@ Each of the nine Arena demo accounts trades at one leverage: 1:1, 1:2, 1:3, 1:5,
 
 - margin = notional ÷ leverage; a position is capped at 0.9 × equity × leverage and is closed when
   equity falls below half its margin, so high leverage lets a loss run much further;
-- at 1:1, crypto and shares pay no overnight funding (indices, commodities and FX still do);
+- at 1:1 there is no overnight funding on anything except natural gas (verified on the demo accounts);
 - crypto and shares go no higher than 1:20, so on a 1:50+ account they trade at 1:20.
 
 An agent that risks 1% against a stop uses only the leverage its stop needs (most use under 5×), so for

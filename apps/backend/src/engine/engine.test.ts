@@ -261,16 +261,19 @@ describe('AgentRun leverage', () => {
     expect(seen).toBe(20);
   });
 
-  test('1:1 crypto pays no overnight funding; leveraged crypto and 1:1 indices do', () => {
+  test('1:1 positions pay no overnight funding except natural gas; leveraged ones do', () => {
     const night = (instrument: Instrument, leverage: number) => {
-      const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 0.1 }) }]), 100_000, leverage, instrument);
+      const size = Math.max(0.1, instrument.minSize);
+      const { engine, run } = setup(scripted([{ at: 1, do: buy({ size }) }]), 100_000, leverage, instrument);
       engine.processCandle(flat(0, 1_000));
       engine.processCandle({ ...flat(1, 1_000), time: T0 + 24 * 60 * MIN });
       return run.balance - 100_000;
     };
     expect(night(BTCUSD, 1)).toBe(0);
+    expect(night(US100, 1)).toBe(0);
     expect(night(BTCUSD, 2)).toBeLessThan(0);
-    expect(night(US100, 1)).toBeLessThan(0);
+    expect(night(US100, 2)).toBeLessThan(0);
+    expect(night(INSTRUMENTS.NATURALGAS!, 1)).toBeLessThan(0);
   });
 
   test('at 1:200 a fully margined position is closed after a 0.3% move', () => {

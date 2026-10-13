@@ -230,6 +230,14 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   largest Nasdaq-100 companies held at 1:1 pay nothing (the cost is the cash to own them outright). Their
   minimum sizes are small enough (0.01–0.1 share) to mirror at 0.2×. Buy-and-hold holds them on 1:1 next to
   US100 and US500.
+- **Corrected 2026-10-13: at 1:1 nothing but natural gas pays funding.** Capital.com's fees page says 1:1
+  positions on "most markets" pay no overnight fee (exceptions: natural gas, US cocoa, VIX, TRY pairs); the
+  July 2024 announcement covered only shares and crypto, and that is what the engine had. Arena 01's
+  transactions (8–12 October) settled it: funding only on NATURALGAS, none on its US100, US500, US30, GOLD,
+  SILVER, OIL_CRUDE and FX positions, while Arena 06 (1:20) paid on all of them. The engine now exempts every
+  1:1 position except NATURALGAS. The shares are still worth holding at 1:1, as the eight biggest companies
+  against the index, but no longer as the only fee-free way to hold it. Index dividend adjustments (credited
+  to longs, charged to shorts, seen on Arena 01) are not modelled yet.
 - **Leaders are compared with monkeys on t, not return,** because returns scale with position size and so
   with leverage; a trade t-statistic does not.
 - **The roster decides tiers, not agent files,** so moving an agent between tiers never changes its code

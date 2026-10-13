@@ -9,8 +9,9 @@
  * What leverage changes for a run:
  *   - margin = notional ÷ leverage: it caps the position size an agent can open
  *     and sets when a losing position is closed (equity below half the margin)
- *   - at 1:1, crypto and shares pay no overnight funding (Capital.com, since
- *     2024-07; indices, commodities and FX still do)
+ *   - at 1:1 there is no overnight funding, except on natural gas (Capital.com
+ *     charges none on 1:1 positions on "most markets"; verified 2026-10-13: the
+ *     1:1 account paid funding only on NATURALGAS, the 1:20 one on everything)
  * An agent that sizes by risk to a stop uses only as much leverage as the stop
  * needs, so for it the setting is a ceiling. `marginPct` sizing (and
  * `ctx.leverage`) lets an agent use the leverage on purpose.
@@ -31,8 +32,8 @@ export const MAX_LEVERAGE: Record<AssetClass, number> = {
   [ASSET_CLASS.SHARE]: 20,
 };
 
-/** Asset classes with no overnight funding on 1:1 positions. */
-const FUNDING_FREE_UNLEVERAGED: ReadonlySet<AssetClass> = new Set([ASSET_CLASS.CRYPTO, ASSET_CLASS.SHARE]);
+/** Markets that still pay overnight funding at 1:1 (Capital.com also lists US cocoa, VIX and TRY pairs). */
+const FUNDED_UNLEVERAGED: ReadonlySet<string> = new Set(['NATURALGAS']);
 
 /** Capital.com's names for the asset classes in GET/PUT /accounts/preferences. */
 export const CAPITAL_LEVERAGE_CLASS: Record<AssetClass, string> = {
@@ -53,7 +54,7 @@ export function effectiveLeverage(instrument: Instrument, tier: number): number 
 }
 
 export function isFundingFree(instrument: Instrument, tier: number): boolean {
-  return effectiveLeverage(instrument, tier) === 1 && FUNDING_FREE_UNLEVERAGED.has(instrument.assetClass);
+  return effectiveLeverage(instrument, tier) === 1 && !FUNDED_UNLEVERAGED.has(instrument.epic);
 }
 
 /** The per-asset-class leverages to set on a demo account of this tier. */

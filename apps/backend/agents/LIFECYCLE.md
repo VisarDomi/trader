@@ -73,8 +73,8 @@ agents that size with `marginPct` use the high leverage.
 - **Moving an agent to another tier** retires its runs at the old tier and starts new ones; do it rarely and
   say why in the journal. Changing an account's tier moves every run on it.
 - Never change an Arena account's leverage in Capital.com: the arena sets it back from the roster.
-- Leverage questions worth answering over time: does any strategy do better unleveraged at 1:1 (no fees on
-  crypto and shares) than on its usual tier? Which ladder rungs survive? Do high-leverage agents (tight
+- Leverage questions worth answering over time: does any strategy do better unleveraged at 1:1 (no overnight
+  fees, natural gas aside) than on its usual tier? Which ladder rungs survive? Do high-leverage agents (tight
   stops, `marginPct` sizing) belong on 1:100–1:200? Record findings in the journal.
 
 ## Adding agents
