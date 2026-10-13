@@ -1,0 +1,402 @@
+[
+  {
+    "id": "reddit-01",
+    "title": "Update Q4 2026: Gehrman's ongoing test of 3 leveraged ETF strategies (HFEA, 9Sig, Leverage for the Long Run)",
+    "authors": "u/Gehrman_JoinsTheHunt, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1wuyzr0/",
+    "file": "files/reddit/letfs-gehrman-real-money-test.md",
+    "summary": "Real-money test since 2024-03-15 ($10k each): to 2026-09-30 S&P 2x 200-day rotation +68%, 9Sig +134%, HFEA +31%, S&P 500 +54%."
+  },
+  {
+    "id": "reddit-02",
+    "title": "On the relationship between QQQ and TQQQ returns",
+    "authors": "u/modern_football, r/LETFs",
+    "year": 2022,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/snc5a1/",
+    "file": "files/reddit/letfs-qqq-vs-tqqq-relationship.md",
+    "summary": "Model of TQQQ CAGR from QQQ CAGR, daily volatility, financing and fees: TQQQ beats QQQ only above ~11%/yr and loses money below ~7%/yr."
+  },
+  {
+    "id": "reddit-03",
+    "title": "40-year LETF rotation backtest — 5 strategy families, 426 configs",
+    "authors": "u/noletovictor, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1t7q8or/",
+    "file": "files/reddit/letfs-40-year-rotation-426-configs.md",
+    "summary": "426 LETF rotation configs over 1986-2026 with pre-set gates: 200-day filter on QQQ trading 2x beats 3x and HFEA stacking; vol targeting and cross-sectional ranking rejected."
+  },
+  {
+    "id": "reddit-04",
+    "title": "Gayed revises his 2016 paper \"Leverage for the Long Run\"",
+    "authors": "u/CraaazyPizza, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1wl0p0k/",
+    "file": "files/reddit/letfs-gayed-revises-leverage-for-the-long-run.md",
+    "summary": "Gayed's Sept 2026 revision of Leverage for the Long Run: with borrowing costs, same Sharpe as the S&P 500, no significant alpha, lookback-sensitive."
+  },
+  {
+    "id": "reddit-05",
+    "title": "SPY 200SMA (+4%/-3%) TQQQ/QQQ Long Term Investment Strategy",
+    "authors": "u/XXXMrHOLLYWOOD, r/LETFs",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1nhye66/",
+    "file": "files/reddit/letfs-spy-200sma-buffer-tqqq.md",
+    "summary": "TQQQ on/off by SPY 200-day with an asymmetric +4%/-3% band: 7 trades instead of 49 over 2010-2025; tuned on a bull sample, still 64-75% drawdowns."
+  },
+  {
+    "id": "reddit-06",
+    "title": "Understanding the True Cost of Index LETFs like SSO, QLD, UPRO and TQQQ",
+    "authors": "u/SpookyDaScary925, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1wxfhmc/",
+    "file": "files/reddit/letfs-true-cost-of-2x-index.md",
+    "summary": "Simulated SSO 1950-2026 with costs: 14.5% CAGR, -88.7% max DD, Sharpe 0.46 vs S&P 500 11.7%, -55%, 0.52; 2x costs about fed funds + 2.5%/yr."
+  },
+  {
+    "id": "reddit-07",
+    "title": "I ran 250+ backtests trying to improve my SSO/QLD strategy. None of the improvements survived Monte Carlo",
+    "authors": "u/mongopark98, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1vpohm7/",
+    "file": "files/reddit/letfs-250-backtests-none-survived.md",
+    "summary": "2x/0.5x S&P 200-day rule with a 3% band, 1999-2026: Sharpe 0.58 vs 0.45; permutation p = 0.031; all tuned variants failed walk-forward and out-of-sample checks."
+  },
+  {
+    "id": "reddit-08",
+    "title": "anyone else excited for 5x leverage?",
+    "authors": "u/chopsui101, r/LETFs",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1on2s56/",
+    "file": "files/reddit/letfs-leverage-level-debates.md",
+    "summary": "Debate on 5x daily ETFs: a -20% day ends them; single stocks and bitcoin at 5x seen as gambling."
+  },
+  {
+    "id": "reddit-09",
+    "title": "I think 3x leverage is making me sell at exactly the wrong times",
+    "authors": "u/DampSperm, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1wboq6l/",
+    "file": "files/reddit/letfs-leverage-level-debates.md",
+    "summary": "Holder of 3x TQQQ cuts after -25-30% and buys back higher; community says the right leverage is the one you can hold."
+  },
+  {
+    "id": "reddit-10",
+    "title": "4 years of going nearly all in on TQQQ. Survived an 80% drawdown",
+    "authors": "u/Difficult_Minute_102, r/LETFs",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1tpu8id/",
+    "file": "files/reddit/letfs-leverage-level-debates.md",
+    "summary": "Nearly all-in TQQQ since 2022 survived an ~80% drawdown; advice to move part to 1x or 2x after big gains."
+  },
+  {
+    "id": "reddit-11",
+    "title": "Why the 200 moving average strategy works and why it might stop working",
+    "authors": "u/Conclusion-Every, r/LETFs",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/LETFs/comments/1ir9eis/",
+    "file": "files/reddit/letfs-leverage-level-debates.md",
+    "summary": "Argues the 200-day filter works because of time-series momentum but is concentrated in one index and country."
+  },
+  {
+    "id": "reddit-12",
+    "title": "Genuine question: Is anyone here actually successful at this in live real money trading?",
+    "authors": "u/DigestingGandhi, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1u9ongr/",
+    "file": "files/reddit/algotrading-is-anyone-profitable-live.md",
+    "summary": "Survey of live algo traders: simple long-kept systems, small size, slower timeframes, regime dependence; quoted realistic Sharpe 1.0-1.8."
+  },
+  {
+    "id": "reddit-13",
+    "title": "August P&L Fully Automated",
+    "authors": "u/Same_Definition5233, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1w7zz3g/",
+    "file": "files/reddit/algotrading-is-anyone-profitable-live.md",
+    "summary": "Top r/algotrading post of 2026: one month of automated P&L, no capital stated; replies stress slippage and years of manual experience."
+  },
+  {
+    "id": "reddit-14",
+    "title": "2025 was my best year — and here's what I did differently",
+    "authors": "u/criptolibertari0, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1q25jpe/",
+    "file": "files/reddit/algotrading-2025-best-year-breakouts-gold-usdjpy.md",
+    "summary": "Darwinex-verified CFD account: breakouts with 2:1 reward:risk on XAUUSD and USDJPY, +39% in 2025 with 6.65% max DD, 2,379 trades."
+  },
+  {
+    "id": "reddit-15",
+    "title": "I ran an evolutionary system live for 60 days (2,729 trades) — post-mortem",
+    "authors": "u/piratastuertos, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1tyc4nb/",
+    "file": "files/reddit/algotrading-evolutionary-system-live-postmortem.md",
+    "summary": "Evolved crypto agent population live 48 days: profit factor 1.15 vs 1.30 target, losing streak 18 vs 5, unplanned 100% concentration in one coin."
+  },
+  {
+    "id": "reddit-16",
+    "title": "Found persistent, systematic divergence of returns in precious metals tied to trading sessions (LBMA)",
+    "authors": "u/robinhaupt, r/algotrading",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1oaueck/",
+    "file": "files/reddit/algotrading-precious-metals-session-divergence.md",
+    "summary": "LBMA fixes 1968-2025: gold +13.8%/yr from PM fix to next AM fix vs -4.7%/yr AM to PM; platinum +20.9% vs -14.4%."
+  },
+  {
+    "id": "reddit-17",
+    "title": "Found a simple mean reversion setup with 70% win rate but only invested 20% of the time",
+    "authors": "u/vaanam-dev, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1rjvxjy/",
+    "file": "files/reddit/algotrading-range-dip-ibs-mean-reversion.md",
+    "summary": "Daily range-dip + IBS<0.3 rule, exit above yesterday's high: SPY 2006-2026 7.75% CAGR, 15% DD, 75% winners, 21% time in market."
+  },
+  {
+    "id": "reddit-18",
+    "title": "Do support and resistance zones really weaken with every touch? 111,129 touches over 18 years",
+    "authors": "u/Obside_AI, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1vtkunw/",
+    "file": "files/reddit/algotrading-support-resistance-touches-vs-random.md",
+    "summary": "111,129 S/R touches on NQ and gold over 18 years: bounce rates flat after the first retest and similar on randomized markets."
+  },
+  {
+    "id": "reddit-19",
+    "title": "I backtested 100+ retail trading strategies (~700 versions) with real costs and dead companies included",
+    "authors": "u/tanweer919, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1x2owmo/",
+    "file": "files/community/reddit-algotrading-100-strategies-what-survived.md",
+    "summary": "100+ retail strategies with costs, delisted stocks and random-entry controls: few survive; costs and survivorship decide; win rates come from stop/target placement."
+  },
+  {
+    "id": "reddit-20",
+    "title": "Follow-up: Tested the stuff from your comments on my 100+ strategies post (and found a mistake in my own test)",
+    "authors": "u/tanweer919, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1x46igq/",
+    "file": "files/reddit/algotrading-100-strategies-follow-up.md",
+    "summary": "Follow-up: momentum edge is mostly beta; random baselines must not use days before the signal; 3x Nasdaq since 1999 -99.9% (-95% with 200-day filter)."
+  },
+  {
+    "id": "reddit-21",
+    "title": "Randomness beats 85% of Retail Traders",
+    "authors": "u/NormalIncome6941, r/algotrading",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1ltww0d/",
+    "file": "files/reddit/algotrading-costs-randomness-and-live-reality.md",
+    "summary": "Random 4h EURUSD entries with 3-ATR stop and 1R target score about 0.01 R per trade after spread."
+  },
+  {
+    "id": "reddit-22",
+    "title": "This is what happens when you DO NOT include Fees in your backtests",
+    "authors": "u/Money_Horror_2899, r/algotrading",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1kmfpx5/",
+    "file": "files/reddit/algotrading-costs-randomness-and-live-reality.md",
+    "summary": "Equity curve with and without fees; one commenter: 30+ winning strategies before costs, 2 after."
+  },
+  {
+    "id": "reddit-23",
+    "title": "On switching to a commission-free broker for algo trading",
+    "authors": "u/MormonMoron, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1v4rzv2/",
+    "file": "files/reddit/algotrading-costs-randomness-and-live-reality.md",
+    "summary": "Same live signals routed to IBKR and Schwab: execution +2.6 bp to Schwab; commissions were 12-17% of a year's gross edge."
+  },
+  {
+    "id": "reddit-24",
+    "title": "After about 4 years of exploration and 1.5 year of persistent effort, I think we finally have a \"system\"",
+    "authors": "u/MormonMoron, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1qklj4o/",
+    "file": "files/reddit/algotrading-costs-randomness-and-live-reality.md",
+    "summary": "Small live equities system Aug-Dec 2025: +4.5%, 4.5 points behind buy-and-hold; operational mistakes; Sharpe 6 after 45 days fell to 1.2."
+  },
+  {
+    "id": "reddit-25",
+    "title": "Are you a profitable algo trader? Share your wisdom",
+    "authors": "u/ikarumba123, r/algotrading",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1pehzuh/",
+    "file": "files/reddit/algotrading-costs-randomness-and-live-reality.md",
+    "summary": "Profitable algo traders' advice: do not touch a validated system, model execution realistically, expect years of work."
+  },
+  {
+    "id": "reddit-26",
+    "title": "Sharing my Bitcoin systematic strategy: 65.92% CAGR since 2014",
+    "authors": "u/virtuexru, r/algotrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/algotrading/comments/1qgcq2h/",
+    "file": "files/reddit/crypto-trend-zscore-and-leverage-blowups.md",
+    "summary": "BTC daily z-score trend (EMA65, 65-day stdev): 65.9% CAGR and 27% max DD vs 56.2% and ~75% for holding, 2014-2026; thresholds undisclosed."
+  },
+  {
+    "id": "reddit-27",
+    "title": "How I Lost Nearly 200 BTC trading this past month",
+    "authors": "deleted user, r/BitcoinMarkets",
+    "year": 2018,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/BitcoinMarkets/comments/7s8umm/",
+    "file": "files/reddit/crypto-trend-zscore-and-leverage-blowups.md",
+    "summary": "3 BTC to ~200 BTC to 0 in a month by adding leverage to winning positions until liquidation (January 2018)."
+  },
+  {
+    "id": "reddit-28",
+    "title": "50 Crypto Trading & Investing Lessons Learned Over The Past 5 Years",
+    "authors": "Chris Dunn, r/BitcoinMarkets",
+    "year": 2018,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/BitcoinMarkets/comments/7o8vxq/",
+    "file": "files/reddit/crypto-trend-zscore-and-leverage-blowups.md",
+    "summary": "50 crypto trading lessons: don't day trade crypto, trends run past rational, risk management over entries."
+  },
+  {
+    "id": "reddit-29",
+    "title": "Former investment bank FX trader: some thoughts",
+    "authors": "u/getmrmarket, r/Forex",
+    "year": 2020,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Forex/comments/ia5f37/",
+    "file": "files/reddit/forex-leverage-prop-firms-and-risk.md",
+    "summary": "Ex-bank FX trader: risk <= 2% per trade and <= 8% per theme; 50:1 retail accounts blow up in 4-5 losses; Kelly as the upper limit."
+  },
+  {
+    "id": "reddit-30",
+    "title": "Why buy prop challenges when you can use a 1:500 account and be your own prop firm",
+    "authors": "u/Dallydaybird, r/Forex",
+    "year": 2023,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Forex/comments/13fy9dr/",
+    "file": "files/reddit/forex-leverage-prop-firms-and-risk.md",
+    "summary": "Argues a small 1:500 account is your own prop firm with the same fixed loss budget as a challenge fee; replies dispute the risk."
+  },
+  {
+    "id": "reddit-31",
+    "title": "I have achieved a milestone of $800k in funded capital after 6 years of trading. AMA",
+    "authors": "u/200415Ke, r/Forex",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Forex/comments/1rapwi1/",
+    "file": "files/reddit/forex-leverage-prop-firms-and-risk.md",
+    "summary": "Funded prop trader: mechanical swing plan, 1% risk per trade, 1.5-3R targets, 2-6% a month, stays under 10% to keep payouts."
+  },
+  {
+    "id": "reddit-32",
+    "title": "Im done -30k - 3 years wasted",
+    "authors": "u/ednis4, r/Forex",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Forex/comments/1u3z8oh/",
+    "file": "files/reddit/forex-leverage-prop-firms-and-risk.md",
+    "summary": "Post-mortem of three years and $30k lost trading forex: lists the discipline and small size he lacked."
+  },
+  {
+    "id": "reddit-33",
+    "title": "I spent 7 months coding an algorithmic system for NAS100 + Gold. 9+ year backtest results",
+    "authors": "u/Ok_Maybe_5885, r/Daytrading",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Daytrading/comments/1vyzl0q/",
+    "file": "files/reddit/daytrading-nas100-gold-system-overfit-checklist.md",
+    "summary": "Viral NAS100+gold backtest (~20%/month) and the community's validation checklist: OOS only, block bootstrap, parameter jitter, full costs."
+  },
+  {
+    "id": "reddit-34",
+    "title": "Been trading this ORB + Fib strategy for 3 years, consistently profitable",
+    "authors": "u/Current-Green6525, r/Daytrading",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/Daytrading/comments/1oaa8t9/",
+    "file": "files/reddit/daytrading-options-orb-variants.md",
+    "summary": "Discretionary ORB + Fibonacci pullback entry (50-61.8%) on a 30-minute range; unverified claims of 10-15k a month."
+  },
+  {
+    "id": "reddit-35",
+    "title": "0DTE Opening Range Breakout Strategy on SPY — Full Backtest Results (303 Trades)",
+    "authors": "u/spicermatthews, r/options",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/options/comments/1rkx5vr/",
+    "file": "files/reddit/daytrading-options-orb-variants.md",
+    "summary": "SPY 0DTE ORB backtest, 303 trades 2024-2026: 5-minute range beat 10/15/30 minutes; PF 1.40; longs and shorts equal; spreads not modelled."
+  },
+  {
+    "id": "reddit-36",
+    "title": "I analyzed 1.5M quotes to quantify the real bid-ask spread cost for 0DTE SPX Iron Condors",
+    "authors": "u/mystic12321, r/options",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/options/comments/1n461td/",
+    "file": "files/reddit/options-premium-selling-costs-and-tails.md",
+    "summary": "1.5M 0DTE SPX quotes: short-strike spreads 3.0-4.3%; an RL agent's +0.15%/day on OHLC became -0.13%/day with real spreads."
+  },
+  {
+    "id": "reddit-37",
+    "title": "The big premium is the market warning you, not paying you",
+    "authors": "u/sashazaliz, r/options",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/options/comments/1voez8q/",
+    "file": "files/reddit/options-premium-selling-costs-and-tails.md",
+    "summary": "25-year covered-call writer: a large premium prices a large expected move; what matters is implied vs realized volatility."
+  },
+  {
+    "id": "reddit-38",
+    "title": "After Few Years Wheeling + LEAPS Beats All",
+    "authors": "u/breakyourteethnow, r/options",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/options/comments/1qo1jmn/",
+    "file": "files/reddit/options-premium-selling-costs-and-tails.md",
+    "summary": "Claims of 10% a month from weekly ATM calls funding LEAPS; no full record, bull-market sample."
+  },
+  {
+    "id": "reddit-39",
+    "title": "Never SELL NAKED CALLS. My 100k loss turned into over 600K in minutes with AMC",
+    "authors": "u/Substantial-Voice-48, r/thetagang",
+    "year": 2021,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/thetagang/comments/nqy5nk/",
+    "file": "files/reddit/options-premium-selling-costs-and-tails.md",
+    "summary": "Naked short AMC calls turned a $100k loss into about $600k in minutes during the June 2021 squeeze."
+  },
+  {
+    "id": "reddit-40",
+    "title": "Reflections from a senior quant",
+    "authors": "u/BirthDeath, r/quant",
+    "year": 2022,
+    "kind": "thread",
+    "url": "https://www.reddit.com/r/quant/comments/xhya4d/",
+    "file": null,
+    "summary": "Senior quant on r/quant: careers forum, 'the blind leading the blind'; little strategy content."
+  }
+]
