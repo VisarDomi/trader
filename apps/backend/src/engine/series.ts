@@ -78,6 +78,19 @@ export class BarSeries {
     return this.current ? this.emit() : null;
   }
 
+  /**
+   * Start the series with closed bars from before its first candle (the arena
+   * seeds daily bars older than its 1-minute history, so long lookbacks are warm
+   * at start). Only on a series that has not seen a candle yet.
+   */
+  seed(bars: readonly Bar[]): void {
+    if (this.bars.length > 0 || this.current) throw new Error(`${this.key}: seed() needs an empty series`);
+    const kept = bars.slice(-MAX_BARS);
+    for (const b of kept) this.bars.push({ ...b });
+    this.closedCount += kept.length;
+    this.cache.reset();
+  }
+
   /** The bar being built right now (not closed). */
   partial(): Bar | null {
     return this.current;

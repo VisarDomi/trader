@@ -97,7 +97,9 @@ agents that size with `marginPct` use the high leverage.
 - **Gate:** `bun run check-agent agents/<file>.ts` passes; for forecast agents run `bun run forecasts` first;
   then `bun run backtest <agent>` (heavy jobs inside `trader.slice`, see `../WORKFLOW.md`). Reject only if
   clearly broken: median backtest Sharpe across its instruments below −0.5, fewer than 20 trades per run on
-  average, or busted runs. Log rejected ideas too.
+  average, or busted runs. Agents built to trade a few times a year (200-day filters, monthly rebalancers,
+  rebalancing holders) need at least 5 trades per run instead of 20; they are judged by the slow-agent rule.
+  Controls are not gated. Log rejected ideas too.
 
 ## Each visit (runbook)
 

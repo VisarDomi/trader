@@ -273,6 +273,13 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - **Candle stop checks only for minutes that started after the entry**, because in live mode a candle for the
   minute in which an order filled arrives after the fill.
 
+- **Daily history for long lookbacks (2026-10-14).** The arena keeps 120 days of 1-minute candles, so an
+  agent with a 200-day average or a 12-month return would wait months for its first trade. Rather than keep
+  a year of 1-minute candles on the shared server, the lab pushes daily bars built from its own 1-minute
+  history (`push-history`, nightly), and the arena seeds each 1d series with the ones older than its
+  1-minute window when it starts. Same construction as the backtests; only 1d series, which is what the
+  long-lookback agents use.
+
 ### Capital.com quirks observed
 
 - Minute history on both demo and live API starts at 2024-01-01 (rolling window). US100 data from 2020 came from

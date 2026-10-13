@@ -103,7 +103,9 @@ export class Arena {
 
     const fresh = this.createRuns(now);
     await this.backfill(epics);
-    this.warmUp(epics, fresh);
+    const since = Date.now() - HISTORY_DAYS * DAY_MS;
+    this.seedDaily(epics, since);
+    this.warmUp(epics, fresh, since);
     this.db.event('info', 'arena', `arena started: ${agents.length} agents, ${this.tracked.size} demo runs on ${epics.length} instruments (${fresh.size} new)`);
 
     this.stream = new QuoteStream(this.client, epics, q => this.onQuote(q.epic, q.bid, q.ask, q.time), (level, msg) => this.db.event(level, 'stream', msg));
@@ -215,12 +217,30 @@ export class Arena {
   }
 
   /**
+   * Daily series start with the lab's daily bars from before the 1-minute
+   * history (pushed nightly, see src/lab/push-history.ts), so agents with
+   * 200-day lookbacks trade from day one instead of after months of warm-up.
+   * The day the 1-minute replay starts in is built from candles as usual.
+   */
+  private seedDaily(epics: string[], since: number): void {
+    const before = Math.floor(since / DAY_MS) * DAY_MS;
+    let seeded = 0;
+    for (const epic of epics) {
+      const series = this.engines.get(epic)!.series.get('1d');
+      if (!series) continue;
+      const bars = this.db.dailyBarsBefore(epic, before);
+      series.seed(bars);
+      seeded += bars.length;
+    }
+    if (seeded > 0) this.db.event('info', 'arena', `seeded ${seeded} daily bars from the lab's history`);
+  }
+
+  /**
    * Replay stored history into every series. Brand-new runs see it through
    * onBar with orders disabled (to warm their state); restored runs catch up on
    * candles they missed while the arena was down, with orders enabled.
    */
-  private warmUp(epics: string[], fresh: Set<string>): void {
-    const since = Date.now() - HISTORY_DAYS * DAY_MS;
+  private warmUp(epics: string[], fresh: Set<string>, since: number): void {
     for (const epic of epics) {
       const engine = this.engines.get(epic)!;
       const candles = this.db.candlesSince(epic, since);

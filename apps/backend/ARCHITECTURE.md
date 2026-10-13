@@ -100,6 +100,10 @@ and do nothing new, and backtests wait for the next nightly job.
 - On start the arena backfills 120 days of candles, replays them so new agents
   warm up (orders disabled), and restores existing runs from their snapshot,
   catching up on candles they missed while the service was down.
+- Daily series start earlier: before the replay, every 1d series is seeded with
+  the lab's daily bars from 2024-01 up to the 120-day window (built from the
+  lab's 1-minute history the same way, pushed nightly by `push-history`), so
+  200-day and 12-month lookbacks are ready on the first live day.
 - Runs are persisted every minute; hourly equity points (thinned to daily after 30 days).
 
 ## Broker mirror

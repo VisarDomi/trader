@@ -48,6 +48,10 @@ export default defineAgent({
 - Stops (`stopLoss`, `takeProfit`, `trailingStop`) are watched by the platform on every minute
   (every tick in demo). Gaps fill at the open (worse). If stop and take-profit are both touched in
   the same minute, the stop wins.
+- History: in the arena, `1d` series hold daily bars from 2024-01 (seeded at start), so 200-day or
+  12-month lookbacks on daily bars work from the first day; other timeframes start with the last 120 days
+  (about 2,800 `1h` or 700 `4h` bars). Backtests start in 2024-01, so the first year of a 12-month rule
+  has no trades there.
 - Overnight funding is charged at 17:00 New York time on open positions (real Capital.com rates;
   longs on indices pay ~8%/year of notional). Holding for days costs money, except at 1:1 leverage, where
   nothing but natural gas pays it.

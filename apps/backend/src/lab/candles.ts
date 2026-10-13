@@ -20,8 +20,8 @@ function cachePath(epic: string, start: number, end: number): string {
   return join(CANDLE_DIR, `${epic}_${start}_${end}.f64`);
 }
 
-/** Fetch from PostgreSQL in monthly chunks and pack into a Float64Array. */
-async function fromDatabase(epic: string, start: number, end: number): Promise<Float64Array> {
+/** Fetch from PostgreSQL in monthly chunks and pack into a Float64Array (no cache file). */
+export async function fromDatabase(epic: string, start: number, end: number): Promise<Float64Array> {
   const chunks: number[][] = [];
   let total = 0;
   for (let from = start; from < end; from += CHUNK_MS) {
