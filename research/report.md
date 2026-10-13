@@ -95,6 +95,11 @@ The numbers behind it:
 All of these work with today's SDK and use fixed textbook parameters. The rank weighs the evidence,
 whether our costs allow it, and how much it would teach us.
 
+**Live since 2026-10-14:** #1–#12, plus `lrs-sma200/x1` on the fee-free 1:1 account (70 runs; see the
+journal for their backtests). Not built yet: #13 (needs the TimesFM quantile audit first), #14 (needs
+daily history before 2024) and #15 (a process to set up). Watch them on the leaderboard; the slow ones
+(200-day and monthly rules) are judged after 90 days.
+
 | # | Agent | Idea and evidence | Fit | Note |
 |---|---|---|---|---|
 | 1 | `noise-area-momentum` | Concretum intraday momentum: trade only breaks out of the time-of-day noise band; VWAP or band trailing stop; flat by 16:00. About 4 bp per trade on SPY 2007–24, Sharpe 1.33 net, held after publication | US500/US100/US30, 5m. `base` 1× and `voltarget` up to 4× (1:5) | [anomalies](topics/anomalies.md), [community](topics/community.md) |
