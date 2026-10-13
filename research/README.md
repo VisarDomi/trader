@@ -22,4 +22,5 @@ login. Every source keeps its original URL, so a lost copy can be downloaded aga
 
 - **2026-10-13, first pass:** six topics researched in parallel — leverage, trading at 1:1 (fees,
   dividends, crypto), documented anomalies and how they decay, AI and LLM trading, practitioner
-  communities, portfolio and meta-strategies.
+  communities, portfolio and meta-strategies; plus 40 Reddit threads (read through the archive and RSS
+  feeds, because Reddit blocks this PC's plain HTTP requests).
