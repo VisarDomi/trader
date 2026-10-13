@@ -22,3 +22,6 @@ Thumbs.db
 # Logs
 logs
 *.log
+
+# Research reference material (papers, page snapshots): kept on the lab PC and synced to the server, not published
+research/files/

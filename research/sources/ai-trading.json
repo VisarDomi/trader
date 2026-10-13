@@ -1,0 +1,372 @@
+[
+  {
+    "id": "ai-trading-01",
+    "title": "Exploring the Limits of LLMs as Quant Traders in Live Markets (Alpha Arena S1 tech post) + nof1 homepage",
+    "authors": "nof1.ai",
+    "year": 2025,
+    "kind": "blog",
+    "url": "http://web.archive.org/web/20251028041142/https://nof1.ai/blog/TechPost1",
+    "file": "files/ai-trading/nof1-alpha-arena-s1-techpost.md",
+    "summary": "nof1's own account of Season 1: six LLMs, $10k each on Hyperliquid perps, harness design, behaviour differences, and that fees from overtrading dominated early runs."
+  },
+  {
+    "id": "ai-trading-02",
+    "title": "Alpha Arena Season 1 account totals and trades (archived API), rebuilt tables",
+    "authors": "nof1.ai (via Wayback Machine)",
+    "year": 2025,
+    "kind": "doc",
+    "url": "http://web.archive.org/web/20251104022344/https://nof1.ai/api/account-totals?lastHourlyMarker=407",
+    "file": "files/ai-trading/nof1-alpha-arena-s1-data.md",
+    "summary": "Hourly equity, positions and 515 trades rebuilt from archived API: returns +22% to -63%, 11-19x leverage, 4-8x exposure, 45-78% drawdowns, 21-30% win rates, fees up to 16.5% of capital, BTC flat."
+  },
+  {
+    "id": "ai-trading-03",
+    "title": "HN: Exploring the limits of large language models as quant traders",
+    "authors": "Hacker News",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=45976832",
+    "file": "files/ai-trading/hn-llm-trading-threads.md",
+    "summary": "Discussion of Alpha Arena S1: models down 35% on average in 96 model-days, overbetting, need for constant-mix or random controls."
+  },
+  {
+    "id": "ai-trading-04",
+    "title": "Grok 4.20 wins Alpha Arena Season 1.5 (US stocks)",
+    "authors": "aihola.com / onedayadvisor.com / forklog.com",
+    "year": 2025,
+    "kind": "blog",
+    "url": "https://aihola.com/article/grok-wins-alpha-arena-trading",
+    "file": "files/ai-trading/alpha-arena-s15-and-bloomberg.md",
+    "summary": "Season 1.5 (2025-11-19 to 12-03): eight models, four modes incl. 20x max leverage, US tech stocks; only Grok 4.20 profitable in aggregate (~+10-12%)."
+  },
+  {
+    "id": "ai-trading-05",
+    "title": "AI Bots Auditioning for Wall Street Trading Are Mostly Losing",
+    "authors": "Bloomberg",
+    "year": 2026,
+    "kind": "blog",
+    "url": "https://www.bloomberg.com/news/articles/2026-05-06/ai-bots-auditioning-for-wall-street-trading-are-mostly-losing",
+    "file": "files/ai-trading/alpha-arena-s15-and-bloomberg.md",
+    "summary": "Round-up: only 6 of 32 Alpha Arena S1.5 runs profitable, combined portfolio lost about a third; bots overtrade; only 2 of 11 tracked arenas had a profitable median model."
+  },
+  {
+    "id": "ai-trading-06",
+    "title": "AI-Trader: Benchmarking Autonomous Agents in Real-Time Financial Markets",
+    "authors": "Fan, Yang, Jiang, Zhang et al. (HKUDS)",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2512.10971",
+    "file": "files/ai-trading/fan-2025-ai-trader.pdf",
+    "summary": "Live Oct-Nov 2025 benchmark of six LLMs on US stocks, A-shares and crypto with self-searched news; most agents weak, risk control decides cross-market robustness; no costs."
+  },
+  {
+    "id": "ai-trading-07",
+    "title": "LiveTradeBench: Seeking Real-World Alpha with Large Language Models",
+    "authors": "Yu, Li, You",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2511.03628",
+    "file": "files/ai-trading/yu-2025-livetradebench.pdf",
+    "summary": "50-day live test of 21 LLMs allocating across 15 US stocks and Polymarket; all positive on stocks in a rising market, LMArena score unrelated to returns; no costs, no buy-and-hold baseline."
+  },
+  {
+    "id": "ai-trading-08",
+    "title": "StockBench: Can LLM Agents Trade Stocks Profitably In Real-world Markets?",
+    "authors": "Chen, Yao, Liu, Xin et al.",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2510.02209",
+    "file": "files/ai-trading/chen-2025-stockbench.pdf",
+    "summary": "Mar-Jun 2025 backtest on 20 Dow stocks: best models +2% vs +0.4% buy-and-hold, all lag in downturns; news and fundamentals inputs matter; no costs."
+  },
+  {
+    "id": "ai-trading-09",
+    "title": "When Agents Trade: Live Multi-Market Trading Benchmark for LLM Agents (Agent Market Arena)",
+    "authors": "Qian, Peng, Wang, Zhang et al.",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2510.11695",
+    "file": "files/ai-trading/qian-2025-agent-market-arena.pdf",
+    "summary": "Live Aug-Sep 2025 test of 4 agent designs x 5 LLMs on TSLA, BMRN, BTC, ETH; agent design matters more than the model; TradingAgents lost 38.7% on TSLA."
+  },
+  {
+    "id": "ai-trading-10",
+    "title": "INVESTORBENCH: A Benchmark for Financial Decision-Making Tasks with LLM-based Agent",
+    "authors": "Li, Cao, Yu, Javaji et al.",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2412.18174",
+    "file": null,
+    "summary": "13 LLM backbones in a FinMem-style agent on stocks, crypto and ETFs; test windows (2020-2023) fall inside the models' training data."
+  },
+  {
+    "id": "ai-trading-11",
+    "title": "FinBen: A Holistic Financial Benchmark for Large Language Models",
+    "authors": "Xie, Han, Chen, Xiang et al.",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2402.12659",
+    "file": null,
+    "summary": "36 datasets / 24 financial tasks; LLMs good at extraction and text analysis, weak at forecasting; trading task uses historical windows."
+  },
+  {
+    "id": "ai-trading-12",
+    "title": "TradingAgents: Multi-Agents LLM Financial Trading Framework",
+    "authors": "Xiao, Sun, Luo, Wang",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2412.20138",
+    "file": "files/ai-trading/xiao-2024-tradingagents.pdf",
+    "summary": "Multi-agent LLM 'trading firm'; reports Sharpe 5.6-8.2 on AAPL/GOOGL/AMZN Jan-Mar 2024 with no costs; later reproductions with costs fall below buy-and-hold."
+  },
+  {
+    "id": "ai-trading-13",
+    "title": "HN: Multi-Agents LLM Financial Trading Framework (TradingAgents)",
+    "authors": "Hacker News",
+    "year": 2026,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=49605822",
+    "file": "files/ai-trading/hn-llm-trading-threads.md",
+    "summary": "Practitioner scepticism of TradingAgents: lagging inputs, code bugs (double-counted news, bullish-primed prompt), and a deterministic-risk + LLM-ranking alternative."
+  },
+  {
+    "id": "ai-trading-14",
+    "title": "FinMem: A Performance-Enhanced LLM Trading Agent with Layered Memory and Character Design",
+    "authors": "Yu, Li, Chen, Jiang et al.",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2311.13743",
+    "file": null,
+    "summary": "LLM trading agent with layered memory and profile; strong short-window results that FINSABER shows do not generalise."
+  },
+  {
+    "id": "ai-trading-15",
+    "title": "A Multimodal Foundation Agent for Financial Trading: Tool-Augmented, Diversified, and Generalist (FinAgent)",
+    "authors": "Zhang, Zhao, Xia, Sun et al.",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2402.18485",
+    "file": null,
+    "summary": "Multimodal LLM agent (news, prices, charts) with reflection; claims 36% average profit improvement, 92% return on one dataset."
+  },
+  {
+    "id": "ai-trading-16",
+    "title": "FinGPT: Open-Source Financial Large Language Models",
+    "authors": "Yang, Liu, Wang",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2306.06031",
+    "file": null,
+    "summary": "Open financial LLMs via data curation and LoRA; mainly sentiment and text tasks; no live trading evidence."
+  },
+  {
+    "id": "ai-trading-17",
+    "title": "FinRobot: An Open-Source AI Agent Platform for Financial Applications using Large Language Models",
+    "authors": "Yang et al.",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2405.14767",
+    "file": null,
+    "summary": "LLM agent platform aimed at equity research and valuation, not trading."
+  },
+  {
+    "id": "ai-trading-18",
+    "title": "Can LLM-based Financial Investing Strategies Outperform the Market in Long Run? (FINSABER)",
+    "authors": "Li, Kim, Cucuringu, Ma",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2505.07078",
+    "file": "files/ai-trading/li-2025-finsaber-llm-long-run.pdf",
+    "summary": "2004-2024 re-test of FinMem and FinAgent on ~100 symbols with costs: both lose to buy-and-hold, no significant alpha; too cautious in bulls, too aggressive in bears."
+  },
+  {
+    "id": "ai-trading-19",
+    "title": "Profit Mirage: Revisiting Information Leakage in LLM-based Financial Agents",
+    "authors": "Li, Zeng, Xing, Xu et al.",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2510.07920",
+    "file": "files/ai-trading/li-2025-profit-mirage.pdf",
+    "summary": "Five LLM agents lose 51-62% of Sharpe after the knowledge cutoff; 69-82% of decisions unchanged when inputs are perturbed; recommends LLMs as strategy generators."
+  },
+  {
+    "id": "ai-trading-20",
+    "title": "The Memorization Problem: Can We Trust LLMs' Economic Forecasts?",
+    "authors": "Lopez-Lira, Tang, Zhu",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2504.14765",
+    "file": "files/ai-trading/lopez-lira-2025-memorization-problem.pdf",
+    "summary": "GPT-4o recalls index levels (0.6% error) and directions before its cutoff but not after; instructions and masking do not prevent recall; evaluate only post-cutoff."
+  },
+  {
+    "id": "ai-trading-21",
+    "title": "The Alpha Illusion: Reported Alpha from LLM Trading Agents Should Not Be Treated as Deployment Evidence",
+    "authors": "Ye, Han, Hu, Bu et al.",
+    "year": 2026,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2605.16895",
+    "file": "files/ai-trading/ye-2026-alpha-illusion.pdf",
+    "summary": "Position paper: 35 of 40 cost components unmodelled in top LLM agents; 2025 reproduction with costs puts TradingAgents and QuantAgent below buy-and-hold; proposes P1-P6 protocols and a modular design."
+  },
+  {
+    "id": "ai-trading-22",
+    "title": "Can ChatGPT Forecast Stock Price Movements? Return Predictability and Large Language Models",
+    "authors": "Lopez-Lira, Tang",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2304.07619",
+    "file": "files/ai-trading/lopez-lira-2023-chatgpt-forecast-stock-prices.pdf",
+    "summary": "Post-cutoff GPT-4 headline scores predict 1-2 day drift (Sharpe 2.97, strongest in small caps and negative news); Sharpe decayed 6.5 to 1.2 by 2024; unprofitable at 20 bp round trip."
+  },
+  {
+    "id": "ai-trading-23",
+    "title": "DatedGPT: Preventing Lookahead Bias in Large Language Models with Time-Aware Pretraining",
+    "authors": "Yan, Tang, Gao, Jiang",
+    "year": 2026,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2603.11838",
+    "file": null,
+    "summary": "Twelve 1.3B LLMs with annual cutoffs 2013-2024; measures a lookahead premium in news-based return prediction; a route to honest LLM backtests."
+  },
+  {
+    "id": "ai-trading-24",
+    "title": "Kronos: A Foundation Model for the Language of Financial Markets",
+    "authors": "Shi, Fu, Chen, Zhao et al.",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2508.02739",
+    "file": "files/ai-trading/shi-2025-kronos.pdf",
+    "summary": "Candlestick foundation model on 12B+ bars from 45 exchanges; authors report better RankIC and volatility MAE than TSFMs and GARCH, A-share backtest IR 1.65; open 4M-102M models (MIT)."
+  },
+  {
+    "id": "ai-trading-25",
+    "title": "GitHub repos: TimesFM (2.5/3.0 release notes, weights licence), Kronos, AI-Trader, TradingAgents and others",
+    "authors": "GitHub",
+    "year": 2026,
+    "kind": "repo",
+    "url": "https://github.com/google-research/timesfm",
+    "file": "files/ai-trading/github-ai-trading-repos.md",
+    "summary": "Repo facts as of 2026-10-13: TimesFM 3.0 adds multivariate/covariates but weights are non-commercial; Kronos model sizes and context; stars and licences."
+  },
+  {
+    "id": "ai-trading-26",
+    "title": "Re(Visiting) Time Series Foundation Models in Finance",
+    "authors": "Rahimikia, Ni, Wang",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2511.18578",
+    "file": "files/ai-trading/rahimikia-2025-revisiting-tsfm-finance.pdf",
+    "summary": "Zero-shot and fine-tuned TSFMs (TimesFM, Chronos, Moirai, Lag-Llama ...) fail on daily excess returns (~50% direction, negative R2); finance-pretrained models do better; all strategies negative at 20 bp."
+  },
+  {
+    "id": "ai-trading-27",
+    "title": "Forecasting Realized Volatility with Time Series Foundation Models: A Comparison with Econometric Benchmarks",
+    "authors": "Brini",
+    "year": 2026,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2607.05291",
+    "file": "files/ai-trading/brini-2026-tsfm-realized-volatility.pdf",
+    "summary": "Nine zero-shot TSFMs vs HAR on 50 assets: only tiny TTM beats log-HAR; TimesFM 2.5 needs recalibration; averaging a TSFM with log-HAR is the robust choice."
+  },
+  {
+    "id": "ai-trading-28",
+    "title": "Pretrained Time-Series Foundation Models for Financial Return Forecasting",
+    "authors": "Noguer i Alonso, Franklin",
+    "year": 2026,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2606.27100",
+    "file": null,
+    "summary": "TimeGPT, TimesFM-2.5, Moirai-2.0, Chronos(-2) vs trained baselines on 5 US stocks 2024-26: TSFMs rank best but rarely beat a random walk."
+  },
+  {
+    "id": "ai-trading-29",
+    "title": "FinRL: A Deep Reinforcement Learning Library for Automated Stock Trading in Quantitative Finance",
+    "authors": "Liu, Yang, Chen, Zhang et al.",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2011.09607",
+    "file": null,
+    "summary": "The standard open deep-RL trading library (PPO, SAC, DDPG ...) with stock environments and tutorials."
+  },
+  {
+    "id": "ai-trading-30",
+    "title": "FinRL Contests: Benchmarking Data-driven Financial Reinforcement Learning Agents",
+    "authors": "Wang, Holzer, Xia, Cao et al.",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2504.02281",
+    "file": null,
+    "summary": "Summary of 2023-2025 contests: winning stock-trading teams beat the Dow on Sharpe/drawdown but not on return in short live tests; generalisation remains the problem."
+  },
+  {
+    "id": "ai-trading-31",
+    "title": "LOB-Based Deep Learning Models for Stock Price Trend Prediction: A Benchmark Study (LOBCAST)",
+    "authors": "Prata, Masi, Berti, Arrigoni et al.",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2308.01915",
+    "file": "files/ai-trading/prata-2023-lobcast-benchmark.pdf",
+    "summary": "15 order-book deep models re-run: F1 drops from ~83 to ~60 on new data, published claims not reproduced, no after-cost profitability."
+  },
+  {
+    "id": "ai-trading-32",
+    "title": "Optiver - Trading at the Close: 1st place solution",
+    "authors": "hyd (Kaggle)",
+    "year": 2024,
+    "kind": "thread",
+    "url": "https://www.kaggle.com/competitions/optiver-trading-at-the-close/discussion/487446",
+    "file": "files/ai-trading/kaggle-trading-competitions.md",
+    "summary": "CatBoost+GRU+Transformer on 300 features; online retraining every 12 days and index-relative post-processing were key; time-series validation."
+  },
+  {
+    "id": "ai-trading-33",
+    "title": "Jane Street Real-Time Market Data Forecasting: 8th place solution, lessons thread, 2nd place reproduction",
+    "authors": "Kaggle (Grigoreva, Shlepov, Weill)",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.kaggle.com/competitions/jane-street-real-time-market-data-forecasting/discussion/556542",
+    "file": "files/ai-trading/kaggle-trading-competitions.md",
+    "summary": "Small GRUs with one gradient step per new label; online learning was the biggest gain (+0.005 to +0.008 R2 on scores of ~0.01-0.02)."
+  },
+  {
+    "id": "ai-trading-34",
+    "title": "G-Research Crypto Forecasting: wrap-up, 2nd and 3rd place solutions, leak thread",
+    "authors": "G-Research / Kaggle",
+    "year": 2022,
+    "kind": "thread",
+    "url": "https://www.kaggle.com/competitions/g-research-crypto-forecasting/discussion/323098",
+    "file": "files/ai-trading/kaggle-trading-competitions.md",
+    "summary": "15-min crypto returns: winners used single LightGBMs, walk-forward CV, market-relative features; true scores ~0.02 correlation; public leaderboard leaked."
+  },
+  {
+    "id": "ai-trading-35",
+    "title": "Jane Street Market Prediction: 1st place (supervised autoencoder + MLP)",
+    "authors": "Yirun Zhang (Kaggle)",
+    "year": 2021,
+    "kind": "thread",
+    "url": "https://www.kaggle.com/competitions/jane-street-market-prediction/discussion/224348",
+    "file": "files/ai-trading/kaggle-trading-competitions.md",
+    "summary": "Purged gapped time-series CV and training the autoencoder inside each fold to avoid label leakage."
+  },
+  {
+    "id": "ai-trading-36",
+    "title": "Downside Risk Reduction Using Regime-Switching Signals: A Statistical Jump Model Approach",
+    "authors": "Shu, Yu, Mulvey",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2402.05272",
+    "file": "files/ai-trading/shu-2024-jump-model-regime-switching.pdf",
+    "summary": "2-state jump model on downside deviation and Sortino features; 1990-2023 with 10 bp costs and 1-day delay: S&P 500 Sharpe 0.48 to 0.68, max drawdown 55% to 27%."
+  },
+  {
+    "id": "ai-trading-37",
+    "title": "Factor Momentum Everywhere",
+    "authors": "Gupta, Kelly (AQR)",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/Factor-Momentum-Everywhere-JPM-Quant-19.pdf",
+    "file": null,
+    "summary": "65 equity factors show time-series momentum (monthly AR(1) ~0.11, positive for 59); supports trusting strategies with good recent records, modestly."
+  }
+]

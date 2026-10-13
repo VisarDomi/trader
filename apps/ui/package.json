@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-node": "^5.5.3",
-		"lightweight-charts": "^5.1.0"
+		"lightweight-charts": "^5.1.0",
+		"marked": "^18.1.1"
 	}
 }

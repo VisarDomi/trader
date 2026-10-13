@@ -1,0 +1,372 @@
+[
+  {
+    "id": "unlevered-01",
+    "title": "Fees and charges (overnight funding, 1:1 exemption, instrument table)",
+    "authors": "Capital.com",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://capital.com/en-int/ways-to-trade/fees-and-charges",
+    "file": "files/unlevered/capital-fees-and-charges.md",
+    "summary": "Funding = benchmark (SOFR) ± 4%/yr fee; 1:1 positions on 'most markets' pay no overnight funding except Natural Gas, US Cocoa, VIX and TRY pairs."
+  },
+  {
+    "id": "unlevered-02",
+    "title": "Capital.com introduces 0% overnight funding to support investment-style trading; overnight fee adjustment page",
+    "authors": "Capital.com",
+    "year": 2024,
+    "kind": "doc",
+    "url": "https://capital.com/en-gb/press/capital-com-introduces-0-overnight-funding-to-support-investment-style-trading",
+    "file": "files/unlevered/capital-zero-overnight-funding-2024.md",
+    "summary": "8 Jul 2024: no overnight funding on 1:1 CFD trades in shares and crypto; 89% of non-leveraged overnight positions were stocks and crypto."
+  },
+  {
+    "id": "unlevered-03",
+    "title": "Help Centre: Dividends (calculation, timing, markets, adjustments)",
+    "authors": "Capital.com",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://help.capital.com/hc/en-us/sections/360004645800-Dividends",
+    "file": "files/unlevered/capital-help-dividends.md",
+    "summary": "Share and index CFDs: long credited size × dividend (adjusted for tax if necessary), short debited, on the ex-dividend date."
+  },
+  {
+    "id": "unlevered-04",
+    "title": "Projected Dividends for 12-18.10.2026 (index dividend points)",
+    "authors": "Capital.com",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://help.capital.com/hc/en-us/articles/14647990762130",
+    "file": "files/unlevered/capital-projected-index-dividends-2026-10-12.png",
+    "summary": "Weekly table of projected index dividend adjustments in points per day (US500, US100, US30 posted 21:00 UK); longs receive, shorts pay."
+  },
+  {
+    "id": "unlevered-05",
+    "title": "Overnight funding calculation; how dividend payments affect CFD positions",
+    "authors": "IG",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://www.ig.com/uk/help-and-support/spread-betting-and-cfds/fees-and-charges/why-is-overnight-funding-charged-and-how-is-it-calculated-",
+    "file": "files/unlevered/ig-overnight-funding-and-dividends.md",
+    "summary": "IG charges 3% ± benchmark ÷ 360/365 at 22:00 UK, three days on Friday; dividend adjustments on the ex-date for positions held into the open."
+  },
+  {
+    "id": "unlevered-06",
+    "title": "CFD overnight fees",
+    "authors": "eToro",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://www.etoro.com/trading/fees/cfd-overnight-fees",
+    "file": "files/unlevered/etoro-cfd-overnight-fees.md",
+    "summary": "Non-leveraged stock buys are real shares with no overnight fee; leveraged stock longs pay 6.4% + benchmark; weekend triple charge on Friday or Wednesday by asset."
+  },
+  {
+    "id": "unlevered-07",
+    "title": "FAQ: dividends, corporate events, overnight funding",
+    "authors": "Plus500",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://www.plus500.com/en/tradingacademy/faq/financialinstruments",
+    "file": "files/unlevered/plus500-dividends-and-funding.md",
+    "summary": "Equity/ETF CFD positions open on the ex-date get a dividend adjustment (positive for buys, negative for sells); funding rate per instrument under Details."
+  },
+  {
+    "id": "unlevered-08",
+    "title": "Marginal stockholder tax rates and the clientele effect",
+    "authors": "Edwin J. Elton, Martin J. Gruber",
+    "year": 1970,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/tpr/restat/v52y1970i1p68-74.html",
+    "file": null,
+    "summary": "NYSE 1966-67: prices drop by less than the dividend on ex-days (ratio about 0.78), most for low-yield stocks, interpreted as a tax clientele effect."
+  },
+  {
+    "id": "unlevered-09",
+    "title": "Marginal stockholder tax effects and ex-dividend-day price behavior: evidence from taxable versus non-taxable closed-end funds",
+    "authors": "Edwin J. Elton, Martin J. Gruber, Christopher R. Blake",
+    "year": 2002,
+    "kind": "paper",
+    "url": "https://pages.stern.nyu.edu/~eelton/working_papers/tax_effects.pdf",
+    "file": "files/unlevered/elton-2002-marginal-stockholder-tax-ex-dividend.pdf",
+    "summary": "Natural experiment with closed-end funds shows ex-day price behaviour follows tax treatment and changes with tax law, supporting the tax explanation."
+  },
+  {
+    "id": "unlevered-10",
+    "title": "Taxes, order imbalance and abnormal returns around the ex-dividend day",
+    "authors": "Andrew Ainsworth, Kingsley Fong, David Gallagher, Graham Partington",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://research.bond.edu.au/en/publications/taxes-order-imbalance-and-abnormal-returns-around-the-ex-dividend/",
+    "file": null,
+    "summary": "Australian data: dividend-seeking buying pressure lifts prices before the ex-day and reverses afterwards; rejects the bid-ask bounce explanation."
+  },
+  {
+    "id": "unlevered-11",
+    "title": "The dividend month premium",
+    "authors": "Samuel M. Hartzmark, David H. Solomon",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://doi.org/10.1016/j.jfineco.2013.02.015",
+    "file": "files/unlevered/cxo-dividend-month-premium.md",
+    "summary": "US 1927-2009: stocks in predicted dividend months earn 0.24-0.53% a month abnormal (value/equal weighted), rising into the ex-day and negative after."
+  },
+  {
+    "id": "unlevered-12",
+    "title": "The earnings announcement premium and trading volume",
+    "authors": "Andrea Frazzini, Owen Lamont",
+    "year": 2007,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w13090",
+    "file": "files/unlevered/frazzini-2007-earnings-announcement-premium.pdf",
+    "summary": "Stocks earn 61 bp a month more in expected announcement months (about 7% a year, from 1927), including a 25 bp run-up in the 10 days before."
+  },
+  {
+    "id": "unlevered-13",
+    "title": "The earnings announcement premium around the globe",
+    "authors": "Brad M. Barber, Emmanuel De George, Reuven Lehavy, Brett Trueman",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://doi.org/10.1016/j.jfineco.2012.10.006",
+    "file": null,
+    "summary": "Announcement-month premium of over 11% a year across 46 countries, larger for the smallest stocks, linked to investor attention."
+  },
+  {
+    "id": "unlevered-14",
+    "title": "The disappearing earnings announcement premium",
+    "authors": "Amanda Rae Heitz, Gans Narayanamoorthy, Morad Zekhnini",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://www.iimb.ac.in/ARC2020/Papers/The_Disappearing_Earnings_Announcement_Premium.pdf",
+    "file": "files/unlevered/heitz-2020-disappearing-earnings-announcement-premium.pdf",
+    "summary": "The US earnings announcement premium disappeared after the 2004 8-K disclosure rule (weekly premium 23.9 bp lower), while it survives abroad."
+  },
+  {
+    "id": "unlevered-15",
+    "title": "Rest in peace post-earnings announcement drift",
+    "authors": "Charles Martineau",
+    "year": 2022,
+    "kind": "paper",
+    "url": "https://cfr.ivo-welch.info/published/papers/martineau2021rest.pdf",
+    "file": "files/unlevered/martineau-2022-rest-in-peace-pead.pdf",
+    "summary": "Prices now fully reflect earnings surprises on the announcement day; PEAD has been non-existent for large stocks since 2006."
+  },
+  {
+    "id": "unlevered-16",
+    "title": "Limited attention and the earnings announcement returns of past stock market winners",
+    "authors": "David Aboody, Reuven Lehavy, Brett Trueman",
+    "year": 2010,
+    "kind": "paper",
+    "url": "https://doi.org/10.1007/s11142-009-9104-9",
+    "file": null,
+    "summary": "1971-2005: top past-12-month winners earn +1.58% in the 5 days before earnings and -1.86% in the 5 days after, attributed to retail attention."
+  },
+  {
+    "id": "unlevered-17",
+    "title": "The disappearing index effect",
+    "authors": "Robin Greenwood, Marco C. Sammon",
+    "year": 2022,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w30748",
+    "file": "files/unlevered/greenwood-2022-disappearing-index-effect.pdf",
+    "summary": "S&P 500 addition abnormal return fell from 3.4% (1980s) and 7.6% (1990s) to 0.8% in 2010-2020; Tesla 2020 was the outlier."
+  },
+  {
+    "id": "unlevered-18",
+    "title": "Nasdaq-100 special rebalance (July 2023) and NDX methodology",
+    "authors": "CNBC, Saxo, Ortex, Nasdaq",
+    "year": 2023,
+    "kind": "blog",
+    "url": "https://indexes.nasdaqomx.com/docs/Methodology_NDX.pdf",
+    "file": "files/unlevered/news-nasdaq100-special-rebalance-2023.md",
+    "summary": "Special rebalance when names above 4.5% exceed 48% of NDX (cut to 40%), done 24 Jul 2023; quarterly reweights after the third Friday of Mar/Jun/Sep/Dec."
+  },
+  {
+    "id": "unlevered-19",
+    "title": "A tug of war: overnight versus intraday expected returns",
+    "authors": "Dong Lou, Christopher Polk, Spyros Skouras",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://personal.lse.ac.uk/polk/research/TugOfWar.pdf",
+    "file": "files/unlevered/lou-2019-tug-of-war-overnight-intraday.pdf",
+    "summary": "Momentum profits are earned overnight and reversal intraday; firm-level overnight and intraday returns each persist for years."
+  },
+  {
+    "id": "unlevered-20",
+    "title": "Does overnight news explain overnight returns?",
+    "authors": "Paul Glasserman, Kriste Krstovski, Paul Laliberte, Harry Mamaysky",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2507.04481",
+    "file": "files/unlevered/glasserman-2025-overnight-news-overnight-returns.pdf",
+    "summary": "Nearly all US stock gains over 30 years came overnight; news topics from 2.4 million articles explain much of the overnight/intraday gap."
+  },
+  {
+    "id": "unlevered-21",
+    "title": "Market return around the clock: a puzzle",
+    "authors": "Oleg Bondarenko, Dmitriy Muravyev",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/cup/jfinqa/v58y2023i3p939-967_1.html",
+    "file": null,
+    "summary": "E-mini S&P: the whole average return comes in the 4 hours around the European open (23:30-03:30 ET), 7.6% a year with Sharpe 1.67."
+  },
+  {
+    "id": "unlevered-22",
+    "title": "Strikingly suspicious overnight and intraday returns",
+    "authors": "Bruce Knuteson",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2010.01727",
+    "file": null,
+    "summary": "Argues the positive-overnight, negative-intraday pattern of major indices is too regular to be benign; contested."
+  },
+  {
+    "id": "unlevered-23",
+    "title": "The role of shorting, firm size, and time on market anomalies",
+    "authors": "Ronen Israel, Tobias J. Moskowitz",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://www.aqr.com/Insights/Research/Journal-Article/The-Role-of-Shorting-Firm-Size-and-Time-on-Market-Anomalies",
+    "file": null,
+    "summary": "Momentum profits show no reliable relation with firm size (unlike value), so momentum exists among the largest stocks."
+  },
+  {
+    "id": "unlevered-24",
+    "title": "Market concentration and the Magnificent Seven (Russell, Goldman via Quartz, Columbia Threadneedle, Schroders)",
+    "authors": "Russell Investments and others",
+    "year": 2024,
+    "kind": "blog",
+    "url": "https://russellinvestments.com/uk/blog/market-concentration-magnificent-seven",
+    "file": "files/unlevered/blog-market-concentration-mag7.md",
+    "summary": "Top-10 share of the S&P 500 near 39% (2025) vs 27% in 2000; Mag 7 made over 62% of 2023's gain; no academic test that concentration predicts returns."
+  },
+  {
+    "id": "unlevered-25",
+    "title": "Do stocks outperform Treasury bills?",
+    "authors": "Hendrik Bessembinder",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://doi.org/10.1016/j.jfineco.2018.06.004",
+    "file": null,
+    "summary": "Most US stocks underperform T-bills over their lives; 4% of stocks created all net wealth 1926-2016, so dominance by a few is normal."
+  },
+  {
+    "id": "unlevered-26",
+    "title": "Are there seasonal intraday or overnight anomalies in Bitcoin? / The seasonality of Bitcoin",
+    "authors": "Matus Padysak, Radovan Vojtko (Quantpedia)",
+    "year": 2022,
+    "kind": "blog",
+    "url": "https://quantpedia.com/are-there-seasonal-intraday-or-overnight-anomalies-in-bitcoin/",
+    "file": "files/unlevered/quantpedia-bitcoin-intraday-seasonality.md",
+    "summary": "Buying BTC at 21:00 UTC and selling at 23:00 UTC earned 33-41% a year before costs (2015-2023), with a rough 2022-23."
+  },
+  {
+    "id": "unlevered-27",
+    "title": "Bitcoin time-of-day, day-of-week and month-of-year effects in returns and trading volume",
+    "authors": "Dirk G. Baur, Daniel Cahill, Keith Godfrey, Zhangxin Liu",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://research-repository.uwa.edu.au/en/publications/bitcoin-time-of-day-day-of-week-and-month-of-year-effects-in-retu/",
+    "file": "files/unlevered/quantpedia-bitcoin-intraday-seasonality.md",
+    "summary": "Over 15 million observations from seven exchanges: time-varying calendar effects but no consistent or persistent return patterns."
+  },
+  {
+    "id": "unlevered-28",
+    "title": "Periodicity in cryptocurrency volatility and liquidity",
+    "authors": "Peter Reinhard Hansen, Chan Kim, Wade Kimbrough",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2109.12142",
+    "file": "files/unlevered/hansen-2021-periodicity-crypto-volatility-liquidity.pdf",
+    "summary": "BTC/ETH volatility and volume have strong day-of-week (low weekends) and hour-of-day patterns, growing stronger and tied to perp funding times."
+  },
+  {
+    "id": "unlevered-29",
+    "title": "Risks and returns of cryptocurrency",
+    "authors": "Yukun Liu, Aleh Tsyvinski",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w24877",
+    "file": "files/unlevered/liu-2021-risks-and-returns-of-cryptocurrency.pdf",
+    "summary": "2011-2018: strong time-series momentum in crypto at daily and 1-4 week horizons and attention-based predictability; no exposure to stock factors."
+  },
+  {
+    "id": "unlevered-30",
+    "title": "Estimating the impact of the Bitcoin halving on its price using synthetic control",
+    "authors": "Vladislav Virtonen",
+    "year": 2025,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2511.05512",
+    "file": "files/unlevered/virtonen-2025-bitcoin-halving-synthetic-control.pdf",
+    "summary": "Synthetic control finds a positive 2024 halving effect after 3 months (about a fifth of the price rise) but no robust effect for 2020."
+  },
+  {
+    "id": "unlevered-31",
+    "title": "Volatility harvesting: extracting return from randomness",
+    "authors": "Jan Hendrik Witte",
+    "year": 2015,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/1508.05241",
+    "file": "files/unlevered/witte-2015-volatility-harvesting.pdf",
+    "summary": "Rebalancing between volatile assets (or asset and cash) creates growth that scales with variance and vanishes at correlation 1; tested on real data."
+  },
+  {
+    "id": "unlevered-32",
+    "title": "Shannon's Demon and how returns can be created out of thin air (HN thread)",
+    "authors": "Hacker News / Richmond Quant",
+    "year": 2022,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=32143953",
+    "file": "files/unlevered/hn-shannons-demon.md",
+    "summary": "Debate on rebalancing 50/50 with cash: it converts arithmetic return into geometric growth; not free money, loses to strong trends."
+  },
+  {
+    "id": "unlevered-33",
+    "title": "Fundamentals of perpetual futures",
+    "authors": "Songrun He, Asaf Manela, Omri Ross, Victor von Wachter",
+    "year": 2022,
+    "kind": "paper",
+    "url": "https://arxiv.org/abs/2212.06888",
+    "file": "files/unlevered/he-2022-fundamentals-of-perpetual-futures.pdf",
+    "summary": "No-arbitrage pricing of perpetuals; funding rates make longs pay shorts; crypto deviations are large, co-move and shrink over time."
+  },
+  {
+    "id": "unlevered-34",
+    "title": "Perp funding rates as a bottom signal (K33 Research via The Block)",
+    "authors": "K33 Research / The Block",
+    "year": 2024,
+    "kind": "blog",
+    "url": "https://www.theblock.co/post/315831/perp-signal-bitcoin-bottom-bullish-year-end-k33",
+    "file": "files/unlevered/blog-k33-funding-rates-signal.md",
+    "summary": "After BTC 30-day average funding turned negative (7 episodes since 2018) the 90-day return averaged +79%; tiny sample, unverified."
+  },
+  {
+    "id": "unlevered-35",
+    "title": "Volatility-managed portfolios",
+    "authors": "Alan Moreira, Tyler Muir",
+    "year": 2017,
+    "kind": "paper",
+    "url": "https://doi.org/10.1111/jofi.12513",
+    "file": null,
+    "summary": "Scaling exposure by inverse recent variance raises Sharpe ratios of the market and factor portfolios in-sample."
+  },
+  {
+    "id": "unlevered-36",
+    "title": "On the performance of volatility-managed portfolios",
+    "authors": "Scott Cederburg, Michael S. O'Doherty, Feifei Wang, Xuemin (Sterling) Yan",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://www.lehigh.edu/~xuy219/research/COWY.pdf",
+    "file": null,
+    "summary": "Across 103 strategies, real-time volatility-managed versions do not systematically beat the unmanaged originals out of sample."
+  },
+  {
+    "id": "unlevered-37",
+    "title": "Own check on the lab candles: hour of day, weekends, overnight vs intraday, rebalancing, rollover, basket tracking",
+    "authors": "this project (Claude)",
+    "year": 2026,
+    "kind": "doc",
+    "url": "",
+    "file": "files/unlevered/own-check-candle-stats.md",
+    "summary": "Descriptive stats on Capital.com 1-minute candles 2024-01 to 2026-09 with the scripts in files/unlevered/own-check/."
+  }
+]

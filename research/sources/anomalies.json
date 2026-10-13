@@ -1,0 +1,492 @@
+[
+  {
+    "id": "anomalies-01",
+    "title": "The Pre-FOMC Announcement Drift",
+    "authors": "Lucca & Moench (NY Fed SR 512; JF 2015)",
+    "year": 2015,
+    "kind": "paper",
+    "url": "https://www.newyorkfed.org/medialibrary/media/research/staff_reports/sr512.pdf",
+    "file": "files/anomalies/lucca-2015-pre-fomc-drift.pdf",
+    "summary": "S&P 500 rose 49 bp on average in the 24 hours before scheduled FOMC announcements (1994-2011), about 80% of the equity premium; no drift before other macro releases."
+  },
+  {
+    "id": "anomalies-02",
+    "title": "The Disappearing Pre-FOMC Announcement Drift",
+    "authors": "Kurov, Wolfe & Gilbert (Finance Research Letters 40)",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/eee/finlet/v40y2021ics1544612320315956.html",
+    "file": null,
+    "summary": "Extending Lucca-Moench to Dec 2019, the pre-FOMC drift essentially disappeared after 2015, with or without press conferences."
+  },
+  {
+    "id": "anomalies-03",
+    "title": "Shaping Expectations and Coordinating Attention: The Unintended Consequences of FOMC Press Conferences",
+    "authors": "Boguth, Grégoire & Martineau (JFQA 54(6))",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/cup/jfinqa/v54y2019i6p2327-2353_2.html",
+    "file": null,
+    "summary": "FOMC press conferences concentrated attention and the pre-FOMC drift on meetings with a press conference (2011-2017)."
+  },
+  {
+    "id": "anomalies-04",
+    "title": "How Much Do Investors Care About Macroeconomic Risk? Evidence from Scheduled Economic Announcements",
+    "authors": "Savor & Wilson (JFQA 48(2))",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://faculty.wharton.upenn.edu/wp-content/uploads/2012/04/Draft20111128p_edited.pdf",
+    "file": "files/anomalies/savor-2013-macro-announcement-days.pdf",
+    "summary": "US stocks earned 11.4 bp on CPI/PPI/employment/FOMC announcement days vs 1.1 bp on other days, 1958-2009 (over 60% of the equity premium)."
+  },
+  {
+    "id": "anomalies-05",
+    "title": "The Pre-Holiday Premium of Ariel (1990) Has Largely Become a Small-Firm Effect Out of Sample",
+    "authors": "Ko & Yang (Critical Finance Review)",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://cfr.ivo-welch.info/published/papers/ko2021pre.pdf",
+    "file": "files/anomalies/ko-2021-pre-holiday.pdf",
+    "summary": "Ariel's pre-holiday premium replicates for 1963-1982 but is insignificant for large caps after 1983 (S&P 500 t=0.93); it survives only in small firms."
+  },
+  {
+    "id": "anomalies-06",
+    "title": "The Halloween Indicator: Everywhere and All the Time",
+    "authors": "Jacobsen & Zhang (SSRN 2154873; JIMF 2021)",
+    "year": 2012,
+    "kind": "paper",
+    "url": "https://www.bnains.org/backtest/periode/The_Halloween_Indicator_everywhere_and_all_the_time_-_Ben_Jacobsen_%26_Cherry_Y._Zhang.pdf",
+    "file": "files/anomalies/jacobsen-2012-halloween-everywhere.pdf",
+    "summary": "Across 108 markets and 319 years, Nov-Apr returns beat May-Oct by 4.52% (t 9.69), and the effect held out of sample 1998-2011."
+  },
+  {
+    "id": "anomalies-07",
+    "title": "Are There Monday Effects in Stock Returns: A Stochastic Dominance Approach (with Mehdian & Perry 2001)",
+    "authors": "Cho, Linton & Whang (LSE FMG DP568; J. Empirical Finance)",
+    "year": 2007,
+    "kind": "paper",
+    "url": "https://www.fmg.ac.uk/sites/default/files/publications/DP568.pdf",
+    "file": null,
+    "summary": "The Monday effect was negative before 1987 and reversed or weakened in large-cap US indices afterwards."
+  },
+  {
+    "id": "anomalies-08",
+    "title": "Returns and option activity over the option-expiration week for S&P 100 stocks (CXO summary)",
+    "authors": "Stivers & Sun (JBF 37(11)); CXO Advisory",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://cxoadvisory.com/calendar-effects/option-expiration-week-stock-return-drill-down",
+    "file": "files/anomalies/cxo-option-expiration-week.md",
+    "summary": "Large S&P 100 stocks earned 0.45% in option-expiration weeks vs 0.12% in other weeks (1996-2008), with some reversal the week after."
+  },
+  {
+    "id": "anomalies-09",
+    "title": "Hedging Demand and Market Intraday Momentum",
+    "authors": "Baltussen, Da, Lammers & Martens (JFE 142)",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://www3.nd.edu/~zda/intramom.pdf",
+    "file": "files/anomalies/baltussen-2021-hedging-demand-intraday-momentum.pdf",
+    "summary": "Across 60+ futures (1974-2020), the return up to 15:30 predicts the last 30 minutes; the effect is tied to short-gamma hedging by option and leveraged-ETF market makers."
+  },
+  {
+    "id": "anomalies-10",
+    "title": "The Role of Leveraged ETFs and Option Market Imbalances on End-of-Day Price Dynamics",
+    "authors": "Barbon, Beckmeyer, Buraschi & Moerke (SFI 22-40)",
+    "year": 2021,
+    "kind": "paper",
+    "url": "https://abarbon.com/papers/liquidity-provision-to-leveraged-etfs-and-equity-options-rebalancing-flows",
+    "file": "files/anomalies/barbon-2021-letf-options-end-of-day.pdf",
+    "summary": "Negative aggregate gamma and leveraged-ETF rebalancing cause end-of-day momentum that reverts at the next open; the LETF effect is larger but has decreased over time."
+  },
+  {
+    "id": "anomalies-11",
+    "title": "Do S&P500 Options Increase Market Volatility? Evidence from 0DTEs (Quantpedia summary)",
+    "authors": "Adams et al. (SSRN 5641974); Quantpedia",
+    "year": 2026,
+    "kind": "blog",
+    "url": "https://quantpedia.com/do-sp500-0dtes-options-increase-market-volatility/",
+    "file": "files/anomalies/quantpedia-0dte-volatility.md",
+    "summary": "0DTE options dampen S&P 500 volatility (about 60 bp annualized lower on 0DTE days) because dealers are net long gamma; higher net gamma predicts intraday reversal."
+  },
+  {
+    "id": "anomalies-12",
+    "title": "Dash for Cash: Monthly Market Impact of Institutional Liquidity Needs",
+    "authors": "Etula, Rinne, Suominen & Vaittinen (RFS 33(1))",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://acris.aalto.fi/ws/portalfiles/portal/40965155/hhz054.pdf",
+    "file": "files/anomalies/etula-2020-dash-for-cash.pdf",
+    "summary": "Institutional month-end cash needs cause selling from T-8 to T-4 and a rebound from T-3 to T+3 across 20 of 23 equity markets; timing set by settlement cycles."
+  },
+  {
+    "id": "anomalies-13",
+    "title": "The Unintended Consequences of Rebalancing",
+    "authors": "Harvey, Mazzoleni & Melone (Fisher WP 2025-03-001)",
+    "year": 2026,
+    "kind": "paper",
+    "url": "https://www.edhec.edu/sites/default/files/2026-03/Scientific%20paper.%20ssrn-5122748.pdf",
+    "file": "files/anomalies/harvey-2026-unintended-consequences-rebalancing.pdf",
+    "summary": "Pension and fund rebalancing when stocks are overweight lowers next-day equity returns by about 17 bp per 1 SD signal, concentrated in the last 4 days of the month and near quarter-end."
+  },
+  {
+    "id": "anomalies-14",
+    "title": "Equity Hedging and Exchange Rates at the London 4 p.m. Fix",
+    "authors": "Melvin & Prins (J. Financial Markets 22)",
+    "year": 2015,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/eee/finmar/v22y2015icp50-72.html",
+    "file": "files/anomalies/melvin-2015-equity-hedging-4pm-fix.pdf",
+    "summary": "A country's equity outperformance over the month predicts its currency depreciates in the hour before the month-end London 4 pm fix (14 bp per 10% relative move)."
+  },
+  {
+    "id": "anomalies-15",
+    "title": "A Tug of War: Overnight versus Intraday Expected Returns",
+    "authors": "Lou, Polk & Skouras (JFE 134)",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://personal.lse.ac.uk/polk/research/TugOfWar.pdf",
+    "file": "files/anomalies/lou-2019-tug-of-war.pdf",
+    "summary": "Overnight vs intraday decomposition: market 0.55%/month overnight vs 0.38% intraday (1993-2013); momentum profits accrue overnight, most other anomalies intraday."
+  },
+  {
+    "id": "anomalies-16",
+    "title": "The Overnight Drift",
+    "authors": "Boyarchenko, Larsen & Whelan (NY Fed SR 917; RFS 2023)",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://www.newyorkfed.org/medialibrary/media/research/staff_reports/sr917.pdf",
+    "file": "files/anomalies/boyarchenko-2023-overnight-drift.pdf",
+    "summary": "US equity index futures earn large returns at the European open (02:00-03:00 ET), linked to closing order imbalances and dealer inventory risk; strongest after sell-offs."
+  },
+  {
+    "id": "anomalies-17",
+    "title": "The Disappearing Overnight Drift",
+    "authors": "Boyarchenko, Larsen & Whelan (Liberty Street Economics)",
+    "year": 2026,
+    "kind": "blog",
+    "url": "https://libertystreeteconomics.newyorkfed.org/2026/07/the-disappearing-overnight-drift/",
+    "file": "files/anomalies/libertystreet-disappearing-overnight-drift.md",
+    "summary": "NY Fed follow-up: the 02:00-03:00 ET overnight drift (3.7%/yr over 1998-2020) has averaged about zero since 2021 as closing imbalances shrank."
+  },
+  {
+    "id": "anomalies-18",
+    "title": "Intraday Patterns in FX Returns and Order Flow",
+    "authors": "Breedon & Ranaldo (SNB WP 2011-04; JMCB 2013)",
+    "year": 2013,
+    "kind": "paper",
+    "url": "https://www.snb.ch/en/publications/research/working-papers/2011/working_paper_2011_04",
+    "file": "files/anomalies/breedon-2013-intraday-fx-patterns.pdf",
+    "summary": "Currencies tend to depreciate during their own local trading hours (1997-2007); a EURUSD short-Europe/long-US rule was profitable after EBS costs."
+  },
+  {
+    "id": "anomalies-19",
+    "title": "Fixing a Leaky Fixing: Short-Term Market Reactions to the London PM Gold Price Fixing",
+    "authors": "Caminschi & Heaney (J. Futures Markets 34)",
+    "year": 2014,
+    "kind": "paper",
+    "url": "https://api.research-repository.uwa.edu.au/ws/files/4725264/A0205_use_this.pdf",
+    "file": "files/anomalies/caminschi-2014-leaky-gold-fixing.pdf",
+    "summary": "Information leaked from the London PM gold fix into GC futures and GLD: about 10 bp in the 4 minutes after the fix started (2007-2012); fix replaced in 2015."
+  },
+  {
+    "id": "anomalies-20",
+    "title": "Dangers of Relying on OHLC Prices – the Case of Overnight Drift in GDX ETF",
+    "authors": "Quantpedia",
+    "year": 2024,
+    "kind": "blog",
+    "url": "https://quantpedia.com/dangers-of-relying-on-ohlc-prices-the-case-of-overnight-drift-in-gdx-etf/",
+    "file": "files/anomalies/quantpedia-ohlc-overnight-gdx.md",
+    "summary": "Overnight drift in GDX/GLD is exaggerated by daily OHLC opens; selling at 09:31 with minute data shrinks it sharply."
+  },
+  {
+    "id": "anomalies-21",
+    "title": "A Gold Price Anomaly",
+    "authors": "Blose & Gondhalekar (GVSU)",
+    "year": 2014,
+    "kind": "paper",
+    "url": "https://scholarworks.gvsu.edu/fsdg/975",
+    "file": "files/anomalies/quantpedia-ohlc-overnight-gdx.md",
+    "summary": "COMEX front-month gold, 1985-2012: average overnight returns are significantly higher than daytime returns."
+  },
+  {
+    "id": "anomalies-22",
+    "title": "Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)",
+    "authors": "Zarattini, Aziz & Barbon (SFI 24-97)",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://alexandria.unisg.ch/server/api/core/bitstreams/a99aba00-f967-49b3-aceb-f544dc386e0b/content",
+    "file": "files/anomalies/zarattini-2024-beat-the-market-spy.pdf",
+    "summary": "SPY noise-area intraday momentum with VWAP trailing stops and vol sizing: Sharpe 1.33 net, 19.6%/yr (2007-2024), about +15% in the first 9 months after publication."
+  },
+  {
+    "id": "anomalies-23",
+    "title": "A Profitable Day Trading Strategy for the U.S. Equity Market",
+    "authors": "Zarattini, Barbon & Aziz (SFI 24-98)",
+    "year": 2024,
+    "kind": "paper",
+    "url": "https://www.alexandria.unisg.ch/server/api/core/bitstreams/3c2989c4-688d-4d78-8a71-f02690990d51/content",
+    "file": "files/anomalies/zarattini-2024-orb-stocks-in-play.pdf",
+    "summary": "5-minute ORB on the top-20 'stocks in play' by relative opening volume: Sharpe 2.81 net (2016-2023); profit per trade rises with relative volume."
+  },
+  {
+    "id": "anomalies-24",
+    "title": "Opening Range Breakout for Stocks in Play (replication and forum)",
+    "authors": "QuantConnect (Melchin et al.)",
+    "year": 2025,
+    "kind": "thread",
+    "url": "https://www.quantconnect.com/forum/discussion/18444/opening-range-breakout-for-stocks-in-play/",
+    "file": "files/anomalies/quantconnect-orb-stocks-in-play.md",
+    "summary": "QuantConnect replication of the stocks-in-play ORB (Sharpe 2.4 in 2016) with forum reports of weaker other years, costs and implementation pitfalls."
+  },
+  {
+    "id": "anomalies-25",
+    "title": "Concretum papers list and post-publication record",
+    "authors": "Concretum Group",
+    "year": 2026,
+    "kind": "doc",
+    "url": "https://concretumgroup.com/papers/",
+    "file": "files/anomalies/concretum-papers-list.md",
+    "summary": "Concretum's list of practitioner papers (ORB, VWAP, intraday momentum, crypto trend, VIX ETNs) and the post-publication monthly record of 'Beat the Market'."
+  },
+  {
+    "id": "anomalies-26",
+    "title": "Market Intraday Momentum (WP: The First Half-Hour Return Predicts the Last Half-Hour Return)",
+    "authors": "Gao, Han, Li & Zhou (JFE 129)",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://c.mql5.com/forextsd/forum/173/intraday_momentum_-_the_first_half-hour_return_predicts_the_last_half-hour_return.pdf",
+    "file": "files/anomalies/gao-2015-market-intraday-momentum.pdf",
+    "summary": "The first half-hour return predicts the last half-hour return of SPY (1993-2013), stronger on volatile and news days; the rule rejected in our arena."
+  },
+  {
+    "id": "anomalies-27",
+    "title": "Understanding Intraday Momentum Strategies",
+    "authors": "Rosa (J. Futures Markets 42(12))",
+    "year": 2022,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/wly/jfutmk/v42y2022i12p2218-2234.html",
+    "file": null,
+    "summary": "Out of sample, the overnight-to-last-half-hour predictability disappears; a strategy that trades only on strong signals beats an always-on one."
+  },
+  {
+    "id": "anomalies-28",
+    "title": "Time Series Momentum",
+    "authors": "Moskowitz, Ooi & Pedersen (JFE 104)",
+    "year": 2012,
+    "kind": "paper",
+    "url": "http://docs.lhpedersen.com/TimeSeriesMomentum.pdf",
+    "file": "files/anomalies/moskowitz-2012-time-series-momentum.pdf",
+    "summary": "Past 12-month return predicts the next month in all 58 liquid futures (1985-2009); time-series momentum works across asset classes."
+  },
+  {
+    "id": "anomalies-29",
+    "title": "A Century of Evidence on Trend-Following Investing",
+    "authors": "Hurst, Ooi & Pedersen (AQR; JPM 2017)",
+    "year": 2017,
+    "kind": "paper",
+    "url": "https://www.aqr.com/Insights/Research/Journal-Article/A-Century-of-Evidence-on-Trend-Following-Investing",
+    "file": "files/anomalies/hurst-2014-century-trend-following.pdf",
+    "summary": "Trend following was profitable in every decade since 1880 (net Sharpe 0.77 for 1880-2013, 0.62 for 2000-2013)."
+  },
+  {
+    "id": "anomalies-30",
+    "title": "Time Series Momentum: Is It There?",
+    "authors": "Huang, Li, Wang & Zhou (JFE 135)",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://alphaarchitect.com/2020/03/an-empirical-challenge-for-trend-following/",
+    "file": null,
+    "summary": "Asset-by-asset tests find little time-series momentum; pooled t-statistics fail bootstrap critical values."
+  },
+  {
+    "id": "anomalies-31",
+    "title": "Carry",
+    "authors": "Koijen, Moskowitz, Pedersen & Vrugt (JFE 127; NBER w19325)",
+    "year": 2018,
+    "kind": "paper",
+    "url": "https://www.nber.org/system/files/working_papers/w19325/w19325.pdf",
+    "file": "files/anomalies/koijen-2018-carry.pdf",
+    "summary": "Carry predicts returns across asset classes (about 0.75 Sharpe per class, 1.1 diversified) but is crash-prone."
+  },
+  {
+    "id": "anomalies-32",
+    "title": "Common Factors in Return Seasonalities (Return Seasonalities, JF 2016)",
+    "authors": "Keloharju, Linnainmaa & Nyberg (NBER w20815)",
+    "year": 2016,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w20815.pdf",
+    "file": "files/anomalies/keloharju-2014-return-seasonalities.pdf",
+    "summary": "Same-calendar-month historical returns predict stocks (13%/yr) and weakly commodities (0.93%/month, t 1.93) and country indices."
+  },
+  {
+    "id": "anomalies-33",
+    "title": "Information, Price Levels and Price Volatility of Petroleum Product Futures Prices (EIA presentation)",
+    "authors": "Linn, Ederington, Fernando & Guernsey (EIA)",
+    "year": 2017,
+    "kind": "doc",
+    "url": "https://www.eia.gov/finance/markets/reports_presentations/2017/linn.pdf",
+    "file": "files/anomalies/linn-2017-eia-inventory-announcements.pdf",
+    "summary": "EIA oil and gas inventory surprises move energy futures within 5-7 minutes with no later drift; volatility spikes with surprise size (2003-2017)."
+  },
+  {
+    "id": "anomalies-34",
+    "title": "VIX Futures as a Market Timing Indicator",
+    "authors": "Fassas & Hourvouliades (JRFM 12(3))",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://mdpi-res.com/d_attachment/jrfm/jrfm-12-00113/article_deploy/jrfm-12-00113-v2.pdf",
+    "file": "files/anomalies/fassas-2019-vix-futures-market-timing.pdf",
+    "summary": "VIX futures backwardation predicts higher subsequent S&P 500 returns (2010-2017); contango gives no signal."
+  },
+  {
+    "id": "anomalies-35",
+    "title": "Volatility-Managed Portfolios",
+    "authors": "Moreira & Muir (JF 72(4); NBER w22208)",
+    "year": 2017,
+    "kind": "paper",
+    "url": "https://www.nber.org/papers/w22208.pdf",
+    "file": "files/anomalies/moreira-2017-volatility-managed-portfolios.pdf",
+    "summary": "Scaling exposure by inverse variance raises Sharpe ratios of the market and factors because returns do not rise with volatility."
+  },
+  {
+    "id": "anomalies-36",
+    "title": "On the Performance of Volatility-Managed Portfolios",
+    "authors": "Cederburg, O'Doherty, Wang & Yan (JFE 138)",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://www.lehigh.edu/~xuy219/research/COWY.pdf",
+    "file": "files/anomalies/cederburg-2020-volatility-managed-portfolios.pdf",
+    "summary": "Out of sample, volatility-managed versions of 103 strategies generally underperform the unmanaged originals because of unstable weights."
+  },
+  {
+    "id": "anomalies-37",
+    "title": "Expected Stock Returns and Variance Risk Premia",
+    "authors": "Bollerslev, Tauchen & Zhou (RFS 22(11))",
+    "year": 2009,
+    "kind": "paper",
+    "url": "https://repec.econ.au.dk/repec/creates/rp/08/rp08_48.pdf",
+    "file": "files/anomalies/bollerslev-2009-variance-risk-premia.pdf",
+    "summary": "The variance risk premium (implied minus realized variance) predicts quarterly stock market returns (1990-2005)."
+  },
+  {
+    "id": "anomalies-38",
+    "title": "Volatility-of-Volatility Risk",
+    "authors": "Huang, Schlag, Shaliastovich & Thimme (JFQA 54(6))",
+    "year": 2019,
+    "kind": "paper",
+    "url": "https://ideas.repec.org/a/cup/jfinqa/v54y2019i6p2423-2452_5.html",
+    "file": null,
+    "summary": "Volatility-of-volatility (VVIX) is a priced risk in index and VIX options, distinct from volatility itself."
+  },
+  {
+    "id": "anomalies-39",
+    "title": "Does Academic Research Destroy Stock Return Predictability?",
+    "authors": "McLean & Pontiff (JF 71(1))",
+    "year": 2016,
+    "kind": "paper",
+    "url": "https://www.gwern.net/doc/economics/2016-mclean.pdf",
+    "file": "files/anomalies/mclean-2016-academic-research-destroy-predictability.pdf",
+    "summary": "Across 97 predictors, returns are 26% lower out of sample and 58% lower after publication."
+  },
+  {
+    "id": "anomalies-40",
+    "title": "Replicating Anomalies",
+    "authors": "Hou, Xue & Zhang (RFS 33(5); NBER w23394)",
+    "year": 2020,
+    "kind": "paper",
+    "url": "https://www.nber.org/system/files/working_papers/w23394/w23394.pdf",
+    "file": "files/anomalies/hou-2020-replicating-anomalies.pdf",
+    "summary": "Replicating 447-452 anomalies with microcaps controlled, about 64-65% fail t>=1.96 and 82-85% fail t>=2.78-3."
+  },
+  {
+    "id": "anomalies-41",
+    "title": "... and the Cross-Section of Expected Returns",
+    "authors": "Harvey, Liu & Zhu (RFS 29(1))",
+    "year": 2016,
+    "kind": "paper",
+    "url": "https://people.duke.edu/~charvey/Research/Published_Papers/P118_and_the_cross.PDF",
+    "file": "files/anomalies/harvey-2016-cross-section.pdf",
+    "summary": "With hundreds of factors tested, a new factor should clear t > 3.0; most claimed findings are likely false."
+  },
+  {
+    "id": "anomalies-42",
+    "title": "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting and Non-Normality",
+    "authors": "Bailey & López de Prado (JPM 40(5))",
+    "year": 2014,
+    "kind": "paper",
+    "url": "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf",
+    "file": "files/anomalies/bailey-2014-deflated-sharpe-ratio.pdf",
+    "summary": "The Deflated Sharpe Ratio corrects a Sharpe ratio for the number of trials and non-normal returns; gives the expected max Sharpe of N noise trials."
+  },
+  {
+    "id": "anomalies-43",
+    "title": "The Probability of Backtest Overfitting",
+    "authors": "Bailey, Borwein, López de Prado & Zhu (J. Computational Finance)",
+    "year": 2017,
+    "kind": "paper",
+    "url": "https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf",
+    "file": "files/anomalies/bailey-2017-probability-backtest-overfitting.pdf",
+    "summary": "Combinatorially symmetric cross-validation estimates the probability that a backtest-selected strategy underperforms out of sample."
+  },
+  {
+    "id": "anomalies-44",
+    "title": "Is There a Replication Crisis in Finance?",
+    "authors": "Jensen, Kelly & Pedersen (JF 78(5); NBER w28432)",
+    "year": 2023,
+    "kind": "paper",
+    "url": "https://www.nber.org/system/files/working_papers/w28432/w28432.pdf",
+    "file": "files/anomalies/jensen-2023-replication-crisis.pdf",
+    "summary": "Bayesian replication: most asset-pricing factors replicate, cluster into 13 themes and work out of sample in 93 countries."
+  },
+  {
+    "id": "anomalies-45",
+    "title": "The Seasonality of Bitcoin / Are There Seasonal Intraday or Overnight Anomalies in Bitcoin?",
+    "authors": "Quantpedia",
+    "year": 2023,
+    "kind": "blog",
+    "url": "https://quantpedia.com/the-seasonality-of-bitcoin/",
+    "file": "files/anomalies/quantpedia-bitcoin-seasonality.md",
+    "summary": "Bitcoin returns concentrate at 21:00-23:00 UTC (Gemini 2015-2023); our 2024-2026 data confirms +6.6 bp/day out of sample but equal to the spread."
+  },
+  {
+    "id": "anomalies-46",
+    "title": "All positive returns to major market indices over 3 decades occurred overnight (HN thread)",
+    "authors": "Hacker News",
+    "year": 2020,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=24899577",
+    "file": "files/anomalies/hn-overnight-returns.md",
+    "summary": "HN discussion of Knuteson's overnight-returns claim: earnings timing, dividends and auction mechanics as sceptical explanations."
+  },
+  {
+    "id": "anomalies-47",
+    "title": "Sell in May, and go away? (HN thread)",
+    "authors": "Hacker News",
+    "year": 2015,
+    "kind": "thread",
+    "url": "https://news.ycombinator.com/item?id=9350841",
+    "file": "files/anomalies/hn-sell-in-may.md",
+    "summary": "HN discussion of Sell in May: dividends, taxes, dependence on 1987 and 2008, too few observations."
+  },
+  {
+    "id": "anomalies-48",
+    "title": "Lab descriptive checks of documented anomalies, 2024-01 → 2026-09 (spreads, window returns)",
+    "authors": "this project (Claude)",
+    "year": 2026,
+    "kind": "doc",
+    "url": "apps/backend/data/candles (lab PC)",
+    "file": "files/anomalies/lab-descriptive-checks-2024-2026.md",
+    "summary": "Our measured spreads per instrument and descriptive 2024-2026 window returns for overnight, FX session, gold session, BTC hour, pre-FOMC and OPEX effects."
+  },
+  {
+    "id": "anomalies-49",
+    "title": "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance",
+    "authors": "Bailey, Borwein, López de Prado & Zhu (Notices of the AMS 61(5))",
+    "year": 2014,
+    "kind": "paper",
+    "url": "https://carmamaths.org/jon/backtest.pdf",
+    "file": "files/anomalies/bailey-2014-pseudo-mathematics-charlatanism.pdf",
+    "summary": "Minimum backtest length: with 5 years of data no more than 45 independent configurations before an in-sample Sharpe of 1 is expected from noise."
+  }
+]

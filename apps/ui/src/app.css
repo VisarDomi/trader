@@ -270,3 +270,85 @@ button.btn:hover {
 .status-critical {
 	background: var(--critical);
 }
+
+/* Rendered markdown (research notes) */
+.prose {
+	max-width: 900px;
+	line-height: 1.6;
+}
+.prose h2,
+.prose h3,
+.prose h4 {
+	margin: 22px 0 8px;
+	scroll-margin-top: 12px;
+}
+.prose h2:first-child,
+.prose h3:first-child {
+	margin-top: 0;
+}
+.prose h2 {
+	font-size: 17px;
+	padding-top: 14px;
+	border-top: 1px solid var(--hairline);
+}
+.prose h2:first-child {
+	padding-top: 0;
+	border-top: none;
+}
+.prose h3 {
+	font-size: 15px;
+}
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote,
+.prose pre,
+.prose table {
+	margin: 8px 0;
+}
+.prose ul,
+.prose ol {
+	padding-left: 22px;
+}
+.prose li {
+	margin: 3px 0;
+}
+.prose a {
+	color: var(--series-1);
+}
+.prose a.cite {
+	font-size: 12px;
+	text-decoration: none;
+}
+.prose blockquote {
+	border-left: 3px solid var(--baseline);
+	padding: 2px 12px;
+	color: var(--ink-2);
+}
+.prose pre {
+	background: var(--surface-2);
+	padding: 10px;
+	border-radius: 6px;
+	overflow: auto;
+}
+.prose :not(pre) > code {
+	background: var(--surface-2);
+	padding: 1px 4px;
+	border-radius: 4px;
+}
+.prose table {
+	border-collapse: collapse;
+	display: block;
+	overflow-x: auto;
+	font-size: 13px;
+}
+.prose th,
+.prose td {
+	border: 1px solid var(--grid);
+	padding: 4px 8px;
+	vertical-align: top;
+	text-align: left;
+}
+.prose th {
+	background: var(--surface-2);
+}
