@@ -3,6 +3,23 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-13 (Tue, evening) — research pass; no overnight fee at 1:1
+
+- Why: the user asked for research to get inspired (general strategies, the 1:1 account, leverage). First
+  pass: six topics plus Reddit, 233 sources, about 170 saved papers and page snapshots. It is on the
+  dashboard's Research tab (`research/report.md` ranks what to build next).
+- Fix: Capital.com charges no overnight fee on 1:1 positions on every market except natural gas, not only
+  on shares and crypto. Arena 01's transactions (8–12 October) showed funding only on NATURALGAS, while
+  Arena 06 (1:20) paid it on everything. The engine now matches. 1:1 backtests were re-run: US100
+  buy-and-hold is +73% instead of +46%. The 1:1 demo runs keep the fees charged in their first 6 days.
+  The arena was deployed at 21:41 UTC.
+- Also seen on Arena 01: index dividend adjustments (longs credited, shorts charged), which the engine
+  does not model yet; worth 0.6–1.7% a year on index longs.
+- buy-hold's description still says "crypto and shares hold fee-free, the rest pay CFD funding". Left
+  as is: editing the file would restart the control's record. Fix it when buy-hold next changes.
+- Next: candidates for Monday from the report: noise-area-momentum, ibs-dip, lrs-sma200, crypto-demon;
+  platform: a "confirmed" verdict at t ≥ 3, `ctx.resize`, index dividends.
+
 ## 2026-10-12 (Mon) — demo day 5
 
 - Health: green after one broker fix. Capital.com's price stream dropped on Saturday 05:00–07:00 UTC (it
@@ -114,5 +131,6 @@ One line per idea: agent — mechanism — status (date).
 - volatility-breakout (k05, k08) — open ± k × previous range, 15m — live (2026-10-06); best backtest
 - zscore-fade — z-score mean reversion, 1h — live (2026-10-06)
 
-Candidates (not built yet): volatility-managed shares at 1:1 (fee-free, ≤ 0.9×); a weekend-gap or
-Monday effect on crypto; a funding-aware FX carry check (do any FX longs or shorts earn funding on Capital.com?).
+Candidates (not built yet): see the ranked list in `research/report.md` (the Research tab). Settled by the
+research: FX carry is not available on Capital.com (no FX side earns funding); standalone calendar
+effects (pre-holiday, Monday, pre-FOMC) and BTC's 21:00–23:00 UTC window are not worth building.
