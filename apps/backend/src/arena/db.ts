@@ -154,6 +154,20 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_by_time ON events (time);
 
+-- Daily bars from the lab (built from its 1-minute history like any 1d series), older than the
+-- arena's own 1-minute history: seeded into 1d series at start so 200-day lookbacks are warm.
+CREATE TABLE IF NOT EXISTS daily_bars (
+  epic TEXT NOT NULL,
+  t INTEGER NOT NULL,
+  o REAL NOT NULL,
+  h REAL NOT NULL,
+  l REAL NOT NULL,
+  c REAL NOT NULL,
+  spread REAL NOT NULL,
+  volume REAL NOT NULL,
+  PRIMARY KEY (epic, t)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS kv (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -445,6 +459,22 @@ export class ArenaDB {
   lastCandleTime(epic: string): number | null {
     const row = this.db.query<{ t: number | null }, [string]>(`SELECT MAX(t) AS t FROM candles WHERE epic = ?`).get(epic);
     return row?.t ?? null;
+  }
+
+  insertDailyBars(epic: string, bars: readonly Candle[]): void {
+    const stmt = this.db.query(`INSERT OR REPLACE INTO daily_bars (epic, t, o, h, l, c, spread, volume) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    this.tx(() => {
+      for (const b of bars) stmt.run(epic, b.time, b.open, b.high, b.low, b.close, b.spread, b.volume);
+    });
+  }
+
+  dailyBarsBefore(epic: string, before: number): Candle[] {
+    return this.db
+      .query<{ t: number; o: number; h: number; l: number; c: number; spread: number; volume: number }, [string, number]>(
+        `SELECT t, o, h, l, c, spread, volume FROM daily_bars WHERE epic = ? AND t < ? ORDER BY t`,
+      )
+      .all(epic, before)
+      .map(r => ({ time: r.t, open: r.o, high: r.h, low: r.l, close: r.c, spread: r.spread, volume: r.volume }));
   }
 
   pruneCandles(before: number): void {

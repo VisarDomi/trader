@@ -73,6 +73,17 @@ describe('BarSeries', () => {
     expect(closed).toHaveLength(1);
     expect(closed[0]).toMatchObject({ time: T0, close: 101 });
   });
+
+  test('seeded bars come first, count towards warm-up and feed indicators', () => {
+    const s = new BarSeries(EPIC, '5m');
+    const old = [0, 1, 2].map(i => ({ ...flat(0, 90 + i), time: T0 - (3 - i) * 5 * MIN }));
+    s.seed(old);
+    for (let i = 0; i < 5; i++) s.push(flat(i, 100));
+    expect(s.closedCount).toBe(4);
+    expect(s.bars.map(b => b.close)).toEqual([90, 91, 92, 100]);
+    expect(s.ta.sma(4)).toBeCloseTo((90 + 91 + 92 + 100) / 4, 9);
+    expect(() => s.seed(old)).toThrow();
+  });
 });
 
 describe('indicators', () => {

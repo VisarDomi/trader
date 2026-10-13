@@ -4,6 +4,9 @@
 
 ### Added
 
+- **Daily history for long lookbacks** — the lab pushes daily bars (from its 1-minute history, 2024-01 on) to the arena (`bun run push-history`, nightly; `POST /api/history/daily`), and the arena seeds every 1d series with them at start, so 200-day and 12-month rules trade from the first live day instead of after months of warm-up.
+- **13 agents from the research pass** (`research/report.md`): noise-area-momentum, ibs-dip, lrs-sma200, shannon-demon, tsmom-12m, donchian-ensemble, gold-session, crypto-sunday-asia, vol-managed-hold, and the controls bold-play, martingale-monkey, skew-monkey and constant-leverage.
+
 - **Leverage as a run dimension** — every demo and backtest run trades at an account leverage (1:1 … 1:200; crypto and shares at most 1:20). The engine caps size at 0.9 × equity × leverage, closes positions at half the margin, and charges no overnight funding at 1:1 on crypto and shares. New `marginPct` sizing and `ctx.leverage` for agents that use leverage on purpose; an agent may declare `leverage: [...]`. `agents/roster.json` maps each Arena account to a tier (Arena 01 = 1:1 … Arena 09 = 1:200) and each agent to its tiers; the broker sets each account's leverage and mirrors only runs of its tier. Run ids include the tier (`demo:<agent>:<EPIC>:x<tier>:<hash>`), all demo runs restarted once. `check-agent` reports the leverage an agent uses; `review` shows runs per tier. See `DECISIONS.md` → "Leverage tiers".
 - **Leverage ladder control agent** (`agents/leverage-ladder.ts`) — buy-and-hold and 20-day trend on US100, GOLD, EURUSD and BTCUSD at every tier with 10% of equity as margin, to show what leverage alone does.
 - **Shares** — NVDA, MSFT, AAPL, AMZN, AVGO, META, GOOGL, TSLA (the largest Nasdaq-100 companies); Buy & Hold holds them on the 1:1 account as a fee-free stand-in for US100.

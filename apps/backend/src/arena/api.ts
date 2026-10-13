@@ -10,6 +10,7 @@ import type { ArenaStatus, LeaderboardRow } from '@trader/shared';
 import { getInstrument } from '../engine/instruments.ts';
 import { effectiveLeverage } from '../engine/leverage.ts';
 import { runKey } from '../engine/run-id.ts';
+import type { Candle } from '../engine/series.ts';
 import type { Arena } from './arena.ts';
 import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
@@ -141,6 +142,19 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       if (typeof body.runId !== 'string' || typeof body.excluded !== 'boolean') return json({ error: 'runId and excluded are required' }, 400);
       arena.broker.setExcluded(body.runId, body.excluded);
       return json(arena.broker.status());
+    },
+    true,
+  );
+
+  add(
+    METHOD_POST,
+    '/api/history/daily',
+    async req => {
+      // Daily bars from the lab's 1-minute history, used at the next start to warm 1d series (arena.ts seedDaily).
+      const body = (await req.json()) as { epic?: string; bars?: Candle[] };
+      if (typeof body.epic !== 'string' || !ALL_EPICS.includes(body.epic) || !Array.isArray(body.bars)) return json({ error: 'a known epic and bars are required' }, 400);
+      db.insertDailyBars(body.epic, body.bars);
+      return json({ stored: body.bars.length });
     },
     true,
   );

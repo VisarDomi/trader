@@ -8,7 +8,15 @@ import type { LeaderboardRow } from './types.ts';
  * Agents that are yardsticks, not strategies; they are never judged or retired: random entries,
  * buy and hold, and the leverage ladder (one signal at every leverage, to show what leverage does).
  */
-export const CONTROL_SLUGS: ReadonlySet<string> = new Set(['random-baseline', 'buy-hold', 'leverage-ladder']);
+export const CONTROL_SLUGS: ReadonlySet<string> = new Set([
+	'random-baseline',
+	'buy-hold',
+	'leverage-ladder',
+	'constant-leverage',
+	'bold-play',
+	'martingale-monkey',
+	'skew-monkey',
+]);
 /** Random-entry agents whose results show what luck looks like. */
 export const RANDOM_BASELINE_SLUG = 'random-baseline';
 
