@@ -282,8 +282,12 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 
 ### Capital.com quirks observed
 
-- Minute history on both demo and live API starts at 2024-01-01 (rolling window). US100 data from 2020 came from
-  an earlier ingest and is kept.
+- The stored US500 minute tape starts at 2024-01-01 23:01 UTC. Read-only demo API probes on 2026-10-15
+  returned no minute bars in sampled trading windows in 2015, 2020, 2022 or 2023, but returned January
+  2024 minutes, 2023 hourly bars and 2015 daily bars. This establishes the observed US500 data boundary,
+  not a documented universal retention rule or when Capital changed access. US100 minutes preserved
+  from an earlier ingest begin on 2020-02-11. The archived Windows US100 downloader requests from
+  2017-05-01; that requested start alone does not prove which older quotes were successfully stored.
 - The first `/accounts` call after creating or switching a session can report a balance of 0. Never use a single
   reading for decisions (the broker kill switch needs two).
 - `POST /positions` confirmation: the position's id is `affectedDeals[0].dealId`, not the confirmation's `dealId`.
