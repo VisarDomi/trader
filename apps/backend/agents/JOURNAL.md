@@ -3,6 +3,30 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-15 (Thu, user-requested) — search for the older minute database
+
+- Request: determine whether the minute history remembered from around 2016 survives locally, or was
+  dropped. This investigation did not change any database or trading account.
+- Surviving lab store: PostgreSQL 16 has one application database, `trader` (2,282 MB), and its only
+  user table is `public.candles`. US100 has 2,376,056 minute rows from 2020-02-11 19:46 UTC; US500 has
+  987,548 rows from 2024-01-01 23:01 UTC. Both extend to 2026-10-15 01:30 UTC. The maintenance/template
+  databases have no user tables. No other native PostgreSQL cluster or custom tablespace is configured.
+- Older source survives in `~/Documents/archive/capital-database-updater` and the related stream/trading
+  projects. The downloader requests **US100**, starting from **2017-05-01** when its table is empty.
+  This is evidence of intended collection, not proof of successful downloads or of US500 history.
+  Only placeholder `.template.env` files survive (`PG_DATABASE=etr`); the actual old connection settings
+  are absent, so `etr` is a lead, not a verified former database name. The programs ran on Windows;
+  the stream-generator notes put generated tick tables in `D:/postgres`, which does not establish where
+  the original minute table lived.
+- Recovery search: no matching old dump or PostgreSQL data directory found in the searched home,
+  Documents/archive, Downloads or Trash locations (excluding media/dependency caches). Rootless
+  PostgreSQL container volumes identify an unrelated project's databases, not an older trader store.
+  No Windows filesystem or additional drive is currently attached. An old Windows installation or its
+  backups remain the recovery lead; there is no evidence here establishing that the user dropped it.
+- Cleanup audit: commit `b612b0b` (2026-10-07) removed legacy ticks, tick statistics and old run/fill/state
+  tables, retaining minute candles. It does not explain a missing 2017-era Windows database. Corrected
+  DECISIONS.md's overly broad API retention claim to the specific US500 probes actually observed.
+
 ## 2026-10-15 (Thu, user-requested) — night frequency and history boundary
 
 - Request: bring `visar-night-trading` to 25–50 bets/year, allowing ordinary day-to-day price noise but
@@ -30,6 +54,12 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 - Validation: 109 backend tests and typecheck green, deterministic agent check, funded backtest/date audit.
   Previous forward source has zero Capital deals; deploying the new version preserves its historical
   record and the other strategies' records. Full rules/results: [visar-night-trading.md](visar-night-trading.md).
+- Production verified at 16:16 UTC, arena code `bb76bff`: source `56ac3bdfe7c1` is running on Arena 09
+  at confirmed 1:200, with its matching 72-trade backtest and special user-experiment admission. The
+  prior night source is archived and unassigned. Compared all assignments with the pre-night deployment
+  snapshot: all 449 earlier assignments remain; the new night source is the only added assignment.
+  Review: 450/551 standard runs mirrored, 4,561 total virtual runs, stream/forecaster healthy, 185 MB RSS,
+  queue 0, no recent errors. Verdicts: control 144, early 407, keep/leader/retire 0; monkey leaders 0/36.
 
 ## 2026-10-15 (Thu, user-requested) — visar-night-trading
 
