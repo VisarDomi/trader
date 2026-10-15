@@ -39,6 +39,16 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 - Limits remain explicit in ../EXECUTION.md: isolated virtual cash vs pooled Capital margin, historical
   funding rates, corporate/basis adjustments, missed tick tape and an unobservable remote queue. Fixed
   latency scenarios are assumptions to test, not a claim of perfect Capital equivalence.
+- Production check: Capital silently returns at most 100 transactions per response. Added bounded
+  time-window bisection and a regression test so older broker-stop P&L is not silently missed. SWAP rows
+  omit deal IDs: all such cashflows are retained and shown at account level, not falsely assigned to a
+  strategy. The demo ranking is explicitly realized trade P&L plus linked adjustments, with unallocated
+  funding/corporate adjustments and open P&L excluded. The first deployment also required re-pushing the
+  refreshed backtests after the new API could retain engine-version metadata; the full pool then reached
+  4,560 as expected. Before the final history fix: stream/forecaster green, 184 MB RSS, 449 mirrored, queue 0.
+- CPU follow-up: production's first full warm-up took 51 s under its one-core quota. Replay now activates
+  restored runs only at their resume point instead of scanning every dormant run on every historical
+  candle. A full 4,560-record offline replay dropped to 4.1 s at 308 MB. Regression suite now 70 tests.
 - Next: verify deployed health and cashflow recovery, then watch closed-market behavior, native trailing,
   measured decision→virtual queue→broker queue→HTTP response→confirmation, and resource growth. No user
   action or desktop notification needed.

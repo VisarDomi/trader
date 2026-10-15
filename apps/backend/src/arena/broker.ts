@@ -927,7 +927,12 @@ export class BrokerMirror {
         this.db.updateDeal(rowId, { note: 'unconfirmed: position predates this request or has no UTC creation time' });
         return;
       }
-      if (actual.position.dealId !== dealId || actual.market.epic !== inst.epic || actual.position.direction !== expected.direction || Math.abs(actual.position.size - size) > 1e-9) {
+      if (
+        actual.position.dealId !== dealId ||
+        actual.market.epic !== inst.epic ||
+        actual.position.direction !== expected.direction ||
+        Math.abs(actual.position.size - size) > 1e-9
+      ) {
         this.db.updateDeal(rowId, { note: 'unconfirmed: confirmed position does not match the request' });
         return;
       }
@@ -1156,7 +1161,8 @@ export class BrokerMirror {
           !trackedIds.has(p.position.dealId) &&
           p.market.epic === d.epic &&
           p.position.direction === direction &&
-          Math.abs(p.position.size - d.size) < 1e-9 && brokerTime(p.position.createdDateUTC) >= d.open_time - 5000,
+          Math.abs(p.position.size - d.size) < 1e-9 &&
+          brokerTime(p.position.createdDateUTC) >= d.open_time - 5000,
       );
       const match = matches.length === 1 ? matches[0] : undefined;
       if (match) {
@@ -1197,18 +1203,13 @@ export class BrokerMirror {
           reconciled_at: Date.now(),
         });
     }
-    const historyKey = `broker.cashflows.${a.id}`;
+    const historyKey = `broker.cashflows.v2.${a.id}`;
     const through = this.db.getSetting<number>(historyKey, Date.now() - 14 * 24 * HOUR_MS);
     try {
-      const params = new URLSearchParams({
-        from: new Date(through - HOUR_MS).toISOString().slice(0, 19),
-        to: new Date().toISOString().slice(0, 19),
-      });
-      const history = await this.client.get<{
-        transactions: Parameters<ArenaDB['recordCashflows']>[1];
-      }>(`/api/v1/history/transactions?${params}`);
+      const history = await this.client.historyTransactions(through - HOUR_MS, Date.now());
       this.db.recordCashflows(a.id, history.transactions);
-      this.db.setSetting(historyKey, Date.now());
+      if (history.complete) this.db.setSetting(historyKey, Date.now());
+      else this.db.event('warn', 'broker', `cashflow history saturated on ${a.name}; watermark not advanced`);
     } catch (err) {
       this.db.event('warn', 'broker', `cashflow reconcile failed on ${a.name}: ${errorText(err)}`);
     }
@@ -1357,5 +1358,5 @@ function errorText(err: unknown): string {
 }
 
 function brokerTime(value?: string): number {
-  return Date.parse(value ? /Z$|[+-]\d\d:\d\d$/.test(value) ? value : value + 'Z' : '');
+  return Date.parse(value ? (/Z$|[+-]\d\d:\d\d$/.test(value) ? value : value + 'Z') : '');
 }

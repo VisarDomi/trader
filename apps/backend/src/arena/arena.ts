@@ -184,8 +184,11 @@ export class Arena {
   scheduleAdmissions(): void {
     if (!this.liveMode || !this.ready || !this.roster) return;
     const backtests = new Map(this.db.runs(RUN_KIND.BACKTEST).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
-    const waiting = planRuns(this.agents, this.roster).runs.filter(({ agent, epic, leverage }) =>
-      !this.db.run(demoRunId(agent.id, epic, leverage, agent.codeHash)) && backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed);
+    const waiting = planRuns(this.agents, this.roster).runs.filter(
+      ({ agent, epic, leverage }) =>
+        !this.db.run(demoRunId(agent.id, epic, leverage, agent.codeHash)) &&
+        backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed,
+    );
     if (!waiting.length) return;
     if (this.admissionTimer) clearTimeout(this.admissionTimer);
     this.admissionTimer = setTimeout(() => {
@@ -443,16 +446,30 @@ export class Arena {
         else representative.set(key, r);
       }
       const resumeAt = new Map(runs.map(r => [r.runId, fresh.has(r.runId) ? Infinity : r.snapshot().lastTime]));
+      // Most restored runs resume at the end of history. Do not scan thousands of dormant runs
+      // against every historical candle; activate them only when their resume time is reached.
+      const waiting = runs.filter(r => !fresh.has(r.runId)).sort((a, b) => resumeAt.get(a.runId)! - resumeAt.get(b.runId)!);
+      let next = 0;
+      const active: AgentRun[] = [];
+      const barRuns = new Map<string, AgentRun[]>();
+      const addBarRun = (r: AgentRun) => {
+        const list = barRuns.get(r.primary.timeframe) ?? [];
+        list.push(r);
+        barRuns.set(r.primary.timeframe, list);
+      };
+      for (const r of runs) if (fresh.has(r.runId) && !cloneOf.has(r.runId)) addBarRun(r);
       for (const c of candles) {
-        for (const r of runs) {
-          // snapshot.lastTime is the end of the last candle the run processed.
-          if (c.time >= resumeAt.get(r.runId)!) r.onCandle(c);
+        while (waiting[next] && resumeAt.get(waiting[next]!.runId)! <= c.time) {
+          const r = waiting[next++]!;
+          active.push(r);
+          addBarRun(r);
         }
+        for (const r of active) r.onCandle(c);
         for (const cb of engine.pushHistory(c)) {
           const closeTime = cb.bar.time + cb.series.tfMs;
-          for (const r of engine.runsOn(cb.series.timeframe)) {
+          for (const r of barRuns.get(cb.series.timeframe) ?? []) {
             const resume = resumeAt.get(r.runId)!;
-            if (!cloneOf.has(r.runId) && (resume === Infinity || closeTime > resume)) {
+            if (resume === Infinity || closeTime > resume) {
               r.forecast = null;
               r.onBar(cb.bar);
             }
@@ -608,15 +625,17 @@ export class Arena {
       const demoted = this.db.getSetting<Record<string, { at: number }>>('broker.demotions', {})[id];
       const days = (now - (demoted?.at ?? row.started_at)) / DAY_MS;
       const trades = t.run.trades.filter(tr => tr.entryTime >= (demoted?.at ?? 0));
-      const mature = (trades.length >= 30 && days >= 28) || (trades.length >= 10 && days >= 90);
+      const mature =
+        (trades.length >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) ||
+        (trades.length >= LIFECYCLE.SLOW_MIN_TRADES && days >= LIFECYCLE.SLOW_MIN_DAYS);
       const reason =
         t.run.status === RUN_STATUS.BUSTED
           ? 'virtual account busted'
           : t.run.status === RUN_STATUS.ERROR
             ? 'agent errors'
-            : trades.length === 0 && days >= 60
+            : trades.length === 0 && days >= LIFECYCLE.SILENT_DAYS
               ? 'no trades in 60 days'
-              : mature && tradeT(trades) <= -1
+              : mature && tradeT(trades) <= LIFECYCLE.RETIRE_TSTAT
                 ? 'losing virtual trade evidence'
                 : null;
       if (!reason) continue;
