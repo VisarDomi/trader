@@ -264,7 +264,9 @@ export class Arena {
         this.lastCandle.set(epic, c.time);
       }
       const syncedTo = (this.lastCandle.get(epic) ?? 0) + MINUTE_MS;
+      const lastCandle = candles.at(-1);
       for (const r of runs) {
+        if (lastCandle) r.primeQuote(lastCandle);
         r.markSynced(syncedTo);
         r.allowOrders = true;
         const t = this.tracked.get(r.runId);

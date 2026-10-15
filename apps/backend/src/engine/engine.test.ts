@@ -295,6 +295,20 @@ describe('AgentRun leverage', () => {
   });
 });
 
+describe('AgentRun restore', () => {
+  test('a restored position is priced from the last stored candle, not at its cash balance', () => {
+    const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1 }) }]));
+    engine.processCandle(flat(0, 10_000));
+    const snap = run.snapshot();
+    expect(snap.position).not.toBeNull();
+    const { run: restored } = setup(scripted([]));
+    restored.restore(snap, [], []);
+    expect(restored.markToMarket()).toBe(snap.balance);
+    restored.primeQuote(flat(1, 10_100));
+    expect(restored.markToMarket()).toBeGreaterThan(snap.balance + 90);
+  });
+});
+
 describe('AgentRun funding and sessions', () => {
   test('overnight funding is charged once per 17:00 New York rollover, three times over a weekend', () => {
     const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1 }) }]));

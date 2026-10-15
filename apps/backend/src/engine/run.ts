@@ -239,6 +239,16 @@ export class AgentRun {
     this.recordEquity(c.time, eq);
   }
 
+  /**
+   * After a restart: price the position from the latest stored candle until live data arrives, so the
+   * equity saved at start is not just the cash balance.
+   */
+  primeQuote(c: Candle): void {
+    if (this.quote) return;
+    const spread = roundTo(c.spread > 0 ? c.spread : this.instrument.typicalSpread, this.instrument.pricePrecision);
+    this.quote = { bid: c.close, ask: roundTo(c.close + spread, this.instrument.pricePrecision), time: c.time + 60_000 };
+  }
+
   /** Live quote (arena only): stops and margin at tick precision. */
   onTick(q: Quote): void {
     // lastTime tracks candles only (it is the resume point after a restart).
