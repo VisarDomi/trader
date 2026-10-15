@@ -3,6 +3,38 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-15 (Thu, user-requested) — visar-night-trading
+
+- Request: implement Visar's manually tested US500 day-direction/overnight-pullback rule, backtest it,
+  then admit it as a special Capital demo agent. This explicitly overrides the normal addition date and
+  promotion maturity gate for this one experiment. No other strategies were retired or added.
+- Frozen assumptions: Europe/Tirane clock (user timezone, clarification offered). The user clarified
+  that the NY day must be consistently directional: use 09:30–16:00 New York, ≥0.25% net move, ≥18/26
+  quarter-hours agreeing, ≥60% path efficiency and ≤35% adverse retracement of the session range.
+  Require opening/closing/quarter-hour observations and ≥90% minute coverage. Choppy, reversal and
+  late-spike days are neutral. Capture the separate 22:00 local reference. At 03:27 next calendar day,
+  buy a bullish day's dip or sell a bearish day's bounce relative to that reference. Neutral/missing/stale
+  observations skip. 1:200, 90% margin sizing, stop targeting 50% of entry capital, remaining position out
+  at 08:27. Full contract/results: [visar-night-trading.md](visar-night-trading.md), source `98de49ace1c6`.
+- Result, 2024-01 → 2026-09: $10,000 → $5,181.87 (−48.1813%), **3 trades**, 33.33% wins, PF 0.0235,
+  Sharpe −0.7545, t −1.6246, max drawdown 57.2877%. All three entered at 03:27 and exited at 08:27;
+  zero agent errors. Session audit: 705 sessions with closes, 676 sufficiently observed, 10 consistent
+  trends, three satisfying the next-night entry; final 120-day sanity window zero trades. No profit-based
+  threshold tuning. This is too small a sample to judge. The previous 153-trade net-change-only rule was
+  superseded before deployment by the user's path-consistency clarification; its result is not this version.
+- Engine/SDK: persisted `validUntil`/`closeAt` deadlines; late entries discarded; backtests with missing
+  deadline candles use the next observed open before that candle's later range. Capital independently
+  requests timed exits on the one-second clock, so candle/quote outages do not suppress the close request.
+  Actual fills still incur API/network delay and ordinary stops can slip. 50% means this strategy's capital,
+  not half the pooled Arena account; Capital mirrors initially $2,000 of strategy allocation at 0.2× size.
+- Admission: explicit `demoAdmissions` roster entry scoped to this agent/instrument/tier/source hash,
+  shown as **user experiment**. Current backtest required; performance/maturity bypassed only for admission.
+  Normal safety and demotion remain; the exception does not re-admit a demoted record. Added lifecycle
+  documentation and tests for full-capacity admission, expired real entries and a clock-driven real close.
+- Before deploy: stream/forecaster healthy, 4,560 virtual runs (550 standard/4,010 comparisons), 449/450
+  Capital slots, Arena 09 at 49/50, no recent errors. Validation: 103 backend tests, typecheck and Svelte
+  check/build green; deployment confirmation follows below.
+
 ## 2026-10-15 (Thu, user-requested) — virtual broker and three-stage pipeline
 
 - Why: the user asked to account for Capital's execution flow, increase virtual testing capacity, and
@@ -222,6 +254,8 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+- visar-night-trading — consistent NY-session path, US500 03:27 overnight pullback, 08:27 or 50%-capital-loss exit, 1:200 — user-requested special demo experiment (2026-10-15); backtest −48.18% on only 3 trades, no profit-based parameter tuning
 
 - execution-latency cohorts — paired forward records under frozen API/transport delay assumptions; no strategy parameter changes — comparison only (2026-10-15), excluded from independent verdict counts
 

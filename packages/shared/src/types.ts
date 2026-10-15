@@ -65,6 +65,8 @@ export interface LeaderboardRow {
 	stage?: 'backtest' | 'virtual' | 'demo';
 	scenario?: string;
 	comparisonOnly?: boolean;
+	/** User-requested, source-version-specific demo admission, independent of earned rank. */
+	demoAdmission?: { date: string; reason: string };
 	stageReason?: string;
 	observation?: { since: number; trades: number; tStat: number };
 	brokerEvidence?: { closed: number; priced: number; failed: number; open: number; basis: string };

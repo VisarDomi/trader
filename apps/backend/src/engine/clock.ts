@@ -8,6 +8,7 @@
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
+export const SCHEDULED_EXIT_NOTE = 'scheduled exit';
 
 const NEW_YORK = 'America/New_York';
 const ROLLOVER_MINUTE_NY = 17 * 60;

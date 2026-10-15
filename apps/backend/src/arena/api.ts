@@ -299,6 +299,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
               : STAGE.VIRTUAL,
       scenario: extra.scenario ?? 'standard',
       comparisonOnly: isShadow(r.id),
+      ...(extra.demoAdmission ? { demoAdmission: extra.demoAdmission } : {}),
       ...(demotions[r.id]
         ? {
             observation: {
@@ -323,7 +324,7 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[]
   const grouped = Map.groupBy(deals, d => d.run_id);
   const scale = arena.broker?.status().scale ?? 0.2;
   return rows
-    .filter(r => grouped.has(r.runId))
+    .filter(r => grouped.has(r.runId) || r.mirrored)
     .map(r => {
       const mine = (grouped.get(r.runId) ?? []).sort((a, b) => a.open_time - b.open_time);
       const closed = mine.filter(d => d.status === 'closed');
@@ -343,7 +344,7 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[]
       }));
       const adjustmentsOnOpen = mine.filter(d => d.status === 'open').reduce((n, d) => n + (d.cash_adjustment ?? 0), 0);
       const equity = capital + trades.reduce((n, t) => n + t.pnl, 0) + adjustmentsOnOpen;
-      const since = mine[0]?.open_time ?? Date.now();
+      const since = mine[0]?.open_time ?? r.startedAt;
       // Gross broker results must never be replaced by virtual metrics. Missing closes are explicit.
       let cash = capital,
         peak = capital,

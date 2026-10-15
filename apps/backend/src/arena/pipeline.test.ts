@@ -1,10 +1,11 @@
 import { ENGINE_VERSION } from '../engine/version.ts';
 import { describe, expect, test } from 'bun:test';
-import { backtestGate, virtualEligible, tradeT } from './pipeline.ts';
+import { admissionGate, backtestGate, virtualEligible, tradeT } from './pipeline.ts';
 import type { RunRow } from './db.ts';
 import type { Trade } from '../sdk/types.ts';
 import { confirmsDeal, scaledSize } from './broker.ts';
 import { getInstrument } from '../engine/instruments.ts';
+import { RUN_STATUS } from '../engine/run.ts';
 const EPIC = 'EURUSD';
 const BUY = 'BUY';
 const ACCEPTED = 'ACCEPTED';
@@ -19,6 +20,17 @@ const row = {
   metrics: JSON.stringify({ sharpe: 0.4, trades: 50, finalEquity: 11000 }),
 } as RunRow;
 describe('stage gates', () => {
+  test('a requested demo experiment bypasses performance gates but requires the tested code and engine', () => {
+    const exception = { date: '2026-10-15', reason: 'user requested special demo admission' };
+    const bad: RunRow = { ...row, status: RUN_STATUS.BUSTED, metrics: JSON.stringify({ sharpe: -2, trades: 50, finalEquity: 0 }) };
+    expect(admissionGate(bad, HASH, SLUG, null).passed).toBe(false);
+    expect(admissionGate(bad, HASH, SLUG, exception).passed).toBe(true);
+    expect(admissionGate(undefined, HASH, SLUG, exception).passed).toBe(false);
+    expect(admissionGate(bad, 'changed', SLUG, exception).passed).toBe(false);
+    expect(admissionGate({ ...bad, extra: '{}' }, HASH, SLUG, exception).passed).toBe(false);
+    expect(admissionGate({ ...bad, status: RUN_STATUS.ERROR }, HASH, SLUG, exception).passed).toBe(false);
+    expect(admissionGate({ ...bad, extra: JSON.stringify({ engineVersion: ENGINE_VERSION, errors: 1 }) }, HASH, SLUG, exception).passed).toBe(false);
+  });
   test('new virtual runs need current-code, nonbroken backtests', () => {
     expect(backtestGate(undefined, HASH, SLUG).passed).toBe(false);
     expect(backtestGate(row, 'new-code', SLUG).passed).toBe(false);

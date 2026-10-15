@@ -9,6 +9,7 @@
 
 export const TZ = {
   NEW_YORK: 'America/New_York',
+  TIRANA: 'Europe/Tirane',
   LONDON: 'Europe/London',
   TOKYO: 'Asia/Tokyo',
   UTC: 'UTC',

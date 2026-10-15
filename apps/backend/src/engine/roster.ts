@@ -37,6 +37,8 @@ export interface RosterEntry {
 }
 
 export interface Roster {
+  /** Explicit user-requested demo experiments, keyed by agent:EPIC@tier and exact source hash. */
+  demoAdmissions?: Record<string, RosterEntry & { codeHash: string }>;
   /** Demo account name → leverage tier. Accounts not listed get no runs. */
   accounts: Record<string, number>;
   leverage: {
@@ -63,6 +65,7 @@ export function loadRoster(agentsDir: string = DEFAULT_AGENTS_DIR): Roster {
     accounts: parsed.accounts ?? {},
     leverage: { default: parsed.leverage?.default ?? FALLBACK_TIER, agents: parsed.leverage?.agents ?? {} },
     retired: parsed.retired ?? {},
+    demoAdmissions: parsed.demoAdmissions ?? {},
   };
 }
 
@@ -78,7 +81,20 @@ export function rosterProblems(roster: Roster, agents: readonly LoadedAgent[]): 
     if (!Array.isArray(tiers) || tiers.length === 0) problems.push(`leverage.agents["${id}"]: list at least one tier`);
     for (const l of tiers ?? []) if (!isLeverageTier(l)) problems.push(bad(`leverage.agents["${id}"]`, l));
   }
+  const planned = planRuns(agents, roster).runs;
+  for (const [key, entry] of Object.entries(roster.demoAdmissions ?? {})) {
+    const run = planned.find(p => `${p.agent.id}:${p.epic}@${p.leverage}` === key);
+    if (!run) problems.push(`demoAdmissions["${key}"]: no such planned run`);
+    else if (entry.codeHash !== run.agent.codeHash) problems.push(`demoAdmissions["${key}"]: source hash changed; review this exception`);
+    if (!entry.date || !entry.reason?.trim()) problems.push(`demoAdmissions["${key}"]: date and reason are required`);
+  }
   return problems;
+}
+
+/** Exact-run, exact-code exception; it never grants future edits an automatic demo slot. */
+export function demoAdmissionFor(roster: Roster, agentId: string, epic: string, leverage: number, codeHash: string): RosterEntry | null {
+  const entry = roster.demoAdmissions?.[`${agentId}:${epic}@${leverage}`];
+  return entry?.codeHash === codeHash ? entry : null;
 }
 
 export function leveragesFor(roster: Roster, agent: LoadedAgent): number[] {

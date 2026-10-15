@@ -299,6 +299,7 @@
 								<a href="/agents/{r.agentId}">{r.name}</a>
 								{#if isControl(r)}<span class="badge">control</span>{/if}
 								{#if r.usesForecast}<span class="badge">TimesFM</span>{/if}
+								{#if r.demoAdmission}<span class="badge" title={r.demoAdmission.reason}>user experiment</span>{/if}
 							</td>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
 							<td class="lev" title={levTitle(r)}>{lev(r)}</td>

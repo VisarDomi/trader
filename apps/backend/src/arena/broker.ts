@@ -53,6 +53,7 @@ import type { Instrument } from '../engine/instruments.ts';
 import { ALL_EPICS, getInstrument } from '../engine/instruments.ts';
 import { accountLeverages } from '../engine/leverage.ts';
 import { parseDemoRunId } from '../engine/run-id.ts';
+import { SCHEDULED_EXIT_NOTE } from '../engine/clock.ts';
 import type { RunEvent } from '../engine/run.ts';
 import type { Side } from '../sdk/types.ts';
 import type { ArenaDB, DealRow } from './db.ts';
@@ -69,6 +70,8 @@ export const BROKER_SETTINGS = {
   /** accountId → StoredAccount */
   ACCOUNTS: 'broker.accountState',
 } as const;
+
+class ExpiredEntry extends Error {}
 
 /** Keys of earlier mirror versions (accounts by name), dropped on start. */
 const LEGACY_KEYS = ['broker.assignments', 'broker.accounts', 'broker.runs', 'broker.startBalance', 'broker.killed'];
@@ -142,6 +145,8 @@ export interface MirrorCandidate extends SlotCandidate {
   /** Higher is mirrored first when slots are short. */
   score: number;
   eligible?: boolean;
+  /** Explicit roster exception; given admission priority, without changing performance statistics. */
+  specialAdmission?: boolean;
   /** The run's leverage tier: it is mirrored on an account of that tier. */
   tier: number;
   /** The paper position, when there is one (to retry an open the broker rejected). */
@@ -152,6 +157,8 @@ export interface MirrorCandidate extends SlotCandidate {
     stopLoss: number | null;
     takeProfit: number | null;
     trailingStop?: number | null;
+    validUntil?: number;
+    closeAt?: number;
   } | null;
 }
 
@@ -304,6 +311,7 @@ export class BrokerMirror {
   private readonly closeWaiting = new Set<number>();
   /** Run → when its market was last checked for reopening (an open refused because the market was closed). */
   private readonly reopenChecks = new Map<string, number>();
+  private readonly timedCloseAttempts = new Map<string, number>();
   private cycling = false;
   private lastCycleAt = 0;
   private lastError: string | null = null;
@@ -490,6 +498,17 @@ export class BrokerMirror {
 
   // ------------------------------------------------------------------ cycle
 
+  /** Timed exits must still reach Capital when the price stream or candle poll is stalled. */
+  onClock(time: number): void {
+    if (!this.enabled) return;
+    for (const c of this.live) {
+      if (c.entry?.closeAt === undefined || time < c.entry.closeAt) continue;
+      if (time - (this.timedCloseAttempts.get(c.runId) ?? 0) < CYCLE_MS) continue;
+      this.timedCloseAttempts.set(c.runId, time);
+      this.closeRunDeals(c.runId, SCHEDULED_EXIT_NOTE);
+    }
+  }
+
   private scheduleCycle(): void {
     const now = Date.now();
     let next = Math.floor(now / CYCLE_MS) * CYCLE_MS + CYCLE_OFFSET_MS;
@@ -673,7 +692,7 @@ export class BrokerMirror {
 
   /** Assign live runs to free slots; runs that lose their slot have their deals closed. */
   private rebalance(): void {
-    const live = [...this.candidates()].sort((a, b) => b.score - a.score);
+    const live = [...this.candidates()].sort((a, b) => Number(!!b.specialAdmission) - Number(!!a.specialAdmission) || b.score - a.score);
     const before = this.runAccounts;
     if (live.length === 0 && Object.keys(before).length > 0) return; // arena not ready; keep what we have
     this.live = live;
@@ -721,7 +740,8 @@ export class BrokerMirror {
       if (d && Date.now() - d.at < LIFECYCLE.MIN_DAYS * 86_400_000) return false;
       return before[c.runId] !== undefined || c.eligible;
     });
-    const plan = assignSlots(before, usable, eligible, new Set(this.excluded), {
+    const slotCandidates = eligible.map(c => ({ ...c, score: c.specialAdmission ? Number.MAX_SAFE_INTEGER : c.score }));
+    const plan = assignSlots(before, usable, slotCandidates, new Set(this.excluded), {
       margin: PROMOTION_MARGIN,
       maxSwaps: MAX_PROMOTIONS_PER_CYCLE,
       canDemote: id => flat.has(id) && !withDeal.has(id),
@@ -735,7 +755,7 @@ export class BrokerMirror {
       this.db.event(
         'info',
         'broker',
-        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (stronger virtual trade evidence)`,
+        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (${live.find(c => c.runId === plan.promoted[i])?.specialAdmission ? 'user-requested demo experiment' : 'stronger virtual trade evidence'})`,
       );
     }
     if (dropped.length > 0 || added.length > 0) {
@@ -833,6 +853,8 @@ export class BrokerMirror {
     const candidate = this.candidates().find(c => c.runId === e.runId);
     // A queue delay can outlive the paper position or a reversal: never send that stale open.
     if (!candidate?.entry || candidate.side !== e.side || candidate.entry.time !== e.time) return;
+    if (candidate.entry.validUntil !== undefined && Date.now() >= candidate.entry.validUntil) return;
+    if (candidate.entry.closeAt !== undefined && Date.now() >= candidate.entry.closeAt) return;
     const inst = getInstrument(run.epic);
     const open = this.db.openDeals();
     if (open.some(d => d.run_id === e.runId)) {
@@ -895,7 +917,13 @@ export class BrokerMirror {
           ...(e.takeProfit === null ? {} : { profitLevel: e.takeProfit }),
         },
         {
-          sent: () => this.db.updateDeal(rowId, { sent_time: Date.now() }),
+          sent: () => {
+            const now = Date.now();
+            if ((candidate.entry!.validUntil !== undefined && now >= candidate.entry!.validUntil) ||
+              (candidate.entry!.closeAt !== undefined && now >= candidate.entry!.closeAt))
+              throw new ExpiredEntry('timed entry expired before submission');
+            this.db.updateDeal(rowId, { sent_time: now });
+          },
           accepted: () => this.db.updateDeal(rowId, { accepted_time: Date.now() }),
         },
       );
@@ -957,6 +985,10 @@ export class BrokerMirror {
         `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`,
       );
     } catch (err) {
+      if (err instanceof ExpiredEntry) {
+        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: err.message });
+        return;
+      }
       if (!submitted && err instanceof CapitalApiError && err.status >= 400 && err.status < 500 && err.status !== 408) {
         // Refused outright (e.g. the market is in its daily break): nothing was placed.
         this.db.updateDeal(rowId, {

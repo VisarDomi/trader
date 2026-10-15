@@ -2,6 +2,7 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
 import { VirtualVenue, VirtualGateway, DEFAULT_EXECUTION_MS, VIRTUAL_MODEL, type CapitalMarket } from '../engine/venue.ts';
 import {
   backtestGate,
+  admissionGate,
   EXECUTION_SCENARIOS,
   VIRTUAL_COMPARISON_TARGET,
   VIRTUAL_RUN_CAP,
@@ -33,7 +34,7 @@ import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import { loadAgents } from '../engine/loader.ts';
 import type { Roster } from '../engine/roster.ts';
-import { loadRoster, planRuns } from '../engine/roster.ts';
+import { demoAdmissionFor, loadRoster, planRuns } from '../engine/roster.ts';
 import { demoRunId } from '../engine/run-id.ts';
 import type { ClosedBar } from '../engine/market.ts';
 import { MarketEngine } from '../engine/market.ts';
@@ -157,9 +158,11 @@ export class Arena {
     this.stream.start();
     this.schedulePoll();
     this.clockTimer = setInterval(() => {
+      const now = Date.now();
+      this.broker?.onClock(now);
       for (const t of this.tracked.values())
         if (t.run.position) {
-          t.run.onClock(Date.now());
+          t.run.onClock(now);
           t.dirty = true;
         }
     }, 1000);
@@ -187,7 +190,8 @@ export class Arena {
     const waiting = planRuns(this.agents, this.roster).runs.filter(
       ({ agent, epic, leverage }) =>
         !this.db.run(demoRunId(agent.id, epic, leverage, agent.codeHash)) &&
-        backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed,
+        admissionGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug,
+          demoAdmissionFor(this.roster!, agent.id, epic, leverage, agent.codeHash)).passed,
     );
     if (!waiting.length) return;
     if (this.admissionTimer) clearTimeout(this.admissionTimer);
@@ -228,7 +232,9 @@ export class Arena {
       const id = demoRunId(agent.id, epic, leverage, agent.codeHash);
       const existing = this.db.run(id);
       const gate = backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug);
-      if (existing?.retired || (!existing && !gate.passed)) continue;
+      const experiment = demoAdmissionFor(this.roster!, agent.id, epic, leverage, agent.codeHash);
+      const admission = admissionGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug, experiment);
+      if (existing?.retired || (!existing && !admission.passed)) continue;
       const engine = this.engines.get(epic)!;
       const run = engine.addRun({
         runId: id,
@@ -268,7 +274,8 @@ export class Arena {
         latencyMs: DEFAULT_EXECUTION_MS,
         scenario: 'standard',
         gate: gate.reason,
-        grandfathered: !gate.passed,
+        grandfathered: !gate.passed && !experiment,
+        demoAdmission: experiment,
       });
       this.tracked.set(id, {
         startedAt: this.db.run(id)?.started_at ?? now,
@@ -695,6 +702,8 @@ export class Arena {
         now,
         monkeys.get(t.epic) ?? 0,
       );
+      // This bypass is admission-only: normal demotion and safety rules still apply.
+      const experiment = !demotions[t.run.runId] && !!demoAdmissionFor(this.roster!, t.agent.id, t.epic, t.leverage, t.agent.codeHash);
       out.push({
         runId: t.run.runId,
         epic: t.epic,
@@ -708,10 +717,13 @@ export class Arena {
               stopLoss: p.stopLoss,
               takeProfit: p.takeProfit,
               trailingStop: p.trailingStop,
+              validUntil: p.validUntil,
+              closeAt: p.closeAt,
             }
           : null,
         score: eligible ? tradeT(t.run.trades) : -1_000_000,
-        eligible,
+        specialAdmission: experiment,
+        eligible: eligible || experiment,
       });
     }
     return out;
