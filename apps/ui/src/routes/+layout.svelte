@@ -43,7 +43,7 @@
 					<span class="status-dot {data.arena.forecasterOk ? 'status-good' : 'status-warning'}"></span>
 					{data.arena.forecasterOk ? 'TimesFM reachable' : 'TimesFM offline'}
 				</div>
-				<div class="muted">{data.arena.demoRuns} demo runs</div>
+				<div class="muted">{data.arena.demoRuns} virtual runs</div>
 			{:else}
 				<div><span class="status-dot status-critical"></span>Arena unreachable</div>
 			{/if}

@@ -1,3 +1,4 @@
+import { ENGINE_VERSION } from '../engine/version.ts';
 /**
  * Backtest one instrument for many agent × leverage runs in a single pass over its candles.
  */
@@ -33,6 +34,7 @@ const MAX_STORED_LOGS = 100;
 
 export interface BacktestResult {
   agentId: string;
+  engineVersion?: string;
   codeHash: string;
   epic: string;
   /** Account leverage tier. */
@@ -86,6 +88,7 @@ export async function backtestEpic(
     const { agent, leverage } = specs[i]!;
     return {
       agentId: agent.id,
+      engineVersion: ENGINE_VERSION,
       codeHash: agent.codeHash,
       epic,
       leverage,

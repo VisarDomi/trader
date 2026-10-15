@@ -1,8 +1,8 @@
 # Trader platform — architecture (v2, 2026-10)
 
 A place to collect many trading agents, run them forward on live demo prices,
-and rank them. The **demo** leaderboard is the one that matters; the
-**backtest** leaderboard is there to show how much each agent was overfit.
+and rank them. **Backtest → Virtual engine → Capital demo** is the promotion path; demotion reverses it.
+Actual Capital demo cashflows are ranked separately from virtual performance.
 
 - Repo map, hard rules, operations: [`../../setup.md`](../../setup.md).
 - Writing an agent: [`agents/GUIDE.md`](agents/GUIDE.md) (one file, no other changes).
@@ -10,26 +10,18 @@ and rank them. The **demo** leaderboard is the one that matters; the
 - v1 (blueprints, `AgentRunner`, tick recorder) is described in `DESIGN.md` / `VALIDATION.md`;
   its code was removed in October 2026 and lives in git history.
 
-## Why two leaderboards
+## Three execution stages
 
-Anything can be fitted to history: one of the three random coin-flip "monkey"
-agents ranks near the top of the 2024–2026 backtest. Live prices that arrive
-after an agent's code was frozen cannot be fitted, so:
-
-| | Backtest | Demo |
+| Stage | Data and costs | Purpose |
 |---|---|---|
-| Data | 1-minute candles 2024-01 → 2026-09, all instruments | live Capital.com demo prices from deployment onwards |
-| Capital | $10,000 per agent × instrument | same |
-| Costs | historical per-minute spread, overnight funding, margin | same model on live quotes |
-| Purpose | context; reveals overfitting by comparison | the ranking |
+| Backtest | 2024-01 → 2026-09 bid candles, recorded spreads, estimated funding/margin | reject clearly broken ideas; qualify a current agent hash and engine version |
+| Virtual engine | forward live quotes, delayed fills, refreshed Capital dealing rules, isolated $10k accounts | establish out-of-sample evidence and execution robustness |
+| Capital demo | actual orders and deal-linked cashflows on Arena accounts, 0.2× size | measure realized execution and rank actual results |
 
-Every agent × instrument is a separate row. Two **control agents** anchor the
-scale: `random-baseline` (three monkeys: what luck looks like) and `buy-hold`
-(the passive benchmark, funding included). The dashboard shows the monkeys'
-range as a "luck band", and an Overfit view plots backtest vs demo Sharpe.
-
-A track record belongs to one exact version of an agent: the loader hashes the
-agent's source, and a changed file retires the old demo run and starts a new one.
+Every agent × instrument × leverage has a record. Existing Capital assignments form a calibration cohort;
+new assignments need mature virtual evidence. Demotion reverses the stages and retains history.
+A changed source file starts a new record. Standard monkey controls measure luck; correlated latency
+comparisons do not count as independent hypotheses. See [`EXECUTION.md`](EXECUTION.md) for details and limits.
 
 ## Topology
 
@@ -70,8 +62,8 @@ and do nothing new, and backtests wait for the next nightly job.
 
 - Candles are **bid-side** 1-minute OHLC with the spread at the close. Bars of
   any timeframe are built by `BarSeries`, UTC-aligned, closing on the bucket's last minute.
-- An agent sees a bar only after it closed. Orders fill **immediately**: buy at
-  ask (bid + spread), sell at bid. In demo the fill uses the live WebSocket quote.
+- An agent sees a bar only after it closed. Backtest orders fill **immediately**: buy at
+  ask (bid + spread), sell at bid. Live virtual orders queue, then use a fresh WebSocket quote. Capital metadata controls admission.
 - Stops: checked per minute in backtests (gap → fill at the open; stop beats
   take-profit inside one minute) and per tick in demo. Only minutes that started
   after the entry can trigger.
@@ -109,7 +101,7 @@ and do nothing new, and backtests wait for the next nightly job.
 ## Broker mirror
 
 Demo runs are copied as real orders onto Capital.com **demo** accounts
-(`src/arena/broker.ts`, `src/arena/slots.ts`). Paper stays the leaderboard; the
+(`src/arena/broker.ts`, `src/arena/slots.ts`). The virtual and Capital demo leaderboards are separate; the
 mirror measures execution drift (real vs paper fills, rejections, broker-side
 closes).
 
@@ -134,7 +126,7 @@ closes).
   instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
   An account that cannot be switched to hedging holds one run per instrument.
 - **Assignment:** every live run is mirrored on an account of its tier while
-  capacity lasts, best demo equity first, spread over the accounts with the most
+  capacity lasts, mature virtual evidence first, spread over the accounts with the most
   free slots; assignments are sticky; promotion swaps only within a tier. Runs can
   be excluded by hand. A run never has more than one open deal.
 - **Renames:** deals are re-attached by deal id if an account is renamed;
@@ -163,7 +155,7 @@ Toggle the mirror and exclude runs on the dashboard's Broker page.
 
 ## Lifecycle
 
-Agents move Backtest → Demo → Broker → Retired ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
+Agents move Backtest → Virtual engine → Capital demo, with reverse demotion ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
 Verdicts (early, keep, leader, retire) come from `packages/shared/src/lifecycle.ts`, used by both the
 dashboard's Stage column and `bun run review`. `agents/roster.json` (read by the arena and the lab;
 `src/engine/roster.ts`) holds what is decided without touching agent code: each account's leverage,
@@ -200,3 +192,10 @@ PC (Capital.com login, `ARENA_TOKEN`), `/home/erdal/trader-arena/.env` and
   (4h/1d) agents need months.
 - TimesFM forecasts are precomputed for backtests only for the (instrument,
   timeframe, context) combinations agents declare; precompute is ~140 series/s.
+
+## Execution model update (2026-10-15)
+
+[`EXECUTION.md`](EXECUTION.md) supersedes earlier instant-fill, equity-based promotion and two-board
+descriptions above. It documents the exact contract probes, synthetic pacing, refreshed rules, actual
+cashflow reconciliation, stage gates, 5,000-run capacity and remaining model differences. `demo` is retained
+as the internal virtual run kind to preserve stored IDs.

@@ -20,7 +20,7 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   `apps/backend/src/arena/api.ts`.
 - Agent ids are `<file>` or `<file>/<variant>` (e.g. `ema-cross/fast`); demo run ids are
   `demo:<agentId>:<epic>:<codeHash>`.
-- Pages: `/` leaderboard (Demo, Backtest, Overfit views), `/agents`, `/agents/<id>` (versioned
+- Pages: `/` leaderboard (Backtest, Virtual engine, Capital demo, Overfit views), `/agents`, `/agents/<id>` (versioned
   source), `/runs/<id>`, `/broker` (accounts, mirrored runs, deals), `/leverage`, `/journal`, `/research`
   (report, topic notes, library; files from `RESEARCH_DIR`, default `./research` on the server), `/status`.
 - Colors and chart styling come from the tokens in `src/app.css` (light and dark); use those rather

@@ -19,6 +19,6 @@ export function runKey(agentId: string, epic: string, leverage: number): string 
 }
 
 export function parseDemoRunId(id: string): { agentId: string; epic: string; leverage: number; codeHash: string } | null {
-  const m = /^demo:([^:]+):([^:]+):x(\d+):([^:]+)$/.exec(id);
+  const m = /^demo:([^:]+):([^:]+):x(\d+):([^:]+)(?::delay=\d+)?$/.exec(id);
   return m ? { agentId: m[1]!, epic: m[2]!, leverage: Number(m[3]), codeHash: m[4]! } : null;
 }

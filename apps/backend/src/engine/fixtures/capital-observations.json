@@ -1,0 +1,139 @@
+{
+  "at": "2026-10-15T12:20:03.757Z",
+  "source": "https://open-api.capital.com/",
+  "probes": [
+    {
+      "label": "open BUY",
+      "ms": 221,
+      "outcome": "ok"
+    },
+    {
+      "label": "confirm BUY",
+      "ms": 305,
+      "outcome": "ok"
+    },
+    {
+      "label": "position BUY",
+      "position": {
+        "size": 100,
+        "level": 1.12063,
+        "leverage": 1,
+        "upl": -0.006
+      },
+      "confirmation": {
+        "dealStatus": "ACCEPTED",
+        "level": 1.12063,
+        "epic": "EURUSD",
+        "direction": "BUY"
+      }
+    },
+    {
+      "label": "set protections",
+      "ms": 304,
+      "outcome": "ok"
+    },
+    {
+      "label": "set protections observed",
+      "stopLevel": 1.10936,
+      "profitLevel": 1.13185,
+      "trailingStop": false
+    },
+    {
+      "label": "remove protections with null",
+      "ms": 317,
+      "outcome": "ok"
+    },
+    {
+      "label": "remove protections with null observed",
+      "stopLevel": null,
+      "profitLevel": null,
+      "trailingStop": null
+    },
+    {
+      "label": "remove protections with zero",
+      "ms": 276,
+      "outcome": "Capital.com 400 on /api/v1/positions/:dealId: {\"errorCode\":\"error.positive.updatepositionrequest.stopLevel\"}"
+    },
+    {
+      "label": "native trailing",
+      "ms": 333,
+      "outcome": "ok"
+    },
+    {
+      "label": "native trailing observed",
+      "stopLevel": 1.11963,
+      "profitLevel": null,
+      "trailingStop": true
+    },
+    {
+      "label": "close BUY",
+      "ms": 315,
+      "outcome": "ok"
+    },
+    {
+      "label": "confirm close BUY",
+      "ms": 281,
+      "outcome": "ok"
+    },
+    {
+      "label": "pnl BUY",
+      "profit": 0.003,
+      "level": 1.12066
+    },
+    {
+      "label": "open SELL",
+      "ms": 315,
+      "outcome": "ok"
+    },
+    {
+      "label": "confirm SELL",
+      "ms": 301,
+      "outcome": "ok"
+    },
+    {
+      "label": "position SELL",
+      "position": {
+        "size": 100,
+        "level": 1.12066,
+        "leverage": 1,
+        "upl": -0.007
+      },
+      "confirmation": {
+        "dealStatus": "ACCEPTED",
+        "level": 1.12066,
+        "epic": "EURUSD",
+        "direction": "SELL"
+      }
+    },
+    {
+      "label": "close SELL",
+      "ms": 308,
+      "outcome": "ok"
+    },
+    {
+      "label": "confirm close SELL",
+      "ms": 275,
+      "outcome": "ok"
+    },
+    {
+      "label": "pnl SELL",
+      "profit": -0.007,
+      "level": 1.12073
+    },
+    {
+      "label": "below minimum",
+      "ms": 274,
+      "outcome": "Capital.com 400 on /api/v1/positions: {\"errorCode\":\"error.invalid.size.minvalue\"}"
+    },
+    {
+      "label": "invalid size increment",
+      "ms": 332,
+      "outcome": "ok"
+    },
+    {
+      "label": "invalid stop",
+      "ms": 272,
+      "outcome": "Capital.com 400 on /api/v1/positions: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 1.12055\"}"
+    }
+  ]
+}

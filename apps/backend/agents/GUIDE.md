@@ -43,7 +43,9 @@ export default defineAgent({
   **$10,000** virtual account (see [Leverage](#leverage)).
 - **One position per run.** `buy()` while short closes the short and opens a long (a reversal).
   `buy()` while already long is ignored.
-- Orders fill **immediately at the current price**: buys at the ask (bid + spread), sells at the bid.
+- Backtest orders fill immediately. In the virtual arena, orders queue with API pacing and transport
+  delay, then fill on a fresh quote: buys at ask, sells at bid. `ctx.position` changes when filled;
+  `onFill` is the completion callback. `ctx.close()` cancels an open still in flight.
   There are no limit/stop entry orders — check conditions each bar and call `buy`/`sell`.
 - Stops (`stopLoss`, `takeProfit`, `trailingStop`) are watched by the platform on every minute
   (every tick in demo). Gaps fill at the open (worse). If stop and take-profit are both touched in
@@ -72,6 +74,9 @@ The first that applies wins:
 | `marginPct` | notional = `marginPct`% of equity × `ctx.leverage`: that share of equity is put up as margin |
 | `stopLoss` (or `trailingStop`), optional `riskPct` (default 1) | loses `riskPct`% of equity if the stop is hit |
 | nothing | notional = 1 × equity |
+
+Live mode accepts one fixed or trailing stop, validates Capital distance rules, and checks market/quote
+freshness and margin at execution. Do not assume submission guarantees a fill.
 
 Size is then capped by margin, at most 0.9 × equity × `ctx.leverage` of notional (0.9× equity at 1:1),
 and rounded down to the instrument's step. Orders below the minimum size are rejected (see the run log).

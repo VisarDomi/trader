@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Separate Backtest → Virtual engine → Capital demo leaderboards; gate new virtual admissions on current-code backtests, require mature virtual evidence for new Capital slots, and demote in the reverse direction while preserving records. Existing Capital runs remain a calibration cohort.
+- Add fresh-quote delayed execution, synthetic API pacing, refreshed dealing/funding rules, stop-distance and execution-margin checks, durable pending commands, native broker trailing stops and null protection removal. Fix Friday weekend funding timing.
+- Reconcile actual broker cashflows, recover missing stopped-deal P&L, reject stale queued opens and strengthen confirmation identity. Add execution parity, CPU, latency and payload telemetry.
+- Expand virtual execution comparisons under a measured 5,000-run cap. See EXECUTION.md for contract probes, capacity measurements, and remaining model differences.
+
+
 ### Added
 
 - **Daily history for long lookbacks** — the lab pushes daily bars (from its 1-minute history, 2024-01 on) to the arena (`bun run push-history`, nightly; `POST /api/history/daily`), and the arena seeds every 1d series with them at start, so 200-day and 12-month rules trade from the first live day instead of after months of warm-up.

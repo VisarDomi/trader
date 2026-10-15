@@ -2,32 +2,40 @@
 	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
 	import { assess, luckBands, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { ago, isControl, lev, levTitle, median, num, pct, pctPlain, sign } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
 
 	let { data } = $props();
 
-	type View = 'demo' | 'backtest' | 'overfit';
+	type View = 'virtual' | 'demo' | 'backtest' | 'overfit';
 	type Group = 'run' | 'agent';
-	const view = $derived((page.url.searchParams.get('view') as View) ?? 'demo');
+	const view = $derived((page.url.searchParams.get('view') as View) ?? 'virtual');
 
 	let group = $state<Group>('run');
 	let epic = $state('');
 	let timeframe = $state('');
 	let leverage = $state(page.url.searchParams.get('leverage') ?? '');
 	let query = $state('');
+	const scenario = $derived(page.url.searchParams.get('scenario') || 'standard');
+	let pageNumber = $state(1);
+	const PAGE_SIZE = 100;
+	const scenarios = $derived(data.scenarios.map(s => s.name));
+	const totalVirtual = $derived(data.scenarios.reduce((n, s) => n + s.count, 0));
 	let hideControls = $state(false);
 	let sortKey = $state<string>('totalReturn');
 	let sortDesc = $state(true);
+	$effect(() => { void [epic, timeframe, leverage, query, scenario, view]; pageNumber = 1; });
 
-	const rows = $derived(view === 'backtest' ? data.backtest : data.demo);
-	const epics = $derived([...new Set([...data.demo, ...data.backtest].map(r => r.epic))].sort());
-	const timeframes = $derived([...new Set([...data.demo, ...data.backtest].map(r => r.timeframe))]);
+	const rows = $derived(view === 'backtest' ? data.backtest : view === 'demo' ? data.capital : data.demo);
+	const epics = $derived([...new Set(rows.map(r => r.epic))].sort());
+	const timeframes = $derived([...new Set(rows.map(r => r.timeframe))]);
 	const leverages = $derived(
-		[...new Set([...data.demo, ...data.backtest].map(r => r.leverage).filter((l): l is number => l !== null))].sort((a, b) => a - b),
+		[...new Set(rows.map(r => r.leverage).filter((l): l is number => l !== null))].sort((a, b) => a - b),
 	);
 
 	function matches(r: LeaderboardRow): boolean {
+		if (view !== 'backtest' && view !== 'demo' && scenario !== 'all' && (r.scenario ?? 'standard') !== scenario) return false;
 		if (epic && r.epic !== epic) return false;
 		if (timeframe && r.timeframe !== timeframe) return false;
 		if (leverage && String(r.leverage) !== leverage) return false;
@@ -39,7 +47,7 @@
 	const filtered = $derived(rows.filter(matches));
 
 	// ------------------------------------------------------------ lifecycle stage (demo)
-	const bands = $derived(luckBands(data.demo));
+	const bands = $derived(luckBands(data.demo.filter(r => !r.comparisonOnly)));
 	const stages = $derived(new Map<string, Assessment>(data.demo.map(r => [r.runId, assess(r, bands)])));
 	const STAGE_RANK: Record<Verdict, number> = {
 		[VERDICT.LEADER]: 5,
@@ -178,21 +186,23 @@
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Leaderboard</h1>
-		{#if view === 'demo'}
+		{#if view === 'virtual'}
 			<p class="lede">
-				Every agent trades live Capital.com demo prices from the moment it is deployed, with $10,000 of virtual capital per
+				Every agent trades in the virtual broker on live Capital.com prices from the moment it is deployed, with $10,000 of virtual capital per
 				instrument and leverage (see <a href="/leverage">Leverage</a>). This is out-of-sample: nobody could have tuned an agent
 				to these prices. Treat results with fewer than ~30 trades as noise.
 			</p>
+		{:else if view === 'demo'}
+			<p class="lede">Actual orders on Capital.com demo accounts, ranked by realized net cashflows. Open profit and loss is excluded. Missing closing values are shown as unavailable. The existing cohort is calibrating the virtual engine; new promotions need at least 28 days and 30 trades of virtual evidence.</p>
 		{:else if view === 'backtest'}
 			<p class="lede">
 				The same agents on 2024-01 → 2026-09 history (spread, overnight funding and margin included). For information only:
-				anything can be fitted to the past. Compare with the demo tab.
+				anything can be fitted to the past. Passing results advance to the virtual engine, then proven virtual runs compete for Capital demo slots.
 			</p>
 		{:else}
 			<p class="lede">
-				Backtest Sharpe against demo Sharpe for each agent × instrument. Points far below the diagonal did much worse live
-				than in the backtest — the signature of overfitting. Points need demo trades to mean anything.
+				Backtest Sharpe against virtual Sharpe for each agent × instrument. Points far below the diagonal did much worse live
+				than in the backtest — the signature of overfitting. Points need virtual trades to mean anything.
 			</p>
 		{/if}
 	</header>
@@ -203,8 +213,9 @@
 
 	<div class="row" role="toolbar" aria-label="Leaderboard filters">
 		<div class="pill-group" aria-label="View">
-			<a href={viewHref('demo')} class:active={view === 'demo'}>Demo</a>
 			<a href={viewHref('backtest')} class:active={view === 'backtest'}>Backtest</a>
+			<a href={viewHref('virtual')} class:active={view === 'virtual'}>Virtual engine</a>
+			<a href={viewHref('demo')} class:active={view === 'demo'}>Capital demo</a>
 			<a href={viewHref('overfit')} class:active={view === 'overfit'}>Overfit</a>
 		</div>
 		{#if view !== 'overfit'}
@@ -225,14 +236,20 @@
 			<option value="">All leverages</option>
 			{#each leverages as l}<option value={String(l)}>1:{l}</option>{/each}
 		</select>
+		{#if view === 'virtual' || view === 'overfit'}
+      <select value={scenario} aria-label="Execution scenario" onchange={event => { const u = new URL(page.url); u.searchParams.set('scenario', event.currentTarget.value); void goto(u); }}>
+        <option value="all">All scenarios (correlated)</option>
+        {#each scenarios as item}<option value={item}>{item}</option>{/each}
+      </select>
+    {/if}
 		<input type="search" placeholder="Search agents" bind:value={query} />
 		<label class="row" style="gap: 4px"><input type="checkbox" bind:checked={hideControls} /> Hide control agents</label>
 	</div>
 
-	{#if view === 'demo'}
+	{#if view === 'virtual'}
 		<div class="row secondary" style="font-size: 13px">
-			<span>Demo running since {demoStarted ? new Date(demoStarted).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'} ({ago(demoStarted)})</span>
-			<span>· {tradedDemo} of {data.demo.length} runs have traded</span>
+			<span>Virtual trading since {demoStarted ? new Date(demoStarted).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'} ({ago(demoStarted)})</span>
+			<span>· {tradedDemo} of {data.demo.length} runs in this scenario have traded · {totalVirtual} virtual runs total</span>
 		</div>
 	{/if}
 
@@ -255,8 +272,9 @@
 					<tr>
 						<th><button onclick={() => sortBy('name')}>Agent{arrow('name')}</button></th>
 						<th>Instrument</th>
-						<th title="Leverage of the demo account the run trades on: see the Leverage page"><button onclick={() => sortBy('leverage')}>Lev.{arrow('leverage')}</button></th>
+						<th title="Account leverage: see the Leverage page"><button onclick={() => sortBy('leverage')}>Lev.{arrow('leverage')}</button></th>
 						<th>TF</th>
+            {#if view === 'virtual'}<th>Execution</th>{/if}
 						<th class="num"><button onclick={() => sortBy('days')}>Days{arrow('days')}</button></th>
 						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
 						<th class="num"><button onclick={() => sortBy('totalReturn')}>Return{arrow('totalReturn')}</button></th>
@@ -266,15 +284,15 @@
 						<th class="num"><button onclick={() => sortBy('winRate')}>Win{arrow('winRate')}</button></th>
 						<th class="num"><button onclick={() => sortBy('profitFactor')}>PF{arrow('profitFactor')}</button></th>
 						<th class="num" title="t-statistic of trade P&L: above ~2 is unlikely to be luck"><button onclick={() => sortBy('tStat')}>t{arrow('tStat')}</button></th>
-						{#if view === 'demo'}
+						{#if view === 'virtual'}
 							<th class="num" title="Backtest Sharpe of the same agent on the same instrument"><button onclick={() => sortBy('btSharpe')}>BT Sharpe{arrow('btSharpe')}</button></th>
-							<th title="Lifecycle stage: see the Journal page"><button onclick={() => sortBy('stage')}>Stage{arrow('stage')}</button></th>
+							<th title="Lifecycle stage: see the Journal page"><button onclick={() => sortBy('stage')}>Verdict{arrow('stage')}</button></th>
 						{/if}
 						<th></th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedRuns as r (r.runId)}
+					{#each sortedRuns.slice((Math.min(pageNumber, Math.max(1, Math.ceil(sortedRuns.length / PAGE_SIZE))) - 1) * PAGE_SIZE, Math.min(pageNumber, Math.max(1, Math.ceil(sortedRuns.length / PAGE_SIZE))) * PAGE_SIZE) as r (r.runId)}
 						{@const m = r.metrics}
 						<tr class:control={isControl(r)}>
 							<td>
@@ -285,6 +303,7 @@
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
 							<td class="lev" title={levTitle(r)}>{lev(r)}</td>
 							<td class="muted">{r.timeframe}</td>
+              {#if view === 'virtual'}<td class="muted">{r.scenario ?? 'standard'}</td>{/if}
 							<td class="num">{num(m?.days, 1)}</td>
 							<td class="num">{m?.trades ?? 0}</td>
 							<td class="num {sign(m?.totalReturn)}">{pct(m?.totalReturn)}</td>
@@ -294,7 +313,7 @@
 							<td class="num">{m && m.trades ? pctPlain(m.winRate, 0) : '—'}</td>
 							<td class="num">{m && m.trades ? num(m.profitFactor) : '—'}</td>
 							<td class="num">{m && m.trades > 1 ? num(m.tStat, 1) : '—'}</td>
-							{#if view === 'demo'}
+							{#if view === 'virtual'}
 								<td class="num">
 									{#if r.backtest?.metrics}
 										{num(r.backtest.metrics.sharpe)}{#if !r.backtest.sameCode}<span class="muted" title="Backtest ran on an older version of this agent"> *</span>{/if}
@@ -308,7 +327,10 @@
 								</td>
 							{/if}
 							<td>
-								{#if r.mirrored}<span class="badge" title="Mirrored onto a Capital.com demo account as real demo orders">broker</span>{/if}
+								{#if view === 'backtest'}<span class="badge" title={r.stageReason}>{r.stage === 'demo' ? 'Capital demo' : r.stage === 'virtual' ? 'virtual' : 'backtest'}</span>{/if}
+								{#if r.mirrored}<span class="badge" title="Mirrored onto a Capital.com demo account as real demo orders">Capital demo</span>{/if}
+								{#if view === 'demo' && r.brokerEvidence}<span class="badge" title={r.brokerEvidence.basis}>{r.brokerEvidence.priced}/{r.brokerEvidence.closed} priced closes</span>{/if}
+                {#if view === 'demo' && !r.mirrored}<span class="badge">{r.status === 'retired' ? 'archived' : 'demoted to virtual'}</span>{/if}
 								{#if r.status !== 'running' && r.status !== 'completed'}<span class="badge">{r.status}</span>{/if}
 							</td>
 						</tr>
@@ -318,6 +340,11 @@
 				</tbody>
 			</table>
 		</div>
+    <div class="row secondary">
+      <button disabled={pageNumber <= 1} onclick={() => pageNumber--}>Previous</button>
+      <span>{sortedRuns.length} rows · page {Math.min(pageNumber, Math.max(1, Math.ceil(sortedRuns.length / PAGE_SIZE)))} of {Math.max(1, Math.ceil(sortedRuns.length / PAGE_SIZE))}</span>
+      <button disabled={pageNumber >= Math.ceil(sortedRuns.length / PAGE_SIZE)} onclick={() => pageNumber++}>Next</button>
+    </div>
 	{:else}
 		<div class="table-wrap">
 			<table class="data">
@@ -330,7 +357,7 @@
 						<th class="num"><button onclick={() => sortBy('totalReturn')}>Avg return{arrow('totalReturn')}</button></th>
 						<th class="num"><button onclick={() => sortBy('sharpe')}>Median Sharpe{arrow('sharpe')}</button></th>
 						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
-						{#if view === 'demo'}<th class="num"><button onclick={() => sortBy('btSharpe')}>BT median Sharpe{arrow('btSharpe')}</button></th>{/if}
+						{#if view === 'virtual'}<th class="num"><button onclick={() => sortBy('btSharpe')}>BT median Sharpe{arrow('btSharpe')}</button></th>{/if}
 						<th>Best / worst</th>
 					</tr>
 				</thead>
@@ -344,7 +371,7 @@
 							<td class="num {sign(a.avgReturn)}">{pct(a.avgReturn)}</td>
 							<td class="num">{num(a.medianSharpe)}</td>
 							<td class="num">{a.trades}</td>
-							{#if view === 'demo'}<td class="num">{num(a.btMedianSharpe)}</td>{/if}
+							{#if view === 'virtual'}<td class="num">{num(a.btMedianSharpe)}</td>{/if}
 							<td class="muted">{a.bestEpic} / {a.worstEpic}</td>
 						</tr>
 					{:else}

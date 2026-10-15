@@ -1,3 +1,5 @@
+import { judged, tradeT } from './pipeline.ts';
+import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
 /**
  * BrokerMirror — copies the paper trades of demo runs onto Capital.com DEMO
  * accounts as real demo orders. It measures how far real fills drift from the
@@ -20,7 +22,7 @@
  * own deal. Every mirrored order is SCALE × the paper size, and each run
  * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
  * account that cannot be switched to hedging holds one run per instrument.
- * Runs are assigned to free slots of their tier, best demo equity first. When
+ * Runs are assigned to free slots of their tier, mature virtual evidence first. When
  * every slot is taken, a waiting run whose paper equity beats the weakest
  * mirrored run of the tier by PROMOTION_MARGIN takes its slot once that run is
  * flat (promotion/demotion; see slots.ts).
@@ -114,8 +116,8 @@ const JOB_MAX_WAIT_MS = 10_000;
 const JOB_RETRY_DELAY_MS = 5_000;
 /** Do not over-size: skip when the minimum deal is more than this multiple of the scaled size. */
 const MAX_MIN_SIZE_INFLATION = 3;
-/** Paper equity a waiting run must be ahead of the weakest mirrored run to take its slot (2% of paper capital). */
-const PROMOTION_MARGIN = 0.02 * PAPER_CAPITAL;
+/** Trade t-statistic advantage required for a mature eligible run to replace an incumbent. */
+const PROMOTION_MARGIN = 0.25;
 const MAX_PROMOTIONS_PER_CYCLE = 10;
 /** A rejected open is tried again this many times, this far apart, while its paper position is open. */
 const OPEN_RETRIES = 4;
@@ -139,10 +141,18 @@ export interface MirrorCandidate extends SlotCandidate {
   side: Side | null;
   /** Higher is mirrored first when slots are short. */
   score: number;
+  eligible?: boolean;
   /** The run's leverage tier: it is mirrored on an account of that tier. */
   tier: number;
   /** The paper position, when there is one (to retry an open the broker rejected). */
-  entry: { size: number; price: number; time: number; stopLoss: number | null; takeProfit: number | null } | null;
+  entry: {
+    size: number;
+    price: number;
+    time: number;
+    stopLoss: number | null;
+    takeProfit: number | null;
+    trailingStop?: number | null;
+  } | null;
 }
 
 interface Confirmation {
@@ -158,7 +168,15 @@ interface Confirmation {
 }
 
 interface BrokerPosition {
-  position: { dealId: string; direction: string; size: number; level: number; upl?: number };
+  position: {
+    dealId: string;
+    direction: string;
+    size: number;
+    level: number;
+    upl?: number;
+    createdDateUTC?: string;
+    trailingStop?: boolean;
+  };
   market: { epic: string; bid: number; offer: number };
 }
 
@@ -237,8 +255,20 @@ export interface BrokerStatus {
   maxAccountsPerLogin: number;
   accounts: BrokerAccountStatus[];
   /** Per leverage tier: its accounts and how many of its live runs are mirrored. */
-  tiers: { leverage: number; accounts: string[]; slots: number; liveRuns: number; mirrored: number }[];
-  coverage: { liveRuns: number; mirrored: number; excluded: number; unassigned: number; accountsNeeded: number };
+  tiers: {
+    leverage: number;
+    accounts: string[];
+    slots: number;
+    liveRuns: number;
+    mirrored: number;
+  }[];
+  coverage: {
+    liveRuns: number;
+    mirrored: number;
+    excluded: number;
+    unassigned: number;
+    accountsNeeded: number;
+  };
   excluded: string[];
   queued: number;
   opensLastHour: number;
@@ -308,7 +338,11 @@ export class BrokerMirror {
 
   private storeAccount(a: Account, patch: Partial<StoredAccount>): void {
     const all = this.stored;
-    all[a.id] = { ...(all[a.id] ?? { name: a.name, allocation: null, killed: false }), name: a.name, ...patch };
+    all[a.id] = {
+      ...(all[a.id] ?? { name: a.name, allocation: null, killed: false }),
+      name: a.name,
+      ...patch,
+    };
     this.db.setSetting(BROKER_SETTINGS.ACCOUNTS, all);
   }
 
@@ -338,7 +372,9 @@ export class BrokerMirror {
     const excluded = this.excluded.filter(id => liveIds.has(id));
     const now = Date.now();
     const accounts = [...this.accounts.values()];
-    const tierList = [...new Set([...accounts.flatMap(a => (a.tier === null ? [] : [a.tier])), ...this.live.map(c => c.tier)])].sort((a, b) => a - b);
+    const tierList = [...new Set([...accounts.flatMap(a => (a.tier === null ? [] : [a.tier])), ...this.live.map(c => c.tier)])].sort(
+      (a, b) => a - b,
+    );
     const accountOf = (runId: string) => this.accounts.get(runAccounts[runId] ?? '');
     return {
       enabled: this.enabled,
@@ -415,6 +451,15 @@ export class BrokerMirror {
     this.rebalance();
   }
 
+  demoteToVirtual(runId: string, reason: string): void {
+    const all = this.db.getSetting<Record<string, { at: number; reason: string }>>('broker.demotions', {});
+    if (all[runId] && Date.now() - all[runId]!.at < LIFECYCLE.MIN_DAYS * 86_400_000) return;
+    all[runId] = { at: Date.now(), reason };
+    this.db.setSetting('broker.demotions', all);
+    this.closeRunDeals(runId, `demoted to virtual: ${reason}`);
+    this.db.event('info', 'pipeline', `demoted ${runId} from Capital demo to virtual: ${reason}`);
+  }
+
   /** Paper-trade event from the arena. */
   onRunEvent(e: RunEvent): void {
     if (e.type === 'log' || e.type === 'error' || !this.ready || !this.enabled) return;
@@ -424,7 +469,7 @@ export class BrokerMirror {
     }
     if (e.type === 'stops') {
       const deal = this.db.openDeals().find(d => d.run_id === e.runId && d.deal_id && d.account_id);
-      if (deal) this.enqueue(deal.account_id!, () => this.putStops(deal.deal_id!, e.stopLoss, e.takeProfit));
+      if (deal) this.enqueue(deal.account_id!, () => this.putStops(deal.deal_id!, e.stopLoss, e.takeProfit, e.trailingStop));
       return;
     }
     const id = this.runAccounts[e.runId];
@@ -470,10 +515,13 @@ export class BrokerMirror {
     for (const a of this.accounts.values()) {
       const mine = open.filter(d => d.account_id === a.id);
       const every =
-        a.tier !== null && a.leverageOk === null ? 0
-        : mine.some(d => !d.deal_id) ? RECONCILE_UNCONFIRMED_MS
-        : mine.length > 0 ? RECONCILE_OPEN_MS
-        : RECONCILE_IDLE_MS;
+        a.tier !== null && a.leverageOk === null
+          ? 0
+          : mine.some(d => !d.deal_id)
+            ? RECONCILE_UNCONFIRMED_MS
+            : mine.length > 0
+              ? RECONCILE_OPEN_MS
+              : RECONCILE_IDLE_MS;
       if (now - a.lastReconcileAt < every - RECONCILE_SLACK_MS) continue;
       if (this.queue.some(j => j.tag === JOB_RECONCILE && j.accountId === a.id)) continue;
       this.enqueue(a.id, () => this.reconcile(a), JOB_RECONCILE);
@@ -495,9 +543,19 @@ export class BrokerMirror {
       }
       if (!a) {
         a = {
-          id: api.accountId, name: api.accountName, balance: 0, deposit: 0, equity: 0,
-          allocation: this.stored[api.accountId]?.allocation ?? null, hedging: this.stored[api.accountId]?.hedging ?? null,
-          tier: null, leverageOk: null, retiring: false, lowReadings: 0, foreignEpics: new Set(), lastReconcileAt: 0,
+          id: api.accountId,
+          name: api.accountName,
+          balance: 0,
+          deposit: 0,
+          equity: 0,
+          allocation: this.stored[api.accountId]?.allocation ?? null,
+          hedging: this.stored[api.accountId]?.hedging ?? null,
+          tier: null,
+          leverageOk: null,
+          retiring: false,
+          lowReadings: 0,
+          foreignEpics: new Set(),
+          lastReconcileAt: 0,
         };
         this.accounts.set(a.id, a);
       } else if (matches && a.retiring) {
@@ -534,7 +592,11 @@ export class BrokerMirror {
       this.accounts.delete(a.id);
       if (this.sessionAccount === a.id) this.sessionAccount = null;
       for (const d of this.db.openDeals().filter(d => d.account_id === a.id)) {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: 'account deleted at Capital.com' });
+        this.db.updateDeal(d.id, {
+          status: DEAL_STATUS.FAILED,
+          close_time: Date.now(),
+          note: 'account deleted at Capital.com',
+        });
       }
       this.db.event('warn', 'broker', `account ${a.name} no longer exists; its runs will be reassigned`);
     }
@@ -554,7 +616,11 @@ export class BrokerMirror {
     if (a.balance < MIN_RUNS_PER_ACCOUNT * RUN_ALLOCATION) return;
     a.allocation = Math.min(a.balance, MAX_BALANCE);
     this.storeAccount(a, { allocation: a.allocation });
-    this.db.event('info', 'broker', `account ${a.name} enrolled: allocation ${a.allocation}, room for ${slotsOf({ ...a, hedging: true })} runs${a.tier === null ? '; no leverage tier in agents/roster.json, so no runs yet' : ` at 1:${a.tier}`}`);
+    this.db.event(
+      'info',
+      'broker',
+      `account ${a.name} enrolled: allocation ${a.allocation}, room for ${slotsOf({ ...a, hedging: true })} runs${a.tier === null ? '; no leverage tier in agents/roster.json, so no runs yet' : ` at 1:${a.tier}`}`,
+    );
   }
 
   private retire(a: Account, why: string): void {
@@ -569,7 +635,11 @@ export class BrokerMirror {
       await this.client.post('/api/v1/accounts/topUp', { amount });
       this.db.event('info', 'broker', `topped up ${a.name} by ${amount} to the ${MAX_BALANCE} demo maximum`);
     } catch (err) {
-      this.db.event('warn', 'broker', `could not top up ${a.name} (${errorText(err)}); will retry in a day, or use the current balance if it is enough`);
+      this.db.event(
+        'warn',
+        'broker',
+        `could not top up ${a.name} (${errorText(err)}); will retry in a day, or use the current balance if it is enough`,
+      );
     }
   }
 
@@ -582,7 +652,11 @@ export class BrokerMirror {
       a.lowReadings = a.equity < floor ? a.lowReadings + 1 : 0;
       if (a.lowReadings < KILL_CONFIRMATIONS) continue;
       this.storeAccount(a, { killed: true });
-      this.db.event('error', 'broker', `KILL SWITCH: ${a.name} equity ${a.equity} < ${floor} (${KILL_FRACTION * 100}% of its ${a.allocation} allocation); closing its deals`);
+      this.db.event(
+        'error',
+        'broker',
+        `KILL SWITCH: ${a.name} equity ${a.equity} < ${floor} (${KILL_FRACTION * 100}% of its ${a.allocation} allocation); closing its deals`,
+      );
       for (const d of this.db.openDeals().filter(d => d.account_id === a.id)) this.enqueueClose(d, 'kill switch');
     }
   }
@@ -598,21 +672,61 @@ export class BrokerMirror {
     if (active.some(a => a.hedging === null || a.leverageOk === null)) return;
     const usable = active
       .filter(a => a.leverageOk)
-      .map(a => ({ name: a.id, slots: slotsOf(a), onePerEpic: !a.hedging, blockedEpics: a.foreignEpics, tier: a.tier! }));
+      .map(a => ({
+        name: a.id,
+        slots: slotsOf(a),
+        onePerEpic: !a.hedging,
+        blockedEpics: a.foreignEpics,
+        tier: a.tier!,
+      }));
     const flat = new Set(live.filter(c => c.side === null).map(c => c.runId));
     const withDeal = new Set(this.db.openDeals().map(d => d.run_id));
-    const plan = assignSlots(before, usable, live, new Set(this.excluded), {
+    // Incumbents continue as the calibration cohort; new entries need mature virtual evidence.
+    const demotions = this.db.getSetting<Record<string, { at: number; reason: string }>>('broker.demotions', {});
+    for (const c of live) {
+      if (!before[c.runId]) continue;
+      const slug = parseDemoRunId(c.runId)?.agentId.split('/')[0] ?? '';
+      if (CONTROL_SLUGS.has(slug)) continue;
+      const deals = this.db
+        .dealsForRun(c.runId)
+        .filter(d => d.status === DEAL_STATUS.CLOSED && d.pnl !== null && d.open_time >= (demotions[c.runId]?.at ?? 0));
+      const first = deals[0]?.open_time ?? Date.now();
+      if (
+        judged(deals, first, Date.now()) &&
+        tradeT(deals.map(d => ({ pnl: d.pnl! + (d.cash_adjustment ?? 0) }))) <= LIFECYCLE.RETIRE_TSTAT
+      ) {
+        demotions[c.runId] = {
+          at: Date.now(),
+          reason: 'losing Capital demo trade t-statistic',
+        };
+        this.db.event('info', 'pipeline', `demoted ${c.runId} from Capital demo to virtual: losing actual execution results`);
+      }
+    }
+    this.db.setSetting('broker.demotions', demotions);
+    const eligible = live.filter(c => {
+      const slug = parseDemoRunId(c.runId)?.agentId.split('/')[0];
+      if (slug === 'bold-play' || slug === 'martingale-monkey') return false;
+      const d = demotions[c.runId];
+      // A demotion requires a fresh 28-day observation window before re-entry.
+      if (d && Date.now() - d.at < LIFECYCLE.MIN_DAYS * 86_400_000) return false;
+      return before[c.runId] !== undefined || c.eligible;
+    });
+    const plan = assignSlots(before, usable, eligible, new Set(this.excluded), {
       margin: PROMOTION_MARGIN,
       maxSwaps: MAX_PROMOTIONS_PER_CYCLE,
       canDemote: id => flat.has(id) && !withDeal.has(id),
     });
     this.db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, plan.assignments);
-    this.unassigned = plan.unassigned;
+    this.unassigned = live.filter(c => !plan.assignments[c.runId] && !this.excluded.includes(c.runId));
     const dropped = Object.keys(before).filter(id => plan.assignments[id] === undefined);
     const added = Object.keys(plan.assignments).filter(id => before[id] === undefined);
     for (const id of dropped) this.closeRunDeals(id, 'run no longer mirrored');
     for (let i = 0; i < plan.promoted.length; i++) {
-      this.db.event('info', 'broker', `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (better demo equity)`);
+      this.db.event(
+        'info',
+        'broker',
+        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (stronger virtual trade evidence)`,
+      );
     }
     if (dropped.length > 0 || added.length > 0) {
       this.db.event(
@@ -650,8 +764,19 @@ export class BrokerMirror {
       const counted = rejected.filter(d => !MARKET_CLOSED.test(d.note ?? '')).length;
       if (counted > OPEN_RETRIES) continue;
       if (now - Math.max(...rejected.map(d => d.open_time), this.reopenChecks.get(c.runId) ?? 0) < OPEN_RETRY_MS) continue;
-      const { size, price, stopLoss, takeProfit } = c.entry;
-      const retry = () => this.openDeal(account, { type: 'open', runId: c.runId, side: c.side!, size, price, time: now, stopLoss, takeProfit });
+      const { size, price, stopLoss, takeProfit, trailingStop } = c.entry;
+      const retry = () =>
+        this.openDeal(account, {
+          type: 'open',
+          runId: c.runId,
+          side: c.side!,
+          size,
+          price,
+          time: c.entry!.time,
+          stopLoss,
+          takeProfit,
+          trailingStop,
+        });
       if (MARKET_CLOSED.test(rejected.at(-1)!.note ?? '')) {
         this.reopenChecks.set(c.runId, now);
         // Checked on whichever account the session is on (no switch), opened on the run's own.
@@ -690,11 +815,14 @@ export class BrokerMirror {
 
   private async openDeal(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
     const run = parseDemoRunId(e.runId);
-    if (!run || account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
+    if (!this.enabled || !run || account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
     if (account.leverageOk !== true || account.tier !== run.leverage) {
       this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} is not confirmed at 1:${run.leverage}`);
       return;
     }
+    const candidate = this.candidates().find(c => c.runId === e.runId);
+    // A queue delay can outlive the paper position or a reversal: never send that stale open.
+    if (!candidate?.entry || candidate.side !== e.side || candidate.entry.time !== e.time) return;
     const inst = getInstrument(run.epic);
     const open = this.db.openDeals();
     if (open.some(d => d.run_id === e.runId)) {
@@ -703,7 +831,11 @@ export class BrokerMirror {
     }
     if (!account.hedging) {
       if (account.foreignEpics.has(inst.epic)) {
-        this.db.event('warn', 'broker', `skip ${e.runId}: ${account.name} (netting) holds a position on ${inst.epic} that the arena did not open`);
+        this.db.event(
+          'warn',
+          'broker',
+          `skip ${e.runId}: ${account.name} (netting) holds a position on ${inst.epic} that the arena did not open`,
+        );
         return;
       }
       if (open.some(d => d.account_id === account.id && d.epic === inst.epic)) {
@@ -718,38 +850,109 @@ export class BrokerMirror {
       return;
     }
     const rowId = this.db.insertDeal({
-      account: account.name, account_id: account.id, run_id: e.runId, epic: inst.epic, side: e.side, size, paper_size: e.size,
-      deal_id: null, status: DEAL_STATUS.OPEN, open_time: Date.now(), open_price: null, paper_open_price: e.price,
-      close_time: null, close_price: null, paper_close_price: null, pnl: null, note: null,
+      account: account.name,
+      account_id: account.id,
+      run_id: e.runId,
+      epic: inst.epic,
+      side: e.side,
+      size,
+      paper_size: e.size,
+      deal_id: null,
+      status: DEAL_STATUS.OPEN,
+      open_time: Date.now(),
+      open_price: null,
+      paper_open_price: e.price,
+      close_time: null,
+      close_price: null,
+      paper_close_price: null,
+      pnl: null,
+      note: null,
     });
+    this.db.updateDeal(rowId, {
+      decision_time: e.decisionTime ?? e.time,
+      virtual_fill_time: e.time,
+      bar_close_time: e.barCloseTime ?? null,
+    });
+    let submitted = false;
     try {
-      const ref = await this.client.post<{ dealReference: string }>('/api/v1/positions', {
-        epic: inst.epic,
-        direction: e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL,
-        size,
-      });
+      const ref = await this.client.post<{ dealReference: string }>(
+        '/api/v1/positions',
+        {
+          epic: inst.epic,
+          direction: e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL,
+          size,
+          ...(e.trailingStop ? { trailingStop: true, stopDistance: e.trailingStop } : e.stopLoss === null ? {} : { stopLevel: e.stopLoss }),
+          ...(e.takeProfit === null ? {} : { profitLevel: e.takeProfit }),
+        },
+        {
+          sent: () => this.db.updateDeal(rowId, { sent_time: Date.now() }),
+          accepted: () => this.db.updateDeal(rowId, { accepted_time: Date.now() }),
+        },
+      );
+      submitted = true;
       const conf = await this.confirm(ref.dealReference);
+      const expected = { epic: inst.epic, direction: e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL, size };
+      if (!confirmsDeal(conf, expected)) {
+        this.db.updateDeal(rowId, { note: 'unconfirmed: confirmation identity did not match the request' });
+        this.db.event('warn', 'broker', `open for ${e.runId} got an unrelated confirmation; left to reconcile`);
+        return;
+      }
       if (conf.dealStatus !== 'ACCEPTED') {
-        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: `${NOTE_REJECTED} ${conf.reason ?? 'unknown'}` });
-        this.db.event('warn', 'broker', `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'} (retried while the paper position lasts)`);
+        this.db.updateDeal(rowId, {
+          status: DEAL_STATUS.FAILED,
+          note: `${NOTE_REJECTED} ${conf.reason ?? 'unknown'}`,
+        });
+        this.db.event(
+          'warn',
+          'broker',
+          `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'} (retried while the paper position lasts)`,
+        );
         return;
       }
       const dealId = conf.affectedDeals?.[0]?.dealId ?? conf.dealId ?? null;
       const direction = e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
       if (!confirmsDeal(conf, { epic: inst.epic, direction, size }) || (dealId && this.db.openDeals().some(d => d.deal_id === dealId))) {
         // Not this order's confirmation: leave the deal unconfirmed; reconcile adopts the position by epic, side and size.
-        this.db.updateDeal(rowId, { note: `unconfirmed: confirmation was for ${conf.epic} ${conf.direction} ${conf.size} (${dealId})` });
+        this.db.updateDeal(rowId, {
+          note: `unconfirmed: confirmation was for ${conf.epic} ${conf.direction} ${conf.size} (${dealId})`,
+        });
         this.db.event('warn', 'broker', `open of ${inst.epic} for ${e.runId} got another deal's confirmation; left to reconcile`);
         return;
       }
-      this.db.updateDeal(rowId, { deal_id: dealId, open_price: conf.level ?? null });
-      this.db.event('info', 'broker', `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`);
-      if (dealId && (e.stopLoss !== null || e.takeProfit !== null)) await this.putStops(dealId, e.stopLoss, e.takeProfit);
+      if (!dealId) return;
+      // A same-sized stale confirmation may pass the shape checks. Verify the new position itself.
+      const actual = await this.client.get<BrokerPosition>(`/api/v1/positions/${dealId}`);
+      const createdAt = brokerTime(actual.position.createdDateUTC);
+      if (!Number.isFinite(createdAt) || createdAt < this.db.openDeals().find(d => d.id === rowId)!.open_time - 5000) {
+        this.db.updateDeal(rowId, { note: 'unconfirmed: position predates this request or has no UTC creation time' });
+        return;
+      }
+      if (actual.position.dealId !== dealId || actual.market.epic !== inst.epic || actual.position.direction !== expected.direction || Math.abs(actual.position.size - size) > 1e-9) {
+        this.db.updateDeal(rowId, { note: 'unconfirmed: confirmed position does not match the request' });
+        return;
+      }
+      this.db.updateDeal(rowId, {
+        deal_id: dealId,
+        open_price: conf.level ?? null,
+        confirmed_time: Date.now(),
+      });
+      this.db.event(
+        'info',
+        'broker',
+        `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`,
+      );
     } catch (err) {
-      if (err instanceof CapitalApiError && err.status >= 400 && err.status < 500) {
+      if (!submitted && err instanceof CapitalApiError && err.status >= 400 && err.status < 500 && err.status !== 408) {
         // Refused outright (e.g. the market is in its daily break): nothing was placed.
-        this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: `${NOTE_REJECTED} ${errorText(err)}` });
-        this.db.event('warn', 'broker', `open refused for ${e.runId} on ${account.name}${MARKET_CLOSED.test(err.body) ? ': market closed' : `: ${errorText(err)}`} (retried while the paper position lasts)`);
+        this.db.updateDeal(rowId, {
+          status: DEAL_STATUS.FAILED,
+          note: `${NOTE_REJECTED} ${errorText(err)}`,
+        });
+        this.db.event(
+          'warn',
+          'broker',
+          `open refused for ${e.runId} on ${account.name}${MARKET_CLOSED.test(err.body) ? ': market closed' : `: ${errorText(err)}`} (retried while the paper position lasts)`,
+        );
         return;
       }
       // The order may still have gone through; reconcile() adopts it or marks it failed.
@@ -761,12 +964,21 @@ export class BrokerMirror {
   private async closeDeal(d: DealRow, note: string, paperPrice?: number): Promise<void> {
     const current = this.db.openDeals().find(x => x.id === d.id);
     if (!current) return;
+    if (!current.close_requested_time)
+      this.db.updateDeal(d.id, {
+        close_requested_time: Date.now(),
+        paper_close_price: paperPrice ?? null,
+      });
     if (!current.deal_id) {
       if (Date.now() - current.open_time < ADOPT_WINDOW_MS) {
         // Not confirmed yet: retry after the next reconcile has had a chance to adopt it.
         setTimeout(() => this.enqueueClose(current, note, paperPrice), CYCLE_MS + 5_000);
       } else {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, close_time: Date.now(), note: `${note}; never confirmed` });
+        this.db.updateDeal(d.id, {
+          status: DEAL_STATUS.FAILED,
+          close_time: Date.now(),
+          note: `${note}; never confirmed`,
+        });
       }
       return;
     }
@@ -776,35 +988,61 @@ export class BrokerMirror {
       if (conf.dealStatus !== 'ACCEPTED') {
         // Still open at the broker (e.g. its market has not reopened yet): the next cycle tries again.
         if (!this.closeWaiting.has(d.id)) {
-          this.db.event('warn', 'broker', `close of ${current.epic} for ${current.run_id} rejected: ${conf.reason ?? 'unknown'} (retried every cycle)`);
+          this.db.event(
+            'warn',
+            'broker',
+            `close of ${current.epic} for ${current.run_id} rejected: ${conf.reason ?? 'unknown'} (retried every cycle)`,
+          );
         }
         this.closeWaiting.add(d.id);
         return;
       }
       const direction = current.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
-      if (!confirmsDeal(conf, { epic: current.epic, direction, size: current.size, dealId: current.deal_id })) {
+      if (
+        !confirmsDeal(conf, {
+          epic: current.epic,
+          direction,
+          size: current.size,
+          dealId: current.deal_id,
+        })
+      ) {
         // Another deal's confirmation (seen once: an AUDUSD price on a EURUSD close whose broker stop had
         // already filled). Keep the deal open: reconcile marks it closed at the broker if it is gone, or the
         // next cycle closes it again.
-        this.db.event('warn', 'broker', `close of ${current.epic} for ${current.run_id} got a confirmation for ${conf.epic ?? 'another deal'}; left to reconcile`);
+        this.db.event(
+          'warn',
+          'broker',
+          `close of ${current.epic} for ${current.run_id} got a confirmation for ${conf.epic ?? 'another deal'}; left to reconcile`,
+        );
         return;
       }
       const price = conf.level ?? null;
       this.db.updateDeal(d.id, {
-        status: DEAL_STATUS.CLOSED, close_time: Date.now(), close_price: price, paper_close_price: paperPrice ?? null,
-        pnl: conf.profit ?? (price !== null && current.open_price !== null ? dealPnl(current.side as Side, current.size, current.open_price, price) : null),
+        status: DEAL_STATUS.CLOSED,
+        close_time: Date.now(),
+        close_price: price,
+        paper_close_price: paperPrice ?? current.paper_close_price ?? null,
+        pnl:
+          conf.profit ??
+          (price !== null && current.open_price !== null ? dealPnl(current.side as Side, current.size, current.open_price, price) : null),
         note,
       });
       this.db.event('info', 'broker', `closed ${current.epic} deal on ${current.account} for ${current.run_id} @ ${price} (${note})`);
       this.closeWaiting.delete(d.id);
     } catch (err) {
       if (err instanceof CapitalApiError && err.status === 404) {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.CLOSED, close_time: Date.now(), paper_close_price: paperPrice ?? null, note: `${note}; already closed at broker` });
+        this.db.updateDeal(d.id, {
+          status: DEAL_STATUS.CLOSED,
+          close_time: Date.now(),
+          paper_close_price: paperPrice ?? null,
+          note: `${note}; already closed at broker`,
+        });
         return;
       }
       if (err instanceof CapitalApiError && MARKET_CLOSED.test(err.body)) {
         // The next cycles retry it; it goes through when the market reopens.
-        if (!this.closeWaiting.has(d.id)) this.db.event('info', 'broker', `close of ${current.epic} for ${current.run_id} waits for the market to reopen`);
+        if (!this.closeWaiting.has(d.id))
+          this.db.event('info', 'broker', `close of ${current.epic} for ${current.run_id} waits for the market to reopen`);
         this.closeWaiting.add(d.id);
         return;
       }
@@ -813,11 +1051,14 @@ export class BrokerMirror {
   }
 
   /** Broker-side copies of the paper stops: a safety net if the arena goes down. Best effort. */
-  private async putStops(dealId: string, stopLoss: number | null, takeProfit: number | null): Promise<void> {
-    const body: Record<string, number> = {};
-    if (stopLoss !== null) body.stopLevel = stopLoss;
-    if (takeProfit !== null) body.profitLevel = takeProfit;
-    if (Object.keys(body).length === 0) return;
+  private async putStops(dealId: string, stopLoss: number | null, takeProfit: number | null, trailingStop?: number | null): Promise<void> {
+    const body = trailingStop
+      ? {
+          trailingStop: true,
+          stopDistance: trailingStop,
+          profitLevel: takeProfit,
+        }
+      : { trailingStop: false, stopLevel: stopLoss, profitLevel: takeProfit };
     try {
       await this.client.put(`/api/v1/positions/${dealId}`, body);
     } catch (err) {
@@ -837,9 +1078,13 @@ export class BrokerMirror {
     const want = a.tier === null ? null : accountLeverages(a.tier);
     const leverageWrong = () =>
       want !== null && Object.entries(want).some(([cls, l]) => prefs.leverages?.[cls] !== undefined && prefs.leverages[cls]!.current !== l);
-    if (a.leverageOk === true && leverageWrong()) this.db.event('error', 'broker', `${a.name} leverage changed outside the arena; setting it back to 1:${a.tier}`);
+    if (a.leverageOk === true && leverageWrong())
+      this.db.event('error', 'broker', `${a.name} leverage changed outside the arena; setting it back to 1:${a.tier}`);
     if (!a.retiring && (!prefs.hedgingMode || leverageWrong())) {
-      const body: { hedgingMode?: boolean; leverages?: Record<string, number> } = {};
+      const body: {
+        hedgingMode?: boolean;
+        leverages?: Record<string, number>;
+      } = {};
       if (!prefs.hedgingMode) body.hedgingMode = true;
       if (leverageWrong()) body.leverages = want!;
       try {
@@ -856,12 +1101,16 @@ export class BrokerMirror {
         );
       }
       if (body.leverages) {
-        const settings = Object.entries(body.leverages).map(([cls, l]) => `${cls} 1:${l}`).join(', ');
-        if (leverageWrong()) this.db.event('error', 'broker', `${a.name} could not be set to 1:${a.tier} (${settings}); no runs there until it is`);
+        const settings = Object.entries(body.leverages)
+          .map(([cls, l]) => `${cls} 1:${l}`)
+          .join(', ');
+        if (leverageWrong())
+          this.db.event('error', 'broker', `${a.name} could not be set to 1:${a.tier} (${settings}); no runs there until it is`);
         else this.db.event('info', 'broker', `${a.name} set to 1:${a.tier}: ${settings}`);
       }
     }
-    if (a.hedging === true && !prefs.hedgingMode) this.db.event('error', 'broker', `${a.name} left hedging mode; runs there are limited to one per instrument`);
+    if (a.hedging === true && !prefs.hedgingMode)
+      this.db.event('error', 'broker', `${a.name} left hedging mode; runs there are limited to one per instrument`);
     a.hedging = prefs.hedgingMode;
     a.leverageOk = want === null ? null : !leverageWrong();
     const patch: Partial<StoredAccount> = {};
@@ -873,7 +1122,9 @@ export class BrokerMirror {
   /** Runs as a job on the account's session: match tracked deals with the account's positions. */
   private async reconcile(a: Account): Promise<void> {
     await this.ensureSettings(a);
-    const { positions } = await this.client.get<{ positions: BrokerPosition[] }>('/api/v1/positions');
+    const { positions } = await this.client.get<{
+      positions: BrokerPosition[];
+    }>('/api/v1/positions');
     const open = new Map(positions.map(p => [p.position.dealId, p]));
     const tracked = this.db.openDeals().filter(d => d.account_id === a.id);
     const trackedIds = new Set(tracked.map(d => d.deal_id).filter(Boolean));
@@ -882,28 +1133,84 @@ export class BrokerMirror {
       if (trackedIds.has(p.position.dealId)) continue;
       const row = this.db.dealByDealId(p.position.dealId);
       if (!row || row.status === DEAL_STATUS.OPEN) continue;
-      this.db.updateDeal(row.id, { status: DEAL_STATUS.OPEN, account: a.name, account_id: a.id, close_time: null, note: `re-attached on ${a.name}` });
+      this.db.updateDeal(row.id, {
+        status: DEAL_STATUS.OPEN,
+        account: a.name,
+        account_id: a.id,
+        close_time: null,
+        note: `re-attached on ${a.name}`,
+      });
       trackedIds.add(p.position.dealId);
-      tracked.push({ ...row, status: DEAL_STATUS.OPEN, account: a.name, account_id: a.id });
+      tracked.push({
+        ...row,
+        status: DEAL_STATUS.OPEN,
+        account: a.name,
+        account_id: a.id,
+      });
       this.db.event('warn', 'broker', `re-attached deal ${p.position.dealId} (${row.epic}, ${row.run_id}) found on ${a.name}`);
     }
     for (const d of tracked.filter(d => !d.deal_id)) {
       const direction = d.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
-      const match = positions.find(p => !trackedIds.has(p.position.dealId) && p.market.epic === d.epic && p.position.direction === direction && Math.abs(p.position.size - d.size) < 1e-9);
+      const matches = positions.filter(
+        p =>
+          !trackedIds.has(p.position.dealId) &&
+          p.market.epic === d.epic &&
+          p.position.direction === direction &&
+          Math.abs(p.position.size - d.size) < 1e-9 && brokerTime(p.position.createdDateUTC) >= d.open_time - 5000,
+      );
+      const match = matches.length === 1 ? matches[0] : undefined;
       if (match) {
-        this.db.updateDeal(d.id, { deal_id: match.position.dealId, open_price: match.position.level });
+        this.db.updateDeal(d.id, {
+          deal_id: match.position.dealId,
+          open_price: match.position.level,
+        });
         trackedIds.add(match.position.dealId);
         d.deal_id = match.position.dealId;
         this.db.event('warn', 'broker', `adopted unconfirmed deal ${match.position.dealId} on ${a.name} for ${d.run_id}`);
       } else if (Date.now() - d.open_time > ADOPT_WINDOW_MS) {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.FAILED, note: `${d.note ?? ''}; no matching position at the broker` });
+        this.db.updateDeal(d.id, {
+          status: DEAL_STATUS.FAILED,
+          note: `${d.note ?? ''}; no matching position at the broker`,
+        });
       }
     }
     for (const d of tracked) {
       if (d.deal_id && !open.has(d.deal_id) && Date.now() - d.open_time > 30_000) {
-        this.db.updateDeal(d.id, { status: DEAL_STATUS.CLOSED, close_time: Date.now(), note: 'closed at broker (stop/TP or manual)' });
+        this.db.updateDeal(d.id, {
+          status: DEAL_STATUS.CLOSED,
+          close_time: Date.now(),
+          note: 'closed at broker (stop/TP or manual)',
+        });
         this.db.event('warn', 'broker', `deal ${d.deal_id} (${d.epic}, ${d.run_id}) on ${a.name} was closed at the broker`);
       }
+    }
+    const candidateByRun = new Map(this.candidates().map(c => [c.runId, c]));
+    for (const p of positions) {
+      const d = this.db.dealByDealId(p.position.dealId);
+      const candidate = d ? candidateByRun.get(d.run_id) : undefined;
+      if (d?.account_id === a.id && candidate?.entry?.trailingStop && !p.position.trailingStop) {
+        await this.putStops(p.position.dealId, null, candidate.entry.takeProfit, candidate.entry.trailingStop);
+      }
+      if (d && d.account_id === a.id)
+        this.db.updateDeal(d.id, {
+          upl: p.position.upl ?? null,
+          reconciled_at: Date.now(),
+        });
+    }
+    const historyKey = `broker.cashflows.${a.id}`;
+    const through = this.db.getSetting<number>(historyKey, Date.now() - 14 * 24 * HOUR_MS);
+    try {
+      const params = new URLSearchParams({
+        from: new Date(through - HOUR_MS).toISOString().slice(0, 19),
+        to: new Date().toISOString().slice(0, 19),
+      });
+      const history = await this.client.get<{
+        transactions: Parameters<ArenaDB['recordCashflows']>[1];
+      }>(`/api/v1/history/transactions?${params}`);
+      this.db.recordCashflows(a.id, history.transactions);
+      this.db.setSetting(historyKey, Date.now());
+    } catch (err) {
+      this.db.event('warn', 'broker', `cashflow reconcile failed on ${a.name}: ${errorText(err)}`);
     }
     a.foreignEpics = new Set(positions.filter(p => !trackedIds.has(p.position.dealId)).map(p => p.market.epic));
     a.lastReconcileAt = Date.now();
@@ -1005,13 +1312,21 @@ export class BrokerMirror {
  * confirmation when the reference is not the latest (it echoes the reference back), so a broker stop that
  * fills in between hands us another deal's confirmation.
  */
-function confirmsDeal(conf: Confirmation, deal: { epic: string; direction: string; size: number; dealId?: string | null }): boolean {
-  if (conf.epic && conf.epic !== deal.epic) return false;
-  if (conf.direction && conf.direction !== deal.direction) return false;
-  if (conf.size !== undefined && Math.abs(conf.size - deal.size) > 1e-9) return false;
+export function confirmsDeal(
+  conf: Confirmation,
+  deal: {
+    epic: string;
+    direction: string;
+    size: number;
+    dealId?: string | null;
+  },
+): boolean {
+  if (conf.epic !== deal.epic) return false;
+  if (conf.direction !== deal.direction) return false;
+  if (conf.size === undefined || Math.abs(conf.size - deal.size) > 1e-9) return false;
   if (!deal.dealId) return true;
   const ids = [conf.dealId, ...(conf.affectedDeals ?? []).map(d => d.dealId)].filter(Boolean);
-  return ids.length === 0 || ids.includes(deal.dealId);
+  return ids.includes(deal.dealId);
 }
 
 /** Runs an account can hold: its allocation in RUN_ALLOCATION units; in netting mode also one per instrument. */
@@ -1022,7 +1337,7 @@ function slotsOf(a: Pick<Account, 'allocation' | 'hedging'>): number {
   return a.hedging === false ? Math.min(bySize, ALL_EPICS.length) : bySize;
 }
 
-function scaledSize(inst: Instrument, paperSize: number, scale: number): number | null {
+export function scaledSize(inst: Instrument, paperSize: number, scale: number): number | null {
   const target = paperSize * scale;
   let size = Math.floor(target / inst.sizeStep + 1e-9) * inst.sizeStep;
   size = Number(size.toFixed(10));
@@ -1039,4 +1354,8 @@ function dealPnl(side: Side, size: number, open: number, close: number): number 
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function brokerTime(value?: string): number {
+  return Date.parse(value ? /Z$|[+-]\d\d:\d\d$/.test(value) ? value : value + 'Z' : '');
 }

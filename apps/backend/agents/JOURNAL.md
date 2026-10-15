@@ -3,6 +3,46 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-15 (Thu, user-requested) — virtual broker and three-stage pipeline
+
+- Why: the user asked to account for Capital's execution flow, increase virtual testing capacity, and
+  use Backtest → Virtual engine → Capital demo, with reverse demotion. This explicitly authorizes this
+  execution-comparison batch outside the usual Monday additions. No new alpha parameters were tuned.
+- Contract evidence: two minimum-size EURUSD buy/sell rounds on the already hedged Arena 01, plus invalid
+  size/stop and protection-update probes. All confirmed probe positions were closed. Bid/ask P&L matched;
+  explicit null removes broker protections, zero is refused, native trailing works despite the metadata's
+  NOT_AVAILABLE label, and 150 units was accepted despite the advertised 100-unit increment. Captured
+  public observations and all 20 markets are fixtures; private working reports stay in ignored data/.
+- Virtual fixes: durable delayed commands, fresh-quote and market-status admission, refreshed dealing and
+  funding rules, Capital stop distances, frozen submitted size and margin recheck at execution, paced
+  synthetic API logins, Friday triple funding, and negative-balance protection in net trade results.
+  Funding has a clock independent of quotes during daily breaks. Existing histories are retained and the
+  execution-model change is annotated, not backdated.
+- Mirror fixes: native trailing and explicit protection removal, atomic entry protections, stale queued
+  opens discarded, stronger confirmation/position identity (including unrelated rejections), and exact
+  deal-linked cashflow reconciliation. Missing broker-stop P&L can now be recovered from transactions.
+- Pipeline: new admissions need current source AND engine-version backtests; new Capital slots need the
+  mature virtual leader gate. Existing 449 assignments are explicitly a calibration cohort. Losing actual
+  demo evidence demotes to virtual; re-entry uses a fresh window. Losing virtual evidence demotes to
+  backtest with the old record archived. Verdicts and the review use the same post-demotion observation
+  window. Ruin controls are permanently virtual-only by slug, even when source changes.
+- Capacity: 550 standard runs, 401 qualified instrument/tier combinations, ten complete latency cohorts
+  (170 ms to 120 s): 4,010 extra comparisons, expected total 4,560, about ten times Capital capacity. They
+  have freshly warmed records and paired random streams, never take demo slots, and never inflate
+  strategy verdicts or monkey counts. The 5,000 total cap leaves 440 slots for new ideas. There are already
+  62 loaded agent variants; testing execution robustness adds more evidence now than inventing near-duplicates.
+- Validation: full 5,000-run production-state replay, 22.3 s and 332 MB RSS; synthetic two-day capacity
+  check, 138 MB and 178 ms persistence. All 550 backtests refreshed in 62 s (five workers, 2 GB peak) inside
+  trader.slice. 69 backend regression tests, UI check/build, desktop/mobile renders, and API stage-separation
+  checks run before shipping. Default dashboard payload cut from 13.3 MB to under 1 MB by selecting a
+  stage/scenario server-side and omitting unused monthly data from leaderboard rows.
+- Limits remain explicit in ../EXECUTION.md: isolated virtual cash vs pooled Capital margin, historical
+  funding rates, corporate/basis adjustments, missed tick tape and an unobservable remote queue. Fixed
+  latency scenarios are assumptions to test, not a claim of perfect Capital equivalence.
+- Next: verify deployed health and cashflow recovery, then watch closed-market behavior, native trailing,
+  measured decision→virtual queue→broker queue→HTTP response→confirmation, and resource growth. No user
+  action or desktop notification needed.
+
 ## 2026-10-15 (Thu) — demo day 8.6
 
 - Health: green; 0 errors in 3 days. The nightly job pushed daily history (868–1,018 bars per instrument)
@@ -159,6 +199,8 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+- execution-latency cohorts — paired forward records under frozen API/transport delay assumptions; no strategy parameter changes — comparison only (2026-10-15), excluded from independent verdict counts
 
 - adx-dmi — ADX trend strength with DI direction, 1h — live (2026-10-06)
 - bold-play — control: the fewest, largest bets at 1:200 until the account doubles or is ruined, 1h — control (2026-10-14)
