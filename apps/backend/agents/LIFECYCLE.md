@@ -13,8 +13,10 @@ Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writi
 | Broker | the same trades as real demo orders on the "Arena" account of the run's leverage (0.2× size) | best demo equity first, 50 runs per account; when an account is full, a run of its leverage $200 ahead of the weakest mirrored one takes its slot once that one is flat (automatic, `src/arena/broker.ts`) |
 | Retired | gone from the arena; its record stays on the dashboard (leaderboard → retired) | the verdicts below, applied by the babysitter |
 
-Control agents (`random-baseline` monkeys, `buy-hold`, `leverage-ladder`) are never judged or retired: they
-are the yardstick. There is no live-money stage, by design.
+Control agents (`random-baseline` monkeys, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
+`martingale-monkey`, `bold-play`) are never judged or retired: they are the yardstick. `bold-play` and
+`martingale-monkey` are built to go bust, so they are excluded from the broker (Broker page) and stay on paper;
+re-exclude them if their code changes. There is no live-money stage, by design.
 
 ## Verdicts
 
