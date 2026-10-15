@@ -3,6 +3,31 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-15 (Thu) — demo day 8.6
+
+- Health: green; 0 errors in 3 days. The nightly job pushed daily history (868–1,018 bars per instrument)
+  as planned. Two fixes, both deployed:
+  - Broker confirmations: Capital.com's `GET /confirms/{reference}` answers with the account's latest
+    confirmation whenever the reference is not the latest (verified: a dozen old references all returned the
+    same US500 close). A EURUSD close whose broker stop had just filled was stored with an AUDUSD price:
+    −$5,019 recorded, −$26.64 real (record corrected). 1 of 1,756 deals; no open was affected and no deal id
+    is shared. Confirmations must now match the deal's epic, direction, size and id.
+  - Restored runs are priced at start: after each restart, a run holding a position saved its cash balance
+    as equity until its first live candle, so equity curves show a false dip at 22:00 on Oct 14 and 07:00 on
+    Oct 15 (left in place).
+- Broker: bold-play and martingale-monkey (7 runs) excluded from mirroring. They are built to go bust, and
+  the martingale was already trading on Arena 09, draining the account the other 1:200 runs share. They stay
+  on paper.
+- Verdicts: control 144, early 406, keep 0, leader 0, retire 0; monkey sanity 0 of 36.
+- Retired: none (nothing judged yet). Added: none (Thursday).
+- Accounts: 1:200 −9.4% (mostly the ladder's US100 rungs margin-called at the broker, −$1,845 each), 1:100
+  −4.1% (−$4.1k), 1:1 −1.5%; the others within ±1.7%.
+- New agents, first 1.5 days: the daily-bar agents opened at the first 00:00 UTC close as designed (seeded
+  history works). Bold-play: 3 of 4 runs already down 85–99%. Noise-area momentum and gold-session are
+  trading; ibs-dip and the weekly or monthly ones have not had a signal yet.
+- Next: Monday 2026-10-19 — add agents if due (candidates: the TimesFM quantile audit, then timesfm-stops;
+  kelly-ladder; cppi). First judgements start in early November.
+
 ## 2026-10-14 (Wed) — 13 agents from the research
 
 - Why: the user asked to implement most of the research report's ideas at once, to watch them over the
