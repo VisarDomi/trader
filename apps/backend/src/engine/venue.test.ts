@@ -130,3 +130,11 @@ test('a virtual login paces bursts and accounts for switching plus confirmation 
   for (let i = 1; i < 12; i++) g.reserve('a', 1, OPEN, START);
   expect(typeof g.reserve('a', 1, OPEN, START)).toBe('string');
 });
+
+test('virtual API budgets restore past attempts without double counting', async () => {
+  const { VirtualGateway } = await import('./venue.ts');
+  const g = new VirtualGateway();
+  for (let i = 0; i < 12; i++) { g.observeOpen('same-run', START - i * 1000, START); g.observeOpen('same-run', START - i * 1000, START); }
+  expect(typeof g.reserve('same-run', 1, 'open', START)).toBe('string');
+  expect(typeof g.reserve('another-run', 1, 'open', START)).toBe('number');
+});

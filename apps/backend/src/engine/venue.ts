@@ -80,6 +80,12 @@ export class VirtualGateway {
   private account: number | null = null;
   private opens: number[] = [];
   private runOpens = new Map<string, number[]>();
+  observeOpen(runId: string, time: number, now: number): void {
+    if (now - time >= 3_600_000) return;
+    const recent = this.runOpens.get(runId) ?? [];
+    if (recent.includes(time)) return;
+    recent.push(time); this.runOpens.set(runId, recent); this.opens.push(time);
+  }
   reserve(runId: string, account: number, kind: string, now: number): number | string {
     const hour = 3_600_000;
     if (kind === 'open') {

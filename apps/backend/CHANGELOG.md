@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Persist/reconstruct actual and virtual hourly request budgets across process restarts.
 - Recover silently capped transaction history by time bisection; retain unlinked funding/corporate cashflows at account level and label realized trade rankings accurately. Reduce restart replay CPU by activating restored runs only at their resume point.
 - Separate Backtest → Virtual engine → Capital demo leaderboards; gate new virtual admissions on current-code backtests, require mature virtual evidence for new Capital slots, and demote in the reverse direction while preserving records. Existing Capital runs remain a calibration cohort.
 - Add fresh-quote delayed execution, synthetic API pacing, refreshed dealing/funding rules, stop-distance and execution-margin checks, durable pending commands, native broker trailing stops and null protection removal. Fix Friday weekend funding timing.

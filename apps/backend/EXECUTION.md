@@ -33,7 +33,7 @@ stay in ignored `data/`; committed observations contain no account/deal IDs or c
 
 `src/engine/venue.ts` holds refreshed market rules and a synthetic API gateway per scenario. Each gateway
 models the arena's 170 ms request pacing, account-switch/verification request cost, order/confirmation/position-verification
-requests and 600 opens/hour / 12 opens/run/hour safeguards. It does not make extra Capital requests per run.
+requests and 600 opens/hour / 12 opens/run/hour safeguards, retained across restarts. It does not make extra Capital requests per run.
 A standard command adds 500 ms assumed transport/processing delay, then fills on a fresh quote. The fixed
 latencies are experiments, not a claim that Capital always takes that long. The gateway approximates its
 queue as FIFO; the real mirror groups jobs by account.

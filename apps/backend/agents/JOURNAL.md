@@ -48,10 +48,18 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
   4,560 as expected. Before the final history fix: stream/forecaster green, 184 MB RSS, 449 mirrored, queue 0.
 - CPU follow-up: production's first full warm-up took 51 s under its one-core quota. Replay now activates
   restored runs only at their resume point instead of scanning every dormant run on every historical
-  candle. A full 4,560-record offline replay dropped to 4.1 s at 308 MB. Regression suite now 70 tests.
-- Next: verify deployed health and cashflow recovery, then watch closed-market behavior, native trailing,
-  measured decision→virtual queue→broker queue→HTTP response→confirmation, and resource growth. No user
-  action or desktop notification needed.
+  candle. A full 4,560-record offline replay dropped to 4.1 s at 308 MB. Regression suite now 72 tests, including restoration of actual and virtual hourly API budgets across restarts.
+- Final verification (13:01 UTC, before the final request-budget persistence patch): 4,560 virtual runs,
+  449/550 standard runs on Capital, queue 0, stream and forecaster healthy, 151 MB RSS, no recent errors.
+  No unpriced broker closes remain (485 recovered after full history traversal). Cashflows: 1,565 trades,
+  583 funding rows (−$690.09), 154 corporate adjustments (+$0.37); unlinked funding/corporate rows are
+  shown separately. Ten new real orders have complete timing: p95 candle→decision 17.3 s, virtual queue
+  13.6 s, broker queue 4.4 s, POST response 107 ms, send→verified confirmation 653 ms. These component
+  percentiles are not additive. The latency cohorts had 226 commands, 206 executed, 20 pending as expected
+  for the long-delay scenarios. Actual-fill adverse slippage p95 4.11 bp across the recorded history.
+- Next: watch closed-market behavior, trailing stops, account cost attribution and resource growth.
+  No standard agents retired or added; 144 controls / 406 early, no leaders yet; monkey sanity 0/36.
+  No user action or desktop notification needed.
 
 ## 2026-10-15 (Thu) — demo day 8.6
 
