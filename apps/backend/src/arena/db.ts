@@ -146,6 +146,12 @@ CREATE TABLE IF NOT EXISTS broker_deals (
 CREATE INDEX IF NOT EXISTS deals_by_status ON broker_deals (status);
 CREATE INDEX IF NOT EXISTS deals_by_run ON broker_deals (run_id);
 
+CREATE TABLE IF NOT EXISTS broker_cashflows (
+  account_id TEXT NOT NULL, reference TEXT NOT NULL, deal_id TEXT NOT NULL,
+  time INTEGER NOT NULL, type TEXT NOT NULL, amount REAL NOT NULL,
+  PRIMARY KEY (account_id, reference, time, type)
+);
+CREATE INDEX IF NOT EXISTS cashflows_by_deal ON broker_cashflows (account_id, deal_id);
 CREATE TABLE IF NOT EXISTS events (
   time INTEGER NOT NULL,
   level TEXT NOT NULL,
@@ -234,6 +240,16 @@ export interface DealRow {
   paper_close_price: number | null;
   pnl: number | null;
   note: string | null;
+  decision_time?: number | null;
+  sent_time?: number | null;
+  confirmed_time?: number | null;
+  accepted_time?: number | null;
+  virtual_fill_time?: number | null;
+  bar_close_time?: number | null;
+  close_requested_time?: number | null;
+  cash_adjustment?: number | null;
+  upl?: number | null;
+  reconciled_at?: number | null;
 }
 
 const MAX_LOGS_PER_RUN = 300;
@@ -253,6 +269,12 @@ export class ArenaDB {
     const dealColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`).all().map(c => c.name);
     if (!dealColumns.includes('account')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account TEXT`);
     if (!dealColumns.includes('account_id')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account_id TEXT`);
+    for (const name of ['decision_time', 'sent_time', 'confirmed_time', 'close_requested_time', 'accepted_time', 'virtual_fill_time', 'bar_close_time']) {
+      if (!dealColumns.includes(name)) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN ${name} INTEGER`);
+    }
+    for (const name of ['cash_adjustment', 'upl', 'reconciled_at']) {
+      if (!dealColumns.includes(name)) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN ${name} REAL`);
+    }
     const runColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(runs)`).all().map(c => c.name);
     if (!runColumns.includes('leverage')) this.db.exec(`ALTER TABLE runs ADD COLUMN leverage INTEGER`);
     // Backtests from before leverage tiers have no demo counterpart any more; the lab re-runs them per tier.
@@ -430,7 +452,7 @@ export class ArenaDB {
         .run(
           id, r.agentId, r.codeHash, r.epic, r.leverage, r.windowId, r.status, r.capital, JSON.stringify(r.params),
           r.windowStart, r.ranAt, r.windowEnd, r.metrics.finalEquity, JSON.stringify(r.metrics),
-          JSON.stringify({ agentUsPerBar: r.agentUsPerBar, bars: r.bars, candles: r.candles, errors: r.errors, durationMs: r.durationMs }),
+          JSON.stringify({ engineVersion: r.engineVersion, agentUsPerBar: r.agentUsPerBar, bars: r.bars, candles: r.candles, errors: r.errors, durationMs: r.durationMs }),
         );
       r.trades.forEach((t, i) => this.appendTrade(id, i, t));
       for (const p of r.equity) this.upsertEquity(id, p.t, p.equity);
@@ -522,6 +544,28 @@ export class ArenaDB {
 
   dealsForRun(runId: string): DealRow[] {
     return this.db.query<DealRow, [string]>(`SELECT * FROM broker_deals WHERE run_id = ? ORDER BY id`).all(runId);
+  }
+
+  recordCashflows(accountId: string, transactions: { reference: string; dealId?: string; dateUtc: string; transactionType: string; size: string; currency: string; status: string }[]): number {
+    let matched = 0;
+    this.tx(() => {
+      for (const t of transactions) {
+        if (t.currency !== 'USD' || t.status !== 'PROCESSED' || !t.dealId) continue;
+        const deal = this.dealByDealId(t.dealId);
+        const amount = Number(t.size);
+        const time = Date.parse(t.dateUtc + (/Z$/.test(t.dateUtc) ? '' : 'Z'));
+        if (!deal || deal.account_id !== accountId || !Number.isFinite(amount) || !Number.isFinite(time)) continue;
+        this.db.query(`INSERT OR REPLACE INTO broker_cashflows (account_id, reference, deal_id, time, type, amount) VALUES (?, ?, ?, ?, ?, ?)`)
+          .run(accountId, t.reference, t.dealId, time, t.transactionType, amount);
+        matched++;
+        const sums = this.db.query<{ gross: number | null; adjustments: number }, [string, string]>(`SELECT
+          SUM(CASE WHEN type = 'TRADE' THEN amount END) AS gross,
+          SUM(CASE WHEN type != 'TRADE' THEN amount ELSE 0 END) AS adjustments
+          FROM broker_cashflows WHERE account_id = ? AND deal_id = ?`).get(accountId, t.dealId)!;
+        this.updateDeal(deal.id, { ...(sums.gross === null ? {} : { pnl: sums.gross }), cash_adjustment: sums.adjustments });
+      }
+    });
+    return matched;
   }
 
   // ------------------------------------------------------------------ events & settings

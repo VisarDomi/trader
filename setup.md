@@ -1,9 +1,9 @@
 # Trader — setup
 
 A platform for collecting many trading agents, running each one forward on live
-Capital.com **demo** prices, and ranking them. The demo leaderboard is the one
-that matters; the backtest leaderboard is there to show how much an agent was
-overfit. Dashboard: <https://trader.veron3.space> (Authelia login).
+Capital.com prices, and ranking them through **Backtest → Virtual engine → Capital demo**.
+New runs pass a current-code backtest, then build a forward virtual record before competing for
+Capital demo slots. Actual demo cashflows are ranked separately. Dashboard: <https://trader.veron3.space> (Authelia login).
 
 Start here, then read only what your task needs:
 

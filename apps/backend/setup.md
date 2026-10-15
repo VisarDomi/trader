@@ -7,7 +7,7 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 ## Read on demand
 
 - [`agents/GUIDE.md`](agents/GUIDE.md) — writing an agent (the SDK contract, sizing, indicators, TimesFM).
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: two leaderboards, topology, code map,
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: three stages, topology, code map,
   simulation model, arena, broker mirror, known limitations.
 - [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.
 - [`agents/JOURNAL.md`](agents/JOURNAL.md) — every babysitter visit and the log of agent ideas tried.
@@ -58,7 +58,8 @@ Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.
 
 ## Broker mirror (real demo orders)
 
-Paper runs are the leaderboard; the mirror copies them onto Capital.com demo accounts to measure
-real fills. It uses the nine accounts named "Arena…" (Visi is the user's): each is topped up to
+Virtual runs build forward evidence; the mirror copies qualified runs onto Capital.com demo accounts.
+Their actual cashflows form a separate Capital demo leaderboard. Existing slots continue as a calibration
+cohort. Execution contract, capacity and known differences: [`EXECUTION.md`](EXECUTION.md). It uses the nine accounts named "Arena…" (Visi is the user's): each is topped up to
 $100,000 and runs in hedging mode, holding up to 50 runs at 0.2× the paper size, 450 in total.
 Details: [`ARCHITECTURE.md`](ARCHITECTURE.md#broker-mirror).

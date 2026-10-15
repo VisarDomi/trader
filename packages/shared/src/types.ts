@@ -62,6 +62,12 @@ export interface LeaderboardRow {
 	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
 	/** Demo rows: mirrored onto a broker demo account. */
 	mirrored: boolean;
+	stage?: 'backtest' | 'virtual' | 'demo';
+	scenario?: string;
+	comparisonOnly?: boolean;
+	stageReason?: string;
+	observation?: { since: number; trades: number; tStat: number };
+	brokerEvidence?: { closed: number; priced: number; failed: number; open: number; basis: string };
 }
 
 export interface RunSummary {
@@ -255,6 +261,8 @@ export interface ArenaStatus {
 	quotes: Record<string, QuoteStatus>;
 	forecaster: { reachable: boolean; lastProbeAt: number; lastSuccessAt: number; lastError: string | null; requests: number; failures: number };
 	broker: BrokerStatus | null;
+	execution?: Record<string, any>;
+	network?: Record<string, any>;
 	memoryMb: number;
 }
 

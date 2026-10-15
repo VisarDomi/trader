@@ -6,17 +6,32 @@ Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writi
 
 ## Stages
 
-| Stage | What it means | How a run gets there |
+| Stage | Meaning | Promotion / demotion |
 |---|---|---|
-| Backtest | 2024-01 → 2026-09 on the lab PC | every new agent; only clearly broken ideas stop here |
-| Demo | paper trading on live demo prices, $10,000 per instrument | every agent that passed the backtest gate |
-| Broker | the same trades as real demo orders on the "Arena" account of the run's leverage (0.2× size) | best demo equity first, 50 runs per account; when an account is full, a run of its leverage $200 ahead of the weakest mirrored one takes its slot once that one is flat (automatic, `src/arena/broker.ts`) |
-| Retired | gone from the arena; its record stays on the dashboard (leaderboard → retired) | the verdicts below, applied by the babysitter |
+| Backtest | historical simulation on the lab PC | current-code result passes the gate below before a new virtual record starts |
+| Virtual engine | forward execution on live quotes, $10,000 per run, independent cash | mature evidence: ≥30 trades/28 days or ≥10/90 days; trade t ≥2 and above the instrument's standard monkeys can compete for Capital slots |
+| Capital demo | actual demo orders on Arena accounts at 0.2× size | new eligible virtual runs compete within a leverage tier, with a t-statistic advantage ≥0.25; swaps wait for the incumbent to be flat |
 
-Control agents (`random-baseline` monkeys, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
-`martingale-monkey`, `bold-play`) are never judged or retired: they are the yardstick. `bold-play` and
-`martingale-monkey` are built to go bust, so they are excluded from the broker (Broker page) and stay on paper;
-re-exclude them if their code changes. There is no live-money stage, by design.
+Demotion goes **Capital demo → virtual → backtest**. Losing mature actual broker trade evidence (t ≤−1)
+removes a Capital slot. That run continues virtually and needs a fresh 28-day observation window before
+re-entry; promotion uses only trades entered after demotion. A mature virtual loser, silent run, busted
+account or agent error is archived back to backtest automatically. If still on Capital, it first loses that
+slot and gets the virtual observation window. Historical records remain available. A changed idea needs
+new source/version and a new passing backtest; same-code archived runs never silently restart.
+
+The 449 existing Capital assignments are a **calibration cohort**, not 449 statistically proven leaders.
+They keep their records so execution drift can be compared. New assignments require the evidence gate.
+Backtest gates apply to new admissions; earlier forward records are retained even if their old backtest
+would fail today's gate. Engine model changes are annotated; history is never rewritten.
+
+Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
+`martingale-monkey`, `bold-play`) are never judged or retired. The ruin controls `bold-play` and
+`martingale-monkey` are automatically paper-only by slug, including future code versions. There is no
+live-money stage.
+
+Execution comparisons have separate records and labels, but are correlated copies of a strategy under
+frozen latency assumptions. They never take Capital slots and never multiply strategy/monkey verdicts.
+See [`../EXECUTION.md`](../EXECUTION.md) for the empirical contract and limits.
 
 ## Verdicts
 
@@ -71,7 +86,7 @@ agents that size with `marginPct` use the high leverage.
 - **New agents:** give each one a tier in `leverage.agents`: the lowest tier above what `check-agent`
   reports as its leverage use (90th percentile), or the tier its idea is about. Prefer accounts with free
   slots (`review` shows runs per tier).
-- **Keep each tier near 50 runs**, the account's capacity; beyond that, promotion decides who is mirrored.
+- **Capital capacity remains 50 runs per tier**. Virtual experiments may exceed that; evidence decides who reaches Capital.
 - **Moving an agent to another tier** retires its runs at the old tier and starts new ones; do it rarely and
   say why in the journal. Changing an account's tier moves every run on it.
 - Never change an Arena account's leverage in Capital.com: the arena sets it back from the roster.
@@ -81,8 +96,9 @@ agents that size with `marginPct` use the high leverage.
 
 ## Adding agents
 
-- **When:** at most every 7 days (Monday visits), and only while live runs plus the new ones stay ≤ 600
-  (arena memory on the shared server; `review` shows the room left).
+- **When:** at most every 7 days (Monday visits), and only while total virtual runs plus new ones stay ≤5,000
+  (measured capacity; `review` shows standard and comparison counts). New strategies take priority over
+  replaceable execution comparisons at the next deploy. The initial pool leaves roughly 400 slots free.
 - **How many:** 1–3 agents per addition, each with at most 3 variants that differ meaningfully.
 - **What:** ideas with a reason to work that does not come from our backtest: documented market effects
   (time-series momentum, short-term reversal, volatility breakouts, opening-range and session effects,
@@ -97,9 +113,9 @@ agents that size with `marginPct` use the high leverage.
 - **Instruments** are chosen up front, where the mechanism makes sense. Do not drop instruments because
   their backtest looked bad.
 - **Gate:** `bun run check-agent agents/<file>.ts` passes; for forecast agents run `bun run forecasts` first;
-  then `bun run backtest <agent>` (heavy jobs inside `trader.slice`, see `../WORKFLOW.md`). Reject only if
-  clearly broken: median backtest Sharpe across its instruments below −0.5, fewer than 20 trades per run on
-  average, or busted runs. Agents built to trade a few times a year (200-day filters, monthly rebalancers,
+  then `bun run backtest <agent>` (heavy jobs inside `trader.slice`, see `../WORKFLOW.md`). For new admissions the engine checks each instrument/tier: reject a current-code backtest
+  with Sharpe below −0.5, fewer than 20 trades, an error or a busted account. This replaces the earlier
+  manual median/average gate, which had admitted individually broken rows. Agents built to trade a few times a year (200-day filters, monthly rebalancers,
   rebalancing holders) need at least 5 trades per run instead of 20; they are judged by the slow-agent rule.
   Controls are not gated. Log rejected ideas too.
 
@@ -108,10 +124,15 @@ agents that size with `marginPct` use the high leverage.
 1. Read `../../../setup.md` (hard rules), this file, and the three newest entries of `JOURNAL.md`.
 2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*'` and, if last night's
    backtests matter, `journalctl --user -u trader-lab -n 40`.
-3. **Health.** Fix what is broken and within scope (services, agent bugs, platform bugs; follow
+3. **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
+   pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
+   is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
+    Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.
-4. **Retire** what the review lists, after a sanity check of each reason.
+4. **Demotions/retirements:** the engine applies per-run stage demotions automatically. Sanity-check
+   the review and events, fix platform/agent bugs, and apply any remaining whole-agent retirements.
+   Judge standard runs once; do not count latency comparisons as independent evidence.
 5. **Add agents** if due (above).
 6. **Ship:** commit (`chore(agents): retire …`, `feat(agents): …`), `git push`, and run
    `ops/server/deploy-arena.sh` when anything under `agents/` changed (including `roster.json`). Then run
@@ -139,6 +160,6 @@ agents that size with `marginPct` use the high leverage.
 - Broker: 9 accounts × 50 runs = 450 mirrored runs, 50 per leverage tier. Capital.com allows 10 demo
   accounts per login and the user keeps Visi. Beyond 50 runs on a tier, promotion/demotion decides who trades
   real demo orders.
-- Paper: ≤ 600 live runs and arena memory under ~500 MB (the review shows both).
+- Virtual: ≤5,000 live runs including execution comparisons and arena memory under ~500 MB (the review shows both).
 - Capital.com request budget is shared by everything on the login; more agents mean bigger top-of-hour
   bursts. Watch the broker queue and errors in the review.

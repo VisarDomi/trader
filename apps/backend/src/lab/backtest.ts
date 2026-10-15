@@ -1,3 +1,4 @@
+import { ENGINE_VERSION } from '../engine/version.ts';
 /**
  * Backtest CLI (runs on the lab PC).
  *
@@ -145,7 +146,7 @@ async function main(): Promise<void> {
 
   if (args.pushOnly) {
     const cached = (await Promise.all(pairs.map(p => readResult(p.agent.id, p.epic, p.leverage))))
-      .filter((r, i): r is BacktestResult => r !== null && r.codeHash === pairs[i]!.agent.codeHash);
+      .filter((r, i): r is BacktestResult => r !== null && r.codeHash === pairs[i]!.agent.codeHash && r.engineVersion === ENGINE_VERSION);
     console.log(`pushing ${cached.length} cached results`);
     const ok = await pushResults(cached);
     console.log(ok ? 'pushed' : 'push incomplete');
@@ -155,7 +156,7 @@ async function main(): Promise<void> {
   const todo: typeof pairs = [];
   for (const p of pairs) {
     const cached = args.force ? null : await readResult(p.agent.id, p.epic, p.leverage);
-    if (!cached || cached.codeHash !== p.agent.codeHash) todo.push(p);
+    if (!cached || cached.codeHash !== p.agent.codeHash || cached.engineVersion !== ENGINE_VERSION) todo.push(p);
   }
   console.log(`${selected.length} agents, ${pairs.length} agent×instrument×leverage runs, ${todo.length} to run (window ${STANDARD_WINDOW.id})`);
   if (todo.length === 0) process.exit(0);

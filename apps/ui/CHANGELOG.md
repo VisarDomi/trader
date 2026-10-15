@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Separate Backtest, Virtual engine and Capital demo results; add execution scenario filters, pagination and resource/parity measurements on Status.
+
 ### Added
 - **Research tab** — the research report, one page per topic note and a searchable library of every source, from the repo's `research/` folder (bundled at build). Saved papers and page snapshots are served from the server's `research/files` (not in git; `ops/server/sync-research.sh`). Notes render with tables; citations like `[leverage-03]` link to the library.
 - **Leverage page** — runs, mirroring and median return per leverage tier and account, the leverage ladder (return and drawdown per tier), and the 1:1 share basket against US100.

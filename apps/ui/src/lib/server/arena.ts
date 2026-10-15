@@ -42,9 +42,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const arena = {
+	execution: () => call<any>('/api/execution'),
+	scenarios: () => call<{ name: string; count: number }[]>('/api/scenarios'),
 	status: () => call<ArenaStatus>('/api/status'),
 	events: (limit = 200) => call<ArenaEvent[]>(`/api/events?limit=${limit}`),
-	leaderboard: (kind: RunKind, retired = false) => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}`),
+	leaderboard: (kind: RunKind, retired = false, stage = '', scenario = '') => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}${stage ? `&stage=${stage}` : ''}${scenario ? `&scenario=${encodeURIComponent(scenario)}` : ''}`),
 	agents: () => call<AgentListItem[]>('/api/agents'),
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),

@@ -1,3 +1,4 @@
+import { measuredFetch, recordPace } from './telemetry.ts';
 /**
  * Capital.com REST client — DEMO ONLY.
  *
@@ -55,9 +56,19 @@ export function credentialsFromEnv(): CapitalCredentials {
 }
 
 export class CapitalApiError extends Error {
-  constructor(readonly status: number, readonly body: string, path: string) {
+  constructor(
+    readonly status: number,
+    readonly body: string,
+    path: string,
+  ) {
     // Gateway errors come back as HTML pages; keep only their text.
-    super(`Capital.com ${status} on ${path}: ${body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)}`);
+    super(
+      `Capital.com ${status} on ${path}: ${body
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 300)}`,
+    );
   }
 }
 
@@ -105,12 +116,20 @@ export class RequestPacer {
     const now = Date.now();
     const slot = Math.max(now, this.nextSlot);
     this.nextSlot = slot + this.minIntervalMs;
-    if (slot > now) await Bun.sleep(slot - now);
+    if (slot > now) {
+      recordPace(slot - now);
+      await Bun.sleep(slot - now);
+    }
   }
 }
 
 /** Every client in this process shares the login limit. */
 const loginPacer = new RequestPacer(LOGIN_MIN_INTERVAL_MS);
+
+export interface RequestHooks {
+  sent?: () => void;
+  accepted?: () => void;
+}
 
 export class CapitalClient {
   private cst = '';
@@ -142,10 +161,16 @@ export class CapitalClient {
   private async doLogin(): Promise<void> {
     await loginPacer.wait();
     await this.pacer.wait();
-    const res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
+    const res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
       method: 'POST',
-      headers: { [HEADER_API_KEY]: this.creds.apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: this.creds.identifier, password: this.creds.password }),
+      headers: {
+        [HEADER_API_KEY]: this.creds.apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        identifier: this.creds.identifier,
+        password: this.creds.password,
+      }),
     });
     if (!res.ok) throw new CapitalApiError(res.status, await res.text(), '/session');
     this.cst = res.headers.get(HEADER_CST) ?? '';
@@ -161,7 +186,9 @@ export class CapitalClient {
 
   /** Select a sub-account by its display name (e.g. "Gerti"). Session-scoped. */
   async useAccount(accountName: string): Promise<string> {
-    const { accounts } = await this.get<{ accounts: { accountId: string; accountName: string }[] }>('/api/v1/accounts');
+    const { accounts } = await this.get<{
+      accounts: { accountId: string; accountName: string }[];
+    }>('/api/v1/accounts');
     const match = accounts.find(a => a.accountName === accountName);
     if (!match) throw new Error(`Capital.com sub-account "${accountName}" not found`);
     await this.selectAccount(match.accountId);
@@ -192,7 +219,7 @@ export class CapitalClient {
     let res: Response;
     for (let attempt = 0; ; attempt++) {
       await this.pacer.wait();
-      res = await fetch(`${DEMO_BASE_URL}/api/v1/session`, {
+      res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
         method: 'PUT',
         headers: this.authHeaders(),
         body: JSON.stringify({ accountId }),
@@ -215,26 +242,28 @@ export class CapitalClient {
   get<T>(path: string): Promise<T> {
     return this.request<T>('GET', path);
   }
-  post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>('POST', path, body);
+  post<T>(path: string, body: unknown, hooks?: RequestHooks): Promise<T> {
+    return this.request<T>('POST', path, body, hooks);
   }
   put<T>(path: string, body: unknown): Promise<T> {
     return this.request<T>('PUT', path, body);
   }
-  delete<T>(path: string): Promise<T> {
-    return this.request<T>('DELETE', path);
+  delete<T>(path: string, hooks?: RequestHooks): Promise<T> {
+    return this.request<T>('DELETE', path, undefined, hooks);
   }
 
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async request<T>(method: string, path: string, body?: unknown, hooks?: RequestHooks): Promise<T> {
     if (!this.cst || Date.now() - this.authedAt > SESSION_REFRESH_MS) await this.login();
     for (let attempt = 0; ; attempt++) {
       await this.pacer.wait();
-      const res = await fetch(`${DEMO_BASE_URL}${path}`, {
+      hooks?.sent?.();
+      const res = await measuredFetch(`${DEMO_BASE_URL}${path}`, {
         method,
         headers: this.authHeaders(),
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       if (res.ok) {
+        hooks?.accepted?.();
         this.authedAt = Date.now();
         const text = await res.text();
         return (text ? JSON.parse(text) : {}) as T;
@@ -275,7 +304,11 @@ export class CapitalClient {
 
   /** True when Capital.com has at least one bar ending at or before `toMs`. */
   async hasDataBefore(epic: string, toMs: number): Promise<boolean> {
-    const params = new URLSearchParams({ resolution: RESOLUTION.MINUTE, to: isoNoMs(toMs), max: '1' });
+    const params = new URLSearchParams({
+      resolution: RESOLUTION.MINUTE,
+      to: isoNoMs(toMs),
+      max: '1',
+    });
     try {
       const data = await this.get<{ prices: RawPrice[] }>(`/api/v1/prices/${epic}?${params}`);
       return (data.prices ?? []).length > 0;

@@ -350,3 +350,23 @@ describe('determinism', () => {
     expect(draws[0]).toEqual(draws[1]!);
   });
 });
+
+test('non-crypto weekend funding is debited on Friday, not deferred until Sunday', () => {
+  const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1 }) }]));
+  const friday = Date.UTC(2026, 9, 16, 20, 58);
+  const price = 10_000;
+  engine.processCandle({ ...flat(0, price), time: friday });
+  engine.processCandle({ ...flat(1, price), time: friday + 2 * MIN });
+  const threeNights = 3 * price * US100.overnightLongPct / 100;
+  expect(run.balance).toBeCloseTo(10_000 + threeNights, 6);
+  run.onClock(friday + 2 * 24 * 60 * MIN + 2 * MIN);
+  expect(run.balance).toBeCloseTo(10_000 + threeNights, 6);
+});
+
+test('negative-balance protection caps net loss as well as the displayed balance', () => {
+  const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 200 }) }]));
+  engine.processCandle(flat(0, 100));
+  engine.processCandle(candle(1, 1, 1, 1, 1));
+  expect(run.balance).toBe(0);
+  expect(run.trades[0]!.pnl).toBe(-10_000);
+});

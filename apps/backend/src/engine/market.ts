@@ -1,3 +1,4 @@
+import type { LiveExecution } from './venue.ts';
 /**
  * MarketEngine — everything trading one instrument: its bar series (one per
  * timeframe in use) and every AgentRun on it.
@@ -55,6 +56,7 @@ export class MarketEngine {
     leverage: number;
     capital: number;
     checkStopsOnCandles: boolean;
+    execution?: LiveExecution;
     onEvent?: (e: RunEvent) => void;
   }): AgentRun {
     const def = opts.agent.def;
@@ -72,6 +74,7 @@ export class MarketEngine {
       primary,
       extra,
       checkStopsOnCandles: opts.checkStopsOnCandles,
+      execution: opts.execution,
       onEvent: opts.onEvent,
     });
     this.runs.push(run);

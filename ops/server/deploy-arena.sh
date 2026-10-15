@@ -54,7 +54,7 @@ ssh "$SERVER" "sudo install -m 0644 /tmp/trader-arena.service /etc/systemd/syste
 
 echo "== waiting for the API"
 for _ in $(seq 1 60); do
-  if ssh "$SERVER" "curl -sf -m 2 http://127.0.0.1:4120/api/health >/dev/null"; then
+  if ssh "$SERVER" "curl -sf -m 2 http://127.0.0.1:4120/api/health" | python3 -c 'import json,sys; data=sys.stdin.read(); sys.exit(0 if data and json.loads(data).get("ready") else 1)'; then
     ssh "$SERVER" "curl -s http://127.0.0.1:4120/api/status" | head -c 400; echo
     echo "deployed $SHA"
     exit 0

@@ -56,8 +56,9 @@ const [status, broker, demo, events] = await Promise.all([
 ]);
 
 const now = Date.now();
-const bands = luckBands(demo);
-const runs: RunReview[] = demo.map(r => {
+const standard = demo.filter(r => !r.comparisonOnly);
+const bands = luckBands(standard);
+const runs: RunReview[] = standard.map(r => {
   const a = assess(r, bands, now);
   return {
     runId: r.runId,
@@ -65,10 +66,10 @@ const runs: RunReview[] = demo.map(r => {
     epic: r.epic,
     leverage: r.leverage,
     timeframe: r.timeframe,
-    days: Math.round(((now - r.startedAt) / DAY_MS) * 10) / 10,
-    trades: r.metrics?.trades ?? 0,
+    days: Math.round(((now - (r.observation?.since ?? r.startedAt)) / DAY_MS) * 10) / 10,
+    trades: r.observation?.trades ?? r.metrics?.trades ?? 0,
     totalReturn: r.metrics?.totalReturn ?? 0,
-    tStat: r.metrics?.tStat ?? 0,
+    tStat: r.observation?.tStat ?? r.metrics?.tStat ?? 0,
     mirrored: r.mirrored,
     verdict: a.verdict,
     reason: a.reason,
@@ -93,10 +94,10 @@ const agents: AgentReview[] = [...Map.groupBy(runs.filter(r => r.verdict !== VER
 });
 
 // Sanity check on the leader bar: random monkeys that would pass it are luck by definition.
-const monkeyLeaders = demo.filter(
+const monkeyLeaders = standard.filter(
   r => r.slug === RANDOM_BASELINE_SLUG && (r.metrics?.trades ?? 0) >= LIFECYCLE.MIN_TRADES && (r.metrics?.tStat ?? 0) >= LIFECYCLE.LEADER_TSTAT,
 ).length;
-const monkeys = demo.filter(r => r.slug === RANDOM_BASELINE_SLUG).length;
+const monkeys = standard.filter(r => r.slug === RANDOM_BASELINE_SLUG).length;
 
 const count = (v: string) => runs.filter(r => r.verdict === v).length;
 const recentErrors = events.filter(e => e.level === 'error' && now - e.time < RECENT_EVENTS_MS);
@@ -132,7 +133,7 @@ const report = {
       : null,
     recentErrors: errorKinds,
   },
-  capacity: { liveRuns: runs.length, paperSoftCap: LIFECYCLE.PAPER_RUN_SOFT_CAP, roomForRuns: LIFECYCLE.PAPER_RUN_SOFT_CAP - runs.length },
+  capacity: { liveRuns: demo.length, standardRuns: standard.length, comparisonRuns: demo.length - standard.length, paperSoftCap: LIFECYCLE.PAPER_RUN_SOFT_CAP, roomForRuns: LIFECYCLE.PAPER_RUN_SOFT_CAP - demo.length },
   verdicts: Object.fromEntries(Object.values(VERDICT).map(v => [v, count(v)])),
   monkeySanity: { monkeys, wouldLead: monkeyLeaders },
   leaders: runs.filter(r => r.verdict === VERDICT.LEADER).sort((a, b) => b.tStat - a.tStat),
@@ -149,7 +150,7 @@ if (process.argv.includes(FLAG_JSON)) {
 } else {
   const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`;
   const lines: string[] = [];
-  lines.push(`# Arena review ${report.generatedAt.slice(0, 16)}Z — demo day ${report.demoDays}`);
+  lines.push(`# Arena review ${report.generatedAt.slice(0, 16)}Z — virtual day ${report.demoDays}`);
   lines.push('', '## Health');
   lines.push(`- stream ${report.health.stream ? 'connected' : 'DOWN'}, forecaster ${report.health.forecaster ? 'reachable' : 'UNREACHABLE'}, arena ${report.health.memoryMb} MB`);
   if (report.health.loadErrors.length) lines.push(`- LOAD ERRORS: ${report.health.loadErrors.map(e => `${e.file}: ${e.error}`).join('; ')}`);
@@ -171,7 +172,8 @@ if (process.argv.includes(FLAG_JSON)) {
   lines.push(`- errors in the last 3 days: ${recentErrors.length}`);
   for (const e of errorKinds.slice(0, 8)) lines.push(`  - ${e.count}× ${e.kind}`);
   lines.push('', '## Capacity');
-  lines.push(`- ${report.capacity.liveRuns} live demo runs (soft cap ${report.capacity.paperSoftCap}: room for ${report.capacity.roomForRuns})`);
+  lines.push(`- ${report.capacity.liveRuns} live virtual runs (soft cap ${report.capacity.paperSoftCap}: room for ${report.capacity.roomForRuns})`);
+  lines.push(`- ${report.capacity.standardRuns} standard runs, ${report.capacity.comparisonRuns} correlated execution comparisons (excluded from verdict/monkey counts)`);
   const perTier = [...Map.groupBy(runs, r => r.leverage)].sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
   lines.push(`- per leverage: ${perTier.map(([l, rs]) => `1:${l} ${rs.length}`).join(', ')}`);
   lines.push('', '## Verdicts');

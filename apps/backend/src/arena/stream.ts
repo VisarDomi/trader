@@ -1,3 +1,4 @@
+import { recordStream } from '../capital/telemetry.ts';
 /**
  * Live quotes from the Capital.com streaming API for every instrument on one
  * WebSocket. Quotes drive tick-precision stops and fill prices; 1-minute
@@ -86,6 +87,7 @@ export class QuoteStream {
     };
     ws.onmessage = event => {
       this.lastMessageAt = Date.now();
+      recordStream(new TextEncoder().encode(String(event.data)).byteLength);
       let msg: { destination?: string; status?: string; payload?: Record<string, unknown> };
       try {
         msg = JSON.parse(String(event.data));
@@ -94,7 +96,7 @@ export class QuoteStream {
       }
       if (msg.destination === DEST_QUOTE && msg.payload) {
         const p = msg.payload as { epic: string; bid: number; ofr: number; timestamp?: number };
-        if (typeof p.bid !== 'number' || typeof p.ofr !== 'number') return;
+        if (!Number.isFinite(p.bid) || !Number.isFinite(p.ofr) || p.bid <= 0 || p.ofr < p.bid) return;
         this.handleQuote({ epic: p.epic, bid: p.bid, ask: p.ofr, time: typeof p.timestamp === 'number' ? p.timestamp : Date.now() });
       } else if (msg.destination === DEST_SUBSCRIBE && msg.status !== 'OK') {
         this.log('error', `subscribe failed: ${JSON.stringify(msg).slice(0, 300)}`);
@@ -114,6 +116,7 @@ export class QuoteStream {
   }
 
   private handleQuote(q: LiveQuote): void {
+    if ((this.lastQuote.get(q.epic)?.time ?? 0) > q.time) return;
     this.lastQuote.set(q.epic, q);
     this.onQuote(q);
   }

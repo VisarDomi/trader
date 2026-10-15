@@ -1,0 +1,1922 @@
+{
+  "at": "2026-10-15T12:03:18.340Z",
+  "source": "https://open-api.capital.com/",
+  "markets": {
+    "US100": {
+      "instrument": {
+        "epic": "US100",
+        "symbol": "US100",
+        "expiry": "-",
+        "name": "US Tech 100",
+        "lotSize": 1,
+        "type": "INDICES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 5,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 1250
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -918.4,
+        "percentageChange": -1.07,
+        "updateTime": "2026-10-15T14:03:19.660",
+        "delayTime": 0,
+        "bid": 29598.1,
+        "offer": 29599.9,
+        "high": 29937.1,
+        "low": 29530.7,
+        "decimalPlacesFactor": 1,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "US500": {
+      "instrument": {
+        "epic": "US500",
+        "symbol": "US500",
+        "expiry": "-",
+        "name": "US 500",
+        "lotSize": 1,
+        "type": "INDICES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 5,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 2250
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -100.8,
+        "percentageChange": -0.23,
+        "updateTime": "2026-10-15T14:03:18.935",
+        "delayTime": 0,
+        "bid": 7698.2,
+        "offer": 7698.8,
+        "high": 7720.3,
+        "low": 7680.8,
+        "decimalPlacesFactor": 1,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "US30": {
+      "instrument": {
+        "epic": "US30",
+        "symbol": "US30",
+        "expiry": "-",
+        "name": "US Wall Street 30",
+        "lotSize": 1,
+        "type": "INDICES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 5,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 500
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": 116.5,
+        "percentageChange": 0.27,
+        "updateTime": "2026-10-15T14:03:20.247",
+        "delayTime": 0,
+        "bid": 51739.5,
+        "offer": 51741.5,
+        "high": 51881.5,
+        "low": 51545.5,
+        "decimalPlacesFactor": 1,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "GOLD": {
+      "instrument": {
+        "epic": "GOLD",
+        "symbol": "Gold",
+        "expiry": "-",
+        "name": "Gold",
+        "lotSize": 1,
+        "type": "COMMODITIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 5,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 20:59"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.0156264,
+          "shortRate": 0.0074064,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 50000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.25
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.001
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -9.77,
+        "percentageChange": 1.02,
+        "updateTime": "2026-10-15T14:03:20.629",
+        "delayTime": 0,
+        "bid": 4147.18,
+        "offer": 4147.68,
+        "high": 4161.61,
+        "low": 4091.87,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "SILVER": {
+      "instrument": {
+        "epic": "SILVER",
+        "symbol": "Silver",
+        "expiry": "-",
+        "name": "Silver",
+        "lotSize": 1,
+        "type": "COMMODITIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 10,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 20:59",
+            "22:00 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 20:59"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.0158158,
+          "shortRate": 0.0075958,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 100000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -2.389,
+        "percentageChange": 1.8,
+        "updateTime": "2026-10-15T14:03:20.690",
+        "delayTime": 0,
+        "bid": 56.605,
+        "offer": 56.655,
+        "high": 56.853,
+        "low": 55.412,
+        "decimalPlacesFactor": 3,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "OIL_CRUDE": {
+      "instrument": {
+        "epic": "OIL_CRUDE",
+        "symbol": "Oil - Crude",
+        "expiry": "-",
+        "name": "Crude Oil Spot",
+        "lotSize": 1,
+        "type": "COMMODITIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 10,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.01096,
+          "shortRate": -0.01096,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 125000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 1.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": 0.256,
+        "percentageChange": 0.27,
+        "updateTime": "2026-10-15T14:03:20.163",
+        "delayTime": 0,
+        "bid": 94.29,
+        "offer": 94.33,
+        "high": 94.31,
+        "low": 92.46,
+        "decimalPlacesFactor": 3,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "NATURALGAS": {
+      "instrument": {
+        "epic": "NATURALGAS",
+        "symbol": "Natural Gas",
+        "expiry": "-",
+        "name": "Natural Gas",
+        "lotSize": 1,
+        "type": "COMMODITIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 10,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "22:00 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00"
+          ],
+          "sat": [],
+          "sun": [
+            "22:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.01096,
+          "shortRate": -0.01096,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.0001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 10
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 2000000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 3
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -0.0162,
+        "percentageChange": 0.22,
+        "updateTime": "2026-10-15T14:03:20.792",
+        "delayTime": 0,
+        "bid": 3.5708,
+        "offer": 3.5758,
+        "high": 3.5728,
+        "low": 3.5158,
+        "decimalPlacesFactor": 4,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "EURUSD": {
+      "instrument": {
+        "epic": "EURUSD",
+        "symbol": "EUR/USD",
+        "expiry": "-",
+        "name": "EUR/USD",
+        "lotSize": 1,
+        "type": "CURRENCIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 3.333333,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 20:59:50"
+          ],
+          "sat": [],
+          "sun": [
+            "21:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.00804,
+          "shortRate": -0.00018,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.00001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 45000000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.25
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": 0.00177,
+        "percentageChange": 0.48,
+        "updateTime": "2026-10-15T14:03:21.733",
+        "delayTime": 0,
+        "bid": 1.12098,
+        "offer": 1.12105,
+        "high": 1.12407,
+        "low": 1.11509,
+        "decimalPlacesFactor": 5,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "GBPUSD": {
+      "instrument": {
+        "epic": "GBPUSD",
+        "symbol": "GBP/USD",
+        "expiry": "-",
+        "name": "GBP/USD",
+        "lotSize": 1,
+        "type": "CURRENCIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 3.333333,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 20:59:50"
+          ],
+          "sat": [],
+          "sun": [
+            "21:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.0047,
+          "shortRate": -0.00352,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.00001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 40000000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": 0.00024,
+        "percentageChange": 0.43,
+        "updateTime": "2026-10-15T14:03:22.103",
+        "delayTime": 0,
+        "bid": 1.32485,
+        "offer": 1.32498,
+        "high": 1.32755,
+        "low": 1.31789,
+        "decimalPlacesFactor": 5,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "AUDUSD": {
+      "instrument": {
+        "epic": "AUDUSD",
+        "symbol": "AUD/USD",
+        "expiry": "-",
+        "name": "AUD/USD",
+        "lotSize": 1,
+        "type": "CURRENCIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 5,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 20:59:50",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 20:59:50"
+          ],
+          "sat": [],
+          "sun": [
+            "21:00 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.00253,
+          "shortRate": -0.00569,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.00001
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 75000000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 100
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.1
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -0.00669,
+        "percentageChange": -0.87,
+        "updateTime": "2026-10-15T14:03:22.102",
+        "delayTime": 0,
+        "bid": 0.6911,
+        "offer": 0.69116,
+        "high": 0.69803,
+        "low": 0.69133,
+        "decimalPlacesFactor": 5,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "BTCUSD": {
+      "instrument": {
+        "epic": "BTCUSD",
+        "symbol": "BTC/USD",
+        "expiry": "-",
+        "name": "Bitcoin/USD",
+        "lotSize": 1,
+        "type": "CRYPTOCURRENCIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 50,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "sat": [
+            "00:00 - 05:00",
+            "07:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "sun": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.0616438,
+          "shortRate": 0.0136986,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.05
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.0001
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 50
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.0001
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -2389.3,
+        "percentageChange": -1.09,
+        "updateTime": "2026-10-15T14:03:22.685",
+        "delayTime": 0,
+        "bid": 80774.05,
+        "offer": 80824.05,
+        "high": 81837.1,
+        "low": 80135.3,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "ETHUSD": {
+      "instrument": {
+        "epic": "ETHUSD",
+        "symbol": "ETH/USD",
+        "expiry": "-",
+        "name": "Ethereum/USD",
+        "lotSize": 1,
+        "type": "CRYPTOCURRENCIES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 50,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "sat": [
+            "00:00 - 05:00",
+            "07:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "sun": [
+            "00:00 - 21:00",
+            "21:05 - 00:00"
+          ],
+          "zone": "UTC"
+        },
+        "country": "",
+        "overnightFee": {
+          "longRate": -0.0616438,
+          "shortRate": 0.0136986,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 1000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.001
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -142.97,
+        "percentageChange": -2.26,
+        "updateTime": "2026-10-15T14:03:23.022",
+        "delayTime": 0,
+        "bid": 2358.29,
+        "offer": 2360.04,
+        "high": 2426.4,
+        "low": 2315.3,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "NVDA": {
+      "instrument": {
+        "epic": "NVDA",
+        "symbol": "NVDA",
+        "expiry": "-",
+        "name": "NVIDIA Corp",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 15000
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 15
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -11.28,
+        "percentageChange": -1.6,
+        "updateTime": "2026-10-15T14:03:13.183",
+        "delayTime": 0,
+        "bid": 217.66,
+        "offer": 218.05,
+        "high": 221.3,
+        "low": 215.95,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "MSFT": {
+      "instrument": {
+        "epic": "MSFT",
+        "symbol": "MSFT",
+        "expiry": "-",
+        "name": "Microsoft Corp",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 2750
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -11.59,
+        "percentageChange": -0.86,
+        "updateTime": "2026-10-15T14:03:20.558",
+        "delayTime": 0,
+        "bid": 528.34,
+        "offer": 529.16,
+        "high": 533.03,
+        "low": 526.94,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "AAPL": {
+      "instrument": {
+        "epic": "AAPL",
+        "symbol": "AAPL",
+        "expiry": "-",
+        "name": "Apple Inc",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 5150
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": 5.07,
+        "percentageChange": 0.68,
+        "updateTime": "2026-10-15T14:03:19.264",
+        "delayTime": 0,
+        "bid": 345.16,
+        "offer": 345.64,
+        "high": 346.6,
+        "low": 342.65,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "AMZN": {
+      "instrument": {
+        "epic": "AMZN",
+        "symbol": "AMZN",
+        "expiry": "-",
+        "name": "Amazon.com Inc",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 7500
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -8.48,
+        "percentageChange": -1.65,
+        "updateTime": "2026-10-15T14:03:01.111",
+        "delayTime": 0,
+        "bid": 249.16,
+        "offer": 249.6,
+        "high": 253.8,
+        "low": 248.69,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "AVGO": {
+      "instrument": {
+        "epic": "AVGO",
+        "symbol": "AVGO",
+        "expiry": "-",
+        "name": "Broadcom Inc.",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 1300
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -16.8,
+        "percentageChange": -1.24,
+        "updateTime": "2026-10-15T14:03:11.205",
+        "delayTime": 0,
+        "bid": 341.08,
+        "offer": 341.66,
+        "high": 345.79,
+        "low": 337.95,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "META": {
+      "instrument": {
+        "epic": "META",
+        "symbol": "META",
+        "expiry": "-",
+        "name": "Meta Platforms Inc",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 3500
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -31.44,
+        "percentageChange": -1.16,
+        "updateTime": "2026-10-15T14:03:23.211",
+        "delayTime": 0,
+        "bid": 728.27,
+        "offer": 729.82,
+        "high": 737.54,
+        "low": 722.98,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "GOOGL": {
+      "instrument": {
+        "epic": "GOOGL",
+        "symbol": "GOOGL",
+        "expiry": "-",
+        "name": "Alphabet Inc - A",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 7050
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -8.21,
+        "percentageChange": -0.68,
+        "updateTime": "2026-10-15T14:03:24.019",
+        "delayTime": 0,
+        "bid": 344.33,
+        "offer": 344.81,
+        "high": 347.51,
+        "low": 340.71,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    },
+    "TSLA": {
+      "instrument": {
+        "epic": "TSLA",
+        "symbol": "TSLA",
+        "expiry": "-",
+        "name": "Tesla Inc",
+        "lotSize": 1,
+        "type": "SHARES",
+        "guaranteedStopAllowed": true,
+        "streamingPricesAvailable": true,
+        "currency": "USD",
+        "marginFactor": 20,
+        "marginFactorUnit": "PERCENTAGE",
+        "openingHours": {
+          "mon": [
+            "00:00 - 00:00"
+          ],
+          "tue": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "wed": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "thu": [
+            "00:00 - 00:15",
+            "00:15 - 00:00"
+          ],
+          "fri": [
+            "00:00 - 00:15",
+            "00:15 - 21:00"
+          ],
+          "sat": [],
+          "sun": [],
+          "zone": "UTC"
+        },
+        "country": "United States of America",
+        "overnightFee": {
+          "longRate": -0.0222347,
+          "shortRate": 0.0000124,
+          "swapChargeTimestamp": 1792098000000,
+          "swapChargeInterval": 1440
+        }
+      },
+      "dealingRules": {
+        "minStepDistance": {
+          "unit": "POINTS",
+          "value": 0.01
+        },
+        "minDealSize": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "maxDealSize": {
+          "unit": "POINTS",
+          "value": 6750
+        },
+        "minSizeIncrement": {
+          "unit": "POINTS",
+          "value": 0.1
+        },
+        "minGuaranteedStopDistance": {
+          "unit": "PERCENTAGE",
+          "value": 7.5
+        },
+        "minStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 0.01
+        },
+        "maxStopOrProfitDistance": {
+          "unit": "PERCENTAGE",
+          "value": 100
+        },
+        "marketOrderPreference": "AVAILABLE_DEFAULT_ON",
+        "trailingStopsPreference": "NOT_AVAILABLE"
+      },
+      "snapshot": {
+        "marketStatus": "TRADEABLE",
+        "netChange": -12.16,
+        "percentageChange": -1.4,
+        "updateTime": "2026-10-15T14:03:20.285",
+        "delayTime": 0,
+        "bid": 361.33,
+        "offer": 361.9,
+        "high": 367.11,
+        "low": 359.86,
+        "decimalPlacesFactor": 2,
+        "scalingFactor": 1,
+        "marketModes": [
+          "REGULAR"
+        ]
+      }
+    }
+  }
+}

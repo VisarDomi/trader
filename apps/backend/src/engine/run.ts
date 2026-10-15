@@ -1,3 +1,5 @@
+import type { LiveExecution } from './venue.ts';
+import { QUOTE_MAX_AGE_MS } from './venue.ts';
 /**
  * AgentRun — one agent trading one instrument with its own virtual account.
  *
@@ -65,9 +67,27 @@ export interface Quote {
 }
 
 export type RunEvent =
-  | { type: 'open'; runId: string; side: Side; size: number; price: number; time: number; stopLoss: number | null; takeProfit: number | null }
+  | {
+      type: 'open';
+      barCloseTime?: number;
+      decisionTime?: number;
+      trailingStop?: number | null;
+      runId: string;
+      side: Side;
+      size: number;
+      price: number;
+      time: number;
+      stopLoss: number | null;
+      takeProfit: number | null;
+    }
   | { type: 'close'; runId: string; trade: Trade }
-  | { type: 'stops'; runId: string; stopLoss: number | null; takeProfit: number | null }
+  | {
+      type: 'stops';
+      trailingStop?: number | null;
+      runId: string;
+      stopLoss: number | null;
+      takeProfit: number | null;
+    }
   | { type: 'log'; runId: string; time: number; message: string }
   | { type: 'error'; runId: string; time: number; message: string };
 
@@ -84,6 +104,7 @@ export interface RunOptions {
   extra: ReadonlyMap<Timeframe, BarSeries>;
   /** Backtests check stops against candle highs/lows; live runs check every tick instead. */
   checkStopsOnCandles: boolean;
+  execution?: LiveExecution;
   onEvent?: (event: RunEvent) => void;
 }
 
@@ -109,6 +130,19 @@ export interface LogLine {
 }
 
 /** Serializable run state for the arena to persist and resume. */
+type PendingCommand = { due: number; at: number; barCloseTime?: number } & (
+  | { kind: 'open'; side: Side; opts: OrderOptions }
+  | { kind: 'close'; reason?: string; exitReason?: ExitReason }
+  | { kind: 'stops'; update: StopUpdate }
+);
+export interface ExecutionStats {
+  submitted: number;
+  filled: number;
+  rejected: number;
+  totalDelayMs: number;
+  maxDelayMs: number;
+}
+
 export interface RunSnapshot {
   balance: number;
   position: OpenPosition | null;
@@ -122,6 +156,8 @@ export interface RunSnapshot {
   errors: number;
   status: RunStatus;
   rngState: number;
+  pending?: PendingCommand[];
+  executionStats?: ExecutionStats;
 }
 
 export class AgentRun {
@@ -158,6 +194,24 @@ export class AgentRun {
   forecast: Forecast | null = null;
 
   private quote: Quote | null = null;
+  private readonly execution?: LiveExecution;
+  private pending: PendingCommand[] = [];
+  private executing = false;
+  private decisionTime: number | undefined;
+  private barCloseTime: number | undefined;
+  executionStats: ExecutionStats = {
+    submitted: 0,
+    filled: 0,
+    rejected: 0,
+    totalDelayMs: 0,
+    maxDelayMs: 0,
+  };
+  get pendingOrders(): number {
+    return this.pending.length;
+  }
+  private now(): number {
+    return this.execution?.now?.() ?? Date.now();
+  }
   private peakEquity: number;
   private maxDrawdown = 0;
   private minutesTotal = 0;
@@ -172,6 +226,7 @@ export class AgentRun {
   barsSeen = 0;
 
   constructor(opts: RunOptions) {
+    this.execution = opts.execution;
     this.runId = opts.runId;
     this.agentId = opts.agentId;
     this.agent = opts.agent;
@@ -183,8 +238,15 @@ export class AgentRun {
     this.fundingFree = isFundingFree(opts.instrument, opts.leverage);
     const i = opts.instrument;
     this.instrumentInfo = {
-      epic: i.epic, name: i.name, assetClass: i.assetClass, pricePrecision: i.pricePrecision, minSize: i.minSize,
-      sizeStep: i.sizeStep, maxSize: i.maxSize, marginFactor: this.marginFactor, typicalSpread: i.typicalSpread,
+      epic: i.epic,
+      name: i.name,
+      assetClass: i.assetClass,
+      pricePrecision: i.pricePrecision,
+      minSize: i.minSize,
+      sizeStep: i.sizeStep,
+      maxSize: i.maxSize,
+      marginFactor: this.marginFactor,
+      typicalSpread: i.typicalSpread,
     };
     this.capital = opts.capital;
     this.primary = opts.primary;
@@ -207,8 +269,12 @@ export class AgentRun {
     const precision = this.instrument.pricePrecision;
     const spread = roundTo(c.spread > 0 ? c.spread : this.instrument.typicalSpread, precision);
     // Live runs may already hold a newer tick quote; never move the quote backwards.
-    if (!this.quote || this.quote.time <= c.time + 60_000) {
-      this.quote = { bid: c.close, ask: roundTo(c.close + spread, precision), time: c.time + 60_000 };
+    if (!this.execution && (!this.quote || this.quote.time <= c.time + 60_000)) {
+      this.quote = {
+        bid: c.close,
+        ask: roundTo(c.close + spread, precision),
+        time: c.time + 60_000,
+      };
     }
 
     if (this.position) {
@@ -216,17 +282,19 @@ export class AgentRun {
       // Only minutes that started after the entry can hit its stops.
       if (this.checkStopsOnCandles && c.time >= this.position.entryTime) this.checkStopsOnCandle(c, spread);
       if (this.position && this.agent.intradayOnly && isSessionEnd(c.time)) {
-        this.closePosition(EXIT_REASON.SESSION_END, this.exitPrice(this.position.side), c.time + 60_000);
+        if (this.execution) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
+        else this.closePosition(EXIT_REASON.SESSION_END, this.exitPrice(this.position.side), c.time + 60_000);
       }
     }
 
     // Equity, drawdown (at the candle's adverse extreme), exposure.
     const pos = this.position;
     let adverse = this.balance;
-    if (pos) {
-      adverse = pos.side === SIDE_LONG
-        ? this.balance + (c.low - pos.entryPrice) * pos.size
-        : this.balance + (pos.entryPrice - (c.high + spread)) * pos.size;
+    if (pos && c.time >= pos.entryTime) {
+      adverse =
+        pos.side === SIDE_LONG
+          ? this.balance + (c.low - pos.entryPrice) * pos.size
+          : this.balance + (pos.entryPrice - (c.high + spread)) * pos.size;
       this.minutesInPosition++;
     }
     this.minutesTotal++;
@@ -246,15 +314,26 @@ export class AgentRun {
   primeQuote(c: Candle): void {
     if (this.quote) return;
     const spread = roundTo(c.spread > 0 ? c.spread : this.instrument.typicalSpread, this.instrument.pricePrecision);
-    this.quote = { bid: c.close, ask: roundTo(c.close + spread, this.instrument.pricePrecision), time: c.time + 60_000 };
+    this.quote = {
+      bid: c.close,
+      ask: roundTo(c.close + spread, this.instrument.pricePrecision),
+      time: c.time + 60_000,
+    };
   }
 
   /** Live quote (arena only): stops and margin at tick precision. */
   onTick(q: Quote): void {
     // lastTime tracks candles only (it is the resume point after a restart).
+    if (this.execution && (q.time > this.now() + 1000 || this.now() - q.time > QUOTE_MAX_AGE_MS)) return;
+    if (!Number.isFinite(q.bid) || !Number.isFinite(q.ask) || q.bid <= 0 || q.ask < q.bid || (this.quote && q.time < this.quote.time))
+      return;
     this.quote = q;
+    this.flushPending();
     const pos = this.position;
     if (!pos || this.status !== RUN_STATUS.RUNNING) return;
+    const tickEquity = this.markToMarket();
+    this.peakEquity = Math.max(this.peakEquity, tickEquity);
+    if (this.peakEquity > 0) this.maxDrawdown = Math.min(1, Math.max(this.maxDrawdown, (this.peakEquity - tickEquity) / this.peakEquity));
     this.accrueFunding(q.time, q.bid);
     const exitPx = this.exitPrice(pos.side);
     const stop = this.effectiveStop(pos);
@@ -268,7 +347,13 @@ export class AgentRun {
     }
     if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.time);
     this.updateTrailAnchor(pos, exitPx);
-    if (this.agent.intradayOnly && isSessionEnd(q.time)) this.closePosition(EXIT_REASON.SESSION_END, exitPx, q.time);
+    if (this.agent.intradayOnly && isSessionEnd(q.time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
+  }
+
+  onClock(time: number): void {
+    if (!this.position || !this.quote || this.status !== RUN_STATUS.RUNNING) return;
+    this.accrueFunding(time, this.quote.bid);
+    if (this.agent.intradayOnly && isSessionEnd(time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
   }
 
   /** A primary-timeframe bar closed: let the agent decide. */
@@ -297,6 +382,7 @@ export class AgentRun {
   /** Stop a live run, closing its position at the current quote. */
   stop(reason: ExitReason = EXIT_REASON.STOPPED): void {
     if (this.position && this.quote) this.closePosition(reason, this.exitPrice(this.position.side), this.quote.time);
+    this.pending = [];
     this.status = RUN_STATUS.STOPPED;
   }
 
@@ -344,6 +430,8 @@ export class AgentRun {
       errors: this.errors,
       status: this.status,
       rngState: this.rngState,
+      pending: this.pending.map(p => structuredClone(p)),
+      executionStats: { ...this.executionStats },
     };
   }
 
@@ -360,15 +448,83 @@ export class AgentRun {
     this.errors = s.errors;
     this.status = s.status;
     this.rngState = s.rngState;
+    this.pending = structuredClone(s.pending ?? []);
+    if (this.execution?.gateway)
+      for (const p of this.pending) this.execution.gateway.nextSlot = Math.max(this.execution.gateway.nextSlot, p.due);
+    this.executionStats = { ...(s.executionStats ?? this.executionStats) };
     this.trades.push(...trades);
     this.equity.push(...equity);
+  }
+
+  private reject(reason: string): void {
+    this.executionStats.rejected++;
+    this.log(this.execution ? this.now() : (this.quote?.time ?? 0), `order rejected: ${reason}`);
+  }
+
+  private enqueueCommand(command: PendingCommand): void {
+    if (this.pending.length >= 8) return this.reject('too many pending commands');
+    const slot = this.execution?.gateway?.reserve(this.runId, this.leverage, command.kind, command.at);
+    if (typeof slot === 'string') return this.reject(slot);
+    if (slot !== undefined) command.due = Math.max(command.due, slot + this.execution!.latencyMs);
+    if (command.kind === 'open' && this.currentBar) command.barCloseTime = this.currentBar.time + this.primary.tfMs;
+    this.executionStats.submitted++;
+    this.pending.push(command);
+  }
+
+  private flushPending(): void {
+    if (!this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
+    while (this.pending[0] && this.pending[0].due <= this.now()) {
+      const command = this.pending.shift()!;
+      if (command.kind === 'open' && this.now() - command.at > Math.max(120_000, this.execution.latencyMs + QUOTE_MAX_AGE_MS)) {
+        this.reject('open expired before a fresh executable quote');
+        continue;
+      }
+      this.executing = true;
+      this.decisionTime = command.at;
+      this.barCloseTime = command.barCloseTime;
+      try {
+        const before = this.position;
+        const rejected = this.executionStats.rejected;
+        if (command.kind === 'open') this.open(command.side, command.opts);
+        else if (command.kind === 'close') this.closeByAgent(command.reason, command.exitReason);
+        else this.setStops(command.update);
+        const changed =
+          command.kind === 'stops' ? this.executionStats.rejected === rejected && this.position !== null : before !== this.position;
+        if (!changed) continue;
+        this.executionStats.filled++;
+        const delay = this.now() - command.at;
+        this.executionStats.totalDelayMs += delay;
+        this.executionStats.maxDelayMs = Math.max(this.executionStats.maxDelayMs, delay);
+      } finally {
+        this.executing = false;
+        this.decisionTime = undefined;
+        this.barCloseTime = undefined;
+      }
+    }
   }
 
   // ------------------------------------------------------------------ orders
 
   private open(side: Side, opts: OrderOptions = {}): void {
     if (!this.canTrade('open')) return;
-    const time = this.quote!.time;
+    const time = this.execution ? this.now() : this.quote!.time;
+    if (this.execution && !this.executing) {
+      if (this.position?.side === side) return;
+      if (this.pending.some(p => p.kind === 'open')) return;
+      const entry = side === SIDE_LONG ? this.quote!.ask : this.quote!.bid;
+      const size = this.sizeOrder(side, entry, opts);
+      if (typeof size === 'string') return this.reject(size);
+      const problem = this.execution.venue.stopsProblem(side, this.quote!.bid, this.quote!.ask, opts);
+      if (problem) return this.reject(problem);
+      this.enqueueCommand({
+        kind: 'open',
+        side,
+        opts: { ...opts, size },
+        at: time,
+        due: time + this.execution.latencyMs,
+      });
+      return;
+    }
     if (this.agent.intradayOnly && isSessionBlackout(time)) {
       this.log(time, `order ignored: ${side} during the daily session break window`);
       return;
@@ -379,14 +535,23 @@ export class AgentRun {
       if (this.status !== RUN_STATUS.RUNNING) return;
     }
     const entry = side === SIDE_LONG ? this.quote!.ask : this.quote!.bid;
-    const problem = validateStops(side, entry, opts);
+    const problem = validateStops(side, entry, opts) ?? this.execution?.venue.stopsProblem(side, this.quote!.bid, this.quote!.ask, opts);
     if (problem) {
-      this.log(time, `order rejected: ${problem}`);
+      this.reject(problem);
       return;
     }
-    const size = this.sizeOrder(side, entry, opts);
+    const size = this.execution && this.executing && opts.size !== undefined ? opts.size : this.sizeOrder(side, entry, opts);
     if (typeof size === 'string') {
-      this.log(time, `order rejected: ${size}`);
+      this.reject(size);
+      return;
+    }
+    if (
+      this.execution &&
+      (size * entry * this.marginFactor > this.balance - (this.quote!.ask - this.quote!.bid) * size ||
+        size < this.instrument.minSize ||
+        size > this.instrument.maxSize)
+    ) {
+      this.reject('insufficient margin or changed size limits at execution');
       return;
     }
     this.position = {
@@ -403,43 +568,89 @@ export class AgentRun {
       lastFundingDay: fundingDay(time),
       entryReason: opts.reason,
     };
-    this.emit({ type: 'open', runId: this.runId, side, size, price: entry, time, stopLoss: this.position.stopLoss, takeProfit: this.position.takeProfit });
+    this.emit({
+      type: 'open',
+      decisionTime: this.decisionTime,
+      barCloseTime: this.barCloseTime,
+      runId: this.runId,
+      side,
+      size,
+      price: entry,
+      time,
+      stopLoss: this.position.stopLoss,
+      takeProfit: this.position.takeProfit,
+      trailingStop: this.position.trailingStop,
+    });
     this.notifyFill({ kind: 'open', side, size, price: entry, time });
   }
 
-  private closeByAgent(reason?: string): void {
+  private closeByAgent(reason?: string, exitReason: ExitReason = EXIT_REASON.SIGNAL): void {
+    if (this.execution && !this.executing && this.allowOrders) {
+      this.pending = this.pending.filter(p => p.kind !== 'open');
+      if (this.position && !this.pending.some(p => p.kind === 'close'))
+        this.enqueueCommand({
+          kind: 'close',
+          reason,
+          exitReason,
+          at: this.now(),
+          due: this.now() + this.execution.latencyMs,
+        });
+      return;
+    }
     if (!this.position || !this.canTrade('close')) return;
-    this.closePosition(EXIT_REASON.SIGNAL, this.exitPrice(this.position.side), this.quote!.time, reason);
+    this.closePosition(exitReason, this.exitPrice(this.position.side), this.quote!.time, reason);
   }
 
   private setStops(update: StopUpdate): void {
     const pos = this.position;
     if (!pos || !this.canTrade('setStops')) return;
+    if (this.execution && !this.executing) {
+      this.enqueueCommand({
+        kind: 'stops',
+        update: { ...update },
+        at: this.now(),
+        due: this.now() + this.execution.latencyMs,
+      });
+      return;
+    }
     const next = {
       stopLoss: update.stopLoss === undefined ? pos.stopLoss : update.stopLoss,
       takeProfit: update.takeProfit === undefined ? pos.takeProfit : update.takeProfit,
       trailingStop: update.trailingStop === undefined ? pos.trailingStop : update.trailingStop,
     };
     const ref = this.exitPrice(pos.side);
-    const problem = validateStops(pos.side, ref, {
+    const stopOpts = {
       stopLoss: next.stopLoss ?? undefined,
       takeProfit: next.takeProfit ?? undefined,
       trailingStop: next.trailingStop ?? undefined,
-    });
+    };
+    const problem =
+      validateStops(pos.side, ref, stopOpts) ?? this.execution?.venue.stopsProblem(pos.side, this.quote!.bid, this.quote!.ask, stopOpts);
     if (problem) {
-      this.log(this.quote!.time, `setStops rejected: ${problem}`);
+      this.reject(`setStops: ${problem}`);
       return;
     }
     pos.stopLoss = next.stopLoss;
     pos.takeProfit = next.takeProfit;
+    if (next.trailingStop !== pos.trailingStop) pos.trailAnchor = ref;
     pos.trailingStop = next.trailingStop;
-    this.emit({ type: 'stops', runId: this.runId, stopLoss: pos.stopLoss, takeProfit: pos.takeProfit });
+    this.emit({
+      type: 'stops',
+      runId: this.runId,
+      stopLoss: pos.stopLoss,
+      takeProfit: pos.takeProfit,
+      trailingStop: pos.trailingStop,
+    });
   }
 
   private canTrade(action: string): boolean {
     if (this.status !== RUN_STATUS.RUNNING || !this.quote) return false;
     if (!this.allowOrders || this.primary.closedCount < this.warmup) return false;
-    if (this.balance <= 0) {
+    if (this.execution && this.execution.venue.problem(this.now(), this.quote.time)) {
+      if (action === 'open') this.reject(this.execution.venue.problem(this.now(), this.quote.time)!);
+      return false;
+    }
+    if (this.balance <= 0 && action === 'open') {
       this.log(this.quote.time, `${action} ignored: account is empty`);
       return false;
     }
@@ -448,6 +659,8 @@ export class AgentRun {
 
   private sizeOrder(side: Side, entry: number, opts: OrderOptions): number | string {
     const inst = this.instrument;
+    for (const [key, value] of Object.entries(opts))
+      if (typeof value === 'number' && !Number.isFinite(value)) return `${key} must be finite`;
     const equity = this.markToMarket();
     let stopDistance: number | null = null;
     if (opts.stopLoss !== undefined) stopDistance = Math.abs(entry - opts.stopLoss);
@@ -473,6 +686,7 @@ export class AgentRun {
     size = Math.min(size, maxByMargin, inst.maxSize);
     size = Math.floor(size / inst.sizeStep + SIZE_EPSILON) * inst.sizeStep;
     size = roundTo(size, decimalsOf(inst.sizeStep));
+    if (!Number.isFinite(size)) return `size must be finite`;
     if (size < inst.minSize) {
       return `size ${size} below the ${inst.epic} minimum of ${inst.minSize} (equity ${equity.toFixed(2)}, side ${side})`;
     }
@@ -483,7 +697,8 @@ export class AgentRun {
     const pos = this.position;
     if (!pos) return;
     const px = roundTo(price, this.instrument.pricePrecision);
-    const gross = pos.side === SIDE_LONG ? (px - pos.entryPrice) * pos.size : (pos.entryPrice - px) * pos.size;
+    const rawGross = pos.side === SIDE_LONG ? (px - pos.entryPrice) * pos.size : (pos.entryPrice - px) * pos.size;
+    const gross = Math.max(rawGross, -this.balance);
     const trade: Trade = {
       side: pos.side,
       size: pos.size,
@@ -501,6 +716,7 @@ export class AgentRun {
     // Funding was already debited from the balance as it accrued.
     this.balance += gross;
     this.position = null;
+    this.pending = this.pending.filter(p => p.kind === 'open');
     if (this.balance <= 0) {
       // Capital.com negative-balance protection: the account floors at zero.
       this.balance = 0;
@@ -508,7 +724,14 @@ export class AgentRun {
     }
     this.trades.push(trade);
     this.emit({ type: 'close', runId: this.runId, trade });
-    this.notifyFill({ kind: 'close', side: pos.side, size: pos.size, price: px, time, trade });
+    this.notifyFill({
+      kind: 'close',
+      side: pos.side,
+      size: pos.size,
+      price: px,
+      time,
+      trade,
+    });
   }
 
   // ------------------------------------------------------------------ risk checks
@@ -542,16 +765,13 @@ export class AgentRun {
   }
 
   private effectiveStop(pos: OpenPosition): { price: number; reason: ExitReason } | null {
-    const trail = pos.trailingStop !== null
-      ? (pos.side === SIDE_LONG ? pos.trailAnchor - pos.trailingStop : pos.trailAnchor + pos.trailingStop)
-      : null;
+    const trail =
+      pos.trailingStop !== null ? (pos.side === SIDE_LONG ? pos.trailAnchor - pos.trailingStop : pos.trailAnchor + pos.trailingStop) : null;
     if (pos.stopLoss === null && trail === null) return null;
     if (trail === null) return { price: pos.stopLoss!, reason: EXIT_REASON.STOP_LOSS };
     if (pos.stopLoss === null) return { price: trail, reason: EXIT_REASON.TRAILING_STOP };
     const trailTighter = pos.side === SIDE_LONG ? trail > pos.stopLoss : trail < pos.stopLoss;
-    return trailTighter
-      ? { price: trail, reason: EXIT_REASON.TRAILING_STOP }
-      : { price: pos.stopLoss, reason: EXIT_REASON.STOP_LOSS };
+    return trailTighter ? { price: trail, reason: EXIT_REASON.TRAILING_STOP } : { price: pos.stopLoss, reason: EXIT_REASON.STOP_LOSS };
   }
 
   private updateTrailAnchor(pos: OpenPosition, price: number): void {
@@ -569,7 +789,11 @@ export class AgentRun {
     const pos = this.position!;
     const day = fundingDay(time);
     if (day <= pos.lastFundingDay) return;
-    const nights = day - pos.lastFundingDay;
+    let nights = 0;
+    for (let d = pos.lastFundingDay + 1; d <= day; d++) {
+      const weekday = new Date(d * DAY_MS).getUTCDay();
+      nights += this.instrument.weekendTripleSwap ? (weekday === 5 ? 3 : weekday === 6 || weekday === 0 ? 0 : 1) : 1;
+    }
     pos.lastFundingDay = day;
     if (this.fundingFree) return;
     const ratePct = pos.side === SIDE_LONG ? this.instrument.overnightLongPct : this.instrument.overnightShortPct;
@@ -708,7 +932,11 @@ export class AgentRun {
 // ------------------------------------------------------------------ module helpers
 
 function validateStops(side: Side, ref: number, o: OrderOptions): string | null {
-  for (const [name, v] of [['stopLoss', o.stopLoss], ['takeProfit', o.takeProfit], ['trailingStop', o.trailingStop]] as const) {
+  for (const [name, v] of [
+    ['stopLoss', o.stopLoss],
+    ['takeProfit', o.takeProfit],
+    ['trailingStop', o.trailingStop],
+  ] as const) {
     if (v !== undefined && !Number.isFinite(v)) return `${name} must be a finite number, got ${v}`;
   }
   if (o.stopLoss !== undefined && (side === SIDE_LONG ? o.stopLoss >= ref : o.stopLoss <= ref)) {

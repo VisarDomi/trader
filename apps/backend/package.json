@@ -12,7 +12,9 @@
     "check-agent": "bun run src/lab/check-agent.ts",
     "arena": "bun run src/arena/main.ts",
     "review": "bun run src/lab/review.ts",
-    "watchdog": "bun run src/lab/watchdog.ts"
+    "watchdog": "bun run src/lab/watchdog.ts",
+    "audit-capital": "bun run src/lab/audit-capital.ts",
+    "benchmark-arena": "bun run src/lab/benchmark-arena.ts"
   },
   "dependencies": {
     "@trader/shared": "*"

@@ -19,7 +19,7 @@
 			<section class="card">
 				<h2>Arena</h2>
 				<div>Up since {utc(s.startedAt)} ({ago(s.startedAt, s.now)})</div>
-				<div>{s.agents} agents · {s.demoRuns} demo runs · {s.memoryMb} MB</div>
+				<div>{s.agents} agents · {s.demoRuns} virtual runs · {s.memoryMb} MB</div>
 				<div>
 					<span class="status-dot {s.stream.connected ? 'status-good' : 'status-critical'}"></span>
 					Price stream {s.stream.connected ? `connected ${ago(s.stream.connectedSince, s.now)}` : 'disconnected'} · {s.stream.reconnects} reconnects
@@ -41,6 +41,21 @@
 				{#if s.forecaster.lastError}<div class="muted">Last error: {s.forecaster.lastError}</div>{/if}
 			</section>
 		</div>
+
+    {#if data.execution}
+      {@const e = data.execution}
+      <section class="card stack">
+        <h2>Virtual execution and Capital parity</h2>
+        <p>{e.virtual.standardRuns} standard runs · {e.virtual.comparisonRuns} latency comparisons · capacity {e.virtual.runCap}</p>
+        <p>{e.virtual.submitted} commands · {e.virtual.filled} executed · {e.virtual.rejected} rejected · {e.virtual.pending} pending</p>
+        <p>Average command delay {e.virtual.meanDelayMs ?? '—'} ms · CPU {e.virtual.cpuCorePercent}% of one core · event loop p95 {e.virtual.eventLoopP95Ms} ms · last poll {e.virtual.lastPollMs} ms</p>
+        <p>Capital HTTP: {e.network.requests} requests · latency p50/p95 {e.network.requestP50Ms ?? '—'}/{e.network.requestP95Ms ?? '—'} ms · pacing wait {Math.round(e.network.paceWaitMs / 1000)} s</p>
+        <p>Payload: {Math.round(e.network.sentPayloadBytes / 1000)} KB sent · {Math.round(e.network.receivedPayloadBytes / 1000)} KB received · {Math.round(e.network.streamPayloadBytes / 1000)} KB streamed (excludes transport overhead)</p>
+        <p>Matched opens {e.parity.openFills} · rejected {e.parity.failed} · closes awaiting a value {e.parity.unpricedCloses}</p>
+        <p>Adverse open slippage p50/p95 {e.parity.adverseOpenSlippageBpsP50 ?? '—'}/{e.parity.adverseOpenSlippageBpsP95 ?? '—'} basis points · decision-to-confirm p95 {e.parity.decisionToConfirmP95Ms ?? '—'} ms ({e.parity.timedDeals} timed deals)</p>
+        <details><summary>Model limits</summary><ul>{#each e.parity.limitations as limit}<li>{limit}</li>{/each}</ul></details>
+      </section>
+    {/if}
 
 		<section class="card">
 			<h2>Instruments</h2>
