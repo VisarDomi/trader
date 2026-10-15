@@ -40,3 +40,13 @@ test('an unrelated rejection confirmation stays uncertain instead of becoming a 
     expect(db.openDeals()[0]!.note).toContain('unconfirmed');
   } finally { mirror.stop(); db.db.close(); }
 });
+
+test('Capital hourly request budget survives a process restart', () => {
+  const db = new ArenaDB(':memory:');
+  for (let i = 0; i < 12; i++) db.insertDeal({ account: NAME, account_id: ACCOUNT, run_id: RUN, epic: EPIC, side: LONG,
+    size: 100, paper_size: 500, deal_id: null, status: 'failed', open_time: Date.now() - i * 1000, open_price: null,
+    paper_open_price: 1.12, close_time: null, close_price: null, paper_close_price: null, pnl: null, note: 'rejected' });
+  const restarted = new BrokerMirror({} as CapitalClient, db, { prefix: 'Arena', accountTiers: { [NAME]: 1 } });
+  expect(restarted.status().opensLastHour).toBe(12);
+  restarted.stop(); db.db.close();
+});

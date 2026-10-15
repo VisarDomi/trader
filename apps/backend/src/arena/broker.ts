@@ -313,7 +313,17 @@ export class BrokerMirror {
     private readonly client: CapitalClient,
     private readonly db: ArenaDB,
     private readonly opts: BrokerOptions,
-  ) {}
+  ) {
+    // API limits span process restarts. Reconstruct attempts, including refused/uncertain POSTs.
+    const now = Date.now();
+    for (const d of this.db.deals(10_000)) {
+      if (now - d.open_time >= HOUR_MS) continue;
+      this.opens.push(d.open_time);
+      const recent = this.runOpens.get(d.run_id) ?? [];
+      recent.push(d.open_time); this.runOpens.set(d.run_id, recent);
+    }
+    this.opens.sort((a, b) => a - b);
+  }
 
   /** The arena's live runs. Must be set before start(). */
   setCandidateSource(source: () => MirrorCandidate[]): void {

@@ -158,6 +158,7 @@ export interface RunSnapshot {
   rngState: number;
   pending?: PendingCommand[];
   executionStats?: ExecutionStats;
+  openAttempts?: number[];
 }
 
 export class AgentRun {
@@ -196,6 +197,7 @@ export class AgentRun {
   private quote: Quote | null = null;
   private readonly execution?: LiveExecution;
   private pending: PendingCommand[] = [];
+  private openAttempts: number[] = [];
   private executing = false;
   private decisionTime: number | undefined;
   private barCloseTime: number | undefined;
@@ -432,6 +434,7 @@ export class AgentRun {
       rngState: this.rngState,
       pending: this.pending.map(p => structuredClone(p)),
       executionStats: { ...this.executionStats },
+      openAttempts: [...this.openAttempts],
     };
   }
 
@@ -452,6 +455,8 @@ export class AgentRun {
     if (this.execution?.gateway)
       for (const p of this.pending) this.execution.gateway.nextSlot = Math.max(this.execution.gateway.nextSlot, p.due);
     this.executionStats = { ...(s.executionStats ?? this.executionStats) };
+    this.openAttempts = (s.openAttempts ?? [...trades.map(t => t.entryTime), ...(s.position ? [s.position.entryTime] : []), ...(s.pending ?? []).filter(p => p.kind === 'open').map(p => p.at)]).filter(t => this.now() - t < 3_600_000);
+    if (this.execution?.gateway) for (const time of this.openAttempts) this.execution.gateway.observeOpen(this.runId, time, this.now());
     this.trades.push(...trades);
     this.equity.push(...equity);
   }
@@ -465,6 +470,7 @@ export class AgentRun {
     if (this.pending.length >= 8) return this.reject('too many pending commands');
     const slot = this.execution?.gateway?.reserve(this.runId, this.leverage, command.kind, command.at);
     if (typeof slot === 'string') return this.reject(slot);
+    if (command.kind === 'open') this.openAttempts = [...this.openAttempts.filter(t => command.at - t < 3_600_000), command.at];
     if (slot !== undefined) command.due = Math.max(command.due, slot + this.execution!.latencyMs);
     if (command.kind === 'open' && this.currentBar) command.barCloseTime = this.currentBar.time + this.primary.tfMs;
     this.executionStats.submitted++;
