@@ -36,6 +36,7 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 bun test                                   # engine + slot tests
 bun run typecheck
 bun run check-agent agents/my-agent.ts     # determinism, speed, rejected orders (seconds)
+bun run calibrate-night                   # Visar night agent: frequency-only 2024 calibration, later-year validation
 bun run backtest my-agent                  # backtest 2024-01 → 2026-09, push to the arena
 bun run forecasts                          # precompute TimesFM tables for forecast agents (GPU)
 bun run ingest                             # gap-fill 1-minute candles into PostgreSQL

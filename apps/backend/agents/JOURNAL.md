@@ -3,6 +3,34 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-15 (Thu, user-requested) — night frequency and history boundary
+
+- Request: bring `visar-night-trading` to 25–50 bets/year, allowing ordinary day-to-day price noise but
+  excluding neutral/volatile days and FOMC/BOJ decisions; explain the historical cutoff. This authorizes
+  a new source version and renewal of its existing special Capital demo admission.
+- Diagnosis: the 60% path-efficiency rule alone admitted 16/676 complete sessions. Revised efficiency
+  to 15%, agreeing quarter-hours to 13/26, maximum retracement to 75%; retain ≥0.25% session move and
+  data coverage. Add ≥60% directional body/range and ≤2% session range, preserving rejection of V-shaped
+  reversals, late spikes and hidden intra-minute swings. Normal counter-moves can now pass.
+- Calibration: `bun run calibrate-night`, 150 declared candidates, **2024 entry counts only**, no P&L
+  objective. Selected source `56ac3bdfe7c1`: 25 entries in 2024; later checks 25 in 2025 and 22 in Jan–Sep
+  2026 (29.4/year annualized). All 72 signals match actual funded backtest entry dates. Later dates are
+  a frequency check, not a pristine unseen profitability holdout after prior experiments on this dataset.
+- Performance retained honestly: $10,000 → $2.61 (−99.9739%), maxDD 99.9783%, 72 trades (46 long/26 short),
+  win rate 43.06%, PF 0.3697, Sharpe −1.2124, t −2.0317. 61 scheduled exits, 11 stop exits, zero errors.
+  Every entry 03:27 and every timed exit 08:27 Albania time. Last-120-day fresh-capital check: 8 trades,
+  −86.2%. Frequency is achieved; the 1:200 strategy still has no demonstrated edge. Risk sizing unchanged.
+- Policy exclusions: official Fed/BOJ 2024–2027 schedules in `src/sdk/policy-calendar.ts`; exclude the
+  completed decision-day NY session and BOJ decisions on the overnight entry day. Calendar coverage
+  ends 2027-12-31; uncovered dates block entries. Added maintenance checks to the visit runbook.
+- History evidence: stored US500 minute tape starts 2024-01-01 23:01 UTC. Read-only API probes returned
+  no pre-2024 minute quotes, but did return 2023 hourly and 2015 daily data. Exact 03:27 entries and tight
+  overnight stops cannot be inferred from those old coarse bars. The shared test actually extends through
+  September 2026; the earlier version merely had all three selected trades in 2024.
+- Validation: 109 backend tests and typecheck green, deterministic agent check, funded backtest/date audit.
+  Previous forward source has zero Capital deals; deploying the new version preserves its historical
+  record and the other strategies' records. Full rules/results: [visar-night-trading.md](visar-night-trading.md).
+
 ## 2026-10-15 (Thu, user-requested) — visar-night-trading
 
 - Request: implement Visar's manually tested US500 day-direction/overnight-pullback rule, backtest it,
@@ -265,7 +293,7 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 
 One line per idea: agent — mechanism — status (date).
 
-- visar-night-trading — consistent NY-session path, US500 03:27 overnight pullback, 08:27 or 50%-capital-loss exit, 1:200 — user-requested special demo experiment (2026-10-15); backtest −48.18% on only 3 trades, no profit-based parameter tuning
+- visar-night-trading — NY-session direction plus US500 03:27 pullback, 08:27 or 50%-capital-loss exit, 1:200 — special demo experiment (2026-10-15), frequency calibrated to 25/25/22 annual entries (2024/2025/Jan–Sep 2026); 72-trade backtest −99.9739%, selection used entry counts only
 
 - execution-latency cohorts — paired forward records under frozen API/transport delay assumptions; no strategy parameter changes — comparison only (2026-10-15), excluded from independent verdict counts
 

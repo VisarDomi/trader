@@ -1,6 +1,6 @@
-import { defineAgent, localTime, TZ } from '../src/sdk';
+import { defineAgent, localTime, TZ, POLICY_EVENT, policyCalendarCovers, policyEventsOn } from '../src/sdk';
 
-// Consistency thresholds fixed before testing this interpretation; no parameter search.
+// Calibrated to 25–50 entries/year using 2024 counts only; later years validate frequency, not profit.
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 const CASH_OPEN = 9 * 60 + 30;
@@ -20,9 +20,54 @@ function emptySession() {
   };
 }
 
+export interface NightSessionFilter {
+  trendPct: number;
+  minEfficiency: number;
+  minDirectionalShare: number;
+  maxRetraceShare: number;
+  maxRangePct: number;
+  minBodyShare: number;
+  minCoverage: number;
+}
+
+export function nightSessionFeatures(day: ReturnType<typeof emptySession>) {
+  const change = (day.points.at(-1) ?? day.open) - day.open;
+  const direction = Math.sign(change);
+  let distance = 0;
+  let agreeing = 0;
+  for (let i = 1; i < day.points.length; i++) {
+    const step = day.points[i]! - day.points[i - 1]!;
+    distance += Math.abs(step);
+    if (step * direction > 0) agreeing++;
+  }
+  const range = day.high - day.low;
+  return {
+    direction, movePct: day.open > 0 ? Math.abs(change) / day.open * 100 : 0,
+    efficiency: distance > 0 ? Math.abs(change) / distance : 0,
+    directionalShare: agreeing / (SESSION_MINUTES / CHECKPOINT_MINUTES),
+    retraceShare: range > 0 ? (direction > 0 ? day.maxDrawdown : day.maxRebound) / range : 1,
+    rangePct: day.open > 0 ? range / day.open * 100 : 0,
+    bodyShare: range > 0 ? Math.abs(change) / range : 0,
+    minutes: day.minutes, checkpoints: day.points.length,
+  };
+}
+
+export function classifyNightSession(f: ReturnType<typeof nightSessionFeatures>, p: NightSessionFilter): number {
+  return f.minutes >= Math.ceil(SESSION_MINUTES * p.minCoverage) && f.checkpoints === SESSION_MINUTES / CHECKPOINT_MINUTES + 1 &&
+    f.movePct >= p.trendPct && f.efficiency >= p.minEfficiency && f.directionalShare >= p.minDirectionalShare &&
+    f.retraceShare <= p.maxRetraceShare && f.rangePct > 0 && f.rangePct <= p.maxRangePct &&
+    f.bodyShare >= p.minBodyShare ? f.direction : 0;
+}
+
+/** Skip the decision day's US session, plus a BOJ decision that can land during the night holding window. */
+export function nightCalendarAllows(sessionDate: string, entryDate: string): boolean {
+  return policyCalendarCovers(sessionDate) && policyCalendarCovers(entryDate) &&
+    policyEventsOn(sessionDate).length === 0 && !policyEventsOn(entryDate).includes(POLICY_EVENT.BOJ);
+}
+
 export default defineAgent({
   name: 'visar-night-trading',
-  description: 'US500: follow a steady 09:30–16:00 New York trend after a 03:27 pullback from the 22:00 reference; skip choppy days. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200.',
+  description: 'US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200.',
   author: 'Visar',
   instruments: ['US500'],
   timeframe: '1m',
@@ -30,8 +75,8 @@ export default defineAgent({
   warmup: 0,
   intradayOnly: false,
   params: {
-    timeZone: TZ.TIRANA, trendPct: 0.25, minEfficiency: 0.6, minDirectionalShare: 2 / 3,
-    maxRetraceShare: 0.35, minCoverage: 0.9, marginPct: 90, lossPct: 50,
+    timeZone: TZ.TIRANA, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
+    maxRetraceShare: 0.75, maxRangePct: 2, minBodyShare: 0.6, minCoverage: 0.9, marginPct: 90, lossPct: 50,
   },
   init: () => ({ session: emptySession(), referenceDate: '', reference: 0, direction: 0, attemptedDate: '', entryCapital: 0 }),
   onBar(ctx) {
@@ -55,24 +100,7 @@ export default defineAgent({
       const minuteClose = ny.minuteOfDay + 1;
       if ((minuteClose - CASH_OPEN) % CHECKPOINT_MINUTES === 0) day.points.push(ctx.bar.close);
       if (minuteClose === CASH_CLOSE) {
-        const change = ctx.bar.close - day.open;
-        const direction = Math.sign(change);
-        let distance = 0;
-        let agreeing = 0;
-        for (let i = 1; i < day.points.length; i++) {
-          const step = day.points[i]! - day.points[i - 1]!;
-          distance += Math.abs(step);
-          if (step * direction > 0) agreeing++;
-        }
-        const steps = SESSION_MINUTES / CHECKPOINT_MINUTES;
-        const range = day.high - day.low;
-        const retrace = direction > 0 ? day.maxDrawdown : day.maxRebound;
-        const consistent =
-          day.minutes >= Math.ceil(SESSION_MINUTES * ctx.params.minCoverage) && day.points.length === steps + 1 &&
-          Math.abs(change) / day.open * 100 >= ctx.params.trendPct && distance > 0 &&
-          Math.abs(change) / distance >= ctx.params.minEfficiency && agreeing / steps >= ctx.params.minDirectionalShare &&
-          range > 0 && retrace / range <= ctx.params.maxRetraceShare;
-        day.direction = consistent ? direction : 0;
+        day.direction = classifyNightSession(nightSessionFeatures(day), ctx.params);
       }
     }
     if (local.minuteOfDay === REFERENCE) {
@@ -85,7 +113,7 @@ export default defineAgent({
     s.attemptedDate = local.date;
     const yesterday = new Date(Date.UTC(local.year, local.month - 1, local.day) - DAY_MS).toISOString().slice(0, 10);
     // Missing opening/reference candles and weekend gaps cannot reuse an old reference.
-    if (s.referenceDate !== yesterday || s.direction === 0) return;
+    if (s.referenceDate !== yesterday || s.direction === 0 || !nightCalendarAllows(yesterday, local.date)) return;
     const side = s.direction > 0 && ctx.bar.close < s.reference ? LONG : s.direction < 0 && ctx.bar.close > s.reference ? SHORT : null;
     if (!side) return;
     s.entryCapital = ctx.balance;

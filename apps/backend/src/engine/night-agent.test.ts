@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import def from '../../agents/visar-night-trading.ts';
+import def, { nightCalendarAllows } from '../../agents/visar-night-trading.ts';
 import { EXIT_REASON, localTime, TZ } from '../sdk/index.ts';
 import { getInstrument } from './instruments.ts';
 import type { LoadedAgent } from './loader.ts';
@@ -145,6 +145,39 @@ describe('visar-night-trading', () => {
     session({ missing: new Set([100]) });
     bar('2026-01-07T03:27:00+01:00', 5010);
     expect(run.position?.side).toBe(LONG);
+  });
+
+  test('a directional day can contain normal small counter-moves', () => {
+    const { run, bar, session } = setup();
+    let price = 5000;
+    session({ points: Array.from({ length: 26 }, (_, i) => price += i % 2 === 0 ? 2 : -0.5) });
+    bar('2026-01-07T03:27:00+01:00', 5010);
+    expect(run.position?.side).toBe(LONG);
+  });
+
+  test('even a one-way session is skipped when its range exceeds 2%', () => {
+    const { run, bar, session } = setup();
+    session({ endPrice: 5120 });
+    bar('2026-01-07T03:27:00+01:00', 5110);
+    expect(run.position).toBeNull();
+  });
+
+  for (const [open, entry] of [
+    ['2026-01-28T15:30:00+01:00', '2026-01-29T03:27:00+01:00'], // NY session had a FOMC decision.
+    ['2026-01-22T15:30:00+01:00', '2026-01-23T03:27:00+01:00'], // BOJ decision during the overnight hold.
+  ]) test(`skips a policy-decision night even with a smooth session: ${entry}`, () => {
+    const { run, bar, session } = setup();
+    session({ openAt: Date.parse(open!) });
+    bar(entry!, 5010);
+    expect(run.position).toBeNull();
+  });
+
+  test('policy calendars distinguish the NY decision day from a later decision outside the holding window', () => {
+    expect(nightCalendarAllows('2026-01-27', '2026-01-28')).toBe(true);
+    expect(nightCalendarAllows('2026-01-28', '2026-01-29')).toBe(false);
+    expect(nightCalendarAllows('2026-01-22', '2026-01-23')).toBe(false);
+    expect(nightCalendarAllows('2026-03-19', '2026-03-20')).toBe(false);
+    expect(nightCalendarAllows('2027-12-31', '2028-01-01')).toBe(false);
   });
 
   for (const [label, reference, entry] of [

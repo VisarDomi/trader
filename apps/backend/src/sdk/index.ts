@@ -12,6 +12,7 @@ import { TIMEFRAMES } from './types.ts';
 
 export * from './types.ts';
 export { localTime, TZ, type LocalTime } from './time.ts';
+export { POLICY_CALENDAR, POLICY_EVENT, policyCalendarCovers, policyEventsOn, type PolicyEvent } from './policy-calendar.ts';
 
 export const AGENT_MARKER = Symbol.for('trader.agent');
 
