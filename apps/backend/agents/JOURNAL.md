@@ -33,7 +33,17 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
   documentation and tests for full-capacity admission, expired real entries and a clock-driven real close.
 - Before deploy: stream/forecaster healthy, 4,560 virtual runs (550 standard/4,010 comparisons), 449/450
   Capital slots, Arena 09 at 49/50, no recent errors. Validation: 103 backend tests, typecheck and Svelte
-  check/build green; deployment confirmation follows below.
+  check/build green.
+- Production verified at 13:36 UTC, arena code `6ec6541`: exact source `98de49ace1c6`, run
+  `demo:visar-night-trading:US500:x200:98de49ace1c6`, assigned to Arena 09 at confirmed 1:200 (now 50/50).
+  All 449 earlier assignments remain; total 450/551 standard runs mirrored, 4,561 virtual runs including
+  the unchanged 4,010 comparisons. This experiment has one standard run; its failed ordinary backtest
+  gate does not spawn comparison cohorts. Stream/forecaster healthy, 186 MB RSS, queue 0, no recent
+  errors. Verdicts: control 144, early 407, keep/leader/retire 0; monkey leaders 0/36.
+- Capital leaderboard verified through the production UI on desktop and a 390-pixel mobile viewport:
+  **user experiment**, US500, 1:200, zero trades, no invented return/Sharpe before its first actual order.
+  Its initial demo allocation is $2,000; it is waiting for a qualifying night, not opening outside the rule.
+  The corrected backtest is attached with matching source hash. Temporary UI inspection tunnel removed.
 
 ## 2026-10-15 (Thu, user-requested) — virtual broker and three-stage pipeline
 
