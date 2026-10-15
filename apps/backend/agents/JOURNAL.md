@@ -21,7 +21,7 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 - Verdicts: control 144, early 406, keep 0, leader 0, retire 0; monkey sanity 0 of 36.
 - Retired: none (nothing judged yet). Added: none (Thursday).
 - Accounts: 1:200 −9.4% (mostly the ladder's US100 rungs margin-called at the broker, −$1,845 each), 1:100
-  −4.1% (−$4.1k), 1:1 −1.5%; the others within ±1.7%.
+  −4.1%, 1:50 −2.1%, 1:20 −1.6%, 1:1 −1.5%; 1:2 to 1:10 within 0.5%.
 - New agents, first 1.5 days: the daily-bar agents opened at the first 00:00 UTC close as designed (seeded
   history works). Bold-play: 3 of 4 runs already down 85–99%. Noise-area momentum and gold-session are
   trading; ibs-dip and the weekly or monthly ones have not had a signal yet.
