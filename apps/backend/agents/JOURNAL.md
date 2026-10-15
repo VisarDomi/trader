@@ -57,6 +57,11 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
   13.6 s, broker queue 4.4 s, POST response 107 ms, send→verified confirmation 653 ms. These component
   percentiles are not additive. The latency cohorts had 226 commands, 206 executed, 20 pending as expected
   for the long-delay scenarios. Actual-fill adverse slippage p95 4.11 bp across the recorded history.
+- Post-patch verification (13:05 UTC): code 8a1874d deployed; 4,560 virtual records, 449 active Capital
+  assignments, all 456 historical/current broker rows priced, no missing closes, no broker error or queue,
+  stream and forecaster healthy. RSS 194 MB, event-loop p95 2 ms, no pending virtual commands.
+  The last-hour open count correctly survived restart (12); 72 tests and UI check/build pass. Temporary
+  verification services stopped; the production and regular lab services continue.
 - Next: watch closed-market behavior, trailing stops, account cost attribution and resource growth.
   No standard agents retired or added; 144 controls / 406 early, no leaders yet; monkey sanity 0/36.
   No user action or desktop notification needed.
