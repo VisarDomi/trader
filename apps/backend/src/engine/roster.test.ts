@@ -4,7 +4,7 @@ import { LEVERAGE_TIERS } from './leverage.ts';
 import type { LoadedAgent } from './loader.ts';
 import { loadAgents } from './loader.ts';
 import type { Roster } from './roster.ts';
-import { leveragesFor, loadRoster, planRuns, retiredBy, rosterProblems } from './roster.ts';
+import { demoAdmissionFor, leveragesFor, loadRoster, planRuns, retiredBy, rosterProblems } from './roster.ts';
 
 function agent(id: string, instruments: string[], leverage?: number[]): LoadedAgent {
   const def = defineAgent({ name: id, description: 'test', instruments, timeframe: '1h', params: {}, leverage, onBar() {} });
@@ -15,6 +15,16 @@ function agent(id: string, instruments: string[], leverage?: number[]): LoadedAg
 const roster = (patch: Partial<Roster> = {}): Roster => ({ accounts: {}, leverage: { default: 20, agents: {} }, retired: {}, ...patch });
 
 describe('roster', () => {
+  test('a special demo admission applies only to the exact instrument, tier and source version', () => {
+    const id = 'night';
+    const epic = 'US500';
+    const hash = 'h';
+    const r = roster({ demoAdmissions: { [`${id}:${epic}@200`]: { codeHash: hash, date: '2026-10-15', reason: 'user experiment' } } });
+    expect(demoAdmissionFor(r, id, epic, 200, hash)).not.toBeNull();
+    expect(demoAdmissionFor(r, id, epic, 100, hash)).toBeNull();
+    expect(demoAdmissionFor(r, id, 'US100', 200, hash)).toBeNull();
+    expect(demoAdmissionFor(r, id, epic, 200, 'changed')).toBeNull();
+  });
   test('tiers come from the roster by id, then by slug, then the agent file, then the default', () => {
     const r = roster({ leverage: { default: 20, agents: { 'x/a': [1], x: [200] } } });
     expect(leveragesFor(r, agent('x/a', ['US100']))).toEqual([1]);

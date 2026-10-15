@@ -22,10 +22,12 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     status: 'completed', errors: 0, metrics, trades: [], equity: [], logs: [], ranAt: 2, agentUsPerBar: 0, bars: 0, candles: 0, durationMs: 0 } as BacktestResult);
   db.createDemoRun({ id: RUN, agentId: ID, codeHash: 'hash', epic: EPIC, leverage: 1, capital: 10_000, params: {}, now: 1 });
   db.db.query('UPDATE runs SET equity = ?, metrics = ? WHERE id = ?').run(12_345, JSON.stringify(metrics), RUN);
-  db.setRunExtra(RUN, { scenario: 'standard' });
+  const admission = { date: '2026-10-15', reason: 'user requested this demo experiment' };
+  db.setRunExtra(RUN, { scenario: 'standard', demoAdmission: admission });
   db.insertDeal({ account: 'Arena 01', account_id: 'arena', run_id: RUN, epic: EPIC, side: 'long', size: 100, paper_size: 500, deal_id: 'ours',
     status: DEAL_STATUS.CLOSED, open_time: 1, open_price: 1, paper_open_price: 1, close_time: 2, close_price: 1.1, paper_close_price: 1.1, pnl: 10, note: null });
-  const fake = { db, broker: { mirroredRuns: [RUN], status: () => ({ scale: .2 }) }, tracked: new Map() } as unknown as Arena;
+  const mirroredRuns = [RUN];
+  const fake = { db, broker: { mirroredRuns, status: () => ({ scale: .2 }) }, tracked: new Map() } as unknown as Arena;
   const api = startApi(fake, 0, TOKEN);
   const get = async <T>(path: string) => (await (await fetch(`http://127.0.0.1:${api.port}${path}`)).json()) as T;
   try {
@@ -35,10 +37,21 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     expect(virtual[0]!.equity).toBe(12_345);
     expect(actual[0]!.equity).toBe(2010);
     expect(actual[0]!.metrics!.totalReturn).toBe(.005);
+    expect(virtual[0]!.demoAdmission).toEqual(admission);
+    expect(actual[0]!.demoAdmission).toEqual(admission);
     expect(bt[0]!.stage).toBe('demo');
     expect(virtual[0]!.metrics!.monthly).toHaveLength(0);
     const detail = await get<RunDetail>(`/api/runs/${encodeURIComponent(RUN)}`);
     expect(detail.metrics!.monthly).toHaveLength(1);
+    const waitingId = RUN.replace(':x1:', ':x2:');
+    db.createDemoRun({ id: waitingId, agentId: ID, codeHash: 'hash', epic: EPIC, leverage: 2, capital: 10_000, params: {}, now: 1 });
+    db.setRunExtra(waitingId, { scenario: 'standard', demoAdmission: admission });
+    mirroredRuns.push(waitingId);
+    const waiting = (await get<LeaderboardRow[]>('/api/leaderboard?kind=demo&stage=demo')).find(r => r.runId === waitingId);
+    expect(waiting?.demoAdmission).toEqual(admission);
+    expect(waiting?.equity).toBe(2000);
+    expect(waiting?.metrics).toBeNull();
+    expect(waiting?.brokerEvidence?.closed).toBe(0);
     const response = await fetch(`http://127.0.0.1:${api.port}/api/backtests`, { method: 'POST', body: '{}' });
     expect(response.status).toBe(401);
   } finally { await api.stop(true); db.db.close(); }

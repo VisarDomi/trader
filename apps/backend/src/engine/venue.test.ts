@@ -4,7 +4,7 @@ import { VirtualVenue, type CapitalMarket } from './venue.ts';
 import { getInstrument } from './instruments.ts';
 import { MarketEngine } from './market.ts';
 import { defineAgent } from '../sdk/index.ts';
-import type { AgentContext } from '../sdk/types.ts';
+import { EXIT_REASON, type AgentContext } from '../sdk/types.ts';
 const EPIC = 'EURUSD';
 const LONG = 'long';
 const SHORT = 'short';
@@ -117,6 +117,30 @@ describe('Capital demo observed contract', () => {
     tick(500);
     expect(run.position).toBeNull();
     expect(run.pendingOrders).toBe(0);
+  });
+  test('a delayed entry expires instead of trading outside its specified minute', () => {
+    const { run, tick } = setup(c => c.buy({ size: 100, validUntil: START + 500 }));
+    tick(500);
+    expect(run.position).toBeNull();
+    expect(run.executionStats.rejected).toBe(1);
+    expect(run.logs.at(-1)?.message).toContain('deadline expired');
+  });
+  test('a scheduled exit survives a restart and uses the clock without another bar', () => {
+    const { run, tick, setNow } = setup(c => c.buy({ size: 100, closeAt: START + 2000 }));
+    tick(500);
+    run.restore(JSON.parse(JSON.stringify(run.snapshot())), [], []);
+    expect(run.position?.closeAt).toBe(START + 2000);
+    setNow(START + 1999);
+    run.onClock(START + 1999);
+    expect(run.pendingOrders).toBe(0);
+    setNow(START + 2000);
+    run.onClock(START + 2000);
+    expect(run.pendingOrders).toBe(1);
+    tick(2499);
+    expect(run.position).not.toBeNull();
+    tick(2500);
+    expect(run.position).toBeNull();
+    expect(run.trades[0]?.exitReason).toBe(EXIT_REASON.SESSION_END);
   });
 });
 

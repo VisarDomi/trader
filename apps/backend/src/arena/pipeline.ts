@@ -5,6 +5,8 @@ const isControlSlug = (slug: string) => CONTROL_SLUGS.has(slug);
 import type { RunRow } from './db.ts';
 import type { Trade } from '../sdk/types.ts';
 import type { RunMetrics } from '../engine/metrics.ts';
+import type { RosterEntry } from '../engine/roster.ts';
+import { RUN_STATUS } from '../engine/run.ts';
 
 export const STAGE = {
   BACKTEST: 'backtest',
@@ -32,6 +34,17 @@ export function backtestGate(row: RunRow | undefined, hash: string, slug: string
   const slow = new Set(['lrs-sma200', 'vol-managed-hold', 'turn-of-month', 'tsmom-12m', 'donchian-ensemble', 'cppi']);
   if (m.trades < (slow.has(slug) ? 5 : 20)) return { passed: false, reason: 'backtest too few trades' };
   return { passed: true, reason: 'current-code backtest passed' };
+}
+
+/** User experiments may bypass performance thresholds, after a current, error-free backtest. */
+export function admissionGate(row: RunRow | undefined, hash: string, slug: string, exception: RosterEntry | null): Gate {
+  const gate = backtestGate(row, hash, slug);
+  if (!exception) return gate;
+  if (!row || row.code_hash !== hash || !row.metrics || !row.extra || JSON.parse(row.extra).engineVersion !== ENGINE_VERSION)
+    return { passed: false, reason: 'demo experiment waiting for current-code/current-engine backtest' };
+  if (row.status === RUN_STATUS.ERROR || (JSON.parse(row.extra).errors ?? 0) > 0)
+    return { passed: false, reason: 'demo experiment backtest errored' };
+  return { passed: true, reason: `user-requested demo experiment (${exception.date}): ${exception.reason}; backtest: ${gate.reason}` };
 }
 export function tradeT(trades: readonly { pnl: number }[]): number {
   if (trades.length < 2) return 0;

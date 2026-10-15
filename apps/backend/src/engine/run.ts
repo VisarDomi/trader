@@ -29,7 +29,7 @@ import type {
   Trade,
 } from '../sdk/types.ts';
 import { EXIT_REASON } from '../sdk/types.ts';
-import { fundingDay, isSessionBlackout, isSessionEnd, utcDay, DAY_MS } from './clock.ts';
+import { fundingDay, isSessionBlackout, isSessionEnd, utcDay, DAY_MS, SCHEDULED_EXIT_NOTE } from './clock.ts';
 import type { Instrument } from './instruments.ts';
 import { effectiveLeverage, isFundingFree } from './leverage.ts';
 import type { EquityPoint, RunMetrics } from './metrics.ts';
@@ -109,6 +109,8 @@ export interface RunOptions {
 }
 
 interface OpenPosition {
+  closeAt?: number;
+  validUntil?: number;
   side: Side;
   size: number;
   entryPrice: number;
@@ -279,6 +281,12 @@ export class AgentRun {
       };
     }
 
+    // A missing historical deadline minute must not expose the trade to the next candle's range.
+    if (!this.execution && this.position?.closeAt !== undefined && c.time >= this.position.closeAt) {
+      this.accrueFunding(c.time, c.open);
+      const price = c.open + (this.position.side === SIDE_SHORT ? spread : 0);
+      this.closePosition(EXIT_REASON.SESSION_END, price, c.time, `${SCHEDULED_EXIT_NOTE}: first quote after data gap`);
+    }
     if (this.position) {
       this.accrueFunding(c.time, c.close);
       // Only minutes that started after the entry can hit its stops.
@@ -286,6 +294,10 @@ export class AgentRun {
       if (this.position && this.agent.intradayOnly && isSessionEnd(c.time)) {
         if (this.execution) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
         else this.closePosition(EXIT_REASON.SESSION_END, this.exitPrice(this.position.side), c.time + 60_000);
+      }
+      if (this.position?.closeAt !== undefined && c.time + 60_000 >= this.position.closeAt) {
+        if (this.execution) this.closeByAgent(SCHEDULED_EXIT_NOTE, EXIT_REASON.SESSION_END);
+        else this.closePosition(EXIT_REASON.SESSION_END, this.exitPrice(this.position.side), c.time + 60_000, SCHEDULED_EXIT_NOTE);
       }
     }
 
@@ -355,6 +367,8 @@ export class AgentRun {
   onClock(time: number): void {
     if (!this.position || !this.quote || this.status !== RUN_STATUS.RUNNING) return;
     this.accrueFunding(time, this.quote.bid);
+    if (this.position.closeAt !== undefined && time >= this.position.closeAt)
+      this.closeByAgent(SCHEDULED_EXIT_NOTE, EXIT_REASON.SESSION_END);
     if (this.agent.intradayOnly && isSessionEnd(time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
   }
 
@@ -514,6 +528,10 @@ export class AgentRun {
   private open(side: Side, opts: OrderOptions = {}): void {
     if (!this.canTrade('open')) return;
     const time = this.execution ? this.now() : this.quote!.time;
+    if (opts.validUntil !== undefined && (!Number.isFinite(opts.validUntil) || time >= opts.validUntil))
+      return this.reject('entry validity deadline expired or invalid');
+    if (opts.closeAt !== undefined && (!Number.isFinite(opts.closeAt) || time >= opts.closeAt))
+      return this.reject('scheduled exit deadline expired or invalid');
     if (this.execution && !this.executing) {
       if (this.position?.side === side) return;
       if (this.pending.some(p => p.kind === 'open')) return;
@@ -561,6 +579,8 @@ export class AgentRun {
       return;
     }
     this.position = {
+      closeAt: opts.closeAt,
+      validUntil: opts.validUntil,
       side,
       size,
       entryPrice: entry,
@@ -885,6 +905,8 @@ export class AgentRun {
       takeProfit: pos.takeProfit,
       trailingStop: pos.trailingStop,
       unrealizedPnl: this.quote ? roundTo(this.unrealized(pos), 4) : 0,
+      closeAt: pos.closeAt,
+      validUntil: pos.validUntil,
     };
   }
 

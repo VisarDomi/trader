@@ -55,8 +55,16 @@
       "london-breakout": [200],
       "mtf-pullback": [200],
       "bollinger-fade": [200],
+      "visar-night-trading": [200],
       "random-baseline/monkey-c": [200]
     }
   },
-  "retired": {}
+  "retired": {},
+  "demoAdmissions": {
+    "visar-night-trading:US500@200": {
+      "codeHash": "98de49ace1c6",
+      "date": "2026-10-15",
+      "reason": "Visar explicitly requested this manually tested night strategy as a special Capital demo agent, irrespective of normal promotion gates. Normal safety and subsequent demotion rules apply."
+    }
+  }
 }

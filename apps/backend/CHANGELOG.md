@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add Visar's US500 night strategy at 1:200: consistent NY-session path classification, 03:27 overnight pullback entry,
+  08:27 timed exit and a stop targeting 50% of the run's entry capital (Europe/Tirane). Record its poor
+  backtest honestly and admit it to Capital demo through an explicit source-specific user experiment.
+- Add durable entry-validity and scheduled-exit deadlines to the SDK and engine; the Capital mirror
+  respects expired entries and requests timed closes even without fresh quotes or bars. Preserve the
+  ordinary safety/demotion policy and label special demo admissions on the leaderboard.
+- Show newly assigned Capital demo runs before their first trade, with no invented performance metrics.
 - Persist/reconstruct actual and virtual hourly request budgets across process restarts.
 - Recover silently capped transaction history by time bisection; retain unlinked funding/corporate cashflows at account level and label realized trade rankings accurately. Reduce restart replay CPU by activating restored runs only at their resume point.
 - Separate Backtest → Virtual engine → Capital demo leaderboards; gate new virtual admissions on current-code backtests, require mature virtual evidence for new Capital slots, and demote in the reverse direction while preserving records. Existing Capital runs remain a calibration cohort.

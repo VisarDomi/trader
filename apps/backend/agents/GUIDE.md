@@ -110,6 +110,13 @@ Session times: `import { defineAgent, localTime, TZ } from '../src/sdk'` then
 `localTime(ctx.time, TZ.NEW_YORK)` → `{ hour, minute, weekday, minuteOfDay, date }` (DST-aware).
 Remember `ctx.time` is the bar's **close** time; the bar's open is `ctx.bar.time`.
 
+For minute-specific orders use a `1m` primary timeframe. Optional `validUntil` (UTC ms) discards an entry
+that reaches execution too late, including Capital mirror retries. Optional `closeAt` requests a timed exit
+from the arena's one-second clock; Capital closes are also requested independently of quote/bar delivery.
+Both survive restarts. The actual fill follows market availability, API pacing and network latency. In a
+backtest, a missing exit minute closes at the next observed candle's open instead of inventing a price.
+`TZ.TIRANA` provides DST-aware Albania time. See `visar-night-trading.ts` for a complete example.
+
 Stop prices are absolute prices and must be on the correct side (long stop below the price,
 long take-profit above). Invalid orders are rejected and logged, not thrown.
 

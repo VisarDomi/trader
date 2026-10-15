@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Label explicit user-requested demo admissions as “user experiment” on the leaderboard, including
+  assigned runs that are still waiting for their first qualifying trade.
 - Separate Backtest, Virtual engine and Capital demo results; add execution scenario filters, pagination and resource/parity measurements on Status.
 
 ### Added

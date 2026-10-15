@@ -24,6 +24,14 @@ They keep their records so execution drift can be compared. New assignments requ
 Backtest gates apply to new admissions; earlier forward records are retained even if their old backtest
 would fail today's gate. Engine model changes are annotated; history is never rewritten.
 
+An explicit user request can admit a **special demo experiment** through `roster.json` → `demoAdmissions`.
+Each exception names one `agent:EPIC@tier`, its exact source hash, date and reason. It requires a current
+source/current-engine backtest without an error status, but may bypass historical performance and virtual
+maturity gates. It has slot priority (only flat incumbents can be displaced) and is labeled **user experiment**;
+it is not a control or a proven leader. Normal runtime safety, kill switches and subsequent demotion apply.
+After its first demotion the exception no longer grants re-entry. Changed source needs a new explicit review
+of the exception. `visar-night-trading:US500@200` is the first such admission, requested on 2026-10-15.
+
 Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
 `martingale-monkey`, `bold-play`) are never judged or retired. The ruin controls `bold-play` and
 `martingale-monkey` are automatically paper-only by slug, including future code versions. There is no

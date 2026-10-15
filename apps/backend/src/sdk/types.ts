@@ -46,9 +46,17 @@ export interface Position {
   trailingStop: number | null;
   /** P&L in USD if closed at the current bid/ask. */
   unrealizedPnl: number;
+  /** Optional UTC deadline for a timed exit. */
+  closeAt?: number;
+  /** Entry validity deadline, also respected by the Capital mirror. */
+  validUntil?: number;
 }
 
 export interface OrderOptions {
+  /** UTC timestamp (ms): discard this entry if it cannot execute before this time. */
+  validUntil?: number;
+  /** UTC timestamp (ms): request an exit at this time, independent of bar polling. */
+  closeAt?: number;
   /** Exact units to trade. When omitted the platform sizes the order (see riskPct / exposure). */
   size?: number;
   /**
