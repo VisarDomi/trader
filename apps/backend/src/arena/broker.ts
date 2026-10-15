@@ -147,6 +147,9 @@ export interface MirrorCandidate extends SlotCandidate {
 
 interface Confirmation {
   dealStatus: 'ACCEPTED' | 'REJECTED' | 'UNKNOWN';
+  epic?: string;
+  direction?: string;
+  size?: number;
   dealId?: string;
   affectedDeals?: { dealId: string; status: string }[];
   level?: number;
@@ -732,6 +735,13 @@ export class BrokerMirror {
         return;
       }
       const dealId = conf.affectedDeals?.[0]?.dealId ?? conf.dealId ?? null;
+      const direction = e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
+      if (!confirmsDeal(conf, { epic: inst.epic, direction, size }) || (dealId && this.db.openDeals().some(d => d.deal_id === dealId))) {
+        // Not this order's confirmation: leave the deal unconfirmed; reconcile adopts the position by epic, side and size.
+        this.db.updateDeal(rowId, { note: `unconfirmed: confirmation was for ${conf.epic} ${conf.direction} ${conf.size} (${dealId})` });
+        this.db.event('warn', 'broker', `open of ${inst.epic} for ${e.runId} got another deal's confirmation; left to reconcile`);
+        return;
+      }
       this.db.updateDeal(rowId, { deal_id: dealId, open_price: conf.level ?? null });
       this.db.event('info', 'broker', `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`);
       if (dealId && (e.stopLoss !== null || e.takeProfit !== null)) await this.putStops(dealId, e.stopLoss, e.takeProfit);
@@ -769,6 +779,14 @@ export class BrokerMirror {
           this.db.event('warn', 'broker', `close of ${current.epic} for ${current.run_id} rejected: ${conf.reason ?? 'unknown'} (retried every cycle)`);
         }
         this.closeWaiting.add(d.id);
+        return;
+      }
+      const direction = current.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
+      if (!confirmsDeal(conf, { epic: current.epic, direction, size: current.size, dealId: current.deal_id })) {
+        // Another deal's confirmation (seen once: an AUDUSD price on a EURUSD close whose broker stop had
+        // already filled). Keep the deal open: reconcile marks it closed at the broker if it is gone, or the
+        // next cycle closes it again.
+        this.db.event('warn', 'broker', `close of ${current.epic} for ${current.run_id} got a confirmation for ${conf.epic ?? 'another deal'}; left to reconcile`);
         return;
       }
       const price = conf.level ?? null;
@@ -980,6 +998,20 @@ export class BrokerMirror {
     this.lastError = `${what}: ${errorText(err)}`;
     this.db.event('error', 'broker', this.lastError);
   }
+}
+
+/**
+ * Whether a confirmation is about this deal. GET /confirms/{reference} answers with the account's latest
+ * confirmation when the reference is not the latest (it echoes the reference back), so a broker stop that
+ * fills in between hands us another deal's confirmation.
+ */
+function confirmsDeal(conf: Confirmation, deal: { epic: string; direction: string; size: number; dealId?: string | null }): boolean {
+  if (conf.epic && conf.epic !== deal.epic) return false;
+  if (conf.direction && conf.direction !== deal.direction) return false;
+  if (conf.size !== undefined && Math.abs(conf.size - deal.size) > 1e-9) return false;
+  if (!deal.dealId) return true;
+  const ids = [conf.dealId, ...(conf.affectedDeals ?? []).map(d => d.dealId)].filter(Boolean);
+  return ids.length === 0 || ids.includes(deal.dealId);
 }
 
 /** Runs an account can hold: its allocation in RUN_ALLOCATION units; in netting mode also one per instrument. */

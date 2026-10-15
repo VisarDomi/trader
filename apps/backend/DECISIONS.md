@@ -287,6 +287,12 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - The first `/accounts` call after creating or switching a session can report a balance of 0. Never use a single
   reading for decisions (the broker kill switch needs two).
 - `POST /positions` confirmation: the position's id is `affectedDeals[0].dealId`, not the confirmation's `dealId`.
+- `GET /confirms/{dealReference}` returns the account's **latest** confirmation whenever the reference is not the
+  latest one, and echoes the requested reference back (verified 2026-10-15: references of a dozen older deals all
+  returned the same US500 close). If a broker-side stop fills between our order and our confirm call, we get that
+  stop's confirmation. It cost one wrong record (a EURUSD close stored at an AUDUSD price, −$5,019 instead of
+  −$26.64). The broker now accepts a confirmation only when its epic, direction, size and deal id match the deal;
+  otherwise reconcile settles the deal from `/positions`.
 - `PUT /session` (account switch) changes the active account **of that session only** (verified: another session
   switching to Visi left the broker session on Gerti). It does, however, move the login-wide `preferred` account,
   which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
