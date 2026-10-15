@@ -131,6 +131,16 @@ export interface RequestHooks {
   accepted?: () => void;
 }
 
+export interface CashTransaction {
+  reference: string;
+  dealId?: string;
+  dateUtc: string;
+  transactionType: string;
+  size: string;
+  currency: string;
+  status: string;
+}
+
 export class CapitalClient {
   private cst = '';
   private securityToken = '';
@@ -280,6 +290,33 @@ export class CapitalClient {
       }
       throw new CapitalApiError(res.status, text, path);
     }
+  }
+
+  /** The demo endpoint silently caps each response at 100 rows; split time windows until complete. */
+  async historyTransactions(from: number, to: number): Promise<{ transactions: CashTransaction[]; complete: boolean; requests: number }> {
+    let requests = 0;
+    let complete = true;
+    const found = new Map<string, CashTransaction>();
+    const visit = async (lo: number, hi: number): Promise<void> => {
+      if (requests >= 256) {
+        complete = false;
+        return;
+      }
+      requests++;
+      const params = new URLSearchParams({ from: isoNoMs(lo), to: isoNoMs(hi) });
+      const { transactions } = await this.get<{ transactions: CashTransaction[] }>(`/api/v1/history/transactions?${params}`);
+      for (const t of transactions) found.set(`${t.reference}:${t.dateUtc}:${t.transactionType}`, t);
+      if (transactions.length < 100) return;
+      const middle = Math.floor((lo + hi) / 2000) * 1000;
+      if (middle <= lo || middle >= hi || hi - lo <= 1000) {
+        complete = false;
+        return;
+      }
+      await visit(lo, middle);
+      await visit(middle, hi);
+    };
+    await visit(from, to);
+    return { transactions: [...found.values()], complete, requests };
   }
 
   /**

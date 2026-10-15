@@ -193,7 +193,7 @@
 				to these prices. Treat results with fewer than ~30 trades as noise.
 			</p>
 		{:else if view === 'demo'}
-			<p class="lede">Actual orders on Capital.com demo accounts, ranked by realized net cashflows. Open profit and loss is excluded. Missing closing values are shown as unavailable. The existing cohort is calibrating the virtual engine; new promotions need at least 28 days and 30 trades of virtual evidence.</p>
+			<p class="lede">Actual orders on Capital.com demo accounts, ranked by realized trade P&L. Open profit and loss is excluded. Funding and corporate adjustments without deal IDs are shown at account level on Status. Missing closing values are shown as unavailable. The existing cohort is calibrating the virtual engine; new promotions need at least 28 days and 30 trades of virtual evidence.</p>
 		{:else if view === 'backtest'}
 			<p class="lede">
 				The same agents on 2024-01 → 2026-09 history (spread, overnight funding and margin included). For information only:

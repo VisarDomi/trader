@@ -266,16 +266,30 @@ export class ArenaDB {
   }
 
   private migrate(): void {
-    const dealColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`).all().map(c => c.name);
+    const dealColumns = this.db
+      .query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`)
+      .all()
+      .map(c => c.name);
     if (!dealColumns.includes('account')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account TEXT`);
     if (!dealColumns.includes('account_id')) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN account_id TEXT`);
-    for (const name of ['decision_time', 'sent_time', 'confirmed_time', 'close_requested_time', 'accepted_time', 'virtual_fill_time', 'bar_close_time']) {
+    for (const name of [
+      'decision_time',
+      'sent_time',
+      'confirmed_time',
+      'close_requested_time',
+      'accepted_time',
+      'virtual_fill_time',
+      'bar_close_time',
+    ]) {
       if (!dealColumns.includes(name)) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN ${name} INTEGER`);
     }
     for (const name of ['cash_adjustment', 'upl', 'reconciled_at']) {
       if (!dealColumns.includes(name)) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN ${name} REAL`);
     }
-    const runColumns = this.db.query<{ name: string }, []>(`PRAGMA table_info(runs)`).all().map(c => c.name);
+    const runColumns = this.db
+      .query<{ name: string }, []>(`PRAGMA table_info(runs)`)
+      .all()
+      .map(c => c.name);
     if (!runColumns.includes('leverage')) this.db.exec(`ALTER TABLE runs ADD COLUMN leverage INTEGER`);
     // Backtests from before leverage tiers have no demo counterpart any more; the lab re-runs them per tier.
     this.db.exec(`DELETE FROM runs WHERE kind = 'backtest' AND leverage IS NULL`);
@@ -335,9 +349,10 @@ export class ArenaDB {
 
   agentVersions(id: string): { code_hash: string; source: string; first_seen: number }[] {
     return this.db
-      .query<{ code_hash: string; source: string; first_seen: number }, [string]>(
-        `SELECT code_hash, source, first_seen FROM agent_versions WHERE agent_id = ? ORDER BY first_seen DESC`,
-      )
+      .query<
+        { code_hash: string; source: string; first_seen: number },
+        [string]
+      >(`SELECT code_hash, source, first_seen FROM agent_versions WHERE agent_id = ? ORDER BY first_seen DESC`)
       .all(id);
   }
 
@@ -357,7 +372,16 @@ export class ArenaDB {
     return this.db.query<RunRow, [string]>(`SELECT * FROM runs WHERE agent_id = ? ORDER BY kind, epic, started_at DESC`).all(agentId);
   }
 
-  createDemoRun(r: { id: string; agentId: string; codeHash: string; epic: string; leverage: number; capital: number; params: Record<string, unknown>; now: number }): void {
+  createDemoRun(r: {
+    id: string;
+    agentId: string;
+    codeHash: string;
+    epic: string;
+    leverage: number;
+    capital: number;
+    params: Record<string, unknown>;
+    now: number;
+  }): void {
     this.db
       .query(
         `INSERT INTO runs (id, kind, agent_id, code_hash, epic, leverage, status, capital, params, started_at, updated_at, equity)
@@ -372,9 +396,7 @@ export class ArenaDB {
 
   saveRunState(r: { id: string; status: RunStatus; equity: number; snapshot: RunSnapshot; metrics: RunMetrics | null; now: number }): void {
     this.db
-      .query(
-        `UPDATE runs SET status = ?, equity = ?, snapshot = ?, metrics = COALESCE(?, metrics), updated_at = ? WHERE id = ?`,
-      )
+      .query(`UPDATE runs SET status = ?, equity = ?, snapshot = ?, metrics = COALESCE(?, metrics), updated_at = ? WHERE id = ?`)
       .run(r.status, r.equity, JSON.stringify(r.snapshot), r.metrics ? JSON.stringify(r.metrics) : null, r.now, r.id);
   }
 
@@ -388,7 +410,22 @@ export class ArenaDB {
         `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(runId, idx, t.side, t.size, t.entryTime, t.entryPrice, t.exitTime, t.exitPrice, t.pnl, t.funding, t.exitReason, t.entryReason ?? null, t.exitNote ?? null, t.barsHeld);
+      .run(
+        runId,
+        idx,
+        t.side,
+        t.size,
+        t.entryTime,
+        t.entryPrice,
+        t.exitTime,
+        t.exitPrice,
+        t.pnl,
+        t.funding,
+        t.exitReason,
+        t.entryReason ?? null,
+        t.exitNote ?? null,
+        t.barsHeld,
+      );
   }
 
   trades(runId: string, limit = 5000): Trade[] {
@@ -450,9 +487,28 @@ export class ArenaDB {
            VALUES (?, 'backtest', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          id, r.agentId, r.codeHash, r.epic, r.leverage, r.windowId, r.status, r.capital, JSON.stringify(r.params),
-          r.windowStart, r.ranAt, r.windowEnd, r.metrics.finalEquity, JSON.stringify(r.metrics),
-          JSON.stringify({ engineVersion: r.engineVersion, agentUsPerBar: r.agentUsPerBar, bars: r.bars, candles: r.candles, errors: r.errors, durationMs: r.durationMs }),
+          id,
+          r.agentId,
+          r.codeHash,
+          r.epic,
+          r.leverage,
+          r.windowId,
+          r.status,
+          r.capital,
+          JSON.stringify(r.params),
+          r.windowStart,
+          r.ranAt,
+          r.windowEnd,
+          r.metrics.finalEquity,
+          JSON.stringify(r.metrics),
+          JSON.stringify({
+            engineVersion: r.engineVersion,
+            agentUsPerBar: r.agentUsPerBar,
+            bars: r.bars,
+            candles: r.candles,
+            errors: r.errors,
+            durationMs: r.durationMs,
+          }),
         );
       r.trades.forEach((t, i) => this.appendTrade(id, i, t));
       for (const p of r.equity) this.upsertEquity(id, p.t, p.equity);
@@ -511,7 +567,25 @@ export class ArenaDB {
         `INSERT INTO broker_deals (account, account_id, run_id, epic, side, size, paper_size, deal_id, status, open_time, open_price, paper_open_price, close_time, close_price, paper_close_price, pnl, note)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(d.account, d.account_id, d.run_id, d.epic, d.side, d.size, d.paper_size, d.deal_id, d.status, d.open_time, d.open_price, d.paper_open_price, d.close_time, d.close_price, d.paper_close_price, d.pnl, d.note);
+      .run(
+        d.account,
+        d.account_id,
+        d.run_id,
+        d.epic,
+        d.side,
+        d.size,
+        d.paper_size,
+        d.deal_id,
+        d.status,
+        d.open_time,
+        d.open_price,
+        d.paper_open_price,
+        d.close_time,
+        d.close_price,
+        d.paper_close_price,
+        d.pnl,
+        d.note,
+      );
     return Number(res.lastInsertRowid);
   }
 
@@ -546,32 +620,69 @@ export class ArenaDB {
     return this.db.query<DealRow, [string]>(`SELECT * FROM broker_deals WHERE run_id = ? ORDER BY id`).all(runId);
   }
 
-  recordCashflows(accountId: string, transactions: { reference: string; dealId?: string; dateUtc: string; transactionType: string; size: string; currency: string; status: string }[]): number {
+  recordCashflows(
+    accountId: string,
+    transactions: {
+      reference: string;
+      dealId?: string;
+      dateUtc: string;
+      transactionType: string;
+      size: string;
+      currency: string;
+      status: string;
+    }[],
+  ): number {
     let matched = 0;
     this.tx(() => {
       for (const t of transactions) {
-        if (t.currency !== 'USD' || t.status !== 'PROCESSED' || !t.dealId) continue;
-        const deal = this.dealByDealId(t.dealId);
+        if (t.currency !== 'USD' || t.status !== 'PROCESSED') continue;
+        const deal = t.dealId ? this.dealByDealId(t.dealId) : null;
         const amount = Number(t.size);
         const time = Date.parse(t.dateUtc + (/Z$/.test(t.dateUtc) ? '' : 'Z'));
-        if (!deal || deal.account_id !== accountId || !Number.isFinite(amount) || !Number.isFinite(time)) continue;
-        this.db.query(`INSERT OR REPLACE INTO broker_cashflows (account_id, reference, deal_id, time, type, amount) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(accountId, t.reference, t.dealId, time, t.transactionType, amount);
+        if (!Number.isFinite(amount) || !Number.isFinite(time)) continue;
+        this.db
+          .query(`INSERT OR REPLACE INTO broker_cashflows (account_id, reference, deal_id, time, type, amount) VALUES (?, ?, ?, ?, ?, ?)`)
+          .run(accountId, t.reference, t.dealId ?? '', time, t.transactionType, amount);
+        if (!deal || deal.account_id !== accountId) continue;
         matched++;
-        const sums = this.db.query<{ gross: number | null; adjustments: number }, [string, string]>(`SELECT
+        const sums = this.db
+          .query<{ gross: number | null; adjustments: number }, [string, string]>(
+            `SELECT
           SUM(CASE WHEN type = 'TRADE' THEN amount END) AS gross,
           SUM(CASE WHEN type != 'TRADE' THEN amount ELSE 0 END) AS adjustments
-          FROM broker_cashflows WHERE account_id = ? AND deal_id = ?`).get(accountId, t.dealId)!;
+          FROM broker_cashflows WHERE account_id = ? AND deal_id = ?`,
+          )
+          .get(accountId, deal.deal_id!)!;
         this.updateDeal(deal.id, { ...(sums.gross === null ? {} : { pnl: sums.gross }), cash_adjustment: sums.adjustments });
       }
     });
     return matched;
   }
 
+  cashflowSummary() {
+    return {
+      totals: this.db
+        .query<{ type: string; n: number; amount: number }, []>(
+          `SELECT type, COUNT(*) n, ROUND(SUM(amount), 2) amount FROM broker_cashflows
+        WHERE type NOT IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'RESERVE', 'UNRESERVE') GROUP BY type`,
+        )
+        .all(),
+      unallocated: this.db
+        .query<{ type: string; n: number; amount: number }, []>(
+          `SELECT c.type, COUNT(*) n, ROUND(SUM(c.amount), 2) amount FROM broker_cashflows c
+        WHERE c.type NOT IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'RESERVE', 'UNRESERVE') AND NOT EXISTS
+        (SELECT 1 FROM broker_deals d WHERE d.deal_id = c.deal_id AND d.account_id = c.account_id) GROUP BY c.type`,
+        )
+        .all(),
+    };
+  }
+
   // ------------------------------------------------------------------ events & settings
 
   event(level: string, source: string, message: string): void {
-    this.db.query(`INSERT INTO events (time, level, source, message) VALUES (?, ?, ?, ?)`).run(Date.now(), level, source, message.slice(0, 2000));
+    this.db
+      .query(`INSERT INTO events (time, level, source, message) VALUES (?, ?, ?, ?)`)
+      .run(Date.now(), level, source, message.slice(0, 2000));
   }
 
   events(limit = 200): { time: number; level: string; source: string; message: string }[] {

@@ -58,9 +58,10 @@ Request samples are bounded; network/resource counters restart with the process.
 
 Broker deals now store bar-close, decision, virtual-fill, actual HTTP-send, response and verified-confirmation timestamps. The parity report shows signed adverse
 fill slippage and timing distributions, failed orders, and missing close prices. Transaction history is
-reconciled by exact account/deal IDs and stored idempotently, recovering stopped deals' P&L, funding and
-other adjustments. Unattributable transactions are not guessed. The Capital demo table uses realized net
-cashflows and excludes open P&L; its drawdown/Sharpe describe realized cash, not a tick equity curve.
+reconciled by exact account/deal IDs and stored idempotently, recovering stopped deals' P&L and all available account funding/adjustments. Unattributable transactions are not guessed. Capital silently caps history at 100 rows, so time windows are bisected to recover every row.
+Funding and corporate adjustments without a deal ID remain visible at account level and are never
+arbitrarily assigned to a strategy. The Capital demo table uses realized trade P&L plus explicitly linked
+adjustments and excludes open P&L and unallocated costs; its drawdown/Sharpe describe realized cash, not a tick equity curve.
 
 There is still no claim of exact equivalence:
 
@@ -96,3 +97,7 @@ execution robustness without claiming thousands of new independent strategies.
 Backtest caches are versioned by `src/engine/version.ts`; all 550 historical runs were refreshed after
 this accounting change. New admissions require both the current agent hash and engine version. A passing
 backtest push triggers a debounced service reload to warm newly eligible records, while existing ones resume.
+
+Production verification exposed the 100-row history cap and unlinked SWAP entries; those behaviors were
+added to the regression suite. Restart replay also now activates restored runs only when their resume time
+is reached, avoiding a scan of every dormant run for each of 120 days of candles.

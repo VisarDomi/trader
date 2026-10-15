@@ -42,3 +42,32 @@ test('one pacer spaces concurrent callers instead of granting a simultaneous bur
   );
   expect(times[3]! - times[0]!).toBeGreaterThanOrEqual(25);
 });
+
+test('silently truncated transaction history is recovered by time bisection and de-duplicated', async () => {
+  const transactions = Array.from({ length: 301 }, (_, i) => ({
+    reference: String(i),
+    dateUtc: new Date(i * 60_000).toISOString().slice(0, -1),
+    transactionType: 'TRADE',
+    size: '1',
+    currency: 'USD',
+    status: 'PROCESSED',
+  }));
+  class HistoryClient extends CapitalClient {
+    override async get<T>(path: string): Promise<T> {
+      const u = new URL(path, DEMO_BASE_URL);
+      const lo = Date.parse(u.searchParams.get('from')! + 'Z'),
+        hi = Date.parse(u.searchParams.get('to')! + 'Z');
+      return {
+        transactions: transactions
+          .filter(t => Date.parse(t.dateUtc + 'Z') >= lo && Date.parse(t.dateUtc + 'Z') <= hi)
+          .reverse()
+          .slice(0, 100),
+      } as T;
+    }
+  }
+  const client = new HistoryClient({ apiKey: API_KEY, identifier: 'test@example.invalid', password: SECRET });
+  const history = await client.historyTransactions(0, 301 * 60_000);
+  expect(history.complete).toBe(true);
+  expect(history.requests).toBeGreaterThan(1);
+  expect(history.transactions).toHaveLength(301);
+});

@@ -135,5 +135,15 @@
       "ms": 272,
       "outcome": "Capital.com 400 on /api/v1/positions: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 1.12055\"}"
     }
-  ]
+  ],
+  "historyObservation": {
+    "at": "2026-10-15",
+    "requestedDays": 14,
+    "initialRows": 100,
+    "recoveredRows": 297,
+    "requests": 9,
+    "complete": true,
+    "unlinkedSwapRows": 74,
+    "note": "Time bisection recovered older rows; SWAP rows have no dealId."
+  }
 }

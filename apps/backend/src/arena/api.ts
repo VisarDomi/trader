@@ -292,14 +292,22 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
               ? STAGE.DEMO
               : STAGE.VIRTUAL
             : STAGE.BACKTEST
-          : extra.demotedTo === STAGE.BACKTEST ? STAGE.BACKTEST : mirrored.has(r.id)
-            ? STAGE.DEMO
-            : STAGE.VIRTUAL,
+          : extra.demotedTo === STAGE.BACKTEST
+            ? STAGE.BACKTEST
+            : mirrored.has(r.id)
+              ? STAGE.DEMO
+              : STAGE.VIRTUAL,
       scenario: extra.scenario ?? 'standard',
       comparisonOnly: isShadow(r.id),
-      ...(demotions[r.id] ? { observation: { since: demotions[r.id]!.at,
-        trades: (arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at).length,
-        tStat: tradeT((arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at)) } } : {}),
+      ...(demotions[r.id]
+        ? {
+            observation: {
+              since: demotions[r.id]!.at,
+              trades: (arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at).length,
+              tStat: tradeT((arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at)),
+            },
+          }
+        : {}),
       stageReason:
         kind === RUN_KIND.BACKTEST
           ? backtestGate(r, a?.code_hash ?? r.code_hash, a?.slug ?? r.agent_id).reason
@@ -372,7 +380,7 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[]
           priced: priced.length,
           failed: mine.filter(d => d.status === 'failed').length,
           open: mine.filter(d => d.status === 'open').length,
-          basis: 'realized net cashflows; open P&L excluded',
+          basis: 'realized trade P&L plus linked adjustments; unlinked funding/corporate actions are at account level',
         },
       };
     });
@@ -384,6 +392,7 @@ function executionParity(arena: Arena) {
   const slippage = opens.map(d => (((d.side === 'long' ? 1 : -1) * (d.open_price! - d.paper_open_price)) / d.paper_open_price) * 10_000);
   const timed = opens.filter(d => d.confirmed_time && d.decision_time);
   return {
+    accountCashflows: arena.db.cashflowSummary(),
     deals: deals.length,
     openFills: opens.length,
     failed: deals.filter(d => d.status === 'failed').length,

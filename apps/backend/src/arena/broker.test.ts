@@ -15,7 +15,7 @@ test('an unrelated rejection confirmation stays uncertain instead of becoming a 
   db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, { [RUN]: ACCOUNT });
   db.setSetting(BROKER_SETTINGS.ACCOUNTS, { [ACCOUNT]: { name: NAME, allocation: 100000, killed: false, hedging: true, leverage: 1 } });
   let posts = 0;
-  const client = { logins: 1, selectAccount: async () => {},
+  const client = { historyTransactions: async () => ({ transactions: [], complete: true }), logins: 1, selectAccount: async () => {},
     get: async (path: string) => {
       if (path === '/api/v1/accounts') return { accounts: [{ accountId: ACCOUNT, accountName: NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } }] };
       if (path === '/api/v1/accounts/preferences') return { hedgingMode: true, leverages: {} };

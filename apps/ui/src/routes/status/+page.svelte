@@ -53,6 +53,10 @@
         <p>Payload: {Math.round(e.network.sentPayloadBytes / 1000)} KB sent · {Math.round(e.network.receivedPayloadBytes / 1000)} KB received · {Math.round(e.network.streamPayloadBytes / 1000)} KB streamed (excludes transport overhead)</p>
         <p>Matched opens {e.parity.openFills} · rejected {e.parity.failed} · closes awaiting a value {e.parity.unpricedCloses}</p>
         <p>Adverse open slippage p50/p95 {e.parity.adverseOpenSlippageBpsP50 ?? '—'}/{e.parity.adverseOpenSlippageBpsP95 ?? '—'} basis points · decision-to-confirm p95 {e.parity.decisionToConfirmP95Ms ?? '—'} ms ({e.parity.timedDeals} timed deals)</p>
+        {#if e.parity.accountCashflows}
+          <p>Capital account cashflows: {#each e.parity.accountCashflows.totals as flow}<span>{flow.type}: ${flow.amount.toFixed(2)} ({flow.n}) · </span>{/each}</p>
+          <p>Unallocated to individual runs: {#each e.parity.accountCashflows.unallocated as flow}<span>{flow.type}: ${flow.amount.toFixed(2)} ({flow.n}) · </span>{/each} Capital omits deal IDs on these entries; they are retained at account level.</p>
+        {/if}
         <details><summary>Model limits</summary><ul>{#each e.parity.limitations as limit}<li>{limit}</li>{/each}</ul></details>
       </section>
     {/if}

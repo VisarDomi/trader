@@ -41,6 +41,8 @@ test('cashflows attach by exact account and deal, are idempotent, and retain fee
   expect(row.id).toBe(id);
   expect(row.pnl).toBe(12.34);
   expect(row.cash_adjustment).toBe(-0.25);
-  expect(db.db.query('SELECT COUNT(*) AS n FROM broker_cashflows').get()).toEqual({ n: 2 });
+  expect(db.db.query('SELECT COUNT(*) AS n FROM broker_cashflows WHERE account_id = ?').get(ACCOUNT)).toEqual({ n: 2 });
+  db.recordCashflows(ACCOUNT, [{ ...tx, dealId: undefined, reference: 'unlinked-fee', transactionType: 'SWAP', size: '-1' }]);
+  expect(db.cashflowSummary().unallocated.find(t => t.type === 'SWAP')?.amount).toBe(-1);
   db.db.close();
 });
