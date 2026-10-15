@@ -62,9 +62,9 @@
   "retired": {},
   "demoAdmissions": {
     "visar-night-trading:US500@200": {
-      "codeHash": "98de49ace1c6",
+      "codeHash": "56ac3bdfe7c1",
       "date": "2026-10-15",
-      "reason": "Visar explicitly requested this manually tested night strategy as a special Capital demo agent, irrespective of normal promotion gates. Normal safety and subsequent demotion rules apply."
+      "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply."
     }
   }
 }

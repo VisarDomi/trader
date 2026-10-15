@@ -19,8 +19,9 @@ export interface BacktestWindow {
 }
 
 /**
- * The standard window every agent is scored on. Capital.com keeps minute
- * history from 2024-01-01, so this is the longest window all 12 instruments share.
+ * Shared comparison window for the stored Capital minute dataset. US500 begins
+ * 2024-01-01; 2026-10-15 API probes found no earlier minute data, although older
+ * hourly/daily quotes exist. This is a data-resolution limit, not the index's age.
  */
 export const STANDARD_WINDOW: BacktestWindow = {
   id: '2024-01_2026-09',

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Calibrate `visar-night-trading` to 25–50 annual entry opportunities using only 2024 counts; validate
+  25 entries in 2025 and 22 through September 2026. All 72 signals filled in the full backtest; preserve
+  its losing result ($10,000 → $2.61) and renew the explicit source-specific special demo admission.
+- Add published 2024–2027 FOMC/BOJ decision calendars, skip BOJ decisions during the overnight holding
+  day, and reject oversized session ranges, weak directional bodies, neutral and reversal days.
+- Verify and document the US500 history boundary: older hourly/daily data exists, but the demo API
+  returns no pre-2024 minute data for the probes. Coarse candles cannot reproduce this timed strategy.
 - Add Visar's US500 night strategy at 1:200: consistent NY-session path classification, 03:27 overnight pullback entry,
   08:27 timed exit and a stop targeting 50% of the run's entry capital (Europe/Tirane). Record its poor
   backtest honestly and admit it to Capital demo through an explicit source-specific user experiment.

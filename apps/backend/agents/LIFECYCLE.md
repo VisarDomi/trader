@@ -138,6 +138,9 @@ agents that size with `marginPct` use the high leverage.
     Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.
+   For agents using `src/sdk/policy-calendar.ts`, check the linked official Fed/BOJ schedules for changes
+   and ensure calendar coverage extends at least 90 days ahead. Refresh future decision dates and record
+   the check; uncovered dates deliberately block new night entries. Calendar coverage currently ends 2027-12-31.
 4. **Demotions/retirements:** the engine applies per-run stage demotions automatically. Sanity-check
    the review and events, fix platform/agent bugs, and apply any remaining whole-agent retirements.
    Judge standard runs once; do not count latency comparisons as independent evidence.

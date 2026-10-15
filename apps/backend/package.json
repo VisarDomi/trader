@@ -10,6 +10,7 @@
     "push-history": "bun run src/lab/push-history.ts",
     "forecasts": "bun run src/lab/forecast-precompute.ts",
     "check-agent": "bun run src/lab/check-agent.ts",
+    "calibrate-night": "bun run src/lab/calibrate-night.ts",
     "arena": "bun run src/arena/main.ts",
     "review": "bun run src/lab/review.ts",
     "watchdog": "bun run src/lab/watchdog.ts",

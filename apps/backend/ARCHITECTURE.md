@@ -184,8 +184,11 @@ PC (Capital.com login, `ARENA_TOKEN`), `/home/erdal/trader-arena/.env` and
 
 ## Known limitations
 
-- History: Capital.com serves minute candles only from 2024-01 (US100 has
-  2020+ from an older ingest). The backtest window is therefore ~2.75 years.
+- History: the stored shared minute dataset begins in 2024-01 (US100 also has 2020+ from an older ingest).
+  US500 probes on 2026-10-15 returned no minute bars before 2024; older hourly (2023) and daily (2015)
+  quotes were available. The common leaderboard window is 2024-01 → 2026-09. Older coarse candles cannot
+  reproduce minute-specific entries or overnight stops; a longer exact US500 test needs another verified
+  source of overnight minute bid/ask data, with the broker/source differences disclosed.
 - Spreads before ingest enrichment fall back to a typical spread per instrument.
 - One position per agent per instrument; no pyramiding, no limit orders.
 - Demo results need weeks and ~30+ trades per row before they say much; slow
