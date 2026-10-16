@@ -80,7 +80,8 @@ async function* recordedMinutes(epic: string, start: number, end: number, record
     blocks.push(...part);
     const intervals =
       await sql`SELECT started_at,COALESCE(ended_at,last_received_at) until,epics FROM tick_capture_sessions WHERE journal_id=${recording.journalId} AND started_at<${end} AND COALESCE(ended_at,last_received_at)>=${start}`;
-    sessions.push(...intervals.filter((s: { epics: string }) => JSON.parse(s.epics).includes(epic)));
+    const [cutoff]=await sql`SELECT MAX(end_at) t FROM tick_chunks WHERE journal_id=${recording.journalId} AND through_id<=${recording.through}`;
+    sessions.push(...intervals.filter((s: { epics: string }) => JSON.parse(s.epics).includes(epic)).map((s:{started_at:number|string;until:number|string})=>({started_at:s.started_at,until:Math.min(Number(s.until),Number(cutoff.t??0))})));
   }
   blocks.sort(
     (a, b) =>

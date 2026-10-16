@@ -29,9 +29,17 @@ Newest entry first. Written by Claude on each babysitter visit; the rules it fol
 - Validation: 121 backend tests, typecheck, UI check/build; recorded US500 replay 602 actual quotes,
   zero synthetic quotes and identical repeated trades. Production-copy replay retained all 4,561
   records (551 standard, 4,010 comparisons), no load errors; 385 MB RSS and 0.493 ms p95 per quote in a
-  three-minute captured workload with restored positions. Final 551 backtests are refreshing after a
+  three-minute captured workload with restored positions. All 551 backtests were refreshed after a
   regression caught and fixed a tick/minute drawdown accounting error. No agent thresholds were tuned.
-- Deployment verification follows below. Full contract and limits: [TICKS.md](../TICKS.md).
+- Final refresh completed and all 551 results were pushed, with zero missing provenance. Production
+  verified at 05:17 UTC, arena code `1a37af8`: all 4,561 runs and all 450 earlier Capital assignments
+  preserved, each account still at its intended leverage and 50/50 slots; no load errors, stream/GPU
+  healthy, queue 0, 182 MB RSS. Night experiment entry time, size, stop and 08:27 local deadline survived
+  unchanged. Recording has zero dropped ticks or errors. Review: control 144, early 407, keep/leader/retire
+  0; monkey leaders 0/36. Desktop Status verified; mobile table overflow found and fixed.
+- After verification-copy cleanup, measured project storage 12.3 GB; two-year estimate 34.9 GB,
+  stress estimate 74.9 GB. Capture/transfer remains live on the one-minute timer.
+- Full contract and limits: [TICKS.md](../TICKS.md).
 
 ## 2026-10-16 (Fri, user-requested) — recover the full project context
 

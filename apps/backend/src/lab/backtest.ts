@@ -24,7 +24,7 @@ import type { WorkerJob } from './worker.ts';
 import { DEFAULT_FORECAST_CONTEXT } from '../engine/market.ts';
 import { forecastFile, PRECOMPUTED_HORIZON } from './forecast-cache.ts';
 import {recordingSnapshot,TICK_MODE,type ReplayOptions} from './tick-tape.ts';
-import {DEFAULT_TICK_SEED,DEFAULT_TICKS_PER_MINUTE} from '../engine/synthetic-ticks.ts';
+import {DEFAULT_TICK_SEED,DEFAULT_TICKS_PER_MINUTE,SYNTHETIC_TICK_VERSION} from '../engine/synthetic-ticks.ts';
 
 const DEFAULT_WORKERS = 5;
 const RUNS_PER_JOB = 20;
@@ -140,7 +140,7 @@ function printSummary(results: BacktestResult[]): void {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   args.replay.recordings=args.replay.mode===TICK_MODE.SYNTHETIC?[]:await recordingSnapshot(args.window.start,args.window.end);
-  const matches=(r:BacktestResult|null,hash:string):r is BacktestResult=> Boolean(r && r.data && r.codeHash===hash && r.engineVersion===ENGINE_VERSION && r.data.mode===args.replay.mode && r.data.seed===args.replay.seed && r.data.ticksPerMinute===args.replay.ticksPerMinute && JSON.stringify(r.data.recordings)===JSON.stringify(args.replay.recordings));
+  const matches=(r:BacktestResult|null,hash:string):r is BacktestResult=> Boolean(r && r.data && r.codeHash===hash && r.engineVersion===ENGINE_VERSION && r.data.generator===SYNTHETIC_TICK_VERSION && r.data.mode===args.replay.mode && r.data.seed===args.replay.seed && r.data.ticksPerMinute===args.replay.ticksPerMinute && JSON.stringify(r.data.recordings)===JSON.stringify(args.replay.recordings));
   const { agents, errors } = await loadAgents();
   for (const e of errors) console.error(`✗ ${e.file}: ${e.error}`);
 

@@ -32,7 +32,7 @@
   {#if tape}
     <section class="card stack">
       <h2>Tick replay data</h2>
-      <p><span class="badge">{tape.recordedTicks && tape.syntheticTicks ? 'mixed recorded / synthetic' : tape.recordedTicks ? 'recorded ticks' : 'synthetic ticks'}</span></p>
+      <p><span class="badge">{tape.recordedTicks && tape.syntheticTicks ? 'mixed recorded / synthetic' : tape.recordedTicks ? 'recorded ticks' : tape.syntheticTicks ? 'synthetic ticks' : 'no tick data'}</span></p>
       <p>{tape.recordedTicks.toLocaleString()} recorded quotes in {tape.recordedMinutes.toLocaleString()} minutes · {tape.syntheticTicks.toLocaleString()} generated quotes in {tape.syntheticMinutes.toLocaleString()} minutes</p>
       <p class="muted">Synthetic paths fit the minute candles; their intraminute order and spread are assumptions, not recovered history. Recorded minutes replay the captured feed without filling missing updates.</p>
       <p class="secondary">{tape.partialRecordedMinutes} partially captured minutes · {tape.rejectedTicks} unusable or out-of-order quotes · generator {tape.generator}, seed {tape.seed}, {tape.ticksPerMinute} ticks per synthetic minute</p>

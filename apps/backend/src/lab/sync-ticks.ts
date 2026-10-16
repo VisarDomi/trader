@@ -3,6 +3,8 @@ import { sql } from '../data/db.ts';
 import { TICK_API, type TickExport, type RecordedTick, type CaptureSession } from '../engine/ticks.ts';
 import { ensureTickSchema, storeTickChunk, tickStoreStats } from './tick-store.ts';
 import { storageReport } from './storage.ts';
+import {join} from 'node:path';
+import {DATA_DIR} from './candles.ts';
 export { ensureTickSchema } from './tick-store.ts';
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const TARGET_ROWS = 50_000,
@@ -60,7 +62,10 @@ export async function syncTicks(force = false) {
   if (downloaded) await storageReport();
   return { journalId: status.journalId, through, downloaded, storage: await tickStoreStats() };
 }
-if (import.meta.main) {
+if(import.meta.main && !process.env.TRADER_TICK_ARCHIVE_LOCK) {
+  const child=Bun.spawn(['flock','--nonblock','--conflict-exit-code','0',join(DATA_DIR,'tick-archive.lock'),process.execPath,import.meta.path,...process.argv.slice(2)],{env:{...process.env,TRADER_TICK_ARCHIVE_LOCK:'1'},stdin:'inherit',stdout:'inherit',stderr:'inherit'});
+  process.exitCode=await child.exited;
+} else if (import.meta.main) {
   try {
     console.log(JSON.stringify(await syncTicks(process.argv.includes('--flush'))));
   } catch (e) {
