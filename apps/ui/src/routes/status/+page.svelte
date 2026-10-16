@@ -79,6 +79,7 @@
 
 		<section class="card">
 			<h2>Instruments</h2>
+			<div class="table-wrap">
 			<table class="data">
 				<thead><tr><th>Instrument</th><th class="num">Bid</th><th class="num">Ask</th><th>Last quote</th><th>Last 1m candle</th></tr></thead>
 				<tbody>
@@ -97,6 +98,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div>
 			<p class="muted small">Amber is normal while a market is closed (weekends; daily breaks around 17:00 New York).</p>
 		</section>
 	{/if}

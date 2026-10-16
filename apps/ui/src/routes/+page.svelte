@@ -300,7 +300,7 @@
 								{#if isControl(r)}<span class="badge">control</span>{/if}
 								{#if r.usesForecast}<span class="badge">TimesFM</span>{/if}
 								{#if r.demoAdmission}<span class="badge" title={r.demoAdmission.reason}>user experiment</span>{/if}
-                {#if view === 'backtest' && r.data}<span class="badge" title="Tick provenance; open the run for counts and path assumptions">{r.data.recordedTicks && r.data.syntheticTicks ? 'mixed ticks' : r.data.recordedTicks ? 'recorded ticks' : 'synthetic ticks'}</span>{/if}
+                {#if view === 'backtest' && r.data}<span class="badge" title="Tick provenance; open the run for counts and path assumptions">{r.data.recordedTicks && r.data.syntheticTicks ? 'mixed ticks' : r.data.recordedTicks ? 'recorded ticks' : r.data.syntheticTicks ? 'synthetic ticks' : 'no tick data'}</span>{/if}
 							</td>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
 							<td class="lev" title={levTitle(r)}>{lev(r)}</td>

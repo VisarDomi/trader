@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Show recorded/synthetic/mixed tick provenance and replay assumptions, engine-version mismatches,
   recorder health, and whole-project two-year storage projections against the 100 GB budget.
+- Keep the Status instrument table inside its scroll container on small screens.
 
 - Label explicit user-requested demo admissions as “user experiment” on the leaderboard, including
   assigned runs that are still waiting for their first qualifying trade.
