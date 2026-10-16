@@ -2,6 +2,7 @@
  * Public agent SDK types. This file is the whole contract between an agent
  * and the platform — see agents/GUIDE.md for the walkthrough.
  */
+import type { Tick } from '../engine/ticks.ts';
 
 export const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'] as const;
 export type Timeframe = (typeof TIMEFRAMES)[number];
@@ -254,6 +255,10 @@ export interface AgentContext<P = Record<string, unknown>, S = Record<string, un
   readonly bars: readonly Bar[];
   /** Current time (ms) = close time of `bar`. */
   readonly time: number;
+  /** Most recently delivered quote, including provenance. Null only in legacy candle-only warm-up. */
+  readonly tick: Tick | null;
+  /** Bounded recent quotes, in delivery order; shared by runs of this instrument. */
+  readonly ticks: readonly Tick[];
   /** True while the platform is feeding history before trading starts; orders are ignored. */
   readonly isWarmup: boolean;
   readonly position: Position | null;
@@ -279,6 +284,12 @@ export interface AgentContext<P = Record<string, unknown>, S = Record<string, un
   log(...args: unknown[]): void;
   /** Deterministic random number in [0, 1) — use instead of Math.random(). */
   random(): number;
+}
+
+/** Tick callbacks may run before the first closed bar (bar is then null). Indicators use closed bars. */
+export interface TickContext<P = Record<string, unknown>, S = Record<string, unknown>> extends Omit<AgentContext<P,S>, 'bar' | 'tick'> {
+  readonly bar: Bar | null;
+  readonly tick: Tick;
 }
 
 export interface AgentDefinition<P extends Record<string, unknown> = Record<string, unknown>, S = Record<string, unknown>> {
@@ -311,7 +322,9 @@ export interface AgentDefinition<P extends Record<string, unknown> = Record<stri
   /** Initial value of ctx.state. Default {}. */
   init?(params: P): S;
   /** Called once per closed primary-timeframe bar. */
-  onBar(ctx: AgentContext<P, S>): void;
+  onBar?(ctx: AgentContext<P, S>): void;
+  /** Every executable delivered quote, after protections and any newly closed bar callback. */
+  onTick?(ctx: TickContext<P, S>): void;
   /** Called after every fill (open or close). */
-  onFill?(ctx: AgentContext<P, S>, fill: Fill): void;
+  onFill?(ctx: TickContext<P, S>, fill: Fill): void;
 }

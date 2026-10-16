@@ -12,12 +12,13 @@ import type { BacktestResult } from '../lab/backtest-core.ts';
 import type { ArenaStatus, LeaderboardRow } from '@trader/shared';
 import { getInstrument } from '../engine/instruments.ts';
 import { effectiveLeverage } from '../engine/leverage.ts';
-import { runKey } from '../engine/run-id.ts';
+import { runKey,PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import type { Candle } from '../engine/series.ts';
 import type { Arena } from './arena.ts';
 import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
+import {ENGINE_VERSION} from '../engine/version.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -47,6 +48,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
 
   add(METHOD_GET, '/api/health', () => json({ ok: true, ready: arena.ready, time: Date.now() }));
   add(METHOD_GET, TICK_API.STATUS, () => json(arena.tickJournal?.status() ?? null));
+  add(METHOD_GET,TICK_API.STORAGE,()=>json(db.getSetting('ticks.storage',null)));
+  add(METHOD_POST,TICK_API.STORAGE,async req=>{const report=await req.json() as {at:number;totalBytes:number;budgetBytes:number};if(![report.at,report.totalBytes,report.budgetBytes].every(Number.isFinite))return json({error:'invalid storage report'},400);db.setSetting('ticks.storage',report);return json({ok:true});},true);
   add(METHOD_GET, TICK_API.EXPORT, (_req,_p,url) => {
     if(!arena.tickJournal) return json({error:'tick recording unavailable'},503);
     return json(arena.tickJournal.export(Number(url.searchParams.get('after')??0),Number(url.searchParams.get('limit')??TICK_EXPORT_LIMIT)));
@@ -96,6 +99,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       broker: arena.broker?.status() ?? null,
       execution: arena.executionStatus(),
       network: networkStats(),
+      ticks:arena.tickJournal?.status()??null,
+      tickStorage:db.getSetting('ticks.storage',null),
       memoryMb: Math.round(process.memoryUsage().rss / 1e6),
     };
     return json(status);
@@ -258,7 +263,7 @@ function compactMetrics(raw: string): RunMetrics {
 function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.BACKTEST, includeRetired: boolean): LeaderboardRow[] {
   const db = arena.db;
   const agents = new Map(db.agents().map(a => [a.id, a]));
-  const backtests = new Map(db.runs(RUN_KIND.BACKTEST).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
+  const backtests = new Map(db.runs(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const demotions = db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
   const forward = new Map(
@@ -287,6 +292,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       updatedAt: r.updated_at,
       equity: r.equity,
       metrics: r.metrics ? compactMetrics(r.metrics) : null,
+      data:extra.data??null,
       usesForecast: Boolean(a?.uses_forecast),
       backtest: bt
         ? {
@@ -294,6 +300,8 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
             metrics: bt.metrics ? compactMetrics(bt.metrics) : null,
             codeHash: bt.code_hash,
             sameCode: bt.code_hash === r.code_hash,
+            sameEngine:bt.extra?JSON.parse(bt.extra).engineVersion===ENGINE_VERSION:false,
+            data:bt.extra?JSON.parse(bt.extra).data??null:null,
           }
         : null,
       mirrored: mirrored.has(r.id),

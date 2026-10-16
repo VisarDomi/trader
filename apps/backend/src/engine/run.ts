@@ -1,5 +1,6 @@
 import type { LiveExecution } from './venue.ts';
 import { QUOTE_MAX_AGE_MS } from './venue.ts';
+import { TICK_SOURCE, type Tick } from './ticks.ts';
 /**
  * AgentRun — one agent trading one instrument with its own virtual account.
  *
@@ -64,6 +65,10 @@ export interface Quote {
   bid: number;
   ask: number;
   time: number;
+  receivedAt?: number;
+  source?: Tick['source'];
+  sequence?: number;
+  journalId?: string;
 }
 
 export type RunEvent =
@@ -106,6 +111,7 @@ export interface RunOptions {
   checkStopsOnCandles: boolean;
   execution?: LiveExecution;
   onEvent?: (event: RunEvent) => void;
+  tickHistory?: readonly Tick[];
 }
 
 interface OpenPosition {
@@ -161,6 +167,7 @@ export interface RunSnapshot {
   pending?: PendingCommand[];
   executionStats?: ExecutionStats;
   openAttempts?: number[];
+  lastTick?: Tick;
 }
 
 export class AgentRun {
@@ -197,7 +204,10 @@ export class AgentRun {
   forecast: Forecast | null = null;
 
   private quote: Quote | null = null;
+  private tick: Tick | null = null;
+  private readonly tickHistory: readonly Tick[];
   private readonly execution?: LiveExecution;
+  private replayTime:number|null=null;
   private pending: PendingCommand[] = [];
   private openAttempts: number[] = [];
   private executing = false;
@@ -214,7 +224,7 @@ export class AgentRun {
     return this.pending.length;
   }
   private now(): number {
-    return this.execution?.now?.() ?? Date.now();
+    return this.replayTime ?? this.execution?.now?.() ?? Date.now();
   }
   private peakEquity: number;
   private maxDrawdown = 0;
@@ -228,9 +238,12 @@ export class AgentRun {
   /** Total agent time in onBar, for the performance check. */
   agentMs = 0;
   barsSeen = 0;
+  agentTickMs = 0;
+  ticksSeen = 0;
 
   constructor(opts: RunOptions) {
     this.execution = opts.execution;
+    this.tickHistory = opts.tickHistory ?? [];
     this.runId = opts.runId;
     this.agentId = opts.agentId;
     this.agent = opts.agent;
@@ -267,13 +280,14 @@ export class AgentRun {
   // ------------------------------------------------------------------ driving
 
   /** One 1-minute candle of this instrument (before it is pushed into the series). */
-  onCandle(c: Candle): void {
+  onCandle(c: Candle, fromTicks = false): void {
+    if(fromTicks && c.time+60_000<=this.lastTime)return;
     if (this.startTime === 0) this.startTime = c.time;
     this.lastTime = c.time + 60_000;
     const precision = this.instrument.pricePrecision;
     const spread = roundTo(c.spread > 0 ? c.spread : this.instrument.typicalSpread, precision);
     // Live runs may already hold a newer tick quote; never move the quote backwards.
-    if (!this.execution && (!this.quote || this.quote.time <= c.time + 60_000)) {
+    if (!fromTicks && !this.execution && (!this.quote || this.quote.time <= c.time + 60_000)) {
       this.quote = {
         bid: c.close,
         ask: roundTo(c.close + spread, precision),
@@ -282,12 +296,12 @@ export class AgentRun {
     }
 
     // A missing historical deadline minute must not expose the trade to the next candle's range.
-    if (!this.execution && this.position?.closeAt !== undefined && c.time >= this.position.closeAt) {
+    if (!fromTicks && !this.execution && this.position?.closeAt !== undefined && c.time >= this.position.closeAt) {
       this.accrueFunding(c.time, c.open);
       const price = c.open + (this.position.side === SIDE_SHORT ? spread : 0);
       this.closePosition(EXIT_REASON.SESSION_END, price, c.time, `${SCHEDULED_EXIT_NOTE}: first quote after data gap`);
     }
-    if (this.position) {
+    if (this.position && !fromTicks) {
       this.accrueFunding(c.time, c.close);
       // Only minutes that started after the entry can hit its stops.
       if (this.checkStopsOnCandles && c.time >= this.position.entryTime) this.checkStopsOnCandle(c, spread);
@@ -305,7 +319,7 @@ export class AgentRun {
     const pos = this.position;
     let adverse = this.balance;
     if (pos && c.time >= pos.entryTime) {
-      adverse =
+      if (!fromTicks) adverse =
         pos.side === SIDE_LONG
           ? this.balance + (c.low - pos.entryPrice) * pos.size
           : this.balance + (pos.entryPrice - (c.high + spread)) * pos.size;
@@ -313,6 +327,7 @@ export class AgentRun {
     }
     this.minutesTotal++;
     const eq = this.markToMarket();
+    if(fromTicks)adverse=eq; // The observed tick path already recorded intraminute drawdown.
     if (eq > this.peakEquity) this.peakEquity = eq;
     if (this.peakEquity > 0) {
       const dd = (this.peakEquity - Math.min(eq, adverse)) / this.peakEquity;
@@ -336,36 +351,66 @@ export class AgentRun {
   }
 
   /** Live quote (arena only): stops and margin at tick precision. */
-  onTick(q: Quote): void {
+  onTick(q: Quote, dispatchAgent = true): void {
     // lastTime tracks candles only (it is the resume point after a restart).
     if (this.execution && (q.time > this.now() + 1000 || this.now() - q.time > QUOTE_MAX_AGE_MS)) return;
     if (!Number.isFinite(q.bid) || !Number.isFinite(q.ask) || q.bid <= 0 || q.ask < q.bid || (this.quote && q.time < this.quote.time))
       return;
+    if(q.journalId!==undefined && q.journalId===this.tick?.journalId && q.sequence!==undefined && this.tick?.sequence!==undefined && q.sequence<=this.tick.sequence)return;
     this.quote = q;
+    this.tick = q.source !== undefined && q.receivedAt !== undefined ? q as Tick : {...q,receivedAt:q.receivedAt??q.time,source:q.source??TICK_SOURCE.SYNTHETIC};
+    if (this.startTime === 0) this.startTime = this.tick.receivedAt;
     this.flushPending();
+    this.checkTickProtections(this.tick);
+    if (dispatchAgent) this.dispatchTick();
+  }
+
+  /** Recover the unpersisted journal tail with an historical clock. Broker events are suppressed by the arena until ready. */
+  catchUpTick(q:Tick):void {
+    this.replayTime=q.receivedAt;
+    try{this.onTick(q);}finally{this.replayTime=null;}
+  }
+
+  private checkTickProtections(q: Tick): void {
     const pos = this.position;
     if (!pos || this.status !== RUN_STATUS.RUNNING) return;
+    this.accrueFunding(q.receivedAt, q.bid);
     const tickEquity = this.markToMarket();
     this.peakEquity = Math.max(this.peakEquity, tickEquity);
     if (this.peakEquity > 0) this.maxDrawdown = Math.min(1, Math.max(this.maxDrawdown, (this.peakEquity - tickEquity) / this.peakEquity));
-    this.accrueFunding(q.time, q.bid);
     const exitPx = this.exitPrice(pos.side);
+    if (pos.closeAt !== undefined && q.receivedAt >= pos.closeAt) {
+      if(this.execution) this.closeByAgent(SCHEDULED_EXIT_NOTE,EXIT_REASON.SESSION_END);
+      else return this.closePosition(EXIT_REASON.SESSION_END,exitPx,q.receivedAt,SCHEDULED_EXIT_NOTE);
+      if (!this.position) return;
+    }
     const stop = this.effectiveStop(pos);
     if (stop) {
       const hit = pos.side === SIDE_LONG ? exitPx <= stop.price : exitPx >= stop.price;
-      if (hit) return this.closePosition(stop.reason, exitPx, q.time);
+      if (hit) return this.closePosition(stop.reason, exitPx, q.receivedAt);
     }
     if (pos.takeProfit !== null) {
       const hit = pos.side === SIDE_LONG ? exitPx >= pos.takeProfit : exitPx <= pos.takeProfit;
-      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, exitPx, q.time);
+      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, exitPx, q.receivedAt);
     }
-    if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.time);
+    if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.receivedAt);
     this.updateTrailAnchor(pos, exitPx);
     if (this.agent.intradayOnly && isSessionEnd(q.time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
   }
 
+  /** Separate from account checks so bar callbacks and tick callbacks see one consistent market event. */
+  dispatchTick(expected?: Tick): void {
+    if (!this.tick || (expected && this.tick!==expected) || !this.agent.onTick || this.status !== RUN_STATUS.RUNNING) return;
+    const started=performance.now();
+    try {this.agent.onTick(this.makeContext(this.currentBar??this.primary.last??null,this.tick.receivedAt) as never);}
+    catch(e){this.handleAgentError(e,this.tick.receivedAt);}
+    this.agentTickMs+=performance.now()-started;
+    this.ticksSeen++;
+  }
+
   onClock(time: number): void {
     if (!this.position || !this.quote || this.status !== RUN_STATUS.RUNNING) return;
+    if (!this.execution && time > (this.quote.receivedAt??this.quote.time)) return;
     this.accrueFunding(time, this.quote.bid);
     if (this.position.closeAt !== undefined && time >= this.position.closeAt)
       this.closeByAgent(SCHEDULED_EXIT_NOTE, EXIT_REASON.SESSION_END);
@@ -380,9 +425,9 @@ export class AgentRun {
     const ctx = this.makeContext(bar);
     const started = performance.now();
     try {
-      this.agent.onBar(ctx as never);
+      this.agent.onBar?.(ctx as never);
     } catch (err) {
-      this.handleAgentError(err, bar);
+      this.handleAgentError(err, bar.time+this.primary.tfMs);
     }
     this.agentMs += performance.now() - started;
   }
@@ -409,7 +454,7 @@ export class AgentRun {
       initialCapital: this.capital,
       finalEquity: this.markToMarket(),
       startTime: this.startTime,
-      endTime: this.lastTime,
+      endTime: Math.max(this.lastTime,this.tick?.receivedAt??0),
       maxDrawdown: this.maxDrawdown,
       exposure: this.minutesTotal > 0 ? this.minutesInPosition / this.minutesTotal : 0,
     });
@@ -449,6 +494,7 @@ export class AgentRun {
       pending: this.pending.map(p => structuredClone(p)),
       executionStats: { ...this.executionStats },
       openAttempts: [...this.openAttempts],
+      lastTick: this.tick ? {...this.tick} : undefined,
     };
   }
 
@@ -464,6 +510,8 @@ export class AgentRun {
     this.lastTime = s.lastTime;
     this.errors = s.errors;
     this.status = s.status;
+    this.tick = s.lastTick ?? null;
+    if(this.tick)this.quote=this.tick;
     this.rngState = s.rngState;
     this.pending = structuredClone(s.pending ?? []);
     if (this.execution?.gateway)
@@ -527,7 +575,8 @@ export class AgentRun {
 
   private open(side: Side, opts: OrderOptions = {}): void {
     if (!this.canTrade('open')) return;
-    const time = this.execution ? this.now() : this.quote!.time;
+    if(this.execution?.entryAllowed && !this.execution.entryAllowed())return this.reject('tick recording unavailable; new entries paused');
+    const time = this.execution ? this.now() : (this.quote!.receivedAt??this.quote!.time);
     if (opts.validUntil !== undefined && (!Number.isFinite(opts.validUntil) || time >= opts.validUntil))
       return this.reject('entry validity deadline expired or invalid');
     if (opts.closeAt !== undefined && (!Number.isFinite(opts.closeAt) || time >= opts.closeAt))
@@ -624,7 +673,7 @@ export class AgentRun {
       return;
     }
     if (!this.position || !this.canTrade('close')) return;
-    this.closePosition(exitReason, this.exitPrice(this.position.side), this.quote!.time, reason);
+    this.closePosition(exitReason, this.exitPrice(this.position.side), this.quote!.receivedAt??this.quote!.time, reason);
   }
 
   private setStops(update: StopUpdate): void {
@@ -846,10 +895,9 @@ export class AgentRun {
     else this.equity.push({ t: day, equity: roundTo(equity, 2) });
   }
 
-  private handleAgentError(err: unknown, bar: Bar): void {
+  private handleAgentError(err: unknown, time: number): void {
     this.errors++;
     const message = err instanceof Error ? `${err.message}\n${(err.stack ?? '').split('\n').slice(1, 4).join('\n')}` : String(err);
-    const time = bar.time + this.primary.tfMs;
     this.emit({ type: 'error', runId: this.runId, time, message });
     this.pushLog(time, `ERROR: ${message}`);
     if (this.errors >= MAX_AGENT_ERRORS) {
@@ -859,12 +907,12 @@ export class AgentRun {
   }
 
   private notifyFill(fill: Fill): void {
-    if (!this.agent.onFill || this.inFill || !this.currentBar) return;
+    if (!this.agent.onFill || this.inFill) return;
     this.inFill = true;
     try {
-      this.agent.onFill(this.makeContext(this.currentBar) as never, fill);
+      this.agent.onFill(this.makeContext(this.currentBar??this.primary.last??null,fill.time) as never, fill);
     } catch (err) {
-      this.handleAgentError(err, this.currentBar);
+      this.handleAgentError(err, fill.time);
     } finally {
       this.inFill = false;
     }
@@ -910,9 +958,9 @@ export class AgentRun {
     };
   }
 
-  private makeContext(bar: Bar): AgentContext {
+  private makeContext(bar: Bar | null, eventTime?: number): AgentContext {
     const run = this;
-    const time = bar.time + this.primary.tfMs;
+    const time = eventTime ?? (bar ? bar.time + this.primary.tfMs : this.tick?.receivedAt??0);
     const isWarmup = !this.allowOrders || this.primary.closedCount < this.warmup;
     return {
       epic: this.instrument.epic,
@@ -926,9 +974,11 @@ export class AgentRun {
       set state(value) {
         run.state = value;
       },
-      bar,
+      bar:bar!,
       bars: this.primary.bars,
       time,
+      tick:this.tick,
+      ticks:this.tickHistory,
       isWarmup,
       get position() {
         return run.publicPosition();

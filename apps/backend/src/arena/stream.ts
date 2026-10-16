@@ -11,6 +11,7 @@ import type { CapitalClient } from '../capital/client.ts';
 import { STREAM_URL } from '../capital/client.ts';
 import { TICK_SOURCE, type Tick } from '../engine/ticks.ts';
 import type { TickJournal } from './tick-journal.ts';
+import {QUOTE_MAX_AGE_MS} from '../engine/venue.ts';
 
 const DEST_SUBSCRIBE = 'marketData.subscribe';
 const DEST_QUOTE = 'quote';
@@ -115,6 +116,7 @@ export class QuoteStream {
       }
     };
     ws.onclose = event => {
+      if(this.ws!==ws)return;
       this.clearPing();
       this.journal?.disconnected(`socket closed (${event.code})`);
       if (this.ws === ws) this.ws = null;
@@ -129,6 +131,7 @@ export class QuoteStream {
   }
 
   private handleQuote(q: LiveQuote): void {
+    if(q.time>q.receivedAt+1000 || q.receivedAt-q.time>QUOTE_MAX_AGE_MS)return;
     if ((this.lastQuote.get(q.epic)?.time ?? 0) > q.time) return;
     this.lastQuote.set(q.epic, q);
     this.onQuote(q);

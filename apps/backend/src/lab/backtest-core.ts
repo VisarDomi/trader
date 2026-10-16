@@ -5,12 +5,15 @@ import { ENGINE_VERSION } from '../engine/version.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import type { ForecastProvider } from '../engine/market.ts';
-import { backtestRunId } from '../engine/run-id.ts';
+import { backtestRunId, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import { MarketEngine } from '../engine/market.ts';
 import type { EquityPoint, RunMetrics } from '../engine/metrics.ts';
 import type { LogLine, RunStatus } from '../engine/run.ts';
 import type { Trade } from '../sdk/types.ts';
-import { candleAt, candleCount, loadCandleArray } from './candles.ts';
+import { tickMinutes, recordingSnapshot, replayData, TICK_MODE, type ReplayOptions, type ReplayData } from './tick-tape.ts';
+import { DEFAULT_EXECUTION_MS, VirtualVenue, VirtualGateway, type CapitalMarket } from '../engine/venue.ts';
+import marketSnapshot from '../engine/fixtures/capital-markets.json';
+import { MINUTE_MS } from '../engine/clock.ts';
 
 export interface BacktestWindow {
   id: string;
@@ -24,7 +27,7 @@ export interface BacktestWindow {
  * hourly/daily quotes exist. This is a data-resolution limit, not the index's age.
  */
 export const STANDARD_WINDOW: BacktestWindow = {
-  id: '2024-01_2026-09',
+  id: PRIMARY_BACKTEST_WINDOW_ID,
   start: Date.UTC(2024, 0, 1),
   end: Date.UTC(2026, 9, 1),
 };
@@ -57,6 +60,9 @@ export interface BacktestResult {
   candles: number;
   ranAt: number;
   durationMs: number;
+  data?: ReplayData;
+  ticks?: number;
+  agentUsPerTick?: number;
 }
 
 export async function backtestEpic(
@@ -64,9 +70,16 @@ export async function backtestEpic(
   specs: { agent: LoadedAgent; leverage: number }[],
   window: BacktestWindow,
   forecasts: ForecastProvider | null = null,
+  options: ReplayOptions = {},
 ): Promise<BacktestResult[]> {
   const started = Date.now();
-  const instrument = getInstrument(epic);
+  const instrument = {...getInstrument(epic)};
+  let clock=window.start;
+  const venue=new VirtualVenue(instrument);
+  const rules=(marketSnapshot.markets as unknown as Record<string,CapitalMarket>)[epic];
+  if(!rules)throw new Error(`missing Capital rules snapshot for ${epic}`);
+  const market={...rules,snapshot:{...rules.snapshot,marketStatus:'TRADEABLE'}};
+  venue.update(market,clock);
   const engine = new MarketEngine(instrument, forecasts);
   const runs = specs.map(({ agent, leverage }) =>
     engine.addRun({
@@ -74,14 +87,25 @@ export async function backtestEpic(
       agent,
       leverage,
       capital: BACKTEST_CAPITAL,
-      checkStopsOnCandles: true,
+      checkStopsOnCandles: false,
+      execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,gateway:new VirtualGateway(),now:()=>clock},
     }),
   );
 
-  const data = await loadCandleArray(epic, window.start, window.end, window.end > Date.now());
-  const n = candleCount(data);
-  for (let i = 0; i < n; i++) engine.processCandle(candleAt(data, i));
-  const endTime = n > 0 ? candleAt(data, n - 1).time + 60_000 : window.end;
+  const data=replayData(options);
+  data.recordings=options.recordings??(options.mode===TICK_MODE.SYNTHETIC?[]:await recordingSnapshot(window.start,window.end));
+  let n=0;
+  for await(const minute of tickMinutes(epic,window.start,window.end,options,data)) {
+    clock=minute.time;venue.updatedAt=clock;
+    engine.processClock(clock);
+    for(const tick of minute.ticks){clock=tick.receivedAt;engine.processTick(tick);}
+    clock=minute.time+MINUTE_MS;
+    engine.processClock(clock);
+    engine.takeCompletedCandles();
+    n++;
+  }
+  data.rejectedTicks=engine.rejectedTicks;
+  const endTime=n>0?clock:window.end;
   for (const run of runs) run.finish(endTime);
 
   const durationMs = Date.now() - started;
@@ -109,6 +133,9 @@ export async function backtestEpic(
       candles: n,
       ranAt: Date.now(),
       durationMs,
+      data,
+      ticks:data.recordedTicks+data.syntheticTicks,
+      agentUsPerTick:run.ticksSeen>0?Math.round(run.agentTickMs*1000/run.ticksSeen):0,
     };
   });
 }

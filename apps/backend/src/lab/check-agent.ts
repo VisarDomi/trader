@@ -21,6 +21,7 @@ import { backtestEpic, STANDARD_WINDOW } from './backtest-core.ts';
 import { CachedForecastProvider, forecastFile, PRECOMPUTED_HORIZON } from './forecast-cache.ts';
 
 const SLOW_US_PER_BAR = 500;
+const SLOW_US_PER_TICK = 100;
 const OVERTRADING_PER_DAY = 20;
 
 function fail(msg: string): never {
@@ -81,17 +82,18 @@ function report(r: BacktestResult, again: BacktestResult, days: number): number 
   const head = `${r.agentId} on ${r.epic} at 1:${r.leverage}`;
   console.log(
     `  ${head}: ${m.trades} trades, return ${(m.totalReturn * 100).toFixed(1)}%, maxDD ${(m.maxDrawdown * 100).toFixed(1)}%, ` +
-      `sharpe ${m.sharpe.toFixed(2)}, ${r.agentUsPerBar} µs/bar, status ${r.status}`,
+      `sharpe ${m.sharpe.toFixed(2)}, ${r.agentUsPerBar} µs/bar, ${r.agentUsPerTick??0} µs/tick, status ${r.status}`,
   );
   const issue = (msg: string): void => {
     problems++;
     console.log(`    ✗ ${msg}`);
   };
   const warn = (msg: string): void => console.log(`    ! ${msg}`);
-  if (r.errors > 0) issue(`onBar threw ${r.errors} time(s): ${r.logs.find(l => l.message.startsWith('ERROR'))?.message.split('\n')[0]}`);
+  if (r.errors > 0) issue(`agent callbacks threw ${r.errors} time(s): ${r.logs.find(l => l.message.startsWith('ERROR'))?.message.split('\n')[0]}`);
   if (m.trades === 0) warn('no trades in this window — check the entry conditions');
   if (m.trades / days > OVERTRADING_PER_DAY) warn(`${(m.trades / days).toFixed(1)} trades/day — spread costs will dominate`);
   if (r.agentUsPerBar > SLOW_US_PER_BAR) issue(`slow: ${r.agentUsPerBar} µs per bar (keep it under ${SLOW_US_PER_BAR})`);
+  if ((r.agentUsPerTick??0) > SLOW_US_PER_TICK) issue(`slow: ${r.agentUsPerTick} µs per tick (keep it under ${SLOW_US_PER_TICK})`);
   const rejected = r.logs.filter(l => l.message.includes('rejected'));
   if (rejected.length > 0) warn(`${rejected.length} rejected order(s), e.g. "${rejected[0]!.message}"`);
   const used = leverageUsed(r);

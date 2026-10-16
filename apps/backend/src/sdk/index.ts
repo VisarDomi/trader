@@ -11,6 +11,7 @@ import type { AgentDefinition } from './types.ts';
 import { TIMEFRAMES } from './types.ts';
 
 export * from './types.ts';
+export { TICK_SOURCE, type Tick, type TickSource } from '../engine/ticks.ts';
 export { localTime, TZ, type LocalTime } from './time.ts';
 export { POLICY_CALENDAR, POLICY_EVENT, policyCalendarCovers, policyEventsOn, type PolicyEvent } from './policy-calendar.ts';
 
@@ -42,7 +43,7 @@ export function defineAgent<P extends Record<string, unknown>, S = Record<string
   for (const tf of definition.extraTimeframes ?? []) {
     if (!TIMEFRAMES.includes(tf)) problems.push(`extraTimeframes: unknown timeframe "${tf}"`);
   }
-  if (typeof definition.onBar !== 'function') problems.push('onBar(ctx) is required');
+  if (typeof definition.onBar !== 'function' && typeof definition.onTick !== 'function') problems.push('onTick(ctx) or onBar(ctx) is required');
   if (definition.params === null || typeof definition.params !== 'object') problems.push('params must be an object (use {} for none)');
   for (const name of Object.keys(definition.variants ?? {})) {
     if (!VARIANT_NAME.test(name)) problems.push(`variant name "${name}" must be lowercase letters, digits and dashes`);

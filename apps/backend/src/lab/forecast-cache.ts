@@ -19,6 +19,9 @@ import type { Bar, Forecast, ForecastSpec, Timeframe } from '../sdk/types.ts';
 import { QUANTILE_LEVELS } from '../sdk/types.ts';
 import { DATA_DIR } from './candles.ts';
 import { makeForecast, PRECOMPUTED_HORIZON } from '../engine/forecast.ts';
+import {BarSeries as SourceSeries} from '../engine/series.ts';
+import {candleAt,candleCount,loadCandleArray} from './candles.ts';
+import {STANDARD_WINDOW} from './backtest-core.ts';
 
 export { makeForecast, PRECOMPUTED_HORIZON };
 
@@ -91,6 +94,7 @@ export class ForecastTable {
 export class CachedForecastProvider implements ForecastProvider {
   private readonly tables = new Map<string, ForecastTable | null>();
   private readonly pending = new Map<string, Promise<void>>();
+  private readonly inputs=new Map<string,Map<number,string>>();
 
   private constructor(readonly epic: string) {}
 
@@ -109,13 +113,28 @@ export class CachedForecastProvider implements ForecastProvider {
       this.pending.set(key, p);
     }
     await Promise.all(this.pending.values());
+    // Original tables were forecast from the minute tape. Recorded tick bars may differ; prove
+    // that this exact input matches before reusing a forecast keyed only by bar timestamp.
+    const missing=specs.filter(({tf,spec})=>!this.inputs.has(`${tf}:${spec.context??DEFAULT_FORECAST_CONTEXT}`));
+    if(missing.length) {
+      const data=await loadCandleArray(this.epic,STANDARD_WINDOW.start,STANDARD_WINDOW.end);
+      for(const {tf,spec} of missing) {
+        const context=spec.context??DEFAULT_FORECAST_CONTEXT,key=`${tf}:${context}`,series=new SourceSeries(this.epic,tf),hashes=new Map<number,string>();
+        for(let i=0;i<candleCount(data);i++)for(const bar of series.push(candleAt(data,i)))hashes.set(bar.time,inputHash(series.bars,context));
+        this.inputs.set(key,hashes);
+      }
+    }
   }
 
   get(series: BarSeries, spec: ForecastSpec, bar: Bar): Forecast | null {
-    const table = this.tables.get(`${series.timeframe}:${spec.context ?? DEFAULT_FORECAST_CONTEXT}`);
+    const context=spec.context??DEFAULT_FORECAST_CONTEXT,key=`${series.timeframe}:${context}`;
+    if(this.inputs.get(key)?.get(bar.time)!==inputHash(series.bars,context))return null;
+    const table = this.tables.get(key);
     return table ? table.get(bar.time, spec.horizon) : null;
   }
 }
+
+function inputHash(bars:readonly Bar[],context:number):string {return Bun.hash(JSON.stringify(bars.slice(-context).map(b=>b.close))).toString();}
 
 function findTable(epic: string, tf: Timeframe, context: number, horizon: number): string | null {
   for (const h of [PRECOMPUTED_HORIZON, horizon]) {

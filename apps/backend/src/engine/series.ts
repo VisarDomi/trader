@@ -77,6 +77,10 @@ export class BarSeries {
   flush(): Bar | null {
     return this.current ? this.emit() : null;
   }
+  /** A quiet market still closes its observed partial bar at the UTC boundary. No empty bars are invented. */
+  flushThrough(time: number): Bar | null {
+    return this.current && this.current.time+this.tfMs<=time ? this.emit() : null;
+  }
 
   /**
    * Start the series with closed bars from before its first candle (the arena

@@ -11,7 +11,7 @@ import {
   virtualEligible,
   tradeT,
 } from './pipeline.ts';
-import { runKey } from '../engine/run-id.ts';
+import { runKey,PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 /**
  * The Arena — runs every agent forward on live Capital.com demo prices.
@@ -47,6 +47,8 @@ import { RUN_KIND } from './db.ts';
 import { LiveForecastProvider } from './forecast-client.ts';
 import { QuoteStream } from './stream.ts';
 import type { TickJournal } from './tick-journal.ts';
+import {TICK_SOURCE,type Tick} from '../engine/ticks.ts';
+import {ENGINE_VERSION} from '../engine/version.ts';
 
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
@@ -110,6 +112,7 @@ export class Arena {
   ready = false;
   private lastMetricsAt = 0;
   private lastHourWritten = 0;
+  private replayClock:number|null=null;
 
   constructor(opts: ArenaOptions) {
     this.loopDelay.enable();
@@ -145,6 +148,15 @@ export class Arena {
     const since = Date.now() - HISTORY_DAYS * DAY_MS;
     this.seedDaily(epics, since);
     this.warmUp(epics, fresh, since);
+    if(this.tickJournal)for(const {run} of this.tracked.values()) {
+      const tick=run.snapshot().lastTick;
+      if(tick?.journalId===this.tickJournal.journalId && tick.sequence!==undefined)this.tickJournal.reserveAfter(tick.sequence);
+    }
+    if(this.liveMode && this.db.getSetting<number|null>('feed.ticksSince',null)===null) {
+      const at=Math.floor(Date.now()/MINUTE_MS)*MINUTE_MS;
+      this.db.setSetting('feed.ticksSince',at);
+      this.db.event('info','engine',`tick-driven prices and bars enabled (${ENGINE_VERSION}); earlier run histories retained`);
+    }
     this.db.event(
       'info',
       'arena',
@@ -156,7 +168,7 @@ export class Arena {
     this.stream = new QuoteStream(
       this.client,
       epics,
-      q => this.onQuote(q.epic, q.bid, q.ask, q.time),
+      q => this.onQuote(q.epic,q),
       (level, msg) => this.db.event(level, 'stream', msg),
       this.tickJournal,
     );
@@ -166,11 +178,10 @@ export class Arena {
       const now = Date.now();
       this.tickJournal?.maintain(now);
       this.broker?.onClock(now);
-      for (const t of this.tracked.values())
-        if (t.run.position) {
-          t.run.onClock(now);
-          t.dirty = true;
-        }
+      for(const [epic,engine] of this.engines) {
+        this.dispatchClosed(engine,engine.stepClock(now));
+        this.saveStreamCandles(epic,engine);
+      }
     }, 1000);
     void this.forecasts.probe();
     this.probeTimer = setInterval(() => void this.forecasts.probe(), FORECASTER_PROBE_MS);
@@ -192,7 +203,7 @@ export class Arena {
   /** Backtest pushes can satisfy a previously missing gate. Debounce a service reload until the batch is quiet. */
   scheduleAdmissions(): void {
     if (!this.liveMode || !this.ready || !this.roster) return;
-    const backtests = new Map(this.db.runs(RUN_KIND.BACKTEST).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
+    const backtests = new Map(this.db.runs(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
     const waiting = planRuns(this.agents, this.roster).runs.filter(
       ({ agent, epic, leverage }) =>
         !this.db.run(demoRunId(agent.id, epic, leverage, agent.codeHash)) &&
@@ -220,7 +231,7 @@ export class Arena {
     const fresh = new Set<string>();
     const active = this.db.runs(RUN_KIND.DEMO);
     const plan = planRuns(this.agents, this.roster!);
-    const backtests = new Map(this.db.runs(RUN_KIND.BACKTEST).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
+    const backtests = new Map(this.db.runs(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
     const rosterRetired = new Set<string>();
     for (const { agent, epic, leverage, entry } of plan.retired) {
       for (const old of active.filter(r => r.agent_id === agent.id && r.epic === epic && r.leverage === leverage)) {
@@ -252,6 +263,8 @@ export class Arena {
           venue: this.venues.get(epic)!,
           latencyMs: DEFAULT_EXECUTION_MS,
           gateway: this.gateway('standard'),
+          now:()=>this.replayClock??Date.now(),
+          entryAllowed:()=>this.tickJournal?.lastError==null,
         },
         onEvent: e => this.onRunEvent(e),
       });
@@ -282,6 +295,7 @@ export class Arena {
         gate: gate.reason,
         grandfathered: !gate.passed && !experiment,
         demoAdmission: experiment,
+        priceFeed:'ticks',tickEngineVersion:ENGINE_VERSION,
       });
       this.tracked.set(id, {
         startedAt: this.db.run(id)?.started_at ?? now,
@@ -298,20 +312,23 @@ export class Arena {
     const qualified = plan.runs.filter(
       ({ agent, epic, leverage }) =>
         this.tracked.has(demoRunId(agent.id, epic, leverage, agent.codeHash)) &&
-        backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed,
+        (fresh.has(demoRunId(agent.id,epic,leverage,agent.codeHash)) ||
+          active.some(r=>r.id.startsWith(demoRunId(agent.id,epic,leverage,agent.codeHash)+SHADOW_MARKER))) &&
+        (backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed ||
+          active.some(r=>r.id.startsWith(demoRunId(agent.id,epic,leverage,agent.codeHash)+SHADOW_MARKER))),
     );
     const comparisonScenarios = EXECUTION_SCENARIOS.slice(
       0,
       Math.floor((VIRTUAL_COMPARISON_TARGET - this.tracked.size) / Math.max(1, qualified.length)),
     );
-    for (const latencyMs of comparisonScenarios) {
+    for (const latencyMs of EXECUTION_SCENARIOS) {
       for (const { agent, epic, leverage } of qualified) {
         if (this.tracked.size >= VIRTUAL_RUN_CAP) break;
         const baseId = demoRunId(agent.id, epic, leverage, agent.codeHash);
-        if (!this.tracked.has(baseId) || !backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed)
-          continue;
         const id = `${baseId}${SHADOW_MARKER}${latencyMs}`;
         const row = this.db.run(id);
+        if(!this.tracked.has(baseId) || (!row && (!comparisonScenarios.includes(latencyMs) ||
+          !backtestGate(backtests.get(runKey(agent.id,epic,leverage)),agent.codeHash,agent.slug).passed)))continue;
         if (row?.retired) continue;
         const run = this.engines.get(epic)!.addRun({
           runId: id,
@@ -323,6 +340,8 @@ export class Arena {
             venue: this.venues.get(epic)!,
             latencyMs,
             gateway: this.gateway(String(latencyMs)),
+            now:()=>this.replayClock??Date.now(),
+            entryAllowed:()=>this.tickJournal?.lastError==null,
           },
           onEvent: e => this.onRunEvent(e),
         });
@@ -413,7 +432,7 @@ export class Arena {
       if (fresh.length > 0) {
         this.db.insertCandles(epic, fresh);
         stored += fresh.length;
-        if (process) for (const c of fresh) await this.processLiveCandle(epic, c);
+        if(process)this.lastCandle.set(epic,fresh.at(-1)!.time);
       }
       cursor = windowEnd + MINUTE_MS;
     }
@@ -459,6 +478,9 @@ export class Arena {
         else representative.set(key, r);
       }
       const resumeAt = new Map(runs.map(r => [r.runId, fresh.has(r.runId) ? Infinity : r.snapshot().lastTime]));
+      const restored=runs.filter(r=>!fresh.has(r.runId));
+      const replayFrom=this.tickJournal && this.db.getSetting<number|null>('feed.ticksSince',null)!==null && restored.length
+        ? Math.min(...restored.map(r=>resumeAt.get(r.runId)!)) : Infinity;
       // Most restored runs resume at the end of history. Do not scan thousands of dormant runs
       // against every historical candle; activate them only when their resume time is reached.
       const waiting = runs.filter(r => !fresh.has(r.runId)).sort((a, b) => resumeAt.get(a.runId)! - resumeAt.get(b.runId)!);
@@ -472,6 +494,7 @@ export class Arena {
       };
       for (const r of runs) if (fresh.has(r.runId) && !cloneOf.has(r.runId)) addBarRun(r);
       for (const c of candles) {
+        if(c.time>=replayFrom)break;
         while (waiting[next] && resumeAt.get(waiting[next]!.runId)! <= c.time) {
           const r = waiting[next++]!;
           active.push(r);
@@ -491,7 +514,7 @@ export class Arena {
         this.lastCandle.set(epic, c.time);
       }
       const syncedTo = (this.lastCandle.get(epic) ?? 0) + MINUTE_MS;
-      const lastCandle = candles.at(-1);
+      const lastCandle = candles.findLast(c=>c.time+MINUTE_MS<=syncedTo);
       for (const r of runs) {
         const source = cloneOf.get(r.runId);
         if (source) {
@@ -507,6 +530,31 @@ export class Arena {
         const t = this.tracked.get(r.runId);
         if (t) t.dirty = true;
       }
+      const tail=this.tickJournal?.recent(epic,Math.max(syncedTo-MINUTE_MS,Date.now()-2*DAY_MS))??[];
+      const ticks:Tick[]=tail.map(q=>({time:q.time,receivedAt:q.receivedAt,bid:q.bid,ask:q.ask,source:TICK_SOURCE.RECORDED,sequence:q.id,journalId:this.tickJournal!.journalId}));
+      engine.seedTickHistory(ticks.filter(q=>q.time<syncedTo),syncedTo);
+      const dispatchRecovery=(closed:ClosedBar[])=>{
+        for(const cb of closed)for(const r of engine.runsOn(cb.series.timeframe)) {
+          if(cloneOf.has(r.runId) || (!fresh.has(r.runId) && cb.bar.time+cb.series.tfMs<=resumeAt.get(r.runId)!))continue;
+          r.forecast=null;r.onBar(cb.bar);
+        }
+      };
+      for(const r of runs)if(fresh.has(r.runId))r.allowOrders=false;
+      try {
+        for(const q of ticks) {
+          if(q.time<syncedTo)continue;
+          this.replayClock=q.receivedAt;
+          dispatchRecovery(engine.stepClock(q.receivedAt));
+          const closed=engine.stepTick(q);if(closed===null)continue;
+          dispatchRecovery(closed);engine.dispatchTick(q);
+        }
+      }finally{this.replayClock=null;}
+      this.saveStreamCandles(epic,engine);
+      for(const r of runs) {
+        const source=cloneOf.get(r.runId);if(!source)continue;
+        const snapshot=r.snapshot(),warm=source.snapshot();snapshot.state=structuredClone(warm.state);snapshot.rngState=warm.rngState;r.restore(snapshot,[],[]);
+      }
+      for(const r of runs){r.allowOrders=true;const t=this.tracked.get(r.runId);if(t)t.dirty=true;}
     }
     this.persistAll(true);
   }
@@ -546,26 +594,29 @@ export class Arena {
     }
   }
 
-  private async processLiveCandle(epic: string, c: Candle): Promise<void> {
-    const last = this.lastCandle.get(epic);
-    if (last !== undefined && c.time <= last) return;
-    const engine = this.engines.get(epic)!;
-    const closed = engine.stepCandle(c);
-    this.lastCandle.set(epic, c.time);
-    // Fill at the live quote when we have a fresh one.
-    const q = this.stream?.lastQuote.get(epic);
-    if (q && Date.now() - q.time < QUOTE_FRESH_MS) for (const r of engine.runs) r.onTick({ bid: q.bid, ask: q.ask, time: q.time });
-    for (const cb of closed) {
-      await this.prepareForecasts(engine, cb);
-      // Forecast requests can take seconds: re-read the latest quote after they finish.
-      const latest = this.stream?.lastQuote.get(epic);
-      if (latest) for (const r of engine.runs) r.onTick(latest);
-      engine.dispatchBar(cb);
+  private dispatchClosed(engine:MarketEngine,closed:ClosedBar[]):void {
+    for(const cb of closed) {
+      for(const r of engine.runsOn(cb.series.timeframe)){const t=this.tracked.get(r.runId);if(t)t.dirty=true;}
+      engine.dispatchBar(cb,r=>!r.agent.forecast);
+      if(!engine.runsOn(cb.series.timeframe).some(r=>r.agent.forecast))continue;
+      // Quotes and risk checks continue while the GPU works. Never deliver a delayed forecast
+      // callback against series that have advanced beyond that decision's closed bars.
+      void this.prepareForecasts(engine,cb).then(()=>{
+        const closeTime=cb.bar.time+cb.series.tfMs;
+        const current=cb.series.last===cb.bar;
+        engine.dispatchBar(cb,r=>{
+          if(!r.agent.forecast)return false;
+          const stale=!current || [...r.extra.values()].some(s=>s.last && s.last.time+s.tfMs>closeTime);
+          if(stale){this.db.appendLog(r.runId,{time:Date.now(),message:'forecast callback skipped: its closed-bar context has advanced'});return false;}
+          return true;
+        });
+      }).catch(e=>this.db.event('warn','forecast',String(e)));
     }
-    for (const r of engine.runs) {
-      const t = this.tracked.get(r.runId);
-      if (t) t.dirty = true;
-    }
+  }
+
+  private saveStreamCandles(epic:string,engine:MarketEngine):void {
+    const candles=engine.takeCompletedCandles();
+    if(candles.length)this.db.insertStreamCandles(epic,candles);
   }
 
   private async prepareForecasts(engine: MarketEngine, cb: ClosedBar): Promise<void> {
@@ -580,12 +631,15 @@ export class Arena {
     if (items.length > 0) await this.forecasts.prepare(items);
   }
 
-  private onQuote(epic: string, bid: number, ask: number, time: number): void {
+  private onQuote(epic: string, q:Tick): void {
     const engine = this.engines.get(epic);
     if (!engine) return;
-    for (const r of engine.runs) {
-      r.onTick({ bid, ask, time });
-    }
+    const closed=engine.stepTick(q);
+    if(closed===null)return;
+    this.dispatchClosed(engine,closed);
+    engine.dispatchTick(q);
+    this.saveStreamCandles(epic,engine);
+    for(const r of engine.runs){const t=this.tracked.get(r.runId);if(t)t.dirty=true;}
   }
 
   private onRunEvent(e: RunEvent): void {
@@ -596,7 +650,7 @@ export class Arena {
         time: e.time,
         message: e.type === 'error' ? `ERROR ${e.message}` : e.message,
       });
-    if (!isShadow(e.runId)) this.broker?.onRunEvent(e);
+    if (this.ready && !isShadow(e.runId)) this.broker?.onRunEvent(e);
   }
 
   // ------------------------------------------------------------------ persistence

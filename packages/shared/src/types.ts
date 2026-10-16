@@ -3,6 +3,33 @@
 export type RunKind = 'demo' | 'backtest';
 export type Side = 'long' | 'short';
 
+export interface ReplayDataInfo {
+  mode: 'auto' | 'recorded' | 'synthetic';
+  generator: string;
+  seed: number;
+  ticksPerMinute: number;
+  recordedTicks: number;
+  syntheticTicks: number;
+  recordedMinutes: number;
+  syntheticMinutes: number;
+  partialRecordedMinutes: number;
+  rejectedTicks: number;
+  execution: string;
+}
+
+export interface TickRecordingStatus {
+  journalId: string;
+  highWater: number;
+  acknowledged: number;
+  buffered: number;
+  lostTicks: number;
+  invalidMessages: number;
+  lastError: string | null;
+  bytes: number;
+  diskWarning: boolean;
+  instruments: {epic:string;n:number;firstReceivedAt:number;lastReceivedAt:number;lastQuoteAt:number}[];
+}
+
 export interface MonthlyReturn {
 	month: string;
 	ret: number;
@@ -59,7 +86,8 @@ export interface LeaderboardRow {
 	metrics: RunMetrics | null;
 	usesForecast: boolean;
 	/** Demo rows: the backtest of the same agent, instrument and leverage. */
-	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean } | null;
+	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean; sameEngine?:boolean; data?:ReplayDataInfo|null } | null;
+	data?:ReplayDataInfo|null;
 	/** Demo rows: mirrored onto a broker demo account. */
 	mirrored: boolean;
 	stage?: 'backtest' | 'virtual' | 'demo';
@@ -265,6 +293,8 @@ export interface ArenaStatus {
 	broker: BrokerStatus | null;
 	execution?: Record<string, any>;
 	network?: Record<string, any>;
+	ticks?:TickRecordingStatus|null;
+	tickStorage?: {at:number;totalBytes:number;budgetBytes:number;pointTwoYearBytes:number;stressTwoYearBytes:number;ticksPerSecond:number;bytesPerTick:number;warning:boolean;notes:string}|null;
 	memoryMb: number;
 }
 

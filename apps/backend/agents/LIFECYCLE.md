@@ -135,7 +135,10 @@ agents that size with `marginPct` use the high leverage.
 3. **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
    pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
    is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
-    Fix what is broken and within scope (services, agent bugs, platform bugs; follow
+    Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).
+   Keep the user's one-copy, 100 GB/two-year budget: compressed PostgreSQL is canonical; do not create
+   another raw archive. Never delete captured history to make room; act on growth forecasts early.
+   Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.
    For agents using `src/sdk/policy-calendar.ts`, check the linked official Fed/BOJ schedules for changes

@@ -42,7 +42,8 @@ Orders persist while pending. New entries fail closed when market metadata is st
 market is closed, quotes are stale (>30 seconds), price input is invalid, or size/stops/margin fail at
 execution. A close can wait for a market to reopen. The engine freezes order size at submission and tests
 margin again at fill rather than silently shrinking an in-flight order. Protective stops use tick prices;
-candle prices cannot become live fills. Quotes are refreshed again after waiting for a forecast.
+candle prices cannot become live fills. Quotes continue arriving while forecasts run; obsolete closed-bar
+callbacks are skipped rather than run against future bar history.
 
 Non-crypto weekend funding is charged three times on Friday, with no Saturday/Sunday charge. The 1:1
 funding exemption, except natural gas, remains. Rates refresh live; historical funding remains approximate.
@@ -101,3 +102,10 @@ backtest push triggers a debounced service reload to warm newly eligible records
 Production verification exposed the 100-row history cap and unlinked SWAP entries; those behaviors were
 added to the regression suite. Restart replay also now activates restored runs only when their resume time
 is reached, avoiding a scan of every dormant run for each of 120 days of candles.
+
+## Tick execution update (2026-10-16)
+
+The default backtest now uses the same tick execution path as the arena, with deterministic generated
+paths where recorded data is unavailable. Intraminute ordering and cadence remain assumptions on those
+synthetic paths. Capture, exact replay, single-copy storage, latest resource measurements and explicit
+limits are documented in [TICKS.md](TICKS.md). Older forward histories and all Capital assignments remain.

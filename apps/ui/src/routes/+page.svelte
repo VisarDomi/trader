@@ -300,6 +300,7 @@
 								{#if isControl(r)}<span class="badge">control</span>{/if}
 								{#if r.usesForecast}<span class="badge">TimesFM</span>{/if}
 								{#if r.demoAdmission}<span class="badge" title={r.demoAdmission.reason}>user experiment</span>{/if}
+                {#if view === 'backtest' && r.data}<span class="badge" title="Tick provenance; open the run for counts and path assumptions">{r.data.recordedTicks && r.data.syntheticTicks ? 'mixed ticks' : r.data.recordedTicks ? 'recorded ticks' : 'synthetic ticks'}</span>{/if}
 							</td>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
 							<td class="lev" title={levTitle(r)}>{lev(r)}</td>
@@ -317,7 +318,7 @@
 							{#if view === 'virtual'}
 								<td class="num">
 									{#if r.backtest?.metrics}
-										{num(r.backtest.metrics.sharpe)}{#if !r.backtest.sameCode}<span class="muted" title="Backtest ran on an older version of this agent"> *</span>{/if}
+										{num(r.backtest.metrics.sharpe)}{#if !r.backtest.sameCode || r.backtest.sameEngine === false}<span class="muted" title="Backtest uses an older agent or engine version"> *</span>{/if}
 									{:else}<span class="muted">—</span>{/if}
 								</td>
 								{@const st = stages.get(r.runId)}

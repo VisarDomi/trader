@@ -3,6 +3,53 @@
 Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-16 (Fri, user-requested) — tick engine and single-copy storage
+
+- Request: every agent must operate on tick execution, record Capital quotes for replay, generate ticks
+  lazily from minute-only history, recover the full project context, and keep **one permanent tick copy**
+  with the whole project below 100 GB over a two-year horizon. No new strategy or leverage allocation.
+- Captured quotes now drive the shared risk/fill path and UTC bar builder. Added direct `onTick` SDK
+  callbacks with bid/ask, broker/arrival times and source. Closed-bar strategies keep their cadence.
+  Durable delayed orders, clock exits, funding, margins and existing broker protections are preserved.
+  Async forecast work no longer blocks quotes; stale bar contexts and mismatched cached inputs are guarded.
+- Replay prefers actual recorded minutes and declares partial capture; minute-only periods generate
+  deterministic OHLC paths on demand (seed 1, 16 updates/minute by default). Strict recorded mode and
+  alternate seed/density/windows are separate records. The standard 2024–September 2026 period predates
+  capture and is wholly synthetic. Provenance is visible in leaderboards, run detail and Status.
+- Storage steering supersedes the initial backup proposal: one losslessly compressed PostgreSQL block
+  store, no extra file/remote/raw-table archives. All 46,277 initially archived quotes were checked field
+  by field before redundant copies were removed. SHA-256 and full round-trip verification precede
+  acknowledgement. Server spool: 10-minute acknowledged recovery tail, unacknowledged transfer buffer,
+  4 GiB page cap; new entries pause on recording errors. Synthetic ticks are never stored.
+- Budget: about 13 GB for repo/dependencies, model blobs, lab database and trader server folders in the
+  first inventory. Quiet-session sample about 26 quotes/s and 6.1 compressed bytes/quote. Two-year
+  estimates about 38 GB observed / 84 GB at four times the rate, including measured overhead and a
+  10 GB non-tick growth reserve. This is an early forecast, not a promise about future tick rates.
+  Canonical tick quota 70 GB; whole-project and forecast warnings appear on Status and the watchdog.
+- Validation: 121 backend tests, typecheck, UI check/build; recorded US500 replay 602 actual quotes,
+  zero synthetic quotes and identical repeated trades. Production-copy replay retained all 4,561
+  records (551 standard, 4,010 comparisons), no load errors; 385 MB RSS and 0.493 ms p95 per quote in a
+  three-minute captured workload with restored positions. Final 551 backtests are refreshing after a
+  regression caught and fixed a tick/minute drawdown accounting error. No agent thresholds were tuned.
+- Deployment verification follows below. Full contract and limits: [TICKS.md](../TICKS.md).
+
+## 2026-10-16 (Fri, user-requested) — recover the full project context
+
+- Read all 347 available conversation messages, including the original account requests, leverage and
+  funding corrections, ownership changes, research rollout, virtual expansion and night strategy.
+  Checked the October 7 deletion activity as well. Settled decisions are now linked from setup.md in
+  [PROJECT-CONTEXT.md](../PROJECT-CONTEXT.md), so future handoffs have a direct route to them.
+- Correct the previous database answer: the user explicitly requested removing the old database on
+  October 7. The v1 tick/run/fill/equity/state tables and old recorder were then removed; minute candles
+  survived. The original inspection reported roughly 64 million ticks. This is established history,
+  separate from the still-unlocated Windows-era 2017 database.
+- Account context: Arena 01–09 were already provided; Visi is reserved; nine hedged accounts, 50 slots
+  each, 0.2× mirror scale, fixed tiers 1/2/3/5/10/20/50/100/200. Gerti became Arena 03, Endri Arena 05.
+  Preserve existing assignments and the later, verified fee-free 1:1 rule (natural gas excepted).
+- Tick capture deployed first as 939898b; all 20 instruments are recording from 04:09:38 UTC, repeated
+  quotes and broker/arrival times included. PostgreSQL archival and acknowledgements are working on a
+  one-minute timer in trader.slice. Shared tick execution/replay integration remains in progress.
+
 ## 2026-10-15 (Thu, user-requested) — search for the older minute database
 
 - Request: determine whether the minute history remembered from around 2016 survives locally, or was

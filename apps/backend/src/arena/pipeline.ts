@@ -7,6 +7,7 @@ import type { Trade } from '../sdk/types.ts';
 import type { RunMetrics } from '../engine/metrics.ts';
 import type { RosterEntry } from '../engine/roster.ts';
 import { RUN_STATUS } from '../engine/run.ts';
+import {PRIMARY_BACKTEST_WINDOW_ID} from '../engine/run-id.ts';
 
 export const STAGE = {
   BACKTEST: 'backtest',
@@ -21,6 +22,7 @@ export interface Gate {
 export function backtestGate(row: RunRow | undefined, hash: string, slug: string): Gate {
   if (isControlSlug(slug)) return { passed: true, reason: 'control: exempt from performance gate' };
   if (!row || row.code_hash !== hash || !row.metrics) return { passed: false, reason: 'waiting for current-code backtest' };
+  if(row.window_id!==PRIMARY_BACKTEST_WINDOW_ID)return {passed:false,reason:'waiting for the shared comparison-window backtest'};
   if (!row.extra || JSON.parse(row.extra).engineVersion !== ENGINE_VERSION) return { passed: false, reason: 'waiting for current-engine backtest' };
   const m = JSON.parse(row.metrics) as RunMetrics;
   if (row.status === 'busted' || row.status === 'error' || m.finalEquity <= 0)
@@ -40,7 +42,7 @@ export function backtestGate(row: RunRow | undefined, hash: string, slug: string
 export function admissionGate(row: RunRow | undefined, hash: string, slug: string, exception: RosterEntry | null): Gate {
   const gate = backtestGate(row, hash, slug);
   if (!exception) return gate;
-  if (!row || row.code_hash !== hash || !row.metrics || !row.extra || JSON.parse(row.extra).engineVersion !== ENGINE_VERSION)
+  if (!row || row.window_id!==PRIMARY_BACKTEST_WINDOW_ID || row.code_hash !== hash || !row.metrics || !row.extra || JSON.parse(row.extra).engineVersion !== ENGINE_VERSION)
     return { passed: false, reason: 'demo experiment waiting for current-code/current-engine backtest' };
   if (row.status === RUN_STATUS.ERROR || (JSON.parse(row.extra).errors ?? 0) > 0)
     return { passed: false, reason: 'demo experiment backtest errored' };

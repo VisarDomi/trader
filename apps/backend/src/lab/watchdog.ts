@@ -78,6 +78,7 @@ async function check(state: State, now: number): Promise<Alert[]> {
   if (unitState(NIGHTLY_UNIT, 'is-failed') === 'failed') {
     alerts.push({ key: 'nightly', title: 'Nightly lab job failed', body: `journalctl --user -u ${NIGHTLY_UNIT} has the details. ${ASK_CLAUDE}`, userAction: false });
   }
+  if(unitState('trader-tick-archive.service','is-failed')==='failed')alerts.push({key:'tick-archive',title:'Tick archive transfer failed',body:`The server is retaining unacknowledged quotes. Check trader-tick-archive.service before its bounded spool fills. ${ASK_CLAUDE}`,userAction:false,needsStreak:true});
 
   let status: ArenaStatus;
   let broker: BrokerStatus | null;
@@ -102,6 +103,8 @@ async function check(state: State, now: number): Promise<Alert[]> {
   if (!status.stream.connected) {
     alerts.push({ key: 'stream', title: 'Price stream disconnected', body: `The arena has had no live Capital.com prices for 30 minutes. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
   }
+  if(status.ticks?.lastError || status.ticks?.lostTicks || status.ticks?.diskWarning)alerts.push({key:'ticks',title:'Tick recorder needs attention',body:`Recording error: ${status.ticks.lastError??'none'}; dropped ${status.ticks.lostTicks}; spool ${(status.ticks.bytes/1e9).toFixed(2)} GB. ${ASK_CLAUDE}`,userAction:false});
+  if(status.tickStorage?.warning)alerts.push({key:'storage-budget',title:'Trader storage growth exceeds its budget forecast',body:`Whole project ${(status.tickStorage.totalBytes/1e9).toFixed(1)} GB; two-year stress estimate ${(status.tickStorage.stressTwoYearBytes/1e9).toFixed(1)} GB against 100 GB. ${ASK_CLAUDE}`,userAction:false});
   for (const epic of ALWAYS_OPEN_EPICS) {
     const last = status.quotes[epic]?.lastCandle ?? 0;
     if (now - last > STALE_CANDLE_MS) {

@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+- Unify live and historical tick callbacks, tick-built closed bars, delayed bid/ask execution and risk.
+  Backtests prefer captured quotes, generate deterministic OHLC-constrained paths lazily, and label
+  source/coverage/seed/density. Recorded-only and alternate scenarios have separate windows.
+- Keep one losslessly compressed PostgreSQL tick copy with verified acknowledgements and a bounded
+  server spool. Add 100 GB whole-project/two-year storage reporting, a 70 GB tick quota and watchdog alerts.
+- Preserve all 4,561 forward records and the nine account allocations; freeze recorded replay inputs,
+  guard cached forecast context and obsolete async callbacks, and recover tick state across restarts.
+- Reconcile the full conversation into PROJECT-CONTEXT.md, including the premature old tick deletion
+  and the user's final single-copy storage choice.
+
 - Record every valid received Capital bid/ask quote, including repeats and out-of-order source timestamps,
   in a separate durable server journal with arrival times, sequences and connection gaps. Archive
-  idempotently to lab PostgreSQL every minute; only lab-acknowledged ticks can expire from the server.
+  to losslessly compressed lab PostgreSQL blocks on a one-minute timer; only acknowledged server copies expire.
 
 - Calibrate `visar-night-trading` to 25–50 annual entry opportunities using only 2024 counts; validate
   25 entries in 2025 and 22 through September 2026. All 72 signals filled in the full backtest; preserve
