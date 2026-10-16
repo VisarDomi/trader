@@ -46,6 +46,7 @@ import type { ArenaDB } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { LiveForecastProvider } from './forecast-client.ts';
 import { QuoteStream } from './stream.ts';
+import type { TickJournal } from './tick-journal.ts';
 
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
@@ -66,6 +67,7 @@ export interface ArenaOptions {
   agentsDir?: string;
   /** Offline replay and capacity verification: never starts sockets, timers or forecast calls. */
   live?: boolean;
+  tickJournal?: TickJournal;
 }
 
 interface Tracked {
@@ -80,6 +82,7 @@ interface Tracked {
 
 export class Arena {
   readonly db: ArenaDB;
+  readonly tickJournal: TickJournal | null;
   private readonly client: CapitalClient;
   readonly forecasts: LiveForecastProvider;
   readonly broker: BrokerMirror | null;
@@ -111,6 +114,7 @@ export class Arena {
   constructor(opts: ArenaOptions) {
     this.loopDelay.enable();
     this.db = opts.db;
+    this.tickJournal = opts.tickJournal ?? null;
     this.client = opts.dataClient;
     this.forecasts = new LiveForecastProvider(opts.forecasterUrl);
     this.broker = opts.broker;
@@ -154,11 +158,13 @@ export class Arena {
       epics,
       q => this.onQuote(q.epic, q.bid, q.ask, q.time),
       (level, msg) => this.db.event(level, 'stream', msg),
+      this.tickJournal,
     );
     this.stream.start();
     this.schedulePoll();
     this.clockTimer = setInterval(() => {
       const now = Date.now();
+      this.tickJournal?.maintain(now);
       this.broker?.onClock(now);
       for (const t of this.tracked.values())
         if (t.run.position) {

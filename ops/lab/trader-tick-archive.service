@@ -1,0 +1,12 @@
+[Unit]
+Description=Archive Capital quote ticks from the trader arena to lab PostgreSQL
+After=network-online.target trader-tunnel.service
+
+[Service]
+Type=oneshot
+Slice=trader.slice
+Nice=10
+WorkingDirectory=%h/Documents/work/trading/trader/apps/backend
+Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.bun/bin/bun run src/lab/sync-ticks.ts
+TimeoutStartSec=300
