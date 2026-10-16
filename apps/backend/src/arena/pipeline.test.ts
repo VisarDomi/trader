@@ -6,6 +6,7 @@ import type { Trade } from '../sdk/types.ts';
 import { confirmsDeal, scaledSize } from './broker.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import { RUN_STATUS } from '../engine/run.ts';
+import {PRIMARY_BACKTEST_WINDOW_ID} from '../engine/run-id.ts';
 const EPIC = 'EURUSD';
 const BUY = 'BUY';
 const ACCEPTED = 'ACCEPTED';
@@ -14,6 +15,7 @@ const SLUG = 'ema-cross';
 const NOW = Date.now();
 const DAY = 86_400_000;
 const row = {
+  window_id:PRIMARY_BACKTEST_WINDOW_ID,
   code_hash: HASH,
   extra: JSON.stringify({ engineVersion: ENGINE_VERSION }),
   status: 'completed',
@@ -32,6 +34,7 @@ describe('stage gates', () => {
     expect(admissionGate({ ...bad, extra: JSON.stringify({ engineVersion: ENGINE_VERSION, errors: 1 }) }, HASH, SLUG, exception).passed).toBe(false);
   });
   test('new virtual runs need current-code, nonbroken backtests', () => {
+    expect(backtestGate({...row,window_id:'short-debug-window'},HASH,SLUG).passed).toBe(false);
     expect(backtestGate(undefined, HASH, SLUG).passed).toBe(false);
     expect(backtestGate(row, 'new-code', SLUG).passed).toBe(false);
     expect(backtestGate(row, HASH, SLUG).passed).toBe(true);

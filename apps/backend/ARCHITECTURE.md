@@ -28,9 +28,9 @@ comparisons do not count as independent hypotheses. See [`EXECUTION.md`](EXECUTI
 ```
  Lab PC (this desktop, capped at 50% CPU/RAM by trader.slice)         Hetzner (shared server)
  ──────────────────────────────────────────────────────────          ─────────────────────────────────────
- PostgreSQL  candles (12 instruments, 1m since 2024-01;              trader-arena.service  (Bun, ≤700 MB)
-             US100 since 2020)                                         - REST 1m candles every minute
- trader-forecaster.service   TimesFM 3 on the RTX 3060 :4130  ◄─┐      - WebSocket quotes (stops, fills)
+ PostgreSQL  candles (20 instruments, 1m since 2024-01;              trader-arena.service  (Bun, ≤700 MB)
+             US100 since 2020) + compressed recorded ticks                                         - REST 1m candles every minute
+ trader-forecaster.service   TimesFM 3 on the RTX 3060 :4130  ◄─┐      - WebSocket ticks (decisions, bars, fills; recorded)
  trader-tunnel.service       autossh  -R 4130  -L 4120  ─────────┼──►  - every agent × instrument, $10k each
  trader-lab.timer (03:30)    ingest → forecasts → backtest ─push─┘      - broker mirror (demo accounts)
  bun run backtest / check-agent / forecasts (by hand)                  - SQLite data/arena.db, API :4120
@@ -58,15 +58,14 @@ and do nothing new, and backtests wait for the next nightly job.
 | `packages/shared/` | API wire types used by the arena API and the dashboard. |
 | `ops/` | systemd units, lab installer, nightly job, arena deploy script. |
 
-## Simulation model (identical in backtest and demo)
+## Simulation model (shared tick engine)
 
-- Candles are **bid-side** 1-minute OHLC with the spread at the close. Bars of
-  any timeframe are built by `BarSeries`, UTC-aligned, closing on the bucket's last minute.
-- An agent sees a bar only after it closed. Backtest orders fill **immediately**: buy at
-  ask (bid + spread), sell at bid. Live virtual orders queue, then use a fresh WebSocket quote. Capital metadata controls admission.
-- Stops: checked per minute in backtests (gap → fill at the open; stop beats
-  take-profit inside one minute) and per tick in demo. Only minutes that started
-  after the entry can trigger.
+- Live, recorded and synthetic bid/ask ticks drive the same execution and agent callbacks. Orders
+  queue and require a later usable quote after their delay. Risk and trailing protections follow the
+  tick sequence; no candle stop-before-target guess is used in the default backtest.
+- `onTick` can decide on every quote; optional `onBar` keeps closed-bar strategies' intended cadence.
+  UTC bars aggregate observed ticks. Minute OHLC generates a deterministic lazy fallback when recorded
+  history is absent. Synthetic paths/spreads/cadence remain assumptions, exposed in every result.
 - Every run has an **account leverage** (1:1 … 1:200; crypto and shares at most
   1:20; `src/engine/leverage.ts`): margin = notional ÷ leverage.
 - Sizing precedence: `size` → `exposure` → `marginPct` (share of equity as margin,
@@ -87,8 +86,9 @@ and do nothing new, and backtests wait for the next nightly job.
 
 ## Demo specifics
 
-- 1-minute candles are polled from REST at :10 past every minute — the same
-  source as the backtest history — so a missed minute heals on the next poll.
+- REST minute candles are still polled into historical storage. From the tick cutover, forward agents
+  use tick-built bars; late REST candles cannot rewrite an already observed live path. Tick-built bars
+  and per-run tick watermarks preserve that observation across restarts.
 - On start the arena backfills 120 days of candles, replays them so new agents
   warm up (orders disabled), and restores existing runs from their snapshot,
   catching up on candles they missed while the service was down.
@@ -202,3 +202,9 @@ PC (Capital.com login, `ARENA_TOKEN`), `/home/erdal/trader-arena/.env` and
 descriptions above. It documents the exact contract probes, synthetic pacing, refreshed rules, actual
 cashflow reconciliation, stage gates, 5,000-run capacity and remaining model differences. `demo` is retained
 as the internal virtual run kind to preserve stored IDs.
+
+## Tick engine and single-copy archive (2026-10-16)
+
+See [TICKS.md](TICKS.md) for the common tick path, compressed blocks, recording gaps, reproducible replay,
+resource measurements and two-year storage budget. Older forward records remain and the feed change is
+annotated; no strategy source or Capital leverage tier was changed for this infrastructure upgrade.

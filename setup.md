@@ -5,7 +5,9 @@ Capital.com prices, and ranking them through **Backtest → Virtual engine → C
 New runs pass a current-code backtest, then build a forward virtual record before competing for
 Capital demo slots. Actual demo cashflows are ranked separately. Dashboard: <https://trader.veron3.space> (Authelia login).
 
-Start here, then read only what your task needs:
+Start here. Before changing arena architecture or account behavior, read the
+[project intent and settled decisions](apps/backend/PROJECT-CONTEXT.md), reconciled against the full
+conversation. Then read only what your task needs:
 
 | Task | Read |
 |---|---|
@@ -22,6 +24,11 @@ Start here, then read only what your task needs:
 - **Demo only.** The Capital.com client has only the demo URL. Never add a live endpoint.
 - **The repo is public.** Secrets live only in `.env` files (see [Secrets](#secrets)); never commit them,
   never paste them into docs or logs.
+- **Keep one permanent copy of captured ticks**, losslessly compressed in PostgreSQL; the user set a
+  100 GB whole-project storage budget for at least two years. The server is a bounded transfer spool,
+  pruned only after the canonical archive is read back and verified. Synthetic paths are never stored
+  as recorded history. Do not assume Capital can replace deleted history: that unverified assumption
+  led to the premature October 7 deletion. Do not create extra long-term tick backups.
 - **This PC** (the "lab") may use at most 50% of its CPU/RAM: run heavy jobs inside `trader.slice`
   (the lab services already do).
 - **Hetzner is shared.** Touch only what the trader needs: `trader-arena` and `trader-ui` services,
@@ -47,7 +54,7 @@ Start here, then read only what your task needs:
 ```
  Lab PC (this desktop, ≤50% CPU/RAM)                     Hetzner 157.90.28.14 (shared)
  ───────────────────────────────────────────            ──────────────────────────────────────────
- PostgreSQL "trader": 1-minute candles                  trader-arena.service  Bun, 127.0.0.1:4120
+ PostgreSQL "trader": candles + compressed ticks                  trader-arena.service  Bun, 127.0.0.1:4120
  trader-forecaster  TimesFM 3 on the GPU :4130 ◄─┐        live demo runs, broker mirror, SQLite
  trader-tunnel      autossh -R 4130 -L 4120 ─────┼─────►  trader-ui.service     SvelteKit :10003
  trader-lab.timer   03:30 ingest → forecasts →   │        Caddy trader.veron3.space + Authelia

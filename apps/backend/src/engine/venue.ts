@@ -110,4 +110,6 @@ export interface LiveExecution {
   latencyMs: number;
   gateway?: VirtualGateway;
   now?: () => number;
+  /** Recording failures pause new entries while existing protections and closes continue. */
+  entryAllowed?:()=>boolean;
 }

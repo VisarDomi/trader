@@ -12,6 +12,8 @@ export interface Tick {
   /** Durable sequence within one recording journal, including repeated prices/timestamps. */
   sequence?: number;
   journalId?: string;
+  /** Synthetic quote's share of the candle's reported tick volume; real updates contribute one. */
+  volume?: number;
 }
 export interface RecordedTick {
   id: number;
@@ -38,5 +40,10 @@ export interface TickExport {
   ticks: RecordedTick[];
   sessions: CaptureSession[];
 }
-export const TICK_API = { STATUS: '/api/ticks', EXPORT: '/api/ticks/export', ACK: '/api/ticks/ack' } as const;
+export const TICK_API = {
+  STATUS: '/api/ticks',
+  EXPORT: '/api/ticks/export',
+  ACK: '/api/ticks/ack',
+  STORAGE: '/api/ticks/storage',
+} as const;
 export const TICK_EXPORT_LIMIT = 5000;

@@ -4,6 +4,7 @@
  * Agent ids may contain "/" (variants) but never ":".
  */
 
+export const PRIMARY_BACKTEST_WINDOW_ID='2024-01_2026-09';
 export function demoRunId(agentId: string, epic: string, leverage: number, codeHash: string): string {
   return `demo:${agentId}:${epic}:x${leverage}:${codeHash}`;
 }

@@ -17,9 +17,10 @@ export default defineAgent({
   // intradayOnly: true,
   warmup: 60,
 
-  onBar(ctx) {
+  onTick(ctx) {
+    if (ctx.isWarmup) return;
     const { fast, slow, atrStop, riskPct } = ctx.params;
-    const price = ctx.bar.close;
+    const price = ctx.tick.bid;
     const atr = ctx.ta.atr(14);
     const trendUp = ctx.ta.ema(fast) > ctx.ta.ema(slow);
 

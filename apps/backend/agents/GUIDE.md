@@ -6,7 +6,7 @@ An agent is **one TypeScript file** in this folder. Nothing else needs to change
 ## The 60-second version
 
 1. Copy `_template.ts` to `agents/<your-agent-name>.ts` (kebab-case file name = agent id).
-2. Fill in `name`, `description`, `instruments`, `timeframe`, `params`, and `onBar`.
+2. Fill in `name`, `description`, `instruments`, `timeframe`, `params`, and `onTick` (or `onBar` for closed-bar signals).
 3. Check it: `cd apps/backend && bun run check-agent agents/<file>.ts`
 4. Backtest it: `bun run backtest <agent-id>`
 5. Commit and deploy (`ops/server/deploy-arena.sh`). The arena starts its demo run automatically.
@@ -37,19 +37,27 @@ export default defineAgent({
 
 ## How the platform runs your agent
 
-- `onBar(ctx)` is called once per **closed** bar of `timeframe` (`1m 5m 15m 30m 1h 4h 1d`).
-  Bars are built from 1-minute bid candles; bar boundaries are UTC-aligned.
+- `onTick(ctx)` receives every accepted delivered bid/ask quote. `ctx.time` is its local delivery
+  time; `ctx.tick.time` is Capital's timestamp, `ctx.tick.receivedAt` its arrival time, and
+  `ctx.tick.source` is `live`, `recorded` or `synthetic`. `ctx.bar` is the latest closed primary bar,
+  or null before the first one. `ctx.ticks` is a bounded recent-quote window.
+- `onBar(ctx)` is optional and runs once per closed primary bar. Its `ctx.time` remains the bar's
+  UTC close time; `ctx.tick` gives the current available quote. A definition needs at least one of
+  `onTick` or `onBar`. Both callbacks may coexist. All agents' fills and protections use ticks.
+- Bars are built from the delivered bid quotes and close at UTC boundaries without inventing empty
+  bars. Closed-bar strategies retain their intended cadence; adding tick execution does not call
+  their `onBar` hundreds of times or reset their agent versions.
 - Each instrument in `instruments`, at each account leverage the agent runs at, is a separate run with its own
   **$10,000** virtual account (see [Leverage](#leverage)).
 - **One position per run.** `buy()` while short closes the short and opens a long (a reversal).
   `buy()` while already long is ignored.
-- Backtest orders fill immediately. In the virtual arena, orders queue with API pacing and transport
+- In backtests and the virtual arena, orders queue with API pacing and transport
   delay, then fill on a fresh quote: buys at ask, sells at bid. `ctx.position` changes when filled;
   `onFill` is the completion callback. `ctx.close()` cancels an open still in flight.
-  There are no limit/stop entry orders — check conditions each bar and call `buy`/`sell`.
-- Stops (`stopLoss`, `takeProfit`, `trailingStop`) are watched by the platform on every minute
-  (every tick in demo). Gaps fill at the open (worse). If stop and take-profit are both touched in
-  the same minute, the stop wins.
+  There are no limit/stop entry orders — check conditions in your chosen callback and call `buy`/`sell`.
+- Stops, trailing protections and margin are checked on each usable tick in both modes. The first
+  touched protection wins according to that path; gaps fill at the next available bid/ask, not an
+  invented stop price. Synthetic paths cannot establish which level the historical market hit first.
 - History: in the arena, `1d` series hold daily bars from 2024-01 (seeded at start), so 200-day or
   12-month lookbacks on daily bars work from the first day; other timeframes start with the last 120 days
   (about 2,800 `1h` or 700 `4h` bars). Backtests start in 2024-01, so the first year of a 12-month rule
@@ -61,7 +69,7 @@ export default defineAgent({
   blocks new entries around it.
 - If equity falls below 50% of the margin in use, the position is closed (`margin_call`).
   If the account hits $0 the run is over (`busted`).
-- If `onBar` throws 5 times, the run stops (`error`). Errors are shown in the run log.
+- If agent callbacks throw 5 times, the run stops (`error`). Errors are shown in the run log.
 
 ## Sizing
 
@@ -89,7 +97,8 @@ Prefer `stopLoss` + `riskPct`: it adapts to volatility and price level, so the s
 |---|---|
 | `ctx.bar` | the bar that just closed `{ time, open, high, low, close, volume, spread }` (`time` = bar open, ms UTC) |
 | `ctx.bars` | all closed bars, oldest first; `ctx.bars.at(-1) === ctx.bar`; read-only; at most ~5000-10000 kept |
-| `ctx.time` | now (ms) = close time of `ctx.bar` |
+| `ctx.time` | tick delivery time in onTick/onFill; primary bar close time in onBar |
+| `ctx.tick`, `ctx.ticks` | current quote and bounded recent quotes, with source and broker/arrival timestamps |
 | `ctx.position` | `null` or `{ side: 'long'|'short', size, entryPrice, entryTime, barsHeld, stopLoss, takeProfit, trailingStop, unrealizedPnl }` |
 | `ctx.equity`, `ctx.balance` | USD, equity includes unrealized P&L |
 | `ctx.params` | your params (defaults merged with the variant) |
@@ -108,7 +117,7 @@ Prefer `stopLoss` + `riskPct`: it adapts to volatility and price level, so the s
 
 Session times: `import { defineAgent, localTime, TZ } from '../src/sdk'` then
 `localTime(ctx.time, TZ.NEW_YORK)` → `{ hour, minute, weekday, minuteOfDay, date }` (DST-aware).
-Remember `ctx.time` is the bar's **close** time; the bar's open is `ctx.bar.time`.
+In `onBar`, `ctx.time` is the bar's **close** time; the bar's open is `ctx.bar.time`.
 
 For minute-specific orders use a `1m` primary timeframe. Optional `validUntil` (UTC ms) discards an entry
 that reaches execution too late, including Capital mirror retries. Optional `closeAt` requests a timed exit
@@ -186,7 +195,7 @@ ten near-identical variants is how you overfit a backtest.
 
 - **No lookahead.** Use only `ctx`. Do not read files, the network, or `Date.now()`.
 - **No randomness except `ctx.random()`** (deterministic per run, so backtests are reproducible).
-- **Keep `onBar` fast** (well under 1 ms). `check-agent` reports µs per bar.
+- **Keep `onBar` fast** (well under 1 ms). `check-agent` reports µs per bar and per tick.
 - **Changing an agent file restarts its demo record** (the code hash changes). The old record is
   kept as "retired". To try an idea without losing a track record, create a new file instead.
 - The **demo** leaderboard is the one that matters: it trades unseen, live prices. The
@@ -209,3 +218,25 @@ weekdays, history from 2024; dividends are not modelled). Indices, commodities a
 - `_template.ts` — starting point (files starting with `_` are ignored by the loader)
 - An agent can also be a folder `agents/<name>/index.ts` with helper files next to it.
 - SDK types: `src/sdk/types.ts`. Indicators: `src/sdk/ta.ts`.
+
+## Historical tick input and storage
+
+`bun run backtest` defaults to recorded quotes where they exist and lazily generated minute paths
+elsewhere. Recorded minutes use only the captured stream, including its sparse periods; synthetic
+updates are not inserted into a recorded minute. `--ticks recorded` disables the fallback;
+`--ticks synthetic` forces it. Custom windows and synthetic scenarios have separate records and never
+replace the shared comparison window for admission. Examples:
+
+```sh
+bun run backtest my-agent --from 2026-10-16 --to 2026-10-17 --ticks recorded
+bun run backtest my-agent --ticks synthetic --tick-seed 2 --ticks-per-minute 64
+```
+
+Synthetic bid paths preserve minute OHLC, choose deterministic extreme order and interpolated movement,
+use the candle's close spread (or typical spread), and default to 16 ticks/minute, seed 1. The path and
+cadence are assumptions. Compare other seeds/densities for robustness; do not present them as observed
+historical ticks. Results and the dashboard expose source counts, coverage, generator, seed and engine version.
+
+The one permanent quote copy is losslessly compressed PostgreSQL blocks. A small acknowledged server
+spool supports transfer and restart recovery; no synthetic tape or second raw tick database is retained.
+See [TICKS.md](../TICKS.md) for the capture contract, limitations and 100 GB project budget.

@@ -159,6 +159,10 @@ CREATE TABLE IF NOT EXISTS events (
   message TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS events_by_time ON events (time);
+CREATE TABLE IF NOT EXISTS stream_candles (
+  epic TEXT NOT NULL,t INTEGER NOT NULL,o REAL NOT NULL,h REAL NOT NULL,l REAL NOT NULL,c REAL NOT NULL,
+  spread REAL NOT NULL,volume REAL NOT NULL,PRIMARY KEY(epic,t)
+) WITHOUT ROWID;
 
 -- Daily bars from the lab (built from its 1-minute history like any 1d series), older than the
 -- arena's own 1-minute history: seeded into 1d series at start so 200-day lookbacks are warm.
@@ -508,6 +512,9 @@ export class ArenaDB {
             candles: r.candles,
             errors: r.errors,
             durationMs: r.durationMs,
+            data:r.data,
+            ticks:r.ticks,
+            agentUsPerTick:r.agentUsPerTick,
           }),
         );
       r.trades.forEach((t, i) => this.appendTrade(id, i, t));
@@ -526,12 +533,19 @@ export class ArenaDB {
   }
 
   candlesSince(epic: string, from: number): Candle[] {
+    const tickStart=this.getSetting<number>('feed.ticksSince',Number.MAX_SAFE_INTEGER);
     return this.db
-      .query<{ t: number; o: number; h: number; l: number; c: number; spread: number; volume: number }, [string, number]>(
-        `SELECT t, o, h, l, c, spread, volume FROM candles WHERE epic = ? AND t >= ? ORDER BY t`,
+      .query<{ t: number; o: number; h: number; l: number; c: number; spread: number; volume: number }, [string, number, number, string, number]>(
+        `SELECT t,o,h,l,c,spread,volume FROM candles WHERE epic=? AND t>=? AND t<?
+         UNION ALL SELECT t,o,h,l,c,spread,volume FROM stream_candles WHERE epic=? AND t>=? ORDER BY t`,
       )
-      .all(epic, from)
+      .all(epic, from,tickStart,epic,from)
       .map(r => ({ time: r.t, open: r.o, high: r.h, low: r.l, close: r.c, spread: r.spread, volume: r.volume }));
+  }
+
+  insertStreamCandles(epic:string,candles:readonly Candle[]):void {
+    const insert=this.db.query('INSERT OR REPLACE INTO stream_candles VALUES(?,?,?,?,?,?,?,?)');
+    this.tx(()=>{for(const c of candles)insert.run(epic,c.time,c.open,c.high,c.low,c.close,c.spread,c.volume);});
   }
 
   lastCandleTime(epic: string): number | null {
@@ -557,6 +571,7 @@ export class ArenaDB {
 
   pruneCandles(before: number): void {
     this.db.query(`DELETE FROM candles WHERE t < ?`).run(before);
+    this.db.query('DELETE FROM stream_candles WHERE t<?').run(before);
   }
 
   // ------------------------------------------------------------------ broker

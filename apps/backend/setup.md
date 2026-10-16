@@ -7,6 +7,7 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 ## Read on demand
 
 - [`agents/GUIDE.md`](agents/GUIDE.md) — writing an agent (the SDK contract, sizing, indicators, TimesFM).
+- [`TICKS.md`](TICKS.md) — tick callbacks, capture/replay, single-copy compression and storage budget.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: three stages, topology, code map,
   simulation model, arena, broker mirror, known limitations.
 - [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.
@@ -40,6 +41,8 @@ bun run calibrate-night                   # Visar night agent: frequency-only 20
 bun run backtest my-agent                  # backtest 2024-01 → 2026-09, push to the arena
 bun run forecasts                          # precompute TimesFM tables for forecast agents (GPU)
 bun run ingest                             # gap-fill 1-minute candles into PostgreSQL
+bun run sync-ticks --flush                  # archive received quote ticks immediately
+bun run storage --refresh                   # whole-project storage and two-year budget estimate
 bun run review                             # lifecycle review of the live arena (health, verdicts)
 bun run watchdog --dry-run                 # what the watchdog would notify right now
 bun run arena                              # the arena service (normally only on the server)
@@ -50,8 +53,8 @@ Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.
 
 ## Data
 
-- Lab PostgreSQL `trader` has one table, `candles` (1-minute bid OHLC + spread + volume, all
-  instruments since 2024-01, US100 since 2020). `bun run ingest` creates it.
+- Lab PostgreSQL `trader` keeps `candles` (1-minute bid OHLC + spread + volume, all instruments since
+  2024-01, US100 since 2020) and one compressed recorded-tick store plus small indexes. See [TICKS.md](TICKS.md).
 - Lab caches (gitignored, rebuildable) under `data/`: candle binaries, TimesFM forecast tables,
   backtest results.
 - Arena state is SQLite on the server (`/home/erdal/trader-arena/data/arena.db`): agents and their

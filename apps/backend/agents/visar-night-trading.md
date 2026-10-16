@@ -119,3 +119,12 @@ The user requested a special Capital demo slot. The roster scopes that exception
 retaining safety, kill switches and subsequent demotion. It is labeled **user experiment**; after
 demotion, ordinary re-entry evidence is required. Earlier source `98de49ace1c6` had three historical
 trades (−48.18%) and no forward Capital trades before revision. Its versioned record is retained.
+
+## Tick engine recheck (2026-10-16)
+
+At unchanged source `56ac3bdfe7c1`, engine `2026-10-ticks-v2` produces 71 funded trades, final $2.21
+(−99.9779%), Sharpe −1.2393, profit factor 0.3682, zero agent errors. This supersedes the candle-engine
+result above for current comparisons. It uses generated historical tick paths (seed 1, 16 ticks/minute),
+not captured tick history; 2024–September 2026 predates recording. Frequency calibration counts remain
+72 opportunities; available capital and the revised fill/stop path affect executed trades. No thresholds
+were tuned for profit and the explicit Arena 09 demo experiment remains.

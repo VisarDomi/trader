@@ -42,6 +42,22 @@
 			</section>
 		</div>
 
+    {#if s.ticks}
+      <section class="card stack">
+        <h2>Recorded quote ticks</h2>
+        <p>{s.ticks.highWater.toLocaleString()} received · {s.ticks.acknowledged.toLocaleString()} archived on the lab · {s.ticks.buffered} awaiting the next disk flush</p>
+        <p>{s.ticks.instruments.length} instruments · {(s.ticks.bytes / 1e6).toFixed(1)} MB server spool · {s.ticks.lostTicks} dropped · {s.ticks.invalidMessages} invalid messages</p>
+        <p class="muted">Actual bid/ask quotes retain broker time, arrival time and order. The lab keeps one losslessly compressed archive. The bounded server transfer spool expires acknowledged data after 10 minutes.</p>
+        {#if s.ticks.lastError}<p class="negative">Recording error: {s.ticks.lastError}</p>{/if}
+        {#if s.ticks.diskWarning}<p class="negative">The server recording spool exceeds its disk warning threshold. Check the lab archive.</p>{/if}
+        {#if s.tickStorage}
+          <p>Whole project: {(s.tickStorage.totalBytes / 1e9).toFixed(1)} / {(s.tickStorage.budgetBytes / 1e9).toFixed(0)} GB · two-year estimate {(s.tickStorage.pointTwoYearBytes / 1e9).toFixed(1)} GB · busier-market scenario {(s.tickStorage.stressTwoYearBytes / 1e9).toFixed(1)} GB</p>
+          <p class="muted">Measured {s.tickStorage.ticksPerSecond.toFixed(1)} quotes/s, {s.tickStorage.bytesPerTick.toFixed(1)} compressed bytes/quote. The busier scenario uses four times the observed rate. Estimates update as market sessions accumulate.</p>
+          {#if s.tickStorage.warning}<p class="negative">Storage growth needs attention to stay within the 100 GB budget.</p>{/if}
+        {/if}
+      </section>
+    {/if}
+
     {#if data.execution}
       {@const e = data.execution}
       <section class="card stack">

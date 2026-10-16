@@ -49,15 +49,6 @@ const arena = new Arena({ db, dataClient, forecasterUrl, broker, tickJournal });
 const api = startApi(arena, port, token);
 console.log(`arena api on http://127.0.0.1:${api.port} (db ${dbPath})`);
 
-await arena.start();
-console.log(`arena live: ${arena.tracked.size} demo runs`);
-
-if (broker) {
-  // After the arena: the mirror needs the live runs, and replayed history is never mirrored.
-  broker.setCandidateSource(() => arena.mirrorCandidates());
-  await broker.start();
-}
-
 let stopping = false;
 function shutdown(signal: string): void {
   if (stopping) return;
@@ -72,3 +63,12 @@ function shutdown(signal: string): void {
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+await arena.start();
+console.log(`arena live: ${arena.tracked.size} demo runs`);
+
+if (broker) {
+  // After the arena: the mirror needs the live runs, and replayed history is never mirrored.
+  broker.setCandidateSource(() => arena.mirrorCandidates());
+  await broker.start();
+}
