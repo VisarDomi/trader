@@ -17,6 +17,7 @@ import type { Candle } from '../engine/series.ts';
 import type { Arena } from './arena.ts';
 import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
+import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -45,6 +46,17 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   const db = arena.db;
 
   add(METHOD_GET, '/api/health', () => json({ ok: true, ready: arena.ready, time: Date.now() }));
+  add(METHOD_GET, TICK_API.STATUS, () => json(arena.tickJournal?.status() ?? null));
+  add(METHOD_GET, TICK_API.EXPORT, (_req,_p,url) => {
+    if(!arena.tickJournal) return json({error:'tick recording unavailable'},503);
+    return json(arena.tickJournal.export(Number(url.searchParams.get('after')??0),Number(url.searchParams.get('limit')??TICK_EXPORT_LIMIT)));
+  },true);
+  add(METHOD_POST, TICK_API.ACK, async req => {
+    if(!arena.tickJournal) return json({error:'tick recording unavailable'},503);
+    const body=await req.json() as {journalId:string;through:number};
+    arena.tickJournal.acknowledge(body.journalId,body.through);
+    return json({ok:true});
+  },true);
 
   add(METHOD_GET, '/api/status', () => {
     const quotes = Object.fromEntries(

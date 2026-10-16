@@ -10,13 +10,14 @@
  *   BROKER_ACCOUNT_PREFIX  demo accounts whose name starts with this are used by the broker
  *                        mirror, default "Arena"; "off" disables the mirror
  */
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { CapitalClient, credentialsFromEnv, RequestPacer } from '../capital/client.ts';
 import { loadRoster } from '../engine/roster.ts';
 import { startApi } from './api.ts';
 import { Arena } from './arena.ts';
 import { BrokerMirror, DEFAULT_ACCOUNT_PREFIX } from './broker.ts';
 import { ArenaDB } from './db.ts';
+import { TickJournal } from './tick-journal.ts';
 
 const BROKER_OFF = 'off';
 /**
@@ -42,7 +43,9 @@ const broker =
     ? null
     : new BrokerMirror(new CapitalClient(creds, pacer), db, { prefix: brokerPrefix, accountTiers: loadRoster().accounts });
 
-const arena = new Arena({ db, dataClient, forecasterUrl, broker });
+const tickJournal = new TickJournal(resolve(dirname(dbPath),'ticks.db'), message => db.event('error','ticks',message));
+tickJournal.start();
+const arena = new Arena({ db, dataClient, forecasterUrl, broker, tickJournal });
 const api = startApi(arena, port, token);
 console.log(`arena api on http://127.0.0.1:${api.port} (db ${dbPath})`);
 
@@ -62,6 +65,7 @@ function shutdown(signal: string): void {
   console.log(`${signal}: saving state`);
   db.event('info', 'arena', `shutting down (${signal})`);
   arena.stop();
+  tickJournal.close();
   broker?.stop();
   api.stop();
   process.exit(0);

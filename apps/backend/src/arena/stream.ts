@@ -9,6 +9,8 @@ import { recordStream } from '../capital/telemetry.ts';
  */
 import type { CapitalClient } from '../capital/client.ts';
 import { STREAM_URL } from '../capital/client.ts';
+import { TICK_SOURCE, type Tick } from '../engine/ticks.ts';
+import type { TickJournal } from './tick-journal.ts';
 
 const DEST_SUBSCRIBE = 'marketData.subscribe';
 const DEST_QUOTE = 'quote';
@@ -19,11 +21,8 @@ const WATCHDOG_INTERVAL_MS = 30_000;
 const STALE_AFTER_MS = 150_000;
 const BACKOFF_MS = [1_000, 2_000, 5_000, 10_000, 30_000, 60_000];
 
-export interface LiveQuote {
+export interface LiveQuote extends Tick {
   epic: string;
-  bid: number;
-  ask: number;
-  time: number;
 }
 
 export class QuoteStream {
@@ -34,6 +33,7 @@ export class QuoteStream {
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
   private lastMessageAt = 0;
   private correlation = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   readonly lastQuote = new Map<string, LiveQuote>();
   connectedSince = 0;
   reconnects = 0;
@@ -43,6 +43,7 @@ export class QuoteStream {
     private readonly epics: string[],
     private readonly onQuote: (q: LiveQuote) => void,
     private readonly log: (level: 'info' | 'warn' | 'error', msg: string) => void,
+    private readonly journal?: TickJournal | null,
   ) {}
 
   start(): void {
@@ -53,6 +54,8 @@ export class QuoteStream {
 
   stop(): void {
     this.stopped = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.teardown();
   }
@@ -70,12 +73,14 @@ export class QuoteStream {
       return this.scheduleReconnect();
     }
     const { cst, securityToken } = this.client.tokens();
+    if (this.stopped) return;
     const ws = new WebSocket(STREAM_URL);
     this.ws = ws;
     ws.onopen = () => {
       this.attempt = 0;
       this.connectedSince = Date.now();
       this.lastMessageAt = Date.now();
+      this.journal?.connected(this.epics, this.connectedSince);
       ws.send(JSON.stringify({ destination: DEST_SUBSCRIBE, correlationId: String(++this.correlation), cst, securityToken, payload: { epics: this.epics } }));
       this.pingTimer = setInterval(() => {
         const t = this.client.tokens();
@@ -86,7 +91,9 @@ export class QuoteStream {
       this.log('info', `stream connected, subscribed to ${this.epics.length} instruments`);
     };
     ws.onmessage = event => {
-      this.lastMessageAt = Date.now();
+      if (this.ws !== ws || this.stopped) return;
+      const receivedAt = Date.now();
+      this.lastMessageAt = receivedAt;
       recordStream(new TextEncoder().encode(String(event.data)).byteLength);
       let msg: { destination?: string; status?: string; payload?: Record<string, unknown> };
       try {
@@ -96,14 +103,20 @@ export class QuoteStream {
       }
       if (msg.destination === DEST_QUOTE && msg.payload) {
         const p = msg.payload as { epic: string; bid: number; ofr: number; timestamp?: number };
-        if (!Number.isFinite(p.bid) || !Number.isFinite(p.ofr) || p.bid <= 0 || p.ofr < p.bid) return;
-        this.handleQuote({ epic: p.epic, bid: p.bid, ask: p.ofr, time: typeof p.timestamp === 'number' ? p.timestamp : Date.now() });
+        if (!this.epics.includes(p.epic) || !Number.isFinite(p.bid) || !Number.isFinite(p.ofr) || p.bid <= 0 || p.ofr < p.bid) { this.journal?.invalid();return; }
+        const timestampFallback = !Number.isSafeInteger(p.timestamp) || p.timestamp! <= 0;
+        const time = timestampFallback ? receivedAt : p.timestamp!;
+        const q: LiveQuote = {epic:p.epic,bid:p.bid,ask:p.ofr,time,receivedAt,source:TICK_SOURCE.LIVE};
+        // Record before trading filters: late quotes, duplicates and equal timestamps are evidence too.
+        if(this.journal) {q.sequence=this.journal.record({...q,timestampFallback});q.journalId=this.journal.journalId;}
+        this.handleQuote(q);
       } else if (msg.destination === DEST_SUBSCRIBE && msg.status !== 'OK') {
         this.log('error', `subscribe failed: ${JSON.stringify(msg).slice(0, 300)}`);
       }
     };
     ws.onclose = event => {
       this.clearPing();
+      this.journal?.disconnected(`socket closed (${event.code})`);
       if (this.ws === ws) this.ws = null;
       if (!this.stopped) {
         this.log('warn', `stream closed (code ${event.code}); reconnecting`);
@@ -135,7 +148,8 @@ export class QuoteStream {
     const delay = BACKOFF_MS[Math.min(this.attempt, BACKOFF_MS.length - 1)]!;
     this.attempt++;
     this.reconnects++;
-    setTimeout(() => void this.connect(), delay);
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {this.reconnectTimer=null;void this.connect();}, delay);
   }
 
   private clearPing(): void {
@@ -145,6 +159,7 @@ export class QuoteStream {
 
   private teardown(): void {
     this.clearPing();
+    this.journal?.disconnected(this.stopped ? 'stream stopped' : 'watchdog reconnect');
     const ws = this.ws;
     this.ws = null;
     if (ws) {

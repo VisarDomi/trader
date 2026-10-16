@@ -6,6 +6,7 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit -p .",
     "ingest": "bun run src/lab/ingest.ts",
+    "sync-ticks": "bun run src/lab/sync-ticks.ts",
     "backtest": "bun run src/lab/backtest.ts",
     "push-history": "bun run src/lab/push-history.ts",
     "forecasts": "bun run src/lab/forecast-precompute.ts",

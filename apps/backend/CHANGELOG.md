@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Record every valid received Capital bid/ask quote, including repeats and out-of-order source timestamps,
+  in a separate durable server journal with arrival times, sequences and connection gaps. Archive
+  idempotently to lab PostgreSQL every minute; only lab-acknowledged ticks can expire from the server.
+
 - Calibrate `visar-night-trading` to 25–50 annual entry opportunities using only 2024 counts; validate
   25 entries in 2025 and 22 through September 2026. All 72 signals filled in the full backtest; preserve
   its losing result ($10,000 → $2.61) and renew the explicit source-specific special demo admission.
