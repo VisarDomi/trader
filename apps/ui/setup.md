@@ -22,7 +22,8 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   `demo:<agentId>:<epic>:<codeHash>`.
 - Pages: `/` leaderboard (Backtest, Virtual engine, Capital demo, Overfit views), `/agents`, `/agents/<id>` (versioned
   source), `/runs/<id>`, `/broker` (accounts, mirrored runs, deals), `/leverage`, `/journal`, `/research`
-  (report, topic notes, library; files from `RESEARCH_DIR`, default `./research` on the server), `/status`.
+  (report, topic notes, library; files from `RESEARCH_DIR`, default `./research` on the server), `/status`,
+  `/graveyard` (decommissioned agents, archived versions/runs, retirement reasons and platform history).
 - Colors and chart styling come from the tokens in `src/app.css` (light and dark); use those rather
   than new hex values.
 
@@ -37,5 +38,6 @@ npm run build               # adapter-node build in build/
 
 ## Deploy
 
-Push `main`. The veron3 deploy watcher on the server builds `apps/ui` and restarts
-`trader-ui.service` (`node apps/ui/build/index.js`, env in `/home/erdal/trader-ui/.env`).
+Push `main`. The shared veron3 deploy watcher builds `apps/ui` from the committed source and publishes
+to the PC runtime, restarting `pc-server-trader-ui.service`. The runtime/env now live under
+`~/.local/share/hetzner-pc/mirror/home/erdal/trader-ui`; Hetzner hosts only the public edge.

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Add Graveyard: searchable archived versions and decommissioned agents, dates/reasons/results,
+  preserved source and run links, and a platform history timeline. Keep active and comparison results
+  distinct; source links open the exact archived hash. Run details show durable retirement reasons.
+
 - Show recorded/synthetic/mixed tick provenance and replay assumptions, engine-version mismatches,
   recorder health, and whole-project two-year storage projections against the 100 GB budget.
 - Keep the Status instrument table inside its scroll container on small screens.

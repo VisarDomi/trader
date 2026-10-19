@@ -5,6 +5,7 @@
 - Add a Graveyard API for decommissioned agents, replaced versions and retired platform cohorts.
   Preserve retirement reasons beyond rolling event retention, archive superseded backtests with their
   trades/equity/logs, and retain pre-leverage results instead of deleting them during startup.
+  Ship the shared workspace dependency and preflight exported API imports before replacing a runtime.
 - Suppress false missing-account/forecaster alerts during arena warm-up; cover bootstrap and stale
   storage reports with watchdog regression checks.
 
