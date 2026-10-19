@@ -75,6 +75,13 @@ the leader bar), change them in `lifecycle.ts` and explain why in the journal.
 - Never retire on backtest results, and never "rescue" a losing run by editing its parameters. A changed
   idea is a new agent (new file, new record).
 
+Decommissioned agents and versions belong in the dashboard's **Graveyard** (`/graveyard`). Keep their
+source, forward runs, broker history and results. The arena records retirement reasons durably and
+archives a backtest when its agent source or simulation engine changes. A same-version repeated upload
+updates that result without making duplicate archives. Never delete old records to tidy the leaderboard.
+When replacing a platform generation, add its dated milestone to `apps/ui/src/lib/platform-history.ts`
+and the journal. Platform migrations and replaced versions must not be labeled losing strategies.
+
 ## Leverage
 
 Each Arena account has one leverage (`accounts` in `agents/roster.json`); the arena sets it on the account

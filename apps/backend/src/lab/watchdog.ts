@@ -27,6 +27,7 @@ const ALWAYS_OPEN_EPICS = ['BTCUSD', 'ETHUSD'];
 const STALE_CANDLE_MS = 20 * MINUTE_MS;
 const FORECASTER_DOWN_MS = HOUR_MS;
 const STORAGE_REPORT_MAX_AGE_MS = 6 * HOUR_MS;
+const STARTUP_GRACE_MS = 5 * MINUTE_MS;
 const ENROLLING_TOO_LONG_MS = 3 * HOUR_MS;
 /** A failing Capital.com login shows up as an error on /session. */
 const LOGIN_FAILURE = /Capital\.com (400|401|403) on \/session/;
@@ -45,7 +46,7 @@ interface Alert {
   needsStreak?: boolean;
 }
 
-interface State {
+export interface State {
   active: Record<string, { since: number; notifiedAt: number; title: string }>;
   streaks: Record<string, number>;
   firstSeen: Record<string, number>;
@@ -70,7 +71,7 @@ function unitState(unit: string, verb: 'is-active' | 'is-failed'): string {
   return r.stdout.toString().trim();
 }
 
-async function check(state: State, now: number): Promise<Alert[]> {
+export async function check(state: State, now: number): Promise<Alert[]> {
   const alerts: Alert[] = [];
   for (const unit of LAB_UNITS) {
     if (unitState(unit, 'is-active') !== 'active') {
@@ -102,6 +103,12 @@ async function check(state: State, now: number): Promise<Alert[]> {
     return alerts;
   }
 
+  if (status.execution?.ready === false) {
+    if (now - status.startedAt > STARTUP_GRACE_MS)
+      alerts.push({key:'startup',title:'Arena is still warming up',body:`The arena has not become ready after five minutes. ${ASK_CLAUDE}`,userAction:false,needsStreak:true});
+    return alerts;
+  }
+
   if (!status.stream.connected) {
     alerts.push({ key: 'stream', title: 'Price stream disconnected', body: `The arena has had no live Capital.com prices for 30 minutes. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
   }
@@ -115,7 +122,7 @@ async function check(state: State, now: number): Promise<Alert[]> {
       alerts.push({ key: `candles:${epic}`, title: `No new ${epic} candles`, body: `The arena's last ${epic} candle is ${Math.round((now - last) / MINUTE_MS)} minutes old. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
     }
   }
-  if (!status.forecaster.reachable && now - status.forecaster.lastSuccessAt > FORECASTER_DOWN_MS) {
+  if (!status.forecaster.reachable && now - Math.max(status.forecaster.lastSuccessAt, status.startedAt) > FORECASTER_DOWN_MS) {
     alerts.push({ key: 'forecaster', title: 'TimesFM forecaster unreachable', body: `Forecast agents have been paused for over an hour. ${ASK_CLAUDE}`, userAction: false });
   }
   if (status.loadErrors.length > 0) {
@@ -134,7 +141,7 @@ async function check(state: State, now: number): Promise<Alert[]> {
   if (broker) {
     const expected = Math.max(state.expectedAccounts, broker.accounts.length);
     state.expectedAccounts = expected;
-    if (broker.accounts.length < expected) {
+    if (broker.accounts.length < expected && now - status.startedAt > STARTUP_GRACE_MS) {
       alerts.push({
         key: 'accounts-missing',
         title: 'Arena demo account missing',
@@ -185,37 +192,40 @@ function notify(title: string, body: string, urgent: boolean, dryRun: boolean): 
   Bun.spawnSync(['notify-send', '-a', APP_NAME, '-u', urgent ? 'critical' : 'normal', `${APP_NAME}: ${title}`, body]);
 }
 
-const dryRun = process.argv.includes(FLAG_DRY_RUN);
-const statePath = dryRun ? `${STATE_PATH}.dry` : STATE_PATH;
-const now = Date.now();
-const state = loadState(statePath);
-const found = await check(state, now);
+async function main() {
+  const dryRun = process.argv.includes(FLAG_DRY_RUN);
+  const statePath = dryRun ? `${STATE_PATH}.dry` : STATE_PATH;
+  const now = Date.now();
+  const state = loadState(statePath);
+  const found = await check(state, now);
 
-const firing = new Map<string, Alert>();
-for (const a of found) {
-  if (a.needsStreak) {
-    state.streaks[a.key] = (state.streaks[a.key] ?? 0) + 1;
-    if (state.streaks[a.key]! < STREAK_TO_ALERT) continue;
+  const firing = new Map<string, Alert>();
+  for (const a of found) {
+    if (a.needsStreak) {
+      state.streaks[a.key] = (state.streaks[a.key] ?? 0) + 1;
+      if (state.streaks[a.key]! < STREAK_TO_ALERT) continue;
+    }
+    firing.set(a.key, a);
   }
-  firing.set(a.key, a);
-}
-for (const key of Object.keys(state.streaks)) {
-  if (!found.some(a => a.key === key)) delete state.streaks[key];
-}
-
-for (const [key, a] of firing) {
-  const prev = state.active[key];
-  if (!prev || now - prev.notifiedAt >= RENOTIFY_MS) {
-    notify(a.title, a.body, a.userAction, dryRun);
-    state.active[key] = { since: prev?.since ?? now, notifiedAt: now, title: a.title };
+  for (const key of Object.keys(state.streaks)) {
+    if (!found.some(a => a.key === key)) delete state.streaks[key];
   }
-}
-for (const [key, prev] of Object.entries(state.active)) {
-  if (firing.has(key)) continue;
-  notify(`resolved: ${prev.title}`, 'Back to normal.', false, dryRun);
-  delete state.active[key];
-}
 
-mkdirSync(dirname(statePath), { recursive: true });
-writeFileSync(statePath, JSON.stringify(state, null, 2));
-console.log(`${new Date(now).toISOString()} watchdog: ${firing.size} alert(s) active${found.length > firing.size ? `, ${found.length - firing.size} pending` : ''}`);
+  for (const [key, a] of firing) {
+    const prev = state.active[key];
+    if (!prev || now - prev.notifiedAt >= RENOTIFY_MS) {
+      notify(a.title, a.body, a.userAction, dryRun);
+      state.active[key] = { since: prev?.since ?? now, notifiedAt: now, title: a.title };
+    }
+  }
+  for (const [key, prev] of Object.entries(state.active)) {
+    if (firing.has(key)) continue;
+    notify(`resolved: ${prev.title}`, 'Back to normal.', false, dryRun);
+    delete state.active[key];
+  }
+
+  mkdirSync(dirname(statePath), { recursive: true });
+  writeFileSync(statePath, JSON.stringify(state, null, 2));
+  console.log(`${new Date(now).toISOString()} watchdog: ${firing.size} alert(s) active${found.length > firing.size ? `, ${found.length - firing.size} pending` : ''}`);
+}
+if (import.meta.main) await main();

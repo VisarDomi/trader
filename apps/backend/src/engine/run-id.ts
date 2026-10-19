@@ -9,7 +9,7 @@ export function demoRunId(agentId: string, epic: string, leverage: number, codeH
   return `demo:${agentId}:${epic}:x${leverage}:${codeHash}`;
 }
 
-/** One backtest per agent × instrument × leverage and window; a newer code version replaces it. */
+/** Stable id for the latest backtest; superseded code/engine results receive archived ids in the arena. */
 export function backtestRunId(windowId: string, agentId: string, epic: string, leverage: number): string {
   return `bt:${windowId}:${agentId}:${epic}:x${leverage}`;
 }

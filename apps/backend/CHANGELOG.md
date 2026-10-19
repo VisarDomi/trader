@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add a Graveyard API for decommissioned agents, replaced versions and retired platform cohorts.
+  Preserve retirement reasons beyond rolling event retention, archive superseded backtests with their
+  trades/equity/logs, and retain pre-leverage results instead of deleting them during startup.
+- Suppress false missing-account/forecaster alerts during arena warm-up; cover bootstrap and stale
+  storage reports with watchdog regression checks.
+
 - Detect the migrated PC arena/UI for storage measurement, watchdog health and manual deployments.
   Keep the retired Hetzner writer/tunnel disabled and install trader.slice overrides for both PC runtimes.
   Invalidate filesystem estimates from the previous deployment location.

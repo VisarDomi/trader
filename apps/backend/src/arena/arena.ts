@@ -236,7 +236,7 @@ export class Arena {
     for (const { agent, epic, leverage, entry } of plan.retired) {
       for (const old of active.filter(r => r.agent_id === agent.id && r.epic === epic && r.leverage === leverage)) {
         rosterRetired.add(old.id);
-        this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
+        this.db.retireRun(old.id, now, RUN_STATUS.STOPPED, entry.reason);
         this.db.appendLog(old.id, {
           time: now,
           message: `retired ${entry.date}: ${entry.reason}`,
@@ -392,7 +392,7 @@ export class Arena {
             : old.leverage === null
               ? 'runs now trade at an account leverage; restarted per tier'
               : 'its leverage tier is no longer planned (agents/roster.json)';
-      this.db.retireRun(old.id, now, RUN_STATUS.STOPPED);
+      this.db.retireRun(old.id, now, RUN_STATUS.STOPPED, why);
       this.db.event('info', 'arena', `retired ${old.id}: ${why}`);
     }
     return fresh;
@@ -728,7 +728,7 @@ export class Arena {
         demotedAt: now,
         demotionReason: reason,
       });
-      this.db.retireRun(id, now, RUN_STATUS.STOPPED);
+      this.db.retireRun(id, now, RUN_STATUS.STOPPED, reason);
       this.engines.get(t.epic)!.removeRun(t.run);
       this.tracked.delete(id);
       this.db.event('info', 'pipeline', `demoted ${id} from virtual to backtest: ${reason}`);
