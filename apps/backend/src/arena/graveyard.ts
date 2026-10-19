@@ -1,4 +1,4 @@
-import { GRAVEYARD_CATEGORY, type GraveyardEntry, type GraveyardRun, type RunMetrics } from '@trader/shared';
+import { GRAVEYARD_CATEGORY, type GraveyardEntry, type GraveyardRun, type RunMetrics } from '@trader/shared/types';
 import { ArenaDB, RUN_KIND, type RunRow } from './db.ts';
 import { isShadow } from './pipeline.ts';
 import { ENGINE_VERSION } from '../engine/version.ts';
