@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Detect the migrated PC arena/UI for storage measurement, watchdog health and manual deployments.
+  Keep the retired Hetzner writer/tunnel disabled and install trader.slice overrides for both PC runtimes.
+  Invalidate filesystem estimates from the previous deployment location.
+
 - Unify live and historical tick callbacks, tick-built closed bars, delayed bid/ask execution and risk.
   Backtests prefer captured quotes, generate deterministic OHLC-constrained paths lazily, and label
   source/coverage/seed/density. Recorded-only and alternate scenarios have separate windows.

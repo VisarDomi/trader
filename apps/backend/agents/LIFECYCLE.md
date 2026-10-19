@@ -1,6 +1,6 @@
 # Agent lifecycle and the babysitter runbook
 
-How agents enter, move through and leave the arena, and what Claude does on each scheduled visit.
+How agents enter, move through and leave the arena, and what the coding agent does on each scheduled visit.
 Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writing an agent:
 [`GUIDE.md`](GUIDE.md). What happened so far: [`JOURNAL.md`](JOURNAL.md).
 
@@ -130,7 +130,7 @@ agents that size with `marginPct` use the high leverage.
 ## Each visit (runbook)
 
 1. Read `../../../setup.md` (hard rules), this file, and the three newest entries of `JOURNAL.md`.
-2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*'` and, if last night's
+2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*' 'pc-server-trader*'` and, if last night's
    backtests matter, `journalctl --user -u trader-lab -n 40`.
 3. **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
    pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
@@ -138,6 +138,9 @@ agents that size with `marginPct` use the high leverage.
     Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).
    Keep the user's one-copy, 100 GB/two-year budget: compressed PostgreSQL is canonical; do not create
    another raw archive. Never delete captured history to make room; act on growth forecasts early.
+   The arena/UI moved to the PC on October 16. The migration `ACTIVE` marker selects the local runtime
+   in storage/deploy tooling; the old tunnel is intentionally disabled. Confirm both
+   `pc-server-trader-*` units share `trader.slice`. Do not start the retired Hetzner writer.
    Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.

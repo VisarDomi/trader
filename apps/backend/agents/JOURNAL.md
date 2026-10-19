@@ -1,6 +1,6 @@
 # Arena journal
 
-Newest entry first. Written by Claude on each babysitter visit; the rules it follows are in
+Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
 ## 2026-10-16 (Fri, user-requested) — tick engine and single-copy storage

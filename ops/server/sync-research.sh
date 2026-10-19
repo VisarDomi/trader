@@ -14,7 +14,15 @@ set -euo pipefail
 SERVER="<server-user>@<server-ip>"
 REMOTE="/home/<server-user>/trader-ui/research/files"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+source "$REPO/ops/server/runtime.sh"
 
-ssh "$SERVER" "mkdir -p $REMOTE"
-rsync -az --delete --exclude '.*' "$REPO/research/files/" "$SERVER:$REMOTE/"
-echo "synced $(find "$REPO/research/files" -type f | wc -l) files ($(du -sh "$REPO/research/files" | cut -f1)) to $SERVER:$REMOTE"
+DESTINATION="$SERVER:$REMOTE/"
+if "$TRADER_PC_ACTIVE"; then
+  REMOTE="$TRADER_SERVER_ROOT/trader-ui/research/files"
+  mkdir -p "$REMOTE"
+  DESTINATION="$REMOTE/"
+else
+  ssh "$SERVER" "mkdir -p $REMOTE"
+fi
+rsync -az --delete --exclude '.*' "$REPO/research/files/" "$DESTINATION"
+echo "synced $(find "$REPO/research/files" -type f | wc -l) files ($(du -sh "$REPO/research/files" | cut -f1)) to $DESTINATION"

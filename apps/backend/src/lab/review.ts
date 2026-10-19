@@ -115,6 +115,8 @@ const report = {
     forecaster: status.forecaster.reachable,
     memoryMb: status.memoryMb,
     loadErrors: status.loadErrors,
+    ticks: status.ticks ?? null,
+    tickStorage: status.tickStorage ?? null,
     broker: b
       ? {
           enabled: b.enabled,
@@ -154,6 +156,10 @@ if (process.argv.includes(FLAG_JSON)) {
   lines.push('', '## Health');
   lines.push(`- stream ${report.health.stream ? 'connected' : 'DOWN'}, forecaster ${report.health.forecaster ? 'reachable' : 'UNREACHABLE'}, arena ${report.health.memoryMb} MB`);
   if (report.health.loadErrors.length) lines.push(`- LOAD ERRORS: ${report.health.loadErrors.map(e => `${e.file}: ${e.error}`).join('; ')}`);
+  const ticks = report.health.ticks;
+  if (ticks) lines.push(`- tick journal: ${ticks.highWater} received, ${ticks.acknowledged} archived, ${ticks.lostTicks} dropped; ${ticks.lastError ?? 'no recording error'}`);
+  const storage = report.health.tickStorage;
+  if (storage) lines.push(`- storage ${(storage.totalBytes / 1e9).toFixed(1)} GB; two-year ${(storage.pointTwoYearBytes / 1e9).toFixed(1)} GB, 4× stress ${(storage.stressTwoYearBytes / 1e9).toFixed(1)} GB / 100 GB; report ${((now - storage.at) / 3600_000).toFixed(1)} h old${storage.warning ? ' — WARNING' : ''}`);
   const hb = report.health.broker;
   if (hb) {
     lines.push(`- broker ${hb.enabled ? 'on' : 'OFF'}: ${hb.mirrored}/${hb.liveRuns} runs mirrored, capacity ${hb.capacity}, queue ${hb.queued}, opens last hour ${hb.opensLastHour}`);
