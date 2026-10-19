@@ -26,7 +26,7 @@ SEED=""
 if [[ "${1:-}" == "--seed" ]]; then SEED="${2:?--seed needs a path}"; fi
 
 cd "$REPO"
-SHIPPED=(apps/backend/src apps/backend/agents apps/backend/package.json apps/backend/tsconfig.json)
+SHIPPED=(apps/backend/src apps/backend/agents apps/backend/package.json apps/backend/tsconfig.json packages/shared)
 if [[ -n "$(git status --porcelain -- "${SHIPPED[@]}")" ]]; then
   echo "uncommitted changes in shipped files; commit first so the server runs a known version." >&2
   git status --short -- "${SHIPPED[@]}" >&2
@@ -42,12 +42,20 @@ if ! "$TRADER_PC_ACTIVE"; then ssh "$SERVER" "mkdir -p $REMOTE/app $REMOTE/data"
 # Export the committed tree (not the working tree) to a temp dir, then rsync it.
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-git archive HEAD apps/backend/src apps/backend/agents apps/backend/package.json apps/backend/tsconfig.json | tar -x -C "$TMP"
+git archive HEAD "${SHIPPED[@]}" | tar -x -C "$TMP"
 DESTINATION="$SERVER:$REMOTE/app/"
-if "$TRADER_PC_ACTIVE"; then DESTINATION="$REMOTE/app/"; fi
+SHARED_DESTINATION="$SERVER:$REMOTE/app/node_modules/@trader/shared/"
+if "$TRADER_PC_ACTIVE"; then
+  DESTINATION="$REMOTE/app/"
+  SHARED_DESTINATION="$REMOTE/app/node_modules/@trader/shared/"
+  mkdir -p "$SHARED_DESTINATION"
+else
+  ssh "$SERVER" "mkdir -p $REMOTE/app/node_modules/@trader/shared"
+fi
 rsync -az --delete \
   --exclude '/data/' --exclude '/node_modules/' --exclude '/.env' \
   "$TMP/apps/backend/" "$DESTINATION"
+rsync -az --delete "$TMP/packages/shared/" "$SHARED_DESTINATION"
 if "$TRADER_PC_ACTIVE"; then
   echo "$SHA $(date -Is)" > "$REMOTE/DEPLOYED"
 else
