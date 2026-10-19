@@ -7,6 +7,7 @@
 	const nav = [
 		{ href: '/', label: 'Leaderboard' },
 		{ href: '/agents', label: 'Agents' },
+		{ href: '/graveyard', label: 'Graveyard' },
 		{ href: '/broker', label: 'Broker' },
 		{ href: '/leverage', label: 'Leverage' },
 		{ href: '/journal', label: 'Journal' },

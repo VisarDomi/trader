@@ -3,6 +3,54 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-19 (Mon) — virtual day 11.9; PC maintenance and Graveyard
+
+- Health after repairs: 4,561 virtual runs (551 standard, 4,010 correlated comparisons), 63 loaded
+  variants, all 450 Capital assignments preserved exactly across nine correctly hedged/leverage-tiered
+  accounts. Feed and TimesFM reachable, queue 0, no unpriced broker closes or load errors, 177 MB RSS.
+  Observed CPU 15% of one core, event-loop p95 4 ms, HTTP p95 132 ms, adverse-open slippage p95 3.73 bp.
+  Two earlier transient broker job timeouts over three days; reconciliation recovered. No user action.
+- Verdicts: control 144, early 407, keep/leader/retire/retired 0; monkey sanity 0/36. Retired today: none.
+  Added: none. The October 14 research batch and October 15 user experiment are less than seven days
+  old; the next eligible normal addition visit is Monday October 26. Capacity remains 439 runs.
+- Reconciled the October 16 shared-infrastructure migration against its runbook and running units.
+  Arena/UI now live on this PC; the old per-app tunnel is intentionally disabled. Storage, watchdog,
+  install, arena deploy and research sync now select the active PC runtime instead of missing Hetzner
+  directories. Both live user services now share trader.slice with the lab (600% CPU, 15 GiB hard RAM
+  cap); updated setup/context/lifecycle docs to prevent reviving the retired remote writer.
+- Storage reporting had been stale since the migration and caused intermittent archive-job failures
+  after successful transfers. Fixed the measurement paths and cache location; added a six-hour report
+  freshness alert. Forced archival/read-back succeeded: 4,512,001 quotes, 32.2 MB compressed table,
+  zero dropped received quotes or recording errors. Same journal identity/sequence retained.
+  Whole project 12.4 GB; two-year estimate 29.2 GB / 56.4 GB at four times the observed rate, including
+  the 10 GB non-tick growth reserve. Weekend-inclusive sample; estimates continue updating.
+- User requested a **Graveyard** for decommissioned agents and old platform/agent history. Added
+  `/graveyard` and its read-only API: 393 surviving archived forward runs across 41 agent versions
+  (39 older platform cohorts, two replaced versions), with dates, recorded reasons, outcomes and
+  exact-version source/run links. All 393 historical reasons were rescued into durable run metadata
+  before rolling events can expire. No active agent was relabeled a failed/decommissioned strategy.
+  Platform timeline links to the journal; the old v1 deletion is stated honestly.
+- Future source/engine backtest replacements now archive their full trades, equity and logs instead
+  of overwriting them; identical-version uploads remain idempotent. Startup retains pre-tier backtests
+  instead of deleting them. Lifecycle policy now requires Graveyard preservation and platform milestones.
+  Previously overwritten/deleted backtests cannot be reconstructed by this change.
+- Deployment: PC fixes deployed as 4564b48; Graveyard backend as 0824364. A shared-package root import
+  failed in the first Graveyard package: arena stopped at 14:25:37 UTC, API recovered at 14:26:21 and
+  live warm-up finished at 14:26:37. Corrected the import, shipped the workspace dependency and added
+  an isolated exported-tree import preflight before future uploads/restarts. Recording coverage keeps
+  this interruption explicit; no forward records or account assignments were reset.
+- Validation: 127 backend tests and typecheck; UI check/build with no errors or warnings; desktop and
+  390-pixel browser checks, search, expanded history, horizontal table containment and exact historical
+  source selection. Post-restart watchdog falsely interpreted warm-up as missing accounts/forecaster;
+  fixed startup grace and added regressions. Final watchdog dry-run: zero alerts.
+- Official [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm) and
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) /
+  [2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) schedules rechecked;
+  no date changes, coverage through 2027-12-31. Scheduler repair before this visit replaced the task
+  pinned to a disabled provider; Codex dispatch succeeded, next visit October 22 at 09:30 Tirana.
+- Next: watch PC runtime/archival and storage forecasts, keep the calibration cohort intact, and judge
+  mature strategies only when their observation windows qualify. No desktop notification sent.
+
 ## 2026-10-16 (Fri, user-requested) — tick engine and single-copy storage
 
 - Request: every agent must operate on tick execution, record Capital quotes for replay, generate ticks
@@ -377,6 +425,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-10-19: no new strategy or retirement; recent additions remain in observation. Next normal
+addition window October 26, with 439 virtual slots available. Graveyard now preserves decommissioned
+versions and their evidence; it does not turn platform migrations into strategy verdicts.
 
 - visar-night-trading — NY-session direction plus US500 03:27 pullback, 08:27 or 50%-capital-loss exit, 1:200 — special demo experiment (2026-10-15), frequency calibrated to 25/25/22 annual entries (2024/2025/Jan–Sep 2026); 72-trade backtest −99.9739%, selection used entry counts only
 

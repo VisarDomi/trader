@@ -37,12 +37,16 @@ SHA="$(git rev-parse --short HEAD)"
 echo "== typecheck + tests"
 (cd apps/backend && bunx tsc --noEmit -p . && bun test >/dev/null)
 
-echo "== upload $SHA"
-if ! "$TRADER_PC_ACTIVE"; then ssh "$SERVER" "mkdir -p $REMOTE/app $REMOTE/data"; fi
 # Export the committed tree (not the working tree) to a temp dir, then rsync it.
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 git archive HEAD "${SHIPPED[@]}" | tar -x -C "$TMP"
+echo "== validate packaged imports"
+mkdir -p "$TMP/apps/backend/node_modules/@trader"
+ln -s "$TMP/packages/shared" "$TMP/apps/backend/node_modules/@trader/shared"
+(cd "$TMP/apps/backend" && bun -e "await import('./src/arena/api.ts')")
+echo "== upload $SHA"
+if ! "$TRADER_PC_ACTIVE"; then ssh "$SERVER" "mkdir -p $REMOTE/app $REMOTE/data"; fi
 DESTINATION="$SERVER:$REMOTE/app/"
 SHARED_DESTINATION="$SERVER:$REMOTE/app/node_modules/@trader/shared/"
 if "$TRADER_PC_ACTIVE"; then

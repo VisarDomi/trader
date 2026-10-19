@@ -69,6 +69,9 @@ The user subsequently closed the old unrelated Endri short.
 
 ## Virtual capacity, selection and controls
 
+- October 19 user direction: decommissioned agents and old platform/agent history belong in the
+  **Graveyard**. Preserve source, reasons, trades and results; archive superseded source/engine
+  backtests, and distinguish replacements/platform migrations from losing-strategy retirements.
 - The user requested roughly ten virtual experiments per Capital demo slot, plus a tighter virtual
   broker checked against real demo behavior. The deployed pool before the tick upgrade has 4,561 runs:
   **551 standard runs and 4,010 labeled latency comparisons**, with 450 Capital assignments.

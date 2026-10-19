@@ -13,7 +13,7 @@
 	<header class="stack" style="gap: 6px">
 		<h1>Journal</h1>
 		<p class="lede">
-			Claude looks after the arena twice a week: it retires agents that have shown they lose, adds new ones, and fixes
+			The coding agent looks after the arena twice a week: it retires agents that have shown they lose, adds new ones, and fixes
 			what breaks. Every visit is written down here, newest first.
 		</p>
 	</header>
@@ -22,14 +22,14 @@
 		<h2>How agents move</h2>
 		<ul>
 			<li><strong>Backtest</strong> — a new agent is backtested first; only clearly broken ideas are stopped here, because good backtests are easy to fake.</li>
-			<li><strong>Demo</strong> — every agent then trades live demo prices on paper, $10,000 per instrument. A run is judged after {LIFECYCLE.MIN_TRADES} trades and {LIFECYCLE.MIN_DAYS} days (slow agents: {LIFECYCLE.SLOW_MIN_DAYS} days).</li>
-			<li><strong>Broker</strong> — the best demo runs also trade real demo orders on the nine "Arena" accounts. When those are full, a run that gets ahead takes the slot of a weaker one.</li>
+			<li><strong>Virtual engine</strong> — admitted agents trade live quotes with independent virtual capital. A run is judged after {LIFECYCLE.MIN_TRADES} trades and {LIFECYCLE.MIN_DAYS} days (slow agents: {LIFECYCLE.SLOW_MIN_DAYS} days).</li>
+			<li><strong>Capital demo</strong> — eligible virtual leaders compete for real demo orders on the nine "Arena" accounts. The existing calibration cohort and user experiments remain labeled separately.</li>
 			<li><strong>Leader</strong> — trade t-statistic of {LIFECYCLE.LEADER_TSTAT} or more and better than every random monkey on the same instrument.</li>
 			<li><strong>Retired</strong> — t-statistic of {LIFECYCLE.RETIRE_TSTAT} or less once judged, no trades in {LIFECYCLE.SILENT_DAYS} days, or a busted account. A whole agent goes when most of its judged runs do.</li>
 		</ul>
 		<p class="secondary small">
 			Full policy: <a href="{REPO}/LIFECYCLE.md" rel="noopener">LIFECYCLE.md</a> · retired runs:
-			<a href="{REPO}/roster.json" rel="noopener">roster.json</a>
+			<a href="/graveyard">Graveyard</a> · <a href="{REPO}/roster.json" rel="noopener">roster.json</a>
 		</p>
 	</section>
 

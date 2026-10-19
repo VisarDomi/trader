@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { RunSummary } from '@trader/shared';
 	import { day, num, pct, pctPlain, sign, utc } from '$lib/format';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 	const agent = $derived(data.agent);
@@ -10,7 +12,9 @@
 		for (const epic of agent.instruments) rows.set(epic, { retired: [] });
 		for (const r of agent.runs) {
 			const row = rows.get(r.epic) ?? { retired: [] };
-			if (r.kind === 'backtest') row.backtest = r;
+			if (r.kind === 'backtest') {
+				if (r.status !== 'retired' && r.codeHash === agent.codeHash && (!row.backtest || r.updatedAt > row.backtest.updatedAt)) row.backtest = r;
+			}
 			else if (r.status === 'retired') row.retired.push(r);
 			else row.demo = r;
 			rows.set(r.epic, row);
@@ -18,7 +22,7 @@
 		return [...rows.entries()];
 	});
 
-	let shownVersion = $state(0);
+	const shownVersion = $derived(agent.versions.find(v => v.code_hash === page.url.searchParams.get('version')) ?? agent.versions[0]);
 </script>
 
 <div class="stack">
@@ -87,16 +91,16 @@
 		<pre>{JSON.stringify(agent.params, null, 2)}</pre>
 	</section>
 
-	<section class="card">
+	<section class="card" id="source">
 		<div class="row" style="justify-content: space-between">
 			<h2>Source</h2>
 			{#if agent.versions.length > 1}
-				<select bind:value={shownVersion} aria-label="Version">
-					{#each agent.versions as v, i}<option value={i}>{v.code_hash} · {day(v.first_seen)}{i === 0 ? ' (current)' : ''}</option>{/each}
+				<select value={shownVersion?.code_hash} onchange={e => goto(`?version=${encodeURIComponent(e.currentTarget.value)}#source`,{noScroll:true})} aria-label="Version">
+					{#each agent.versions as v, i}<option value={v.code_hash}>{v.code_hash} · {day(v.first_seen)}{i === 0 ? ' (current)' : ''}</option>{/each}
 				</select>
 			{/if}
 		</div>
-		<pre class="source">{agent.versions[shownVersion]?.source ?? ''}</pre>
+		<pre class="source">{shownVersion?.source ?? ''}</pre>
 	</section>
 </div>
 

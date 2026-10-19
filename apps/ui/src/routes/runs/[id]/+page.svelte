@@ -8,12 +8,13 @@
 	const m = $derived(run.metrics);
 	const trades = $derived([...run.trades].reverse());
 	const tape = $derived(run.extra?.data as import('@trader/shared').ReplayDataInfo | undefined);
+	const retirement = $derived(run.extra?.retirement as {at:number;reason:string} | undefined);
 	let showAllTrades = $state(false);
 </script>
 
 <div class="stack">
 	<header class="stack" style="gap: 4px">
-		<div class="muted"><a href="/?view={run.kind}">Leaderboard</a> / <a href="/agents/{run.agentId}">{data.agentName}</a></div>
+		<div class="muted"><a href={run.status === 'retired' ? '/graveyard' : `/?view=${run.kind}`}>{run.status === 'retired' ? 'Graveyard' : 'Leaderboard'}</a> / <a href="/agents/{run.agentId}">{data.agentName}</a></div>
 		<h1>
 			{data.agentName} · {run.epic} <span class="badge">{run.kind}</span>
 			{#if run.leverage !== null}<span class="badge" title="Leverage of the demo account this run trades on">1:{run.leverage}</span>{/if}
@@ -28,6 +29,7 @@
 			{/if}
 		</div>
 	</header>
+	{#if retirement}<p class="card secondary">Retired {utc(retirement.at)} · {retirement.reason}</p>{/if}
 
   {#if tape}
     <section class="card stack">

@@ -13,6 +13,7 @@ import type {
 	LeaderboardRow,
 	RunDetail,
 	RunKind,
+	GraveyardEntry,
 } from '@trader/shared';
 
 const DEFAULT_ARENA_URL = 'http://127.0.0.1:4120';
@@ -48,6 +49,7 @@ export const arena = {
 	events: (limit = 200) => call<ArenaEvent[]>(`/api/events?limit=${limit}`),
 	leaderboard: (kind: RunKind, retired = false, stage = '', scenario = '') => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}${stage ? `&stage=${stage}` : ''}${scenario ? `&scenario=${encodeURIComponent(scenario)}` : ''}`),
 	agents: () => call<AgentListItem[]>('/api/agents'),
+	graveyard: () => call<GraveyardEntry[]>('/api/graveyard'),
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
 	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
