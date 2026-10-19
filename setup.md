@@ -31,9 +31,11 @@ conversation. Then read only what your task needs:
   led to the premature October 7 deletion. Do not create extra long-term tick backups.
 - **This PC** (the "lab") may use at most 50% of its CPU/RAM: run heavy jobs inside `trader.slice`
   (the lab services already do).
-- **Hetzner is shared.** Touch only what the trader needs: `trader-arena` and `trader-ui` services,
-  `/home/erdal/trader-arena`, `/home/erdal/trader-ui`, the `trader.veron3.space` Caddy block and its
-  Authelia rule.
+- **Shared infrastructure:** after the October 16 migration, trader runs on this PC under
+  `~/.local/share/hetzner-pc/mirror/home/erdal/{trader-arena,trader-ui}` with user units
+  `pc-server-trader-arena` and `pc-server-trader-ui`. Both belong in `trader.slice` with the lab.
+  Hetzner now hosts the public edge only. Touch only trader's runtimes, units, Caddy block and
+  Authelia rule; never restart the retired Hetzner app against stale data.
 - **The Capital.com login is shared** with other apps (position-opener). Of its 10 demo accounts (the
   maximum), "Arena 01" … "Arena 09" belong to the arena and **Visi is the user's**: the arena trades
   only on accounts whose name starts with "Arena". Each Arena account has one leverage (1:1 … 1:200),
@@ -52,16 +54,20 @@ conversation. Then read only what your task needs:
 ## Where things run
 
 ```
- Lab PC (this desktop, ≤50% CPU/RAM)                     Hetzner 157.90.28.14 (shared)
- ───────────────────────────────────────────            ──────────────────────────────────────────
- PostgreSQL "trader": candles + compressed ticks                  trader-arena.service  Bun, 127.0.0.1:4120
- trader-forecaster  TimesFM 3 on the GPU :4130 ◄─┐        live demo runs, broker mirror, SQLite
- trader-tunnel      autossh -R 4130 -L 4120 ─────┼─────►  trader-ui.service     SvelteKit :10003
- trader-lab.timer   03:30 ingest → forecasts →   │        Caddy trader.veron3.space + Authelia
-                    backtests → push to arena ───┘
+ PC (all trader workloads share trader.slice, ≤50% CPU/RAM)
+ ──────────────────────────────────────────────────────────
+ PostgreSQL "trader": candles + one compressed tick archive
+ trader-forecaster: GPU :4130   pc-server-trader-arena: Bun :4120
+ trader-lab.timer: 03:30        pc-server-trader-ui: SvelteKit :10003
+ trader-tick-archive.timer: one minute
+       ▲
+       └── shared gateway/tunnel ← Hetzner Caddy + Authelia ← public browser
 ```
 
-If the PC is off, the arena keeps trading; forecast agents pause and backtests wait for the next night.
+The PC must remain on, awake and connected for trading, recording and the dashboard to work.
+The public edge remains on Hetzner. The old `trader-tunnel` is deliberately disabled; arena and
+forecaster now communicate directly over loopback. Migration operations:
+`/home/visar/Documents/environment/services/hetzner-pc/README.md`.
 Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTURE.md).
 
 ## Repo layout
@@ -85,11 +91,11 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Publish research files | `ops/server/sync-research.sh` (papers and snapshots to the server's Research tab) |
 | Install/refresh lab services | `ops/lab/install.sh` |
 | Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
-| Arena logs | `ssh erdal@157.90.28.14 sudo journalctl -u trader-arena -f`; events also on the dashboard Status page |
+| Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the dashboard Status page |
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
 | Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |
-| Babysitter visits | T3 Code scheduled task "Trader babysitter", Mondays and Thursdays 09:30, posting into the "Build Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md` |
+| Babysitter visits | T3 Code scheduled task "Trader babysitter", Mondays and Thursdays 09:30 Europe/Tirane, posting into the "Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md`. Recreated October 19 with the thread's Codex provider after its former provider was disabled. |
 | Heavy job by hand | `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH <command>` |
 
 ## Secrets
@@ -98,8 +104,8 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 |---|---|
 | `apps/backend/.env` (lab) | Capital.com demo login, PostgreSQL, `ARENA_URL`/`ARENA_TOKEN`, `FORECASTER_URL` — template: `apps/backend/.env.template` |
 | `apps/ui/.env` (lab, for `vite dev`) | `ARENA_URL`, `ARENA_TOKEN` |
-| `/home/erdal/trader-arena/.env` (server, mode 600) | Capital.com demo login, `ARENA_TOKEN`, arena settings (see `apps/backend/src/arena/main.ts`) |
-| `/home/erdal/trader-ui/.env` (server) | `PORT`, `HOST`, `ORIGIN`, `ARENA_URL`, `ARENA_TOKEN` |
+| `~/.local/share/hetzner-pc/mirror/home/erdal/trader-arena/.env` (PC runtime, mode 600) | Capital.com demo login, `ARENA_TOKEN`, arena settings (see `apps/backend/src/arena/main.ts`) |
+| `~/.local/share/hetzner-pc/mirror/home/erdal/trader-ui/.env` (PC runtime) | `PORT`, `HOST`, `ORIGIN`, `ARENA_URL`, `ARENA_TOKEN` |
 
 ## Fresh install (lab PC)
 

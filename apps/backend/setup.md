@@ -1,7 +1,7 @@
 # Trader Backend
 
 Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo, the lab tools
-(run on the lab PC), and the arena service (runs on Hetzner). Repo-wide map and hard rules:
+(run on the lab PC), and the arena service (relocated to the same PC on October 16). Repo-wide map and hard rules:
 [`../../setup.md`](../../setup.md).
 
 ## Read on demand
@@ -57,7 +57,7 @@ Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.
   2024-01, US100 since 2020) and one compressed recorded-tick store plus small indexes. See [TICKS.md](TICKS.md).
 - Lab caches (gitignored, rebuildable) under `data/`: candle binaries, TimesFM forecast tables,
   backtest results.
-- Arena state is SQLite on the server (`/home/erdal/trader-arena/data/arena.db`): agents and their
+- Arena state is SQLite in the PC runtime (`~/.local/share/hetzner-pc/mirror/home/erdal/trader-arena/data/arena.db`): agents and their
   versioned source, runs, trades, equity, logs, broker deals, events, settings.
 
 ## Broker mirror (real demo orders)

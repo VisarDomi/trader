@@ -5,6 +5,7 @@ import { tickStoreStats } from './tick-store.ts';
 import { DATA_DIR } from './candles.ts';
 import { sql } from '../data/db.ts';
 import { TICK_API } from '../engine/ticks.ts';
+import { PC_SERVER_ACTIVE, SERVER_RUNTIME_ROOT, SERVER_SSH } from './runtime.ts';
 export const PROJECT_STORAGE_BUDGET_BYTES = 100_000_000_000;
 const TWO_YEARS_SECONDS = 2 * 365.25 * 86400,
   NON_TICK_GROWTH_RESERVE = 10_000_000_000;
@@ -16,9 +17,10 @@ async function output(args: string[]): Promise<string> {
   return out;
 }
 async function files(force: boolean) {
+  const location = `${PC_SERVER_ACTIVE ? 'pc' : SERVER_SSH}:${SERVER_RUNTIME_ROOT}`;
   if (!force && existsSync(CACHE)) {
     const old = await Bun.file(CACHE).json();
-    if (Date.now() - old.at < 3600_000) return old;
+    if (old.location === location && Date.now() - old.at < 3600_000) return old;
   }
   const repo = resolve(DATA_DIR, '../../..');
   const repositoryBytes = Number((await output(['du', '-sb', repo])).split(/\s/)[0]);
@@ -27,20 +29,21 @@ async function files(force: boolean) {
   if (existsSync(hub))
     for (const name of readdirSync(hub).filter((n) => n.toLowerCase().includes('timesfm')))
       modelBytes += Number((await output(['du', '-sbL', join(hub, name)])).split(/\s/)[0]);
-  const remote = await output([
+  const paths = ['trader-arena', 'trader-ui'].map(name => join(SERVER_RUNTIME_ROOT, name));
+  const measured = await output(PC_SERVER_ACTIVE ? ['du', '-sb', ...paths] : [
     'ssh',
     '-o',
     'BatchMode=yes',
     '-o',
     'ConnectTimeout=10',
-    'erdal@157.90.28.14',
+    SERVER_SSH,
     'du -sb /home/erdal/trader-arena /home/erdal/trader-ui',
   ]);
-  const serverBytes = remote
+  const serverBytes = measured
     .trim()
     .split('\n')
     .reduce((n, line) => n + Number(line.split(/\s/)[0]), 0);
-  const value = { at: Date.now(), repositoryBytes, modelBytes, serverBytes };
+  const value = { at: Date.now(), location, repositoryBytes, modelBytes, serverBytes };
   await Bun.write(CACHE, JSON.stringify(value));
   return value;
 }

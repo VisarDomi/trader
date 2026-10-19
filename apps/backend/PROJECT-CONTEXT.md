@@ -6,6 +6,12 @@ original database-removal activity. This records the user's direction and supers
 assumptions so context handoffs do not restart settled design questions. Current runtime
 facts come from the API and [journal](agents/JOURNAL.md); later user instructions take precedence.
 
+**Operations update, October 19:** the shared infrastructure was migrated to this PC on October 16.
+Arena/UI now use `pc-server-trader-{arena,ui}` user units and the private
+`~/.local/share/hetzner-pc/mirror/home/erdal` runtime root. Hetzner is the public edge only.
+The PC must stay on for trading and recording. This supersedes the historical topology below;
+see root setup.md for deploy, storage and resource-cap handling. Never revive the old server writer.
+
 ## What the user is building
 
 - A platform for choosing among many trading agents, watching them forward, and adding an agent
