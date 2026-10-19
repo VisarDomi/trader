@@ -19,6 +19,7 @@ import type { AgentRow, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
+import { graveyard } from './graveyard.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -144,6 +145,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       })),
     );
   });
+  add(METHOD_GET, '/api/graveyard', () => json(graveyard(db)));
 
   add(METHOD_GET, '/api/agents/*id', (_req, { id }) => {
     const a = db.agent(id!);

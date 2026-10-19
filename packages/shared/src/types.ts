@@ -151,6 +151,27 @@ export interface AgentDetail extends AgentInfo {
 	runs: RunSummary[];
 }
 
+export const GRAVEYARD_CATEGORY = { AGENT: 'agent', VERSION: 'version', PLATFORM: 'platform', RUNS: 'runs' } as const;
+export type GraveyardCategory = typeof GRAVEYARD_CATEGORY[keyof typeof GRAVEYARD_CATEGORY];
+export interface GraveyardRun extends Pick<RunSummary, 'id' | 'kind' | 'epic' | 'leverage' | 'capital' | 'equity' | 'windowId' | 'startedAt' | 'endedAt'> {
+	reason: string;
+	engineVersion: string | null;
+	metrics: Pick<RunMetrics, 'trades' | 'totalReturn' | 'sharpe' | 'maxDrawdown'> | null;
+}
+export interface GraveyardEntry {
+	key: string;
+	agentId: string;
+	name: string;
+	codeHash: string;
+	category: GraveyardCategory;
+	hasSource: boolean;
+	startedAt: number;
+	endedAt: number | null;
+	runs: GraveyardRun[];
+	backtests: GraveyardRun[];
+	comparisonRuns: number;
+}
+
 export interface Trade {
 	side: Side;
 	size: number;

@@ -295,8 +295,9 @@ export class ArenaDB {
       .all()
       .map(c => c.name);
     if (!runColumns.includes('leverage')) this.db.exec(`ALTER TABLE runs ADD COLUMN leverage INTEGER`);
-    // Backtests from before leverage tiers have no demo counterpart any more; the lab re-runs them per tier.
-    this.db.exec(`DELETE FROM runs WHERE kind = 'backtest' AND leverage IS NULL`);
+    // Historical runs, including pre-tier backtests, belong in the graveyard rather than being deleted.
+    this.db.exec(`UPDATE runs SET retired = 1 WHERE kind = 'backtest' AND leverage IS NULL`);
+    this.preserveRetirementReasons();
   }
 
   tx<T>(fn: () => T): T {
@@ -394,8 +395,34 @@ export class ArenaDB {
       .run(r.id, RUN_KIND.DEMO, r.agentId, r.codeHash, r.epic, r.leverage, r.capital, JSON.stringify(r.params), r.now, r.now, r.capital);
   }
 
-  retireRun(id: string, now: number, status: RunStatus): void {
-    this.db.query(`UPDATE runs SET retired = 1, ended_at = ?, status = ? WHERE id = ?`).run(now, status, id);
+  retireRun(id: string, now: number, status: RunStatus, reason?: string): void {
+    this.tx(() => {
+      this.db.query(`UPDATE runs SET retired = 1, ended_at = ?, status = ? WHERE id = ?`).run(now, status, id);
+      if (reason) {
+        const row = this.run(id);
+        if (row) this.setRunExtra(id, { ...(row.extra ? JSON.parse(row.extra) : {}), retirement: {at: now, reason} });
+      }
+    });
+  }
+
+  /** Rescue exact historical reasons before their rolling event/log records are pruned. */
+  private preserveRetirementReasons(): void {
+    const rows = this.db.query<RunRow, []>(`SELECT * FROM runs WHERE retired = 1 AND json_extract(extra, '$.retirement') IS NULL`).all();
+    if (!rows.length) return;
+    const reasons = new Map<string, string>();
+    for (const e of this.db.query<{message:string}, []>(`SELECT message FROM events WHERE message LIKE 'retired %' ORDER BY time`).all()) {
+      const match = /^retired (\S+)(?: \(roster\))?: (.+)$/.exec(e.message);
+      if (match) reasons.set(match[1]!, match[2]!);
+    }
+    for (const l of this.db.query<{run_id:string;message:string}, []>(`SELECT run_id, message FROM logs WHERE message LIKE 'retired %' ORDER BY time`).all())
+      if (!reasons.has(l.run_id)) reasons.set(l.run_id, l.message);
+    this.tx(() => {
+      for (const row of rows) {
+        const extra = row.extra ? JSON.parse(row.extra) : {};
+        const reason = extra.demotionReason ?? reasons.get(row.id);
+        if (reason) this.setRunExtra(row.id, {...extra, retirement:{at:row.ended_at ?? row.updated_at,reason}});
+      }
+    });
   }
 
   saveRunState(r: { id: string; status: RunStatus; equity: number; snapshot: RunSnapshot; metrics: RunMetrics | null; now: number }): void {
@@ -480,10 +507,21 @@ export class ArenaDB {
       .run(cutoff);
   }
 
-  /** Store a backtest result pushed from the lab (replaces the previous one for the same agent/epic/leverage/window). */
+  /** Keep the latest backtest at its stable id; archive superseded source/engine versions with their full history. */
   saveBacktest(r: BacktestResult): void {
     const id = backtestRunId(r.windowId, r.agentId, r.epic, r.leverage);
     this.tx(() => {
+      const previous = this.run(id);
+      const extra = previous?.extra ? JSON.parse(previous.extra) : {};
+      if (previous && (previous.code_hash !== r.codeHash || extra.engineVersion !== r.engineVersion)) {
+        const archivedId = `${id}:archived:${crypto.randomUUID()}`;
+        const reason = previous.code_hash !== r.codeHash ? 'Superseded agent source version' : 'Superseded simulation engine version';
+        // Defer constraints until parent and all three child keys have moved together.
+        this.db.exec('PRAGMA defer_foreign_keys = ON');
+        this.db.query(`UPDATE runs SET id = ?, retired = 1, extra = ? WHERE id = ?`)
+          .run(archivedId,JSON.stringify({...extra,retirement:{at:Date.now(),reason}}),id);
+        for (const table of ['trades','equity','logs']) this.db.query(`UPDATE ${table} SET run_id = ? WHERE run_id = ?`).run(archivedId,id);
+      }
       this.db.query(`DELETE FROM runs WHERE id = ?`).run(id);
       this.db
         .query(
