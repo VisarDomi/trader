@@ -1,6 +1,7 @@
 [Unit]
 Description=Trader nightly lab job (ingest candles, precompute forecasts, backtest new agents)
 After=network-online.target trader-forecaster.service
+ConditionPathExists=!%h/.local/share/heavy-resources/user-pause.json
 
 [Service]
 Type=oneshot

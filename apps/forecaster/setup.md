@@ -11,7 +11,7 @@ it uses ~1.3 GB of VRAM and does ~140 forecasts/s at context 512). Repo-wide map
   `{"mean": [[...]], "quantiles": [[[q10 steps], ..., [q90 steps]], ...]}` (quantile levels 0.1…0.9;
   `mean` is the median).
 
-Callers: the arena (live, through the `trader-tunnel` reverse forward) and `bun run forecasts`
+Callers: the arena (live, directly on PC loopback after the migration) and `bun run forecasts`
 (backtest precompute, writes tables under `apps/backend/data/forecasts`).
 
 ## Run
@@ -24,3 +24,8 @@ uv sync                                   # Python 3.12 venv in .venv with times
 Env: `FORECASTER_HOST`, `FORECASTER_PORT`, `FORECASTER_BATCH` (the service uses 256),
 `FORECASTER_SYMMETRIC=1` (TimesFM's symmetric-input option; off by default).
 The first start downloads the model from Hugging Face (`google/timesfm-3.0-pytorch`).
+
+`heavy-resources-stop` unloads this GPU service and pauses the video pipeline/nightly lab. The persistent
+hold blocks automatic restarts, including after reboot. `heavy-resources-start` reloads the model and
+resumes the pipeline and normal lab schedule. Trading and tick recording keep running; forecast-based
+agents wait while the model is paused.

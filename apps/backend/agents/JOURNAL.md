@@ -3,6 +3,23 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-21 (Wed, user-requested) — heavy-resource pause controls
+
+- Renamed the user's pipeline-force stop/start shortcuts to `heavy-resources-stop` and
+  `heavy-resources-start`, including executable commands for terminals already open. The environment
+  controller preserves the existing video pause/checkpoint behavior and now includes TimesFM and the
+  heavy nightly lab job/timer. Resume restores the normal schedule, rather than restarting a partial lab job.
+- Persistent user hold at `~/.local/share/heavy-resources/user-pause.json`; installed systemd conditions
+  block automatic model/lab activation, including after reboot. The watchdog respects this deliberate
+  pause, while continuing account, feed, recorder, archive and storage checks. Future maintenance must
+  not clear the hold or restart heavy jobs without explicit user resumption.
+- The video pipeline was already paused. Applied the broader stop: TimesFM released 1,494 MiB VRAM;
+  video/model/lab job/lab timer are inactive, arena/UI and tick-archive timer remain active. Actual
+  attempted model/timer starts were blocked by the hold. Arena ready, watchdog dry-run zero alerts.
+- Validation: four controller regression checks, four watchdog checks and backend typecheck passed.
+  Resume was checked with mocks and a read-only dry-run; the user's paused workloads were not resumed.
+  Shell aliases and their chezmoi source agree; unrelated forecaster/Bluetooth edits were preserved.
+
 ## 2026-10-19 (Mon) — virtual day 11.9; PC maintenance and Graveyard
 
 - Health after repairs: 4,561 virtual runs (551 standard, 4,010 correlated comparisons), 63 loaded
