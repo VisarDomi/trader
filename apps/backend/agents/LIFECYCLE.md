@@ -148,6 +148,9 @@ agents that size with `marginPct` use the high leverage.
    The arena/UI moved to the PC on October 16. The migration `ACTIVE` marker selects the local runtime
    in storage/deploy tooling; the old tunnel is intentionally disabled. Confirm both
    `pc-server-trader-*` units share `trader.slice`. Do not start the retired Hetzner writer.
+   Respect the user's `~/.local/share/heavy-resources/user-pause.json` hold: an intentionally stopped
+   forecaster/nightly lab is expected. Keep trading/recording healthy; defer heavy additions/backtests
+   until the user runs `heavy-resources-start`. Never clear the hold or restart these jobs autonomously.
    Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.

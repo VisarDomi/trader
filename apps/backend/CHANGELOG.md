@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Respect the user's persistent heavy-resource hold: stop/resume TimesFM and the nightly lab with
+  the video pipeline, block model/lab starts while paused, and suppress their expected watchdog alarms.
+  Live trading, recording, archival and dashboard services keep running.
 - Add a Graveyard API for decommissioned agents, replaced versions and retired platform cohorts.
   Preserve retirement reasons beyond rolling event retention, archive superseded backtests with their
   trades/equity/logs, and retain pre-leverage results instead of deleting them during startup.
