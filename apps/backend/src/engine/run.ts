@@ -122,6 +122,12 @@ interface OpenPosition {
   entryPrice: number;
   entryTime: number;
   entryBarCount: number;
+  /** Observed holding bars and the last closed-bar timestamp counted, independent of a process's warm-up origin. */
+  heldBars?: number;
+  heldThrough?: number;
+  /** Current-process cursor only; discarded when restoring. */
+  heldCount?: number;
+  barsHeldPartial?: boolean;
   stopLoss: number | null;
   takeProfit: number | null;
   trailingStop: number | null;
@@ -478,6 +484,7 @@ export class AgentRun {
   }
 
   snapshot(): RunSnapshot {
+    if (this.position) this.holdingBars(this.position);
     return {
       balance: this.balance,
       position: this.position ? { ...this.position } : null,
@@ -501,6 +508,7 @@ export class AgentRun {
   restore(s: RunSnapshot, trades: Trade[], equity: EquityPoint[]): void {
     this.balance = s.balance;
     this.position = s.position ? { ...s.position } : null;
+    if (this.position) this.position.heldCount = undefined;
     this.state = (s.state ?? {}) as Record<string, unknown>;
     this.peakEquity = s.peakEquity;
     this.maxDrawdown = s.maxDrawdown;
@@ -635,6 +643,9 @@ export class AgentRun {
       entryPrice: entry,
       entryTime: time,
       entryBarCount: this.primary.closedCount,
+      heldBars: 0,
+      heldThrough: time,
+      heldCount: this.primary.closedCount,
       stopLoss: opts.stopLoss ?? null,
       takeProfit: opts.takeProfit ?? null,
       trailingStop: opts.trailingStop ?? null,
@@ -786,7 +797,8 @@ export class AgentRun {
       exitReason: reason,
       entryReason: pos.entryReason,
       exitNote: note,
-      barsHeld: this.primary.closedCount - pos.entryBarCount,
+      barsHeld: this.holdingBars(pos),
+      ...(pos.barsHeldPartial ? {barsHeldPartial:true} : {}),
     };
     // Funding was already debited from the balance as it accrued.
     this.balance += gross;
@@ -948,7 +960,8 @@ export class AgentRun {
       size: pos.size,
       entryPrice: pos.entryPrice,
       entryTime: pos.entryTime,
-      barsHeld: this.primary.closedCount - pos.entryBarCount,
+      barsHeld: this.holdingBars(pos),
+      ...(pos.barsHeldPartial ? {barsHeldPartial:true} : {}),
       stopLoss: pos.stopLoss,
       takeProfit: pos.takeProfit,
       trailingStop: pos.trailingStop,
@@ -956,6 +969,32 @@ export class AgentRun {
       closeAt: pos.closeAt,
       validUntil: pos.validUntil,
     };
+  }
+
+  private holdingBars(pos: OpenPosition): number {
+    if (pos.heldCount !== undefined) {
+      pos.heldBars = (pos.heldBars ?? 0) + Math.max(0, this.primary.closedCount - pos.heldCount);
+    } else {
+      // Restored runs wait while shared series warm up. Rebase only once history reaches the saved cursor.
+      const bars = this.primary.bars;
+      const through = pos.heldThrough ?? pos.entryTime;
+      const last = bars.at(-1);
+      if (!last || this.primary.closeTime(last) < through) return pos.heldBars ?? 0;
+      let low = 0, high = bars.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (this.primary.closeTime(bars[mid]!) <= through) low = mid + 1;
+        else high = mid;
+      }
+      if (bars[0]!.time > through && !pos.barsHeldPartial) {
+        pos.barsHeldPartial = true;
+        this.log(this.lastTime, 'holding-bar recovery is a lower bound: earlier bars are outside retained history');
+      }
+      pos.heldBars = (pos.heldBars ?? 0) + bars.length - low;
+    }
+    pos.heldCount = this.primary.closedCount;
+    pos.heldThrough = Math.max(pos.heldThrough ?? pos.entryTime, this.primary.last ? this.primary.closeTime(this.primary.last) : pos.entryTime);
+    return pos.heldBars ?? 0;
   }
 
   private makeContext(bar: Bar | null, eventTime?: number): AgentContext {

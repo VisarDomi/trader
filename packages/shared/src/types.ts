@@ -59,7 +59,7 @@ export interface RunMetrics {
 	bestTrade: number;
 	worstTrade: number;
 	tStat: number;
-	avgBarsHeld: number;
+	avgBarsHeld: number | null;
 	exposure: number;
 	funding: number;
 	profitableMonths: number;
@@ -185,6 +185,7 @@ export interface Trade {
 	entryReason?: string;
 	exitNote?: string;
 	barsHeld: number;
+	barsHeldPartial?: boolean;
 }
 
 export interface EquityPoint {

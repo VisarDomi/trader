@@ -11,9 +11,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { homedir } from 'node:os';
 import type { ArenaEvent, ArenaStatus, BrokerStatus } from '@trader/shared';
-import { FORECASTER_UNIT, LAB_HEALTH_UNITS, SERVER_RUNTIME_ROOT } from './runtime.ts';
+import { FORECASTER_UNIT, HEAVY_RESOURCE_PAUSE_FILE, LAB_HEALTH_UNITS, SERVER_RUNTIME_ROOT } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const STATE_PATH = resolve(import.meta.dir, '..', '..', 'data', 'watchdog.json');
@@ -72,7 +71,7 @@ function unitState(unit: string, verb: 'is-active' | 'is-failed'): string {
   return r.stdout.toString().trim();
 }
 
-export async function check(state: State, now: number, heavyResourcesPaused = existsSync(resolve(homedir(), '.local/share/heavy-resources/user-pause.json'))): Promise<Alert[]> {
+export async function check(state: State, now: number, heavyResourcesPaused = existsSync(HEAVY_RESOURCE_PAUSE_FILE)): Promise<Alert[]> {
   const alerts: Alert[] = [];
   for (const unit of LAB_UNITS) {
     if (heavyResourcesPaused && unit === FORECASTER_UNIT) continue;

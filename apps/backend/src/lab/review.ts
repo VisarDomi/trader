@@ -11,6 +11,8 @@
  */
 import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow } from '@trader/shared';
 import { assess, LIFECYCLE, luckBands, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
+import { existsSync } from 'node:fs';
+import { HEAVY_RESOURCE_PAUSE_FILE } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const FLAG_JSON = '--json';
@@ -113,6 +115,7 @@ const report = {
   health: {
     stream: status.stream.connected,
     forecaster: status.forecaster.reachable,
+    forecasterPaused: !status.forecaster.reachable && existsSync(HEAVY_RESOURCE_PAUSE_FILE),
     memoryMb: status.memoryMb,
     loadErrors: status.loadErrors,
     ticks: status.ticks ?? null,
@@ -154,7 +157,7 @@ if (process.argv.includes(FLAG_JSON)) {
   const lines: string[] = [];
   lines.push(`# Arena review ${report.generatedAt.slice(0, 16)}Z — virtual day ${report.demoDays}`);
   lines.push('', '## Health');
-  lines.push(`- stream ${report.health.stream ? 'connected' : 'DOWN'}, forecaster ${report.health.forecaster ? 'reachable' : 'UNREACHABLE'}, arena ${report.health.memoryMb} MB`);
+  lines.push(`- stream ${report.health.stream ? 'connected' : 'DOWN'}, forecaster ${report.health.forecaster ? 'reachable' : report.health.forecasterPaused ? 'paused by user' : 'UNREACHABLE'}, arena ${report.health.memoryMb} MB`);
   if (report.health.loadErrors.length) lines.push(`- LOAD ERRORS: ${report.health.loadErrors.map(e => `${e.file}: ${e.error}`).join('; ')}`);
   const ticks = report.health.ticks;
   if (ticks) lines.push(`- tick journal: ${ticks.highWater} received, ${ticks.acknowledged} archived, ${ticks.lostTicks} dropped; ${ticks.lastError ?? 'no recording error'}`);

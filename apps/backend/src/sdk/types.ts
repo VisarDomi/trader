@@ -41,6 +41,8 @@ export interface Position {
   entryTime: number;
   /** Primary-timeframe bars since entry (0 on the bar the order was placed). */
   barsHeld: number;
+  /** Older restored positions may have only a lower bound when earlier bars are unavailable. */
+  barsHeldPartial?: boolean;
   stopLoss: number | null;
   takeProfit: number | null;
   /** Trailing distance in price units, if a trailing stop is active. */
@@ -119,6 +121,7 @@ export interface Trade {
   entryReason?: string;
   exitNote?: string;
   barsHeld: number;
+  barsHeldPartial?: boolean;
 }
 
 export interface Fill {

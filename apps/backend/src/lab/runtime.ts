@@ -9,6 +9,7 @@ export const SERVER_SSH = 'erdal@157.90.28.14';
 export const ARENA_UNIT = PC_SERVER_ACTIVE ? 'pc-server-trader-arena.service' : 'trader-arena.service';
 export const UI_UNIT = 'pc-server-trader-ui.service';
 export const FORECASTER_UNIT = 'trader-forecaster.service';
+export const HEAVY_RESOURCE_PAUSE_FILE = join(process.env.HOME ?? '/home/visar', '.local/share/heavy-resources/user-pause.json');
 export const LAB_HEALTH_UNITS = PC_SERVER_ACTIVE
   ? [ARENA_UNIT, UI_UNIT, FORECASTER_UNIT]
   : ['trader-tunnel.service', FORECASTER_UNIT];

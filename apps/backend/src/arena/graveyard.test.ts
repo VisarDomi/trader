@@ -56,6 +56,10 @@ test('source and engine replacements preserve backtest trades, equity and logs w
   try {
     db.upsertAgent(agent(),1);
     db.saveBacktest(backtest(OLD,'prior-engine'));
+    const original=db.runs(RUN_KIND.BACKTEST)[0]!;
+    const partial={...db.trades(original.id)[0]!,barsHeldPartial:true};
+    db.appendTrade(original.id,0,partial);
+    expect(db.trades(original.id)[0]?.barsHeldPartial).toBeTrue();
     db.saveBacktest(backtest());
     const engineArchive=db.runs(RUN_KIND.BACKTEST,true).find(r=>r.retired)!;
     expect(db.trades(engineArchive.id)).toHaveLength(1);
