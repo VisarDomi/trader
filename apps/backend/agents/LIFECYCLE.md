@@ -162,7 +162,8 @@ agents that size with `marginPct` use the high leverage.
    Judge standard runs once; do not count latency comparisons as independent evidence.
 5. **Add agents** if due (above).
 6. **Ship:** commit (`chore(agents): retire …`, `feat(agents): …`), `git push`, and run
-   `ops/server/deploy-arena.sh` when anything under `agents/` changed (including `roster.json`). Then run
+   `ops/server/deploy-arena.sh` when strategy source, `roster.json` or arena runtime code changed. Journal
+   and documentation-only updates publish through the dashboard push without restarting trading/recording. Then run
    `bun run review` again and check the live run count moved as expected and nothing failed to load.
 7. **Journal:** add an entry at the top of `JOURNAL.md` (format below) and update the idea log; commit and
    push. The dashboard's Journal page updates with the push.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Preserve observed holding-bar counts across restores with different warm-up origins, including
+  SDK time stops. Recover old snapshots from observed bars, label incomplete recovery as a lower
+  bound, persist that quality flag, and report unknown duration averages for invalid historical counts.
+  Existing prices, P&L and raw trade records remain unchanged; normal uninterrupted backtests are unaffected.
+- Lifecycle review labels the user's deliberate TimesFM hold as paused rather than an outage.
+
 - Respect the user's persistent heavy-resource hold: stop/resume TimesFM and the nightly lab with
   the video pipeline, block model/lab starts while paused, and suppress their expected watchdog alarms.
   Live trading, recording, archival and dashboard services keep running.

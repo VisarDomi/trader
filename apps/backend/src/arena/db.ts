@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS trades (
   entry_reason TEXT,
   exit_note TEXT,
   bars_held INTEGER NOT NULL,
+  bars_held_partial INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (run_id, idx)
 );
 
@@ -270,6 +271,8 @@ export class ArenaDB {
   }
 
   private migrate(): void {
+    const tradeColumns = this.db.query<{name:string}, []>(`PRAGMA table_info(trades)`).all().map(c => c.name);
+    if (!tradeColumns.includes('bars_held_partial')) this.db.exec(`ALTER TABLE trades ADD COLUMN bars_held_partial INTEGER NOT NULL DEFAULT 0`);
     const dealColumns = this.db
       .query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`)
       .all()
@@ -438,8 +441,8 @@ export class ArenaDB {
   appendTrade(runId: string, idx: number, t: Trade): void {
     this.db
       .query(
-        `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held, bars_held_partial)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         runId,
@@ -456,6 +459,7 @@ export class ArenaDB {
         t.entryReason ?? null,
         t.exitNote ?? null,
         t.barsHeld,
+        t.barsHeldPartial ? 1 : 0,
       );
   }
 
@@ -772,5 +776,6 @@ function rowToTrade(r: Record<string, unknown>): Trade {
     entryReason: (r.entry_reason as string | null) ?? undefined,
     exitNote: (r.exit_note as string | null) ?? undefined,
     barsHeld: r.bars_held as number,
+    ...(r.bars_held_partial ? {barsHeldPartial:true} : {}),
   };
 }

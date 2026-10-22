@@ -41,7 +41,7 @@ export interface RunMetrics {
   worstTrade: number;
   /** mean / stdev * sqrt(n) of trade P&L — above ~2 the edge is unlikely to be luck. */
   tStat: number;
-  avgBarsHeld: number;
+  avgBarsHeld: number | null;
   /** Fraction of time with an open position. */
   exposure: number;
   funding: number;
@@ -89,6 +89,7 @@ export function computeMetrics(input: MetricsInput): RunMetrics {
 
   const monthly = monthlyReturns(equity, initialCapital);
   const maxDrawdown = input.maxDrawdown;
+  const knownHoldingBars = trades.filter(t => t.barsHeld >= 0 && !t.barsHeldPartial).map(t => t.barsHeld);
 
   return {
     startTime,
@@ -113,7 +114,7 @@ export function computeMetrics(input: MetricsInput): RunMetrics {
     bestTrade: round(pnls.length > 0 ? Math.max(...pnls) : 0, 4),
     worstTrade: round(pnls.length > 0 ? Math.min(...pnls) : 0, 4),
     tStat: round(pnls.length > 1 && stdev(pnls) > 0 ? (mean(pnls) / stdev(pnls)) * Math.sqrt(pnls.length) : 0, 4),
-    avgBarsHeld: round(trades.length > 0 ? mean(trades.map(t => t.barsHeld)) : 0, 2),
+    avgBarsHeld: knownHoldingBars.length ? round(mean(knownHoldingBars), 2) : trades.length ? null : 0,
     exposure: round(input.exposure, 4),
     funding: round(sum(trades.map(t => t.funding)), 4),
     profitableMonths: monthly.filter(m => m.ret > 0).length,

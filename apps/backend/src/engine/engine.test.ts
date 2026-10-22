@@ -296,6 +296,65 @@ describe('AgentRun leverage', () => {
 });
 
 describe('AgentRun restore', () => {
+  for (const prefixBars of [2, 30]) test(`holding bars survive an empty restore and a different warm-up origin (${prefixBars} bars)`, () => {
+    const seen: number[] = [];
+    const agent = scripted([{at:1,do:buy({size:1})},{at:4,do:ctx => {
+      seen.push(ctx.position!.barsHeld);
+      if (ctx.position!.barsHeld >= 3) ctx.close('three-bar time stop');
+    }}]);
+    const {engine,run} = setup(agent);
+    for (let i=0;i<3;i++) engine.processCandle(flat(i,10_000));
+    const snap=run.snapshot();
+    const resumed=setup(agent);
+    resumed.run.restore(snap,[],[]);
+    const early=resumed.run.snapshot(); // The arena snapshots runs before shared history is rebuilt.
+    resumed.run.restore(early,[],[]);
+    resumed.run.primary.seed(Array.from({length:prefixBars},(_,i)=>flat(3-prefixBars+i,10_000)));
+    resumed.engine.processCandle(flat(3,10_000));
+    expect(seen).toEqual([3]);
+    expect(resumed.run.position).toBeNull();
+    expect(resumed.run.trades[0]?.barsHeld).toBe(3);
+  });
+
+  test('legacy snapshots recover observed holding bars across a market gap rather than counting empty clock buckets', () => {
+    const agent=scripted([{at:1,do:buy({size:1})},{at:3,do:ctx=>ctx.close()}]);
+    const {engine,run}=setup(agent);
+    engine.processCandle(flat(0,10_000));
+    engine.processCandle(flat(100,10_000));
+    const snap=run.snapshot();
+    delete snap.position!.heldBars;delete snap.position!.heldThrough;delete snap.position!.heldCount;
+    const resumed=setup(agent);
+    resumed.run.restore(snap,[],[]);
+    resumed.run.primary.seed([flat(0,10_000),flat(100,10_000)]);
+    resumed.engine.processCandle(flat(101,10_000));
+    expect(resumed.run.trades[0]?.barsHeld).toBe(2);
+    expect(resumed.run.trades[0]?.barsHeldPartial).toBeUndefined();
+  });
+
+  test('legacy holding bars outside retained history are labeled as a lower bound', () => {
+    const agent=scripted([{at:1,do:buy({size:1})},{at:2,do:ctx=>ctx.close()}]);
+    const {engine,run}=setup(agent);
+    engine.processCandle(flat(0,10_000));
+    const snap=run.snapshot();
+    delete snap.position!.heldBars;delete snap.position!.heldThrough;delete snap.position!.heldCount;
+    const resumed=setup(agent);
+    resumed.run.restore(snap,[],[]);
+    resumed.run.primary.seed([flat(10,10_000)]);
+    resumed.engine.processCandle(flat(11,10_000));
+    expect(resumed.run.trades[0]?.barsHeld).toBe(2);
+    expect(resumed.run.trades[0]?.barsHeldPartial).toBeTrue();
+    expect(resumed.run.metrics().avgBarsHeld).toBeNull();
+  });
+
+  test('old negative holding counts are unknown in averages without changing historical trade values', () => {
+    const agent=scripted([{at:1,do:buy({size:1})},{at:2,do:ctx=>ctx.close()}]);
+    const {engine,run}=setup(agent);
+    engine.processCandle(flat(0,10_000));engine.processCandle(flat(1,10_000));
+    run.trades[0]!.barsHeld=-471;
+    expect(run.metrics().avgBarsHeld).toBeNull();
+    expect(run.trades[0]!.barsHeld).toBe(-471);
+  });
+
   test('a restored position is priced from the last stored candle, not at its cash balance', () => {
     const { engine, run } = setup(scripted([{ at: 1, do: buy({ size: 1 }) }]));
     engine.processCandle(flat(0, 10_000));
