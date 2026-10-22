@@ -3,6 +3,51 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-22 (Thu) — virtual day 14.6; holding-bar recovery
+
+- Health: feed connected, 4,561 virtual runs (551 standard, 4,010 correlated comparisons), all 450
+  Capital assignments preserved across the nine intended tiers; no load errors, broker queue or
+  unpriced closes. Observed 326 MB RSS after warm-up, 27% of one CPU core, event-loop p95 2 ms,
+  HTTP p95 121 ms and adverse-open slippage p95 3.76 bp. The two review errors are old October 19
+  broker timeouts; none have repeated since then. Both live services remain in trader.slice.
+- The explicit heavy-resource hold remains active. TimesFM and the nightly lab stay stopped; this is
+  expected and needs no user action. The watchdog reports zero alerts, and the review now labels the
+  forecaster as **paused by user**. No model, forecast batch, ingestion or historical backtest started.
+- Verdicts: control 144, early 407, keep/leader/retire/retired 0; monkey sanity 0/36. Retired: none.
+  Added: none (Thursday). Next ordinary addition window October 26, only if the user has resumed
+  heavy work and the usual admission checks/capacity permit. Still 439 virtual slots available.
+- Found a real restore bug while checking the night experiment: its earlier closed trade had
+  `barsHeld = -471`. Entry counts belonged to the previous process's warm-up origin, while exits
+  subtracted the rebuilt series counter. This also affects strategies using the SDK's bar-based time
+  stops. Fixed per-position observed counts and a timestamp cursor across restarts, with a constant-time
+  counter during normal operation. Old snapshots recover from observed bars, excluding empty clock
+  buckets; incomplete retained history is explicitly a lower bound and its quality flag is persisted.
+- Historical trade prices, P&L, quantities, times and raw counter values were preserved. Recomputed
+  averages exclude invalid/partial counts and return unknown when nothing exact remains. The night
+  experiment now reports an unknown holding average; its raw old counter is retained. All live saved
+  holding totals are nonnegative. Eighty-eight newly opened higher-timeframe positions correctly await
+  their first post-entry bar. No partial recoveries at verification. Agent source/hashes and thresholds
+  are unchanged; uninterrupted historical backtests are unaffected, so their engine/cache gate stays valid.
+- Shipped 43eb576 and re-ran review: all runs, assignments and recording journal identity/sequence
+  survived the planned restart. Night experiment source 56ac3bdfe7c1 remains on Capital demo, currently
+  flat with no overdue actual position; its one closed trade is still too little evidence to judge.
+  Graveyard remains 393 archived forward records across 41 versions, with every stored reason intact.
+- Recording/archive: 11,285,925 quotes archived, 82.0 MB compressed table, same single canonical copy;
+  zero dropped received quotes or recording errors. Whole project 12.5 GB; two-year estimate 32.1 GB,
+  four-times-rate estimate 70.6 GB against 100 GB, including the non-tick reserve. Recording gaps from
+  restarts remain explicit. No retained history removed or additional tick copies created.
+- Validation: 133 backend tests and typecheck, isolated packaged import preflight, UI check with zero
+  errors/warnings; actual post-deploy assignment/journal comparison and duration metadata inspection.
+  Bounded maintenance checks ran in trader.slice; the user's paused GPU/batch jobs stayed off.
+  Clarified the runbook: journal/docs-only pushes do not restart trading/recording; executable agent,
+  roster or arena changes still require deployment. This avoids unnecessary recording gaps.
+- Rechecked official [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) and
+  [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) calendars: no changes;
+  coverage through 2027-12-31 exceeds 90 days. No desktop notification or user intervention needed.
+- Next: observe restored time stops, archive growth and the mature-judgement clock. Respect the
+  resource hold; do not mistake its forecast pause for an outage or erase its history.
+
 ## 2026-10-21 (Wed, user-requested) — heavy-resource pause controls
 
 - Renamed the user's pipeline-force stop/start shortcuts to `heavy-resources-stop` and
@@ -442,6 +487,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-10-22: no additions/retirements; 407 strategies remain early and the heavy-resource hold
+defers GPU/batch work. Next ordinary addition date October 26, subject to explicit user resumption
+and admission checks; 439 virtual slots remain. Restore accounting was fixed without strategy tuning.
 
 Visit 2026-10-19: no new strategy or retirement; recent additions remain in observation. Next normal
 addition window October 26, with 439 virtual slots available. Graveyard now preserves decommissioned
