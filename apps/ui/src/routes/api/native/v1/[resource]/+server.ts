@@ -5,6 +5,10 @@ import { doc, topics, sources } from '$lib/server/research';
 import { PLATFORM_HISTORY } from '$lib/platform-history';
 import journal from '../../../../../../../backend/agents/JOURNAL.md?raw';
 import type { RequestHandler } from './$types';
+import { CONTROL_SLUGS, assess, luckBands } from '@trader/shared';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 const handler:RequestHandler=({request,params})=>nativeResponse(request,params.resource,{
   hash:env.TRADER_NATIVE_ACCESS_SHA256,
@@ -12,7 +16,10 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
     switch(resource) {
       case 'leaderboard': {
         const stage=q.get('stage')??'capital';
-        return arena.leaderboard(stage==='backtest'?'backtest':'demo',false,stage==='capital'?'demo':'','standard');
+        const rows=await arena.leaderboard(stage==='backtest'?'backtest':'demo',false,stage==='capital'?'demo':'','standard');
+        const bands=luckBands(rows);
+        return rows.map(row=>({...row,control:CONTROL_SLUGS.has(row.slug),
+          forwardVerdict:stage==='virtual'?assess(row,bands,Date.now()).verdict:null}));
       }
       case 'agents': return (await arena.agents()).map(({demo,backtest,...agent})=>({...agent,
         virtualRuns:demo.filter(r=>!r.id.includes(':delay=')).length,backtests:backtest.length}));
@@ -33,7 +40,7 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
       case 'broker': return arena.broker();
       case 'status': {
         const [status,execution,events]=await Promise.all([arena.status(),arena.execution(),arena.events(60)]);
-        return {status,execution,events};
+        return {status,execution,events,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
       }
       case 'graveyard': return {entries:await arena.graveyard(),platform:PLATFORM_HISTORY};
       case 'journal': return {title:'Arena journal',markdown:journal};
