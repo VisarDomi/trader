@@ -17,10 +17,11 @@ def shot(name):
  subprocess.run(['xcrun','simctl','io',a.device,'screenshot',str(OUT/(name+'.png'))],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  (OUT/(name+'.json')).write_text(json.dumps(hook('layout')))
 def orient(value):
- hook('action',name='orientation',value=value);time.sleep(1.2)
- s=hook('state')['trader']
- assert (s['width']>s['height'])==(value=='landscape'),s
- return s
+ hook('action',name='orientation',value=value)
+ for _ in range(30):
+  time.sleep(.3);s=hook('state')['trader']
+  if (s['width']>s['height'])==(value=='landscape'):return s
+ raise RuntimeError('Orientation did not settle: '+str(s))
 
 for _ in range(60):
  try:hook('state');break
