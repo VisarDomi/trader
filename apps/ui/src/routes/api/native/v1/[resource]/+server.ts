@@ -23,8 +23,12 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
       case 'run': {
         const r=await arena.run(q.get('id')!,500);
         const points=r.equityCurve,stride=Math.max(1,Math.ceil(points.length/500));
-        const capital=q.get('stage')==='capital' ? (await arena.leaderboard('demo',true,'demo','standard')).find(row=>row.runId===r.id)??null : null;
-        return {...r,capitalDemo:capital,equityCurve:points.filter((_,i)=>i%stride===0 || i===points.length-1)};
+        const [agent,broker,actual]=await Promise.all([arena.agent(r.agentId),arena.broker(),
+          q.get('stage')==='capital'?arena.leaderboard('demo',true,'demo','standard'):Promise.resolve([])]);
+        const comparison=agent.runs.filter(b=>b.kind==='backtest' && b.status!=='retired' && b.epic===r.epic && b.leverage===r.leverage && b.codeHash===r.codeHash).sort((a,b)=>b.updatedAt-a.updatedAt)[0]??null;
+        return {...r,capitalDemo:actual.find(row=>row.runId===r.id)??null,backtestComparison:comparison,
+          brokerExcluded:broker.status?.excluded.includes(r.id)??false,
+          equityCurve:points.filter((_,i)=>i%stride===0 || i===points.length-1)};
       }
       case 'broker': return arena.broker();
       case 'status': {
