@@ -15,6 +15,7 @@ conversation. Then read only what your task needs:
 | Look after the arena: retire, add agents (babysitter visits) | [`apps/backend/agents/LIFECYCLE.md`](apps/backend/agents/LIFECYCLE.md), then [`JOURNAL.md`](apps/backend/agents/JOURNAL.md) |
 | Engine, arena, lab tools, broker mirror | [`apps/backend/setup.md`](apps/backend/setup.md) |
 | Dashboard | [`apps/ui/setup.md`](apps/ui/setup.md) |
+| Native iPhone app | [`apps/ios/README.md`](apps/ios/README.md) — UIKit client, secure device pairing, Mac build/install and monthly renewal |
 | Research library (ideas, papers, notes) | [`research/README.md`](research/README.md) |
 | TimesFM forecaster (GPU) | [`apps/forecaster/setup.md`](apps/forecaster/setup.md) |
 | Services, deploys, logs | [Operations](#operations) below |
@@ -76,6 +77,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 |---|---|
 | `apps/backend/` | Bun/TypeScript: agent SDK, simulation engine, lab tools, arena service, agents |
 | `apps/ui/` | SvelteKit dashboard |
+| `apps/ios/` | Native UIKit iPhone app, vendored NativeKit and reproducible build/delivery scripts |
 | `apps/forecaster/` | Python TimesFM 3 HTTP service |
 | `packages/shared/` | API wire types shared by the arena and the dashboard |
 | `research/` | research report, topic notes and sources (saved copies in `research/files/`, not in git) |
