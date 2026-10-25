@@ -82,3 +82,19 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 `Library/Application Support/Trader/`; `diagnostic.json` identifies the launched source and loaded
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
+
+## Verified delivery — October 25, 2026
+
+- Unsigned simulator and paid ARM64 device builds pass; signed source revision `925c0a25fbd99af3`.
+- All native screens, portrait/landscape interface geometry, archived source and offline reading pass.
+- Cold restore is exact from the first recorded frame through eight seconds; warm return is exact.
+- Four Swift domain tests and three API authorization/validation tests pass; Svelte diagnostics clear.
+- Installed wirelessly in place on the unlocked primary iPhone and launched. The actual phone's
+  diagnostic reports the matching revision, live network data and 501 actual-demo history records.
+- The temporary pairing file was removed after successful device Keychain import. API access without
+  the device key returns 401; ordinary website requests retain their Authelia redirect.
+- First monthly renewal completed successfully, with the next due date November 25. Simulator shut down.
+
+The signed IPA is generated locally at `build/Trader.ipa` and is not committed. Test captures and
+device credentials remain private. The 501 demo records include past assignments; the broker still
+has 450 active assignments. Correlated virtual cohorts have no independent strategy verdicts.

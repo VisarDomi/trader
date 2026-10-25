@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Ship the native UIKit Trader iPhone client with adaptive portrait/landscape screens, cached
+  navigation/scroll restoration, all trading stages, run/account/history/research views and device-key
+  provisioning. The dedicated API keeps actual demo evidence and correlated comparisons distinct.
+
 - Provide an authenticated native-client API with dedicated device credentials, bounded record
   responses, separate actual/virtual evidence and allowlisted demo controls. Server trading credentials
   remain private; website sign-in stays unchanged.

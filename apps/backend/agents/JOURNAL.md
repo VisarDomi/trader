@@ -3,6 +3,41 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-25 (Sun, user-requested) — native Trader iPhone app
+
+- User superseded the mobile-web request with a native iOS app and authorized delivery when the
+  paired phone was reachable/unlocked. Built a UIKit/iOS 26/Swift 6 client using the existing NativeKit
+  and trusted Mac workflow. Portrait/landscape rankings, agents/parameters/source, run equity/trades,
+  actual demo evidence, Arena accounts, confirmed mirror/exclusion controls, latency cohorts,
+  Graveyard, journal, research and platform health are native screens.
+- Native access uses a dedicated device credential: only its SHA-256 hash is kept in the private UI
+  environment. Exact native API routes validate the credential and allowlist reads/demo controls;
+  the website keeps Authelia. No Capital credentials or ARENA_TOKEN enter the app. The pairing seed
+  was delivered through the paired app data container, imported into the phone's device-only Keychain
+  and removed. Anonymous API access returns 401. No credentials, products or raw captures committed.
+- Cache-first rendering, actor-based parsing/sorting/formatting, background atomic writes, bounded
+  cache and foreground-only refresh. Updates wait during list movement. Fixed startup search callbacks
+  that reset saved anchors; cold restore now matches every recorded sample from the first frame,
+  and warm return matches. Reused fonts/stat views; sampled simulator cell work max 1.9 ms and cached
+  list application max 0.8 ms. These are app spans, not a claim about physical-phone scrolling frames.
+- Validation: four Swift domain tests, three API auth/validation tests, clean Svelte diagnostics,
+  simulator native-screen/orientation/offline/archive-source batch, cold and warm restore checks.
+  Corrected execution cohort query validation to accept their display names; authenticated live check
+  returned 401 correlated rows with comparison flags and no independent verdicts. No demo controls
+  were activated during testing. The ordinary website still redirects to sign-in.
+- Paid ARM64 build and signature/profile/team/device membership verified. Installed and launched
+  wirelessly on the unlocked primary phone. Its runtime diagnostic reports source 925c0a25fbd99af3,
+  live API data and 501 actual-demo records (including past assignments). Temporary pairing file is
+  absent. Monthly renewal registration/baseline approved; the first scheduled renewal succeeded,
+  advancing the profile from October 13 to October 25, 2027. Next renewal due November 25.
+- Source, scripts, vendored Kit, icon and operation guide live in apps/ios. The signed IPA is generated
+  locally and ignored. Shared native/renewal docs include Trader; no shared Kit code changed, unrelated
+  apps/data were not modified, and the simulator was shut down after verification.
+- Platform sanity: 4,561 virtual runs, all 450 current Capital assignments, feed connected, no load
+  errors, demo mirror enabled. TimesFM/nightly lab remain under the user's explicit heavy-resource
+  hold. No agents added/retired or strategy thresholds changed; no trading engine restart needed.
+  Details: [native app guide](../../ios/README.md).
+
 ## 2026-10-22 (Thu) — virtual day 14.6; holding-bar recovery
 
 - Health: feed connected, 4,561 virtual runs (551 standard, 4,010 correlated comparisons), all 450
