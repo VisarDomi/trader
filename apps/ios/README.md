@@ -69,7 +69,7 @@ Pairing/signing data, app products, raw test captures and live-device records mu
 bun test apps/ui/src/lib/server/native-contract.test.ts
 ssh mac 'cd ~/Developer/trader/apps/ios && swift test --scratch-path build/LogicTests'
 ssh mac 'python3 ~/Developer/trader/apps/ios/scripts/check-simulator.py --device <booted-simulator-id>'
-ssh mac '~/Developer/ios-tools/native/scripts/restore-check com.visar.Trader.paid'
+/home/visar/Documents/work/ios-tools/native/scripts/restore-check com.visar.Trader.paid
 ```
 
 Simulator builds expose NativeKit test hooks at Mac loopback 8765. Extra actions choose a tab/screen,
