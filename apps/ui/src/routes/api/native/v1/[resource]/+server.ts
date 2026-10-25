@@ -16,10 +16,10 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
     switch(resource) {
       case 'leaderboard': {
         const stage=q.get('stage')??'capital';
-        const rows=await arena.leaderboard(stage==='backtest'?'backtest':'demo',false,stage==='capital'?'demo':'','standard');
-        const bands=luckBands(rows);
+        const rows=await arena.leaderboard(stage==='backtest'?'backtest':'demo',false,stage==='capital'?'demo':'',stage==='virtual'?(q.get('scenario')??'standard'):'standard');
+        const bands=luckBands(rows.filter(row=>!row.comparisonOnly));
         return rows.map(row=>({...row,control:CONTROL_SLUGS.has(row.slug),
-          forwardVerdict:stage==='virtual'?assess(row,bands,Date.now()).verdict:null}));
+          forwardVerdict:stage==='virtual'&&!row.comparisonOnly?assess(row,bands,Date.now()).verdict:null}));
       }
       case 'agents': return (await arena.agents()).map(({demo,backtest,...agent})=>({...agent,
         virtualRuns:demo.filter(r=>!r.id.includes(':delay=')).length,backtests:backtest.length}));
@@ -39,8 +39,8 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
       }
       case 'broker': return arena.broker();
       case 'status': {
-        const [status,execution,events]=await Promise.all([arena.status(),arena.execution(),arena.events(60)]);
-        return {status,execution,events,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
+        const [status,execution,events,scenarios]=await Promise.all([arena.status(),arena.execution(),arena.events(60),arena.scenarios()]);
+        return {status,execution,events,scenarios,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
       }
       case 'graveyard': return {entries:await arena.graveyard(),platform:PLATFORM_HISTORY};
       case 'journal': return {title:'Arena journal',markdown:journal};
