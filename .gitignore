@@ -25,3 +25,11 @@ logs
 
 # Research reference material (papers, page snapshots): kept on the lab PC and synced to the server, not published
 research/files/
+
+# Native products, signing and per-device credentials stay outside the public tree.
+apps/ios/build/
+apps/ios/Private/
+apps/ios/.build/
+apps/ios/.swiftpm/
+__pycache__/
+*.pyc

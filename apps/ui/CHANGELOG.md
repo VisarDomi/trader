@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Provide an authenticated native-client API with dedicated device credentials, bounded record
+  responses, separate actual/virtual evidence and allowlisted demo controls. Server trading credentials
+  remain private; website sign-in stays unchanged.
+
 - Add Graveyard: searchable archived versions and decommissioned agents, dates/reasons/results,
   preserved source and run links, and a platform history timeline. Keep active and comparison results
   distinct; source links open the exact archived hash. Run details show durable retirement reasons.
