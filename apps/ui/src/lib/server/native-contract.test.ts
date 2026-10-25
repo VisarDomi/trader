@@ -21,3 +21,10 @@ test('native resources and demo controls are allowlisted and validated',async()=
   expect((await nativeResponse(request('mirror',TOKEN,{enabled:false}),'mirror',ctx)).status).toBe(200);
   expect(calls).toEqual(['status',['mirror',{enabled:false}]]);
 });
+test('scenario labels may contain display punctuation but cannot contain controls',async()=>{
+  const ctx:NativeContext={hash:HASH,read:async(_r,q)=>q.get('scenario'),mutate:async()=>null};
+  const valid=new Request('https://trader.invalid/api/native/v1/leaderboard?stage=virtual&scenario='+encodeURIComponent('Capital-like / 170 ms'),{headers:{Authorization:`Bearer ${TOKEN}`}});
+  expect((await nativeResponse(valid,'leaderboard',ctx)).status).toBe(200);
+  const invalid=new Request('https://trader.invalid/api/native/v1/leaderboard?scenario=%00',{headers:{Authorization:`Bearer ${TOKEN}`}});
+  expect((await nativeResponse(invalid,'leaderboard',ctx)).status).toBe(400);
+});

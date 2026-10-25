@@ -23,7 +23,7 @@ export async function nativeResponse(request:Request,resource:string,context:Nat
     if (['agent','run'].includes(resource) && (!params.get('id') || params.get('id')!.length>512 || /[\x00-\x1f]/.test(params.get('id')!)))
       return json({error:'Invalid record'},400);
     if (resource==='leaderboard' && !['capital','virtual','backtest'].includes(params.get('stage')??'capital')) return json({error:'Invalid stage'},400);
-    if (resource==='leaderboard' && params.has('scenario') && !/^[a-zA-Z0-9_.:-]{1,80}$/.test(params.get('scenario')!)) return json({error:'Invalid scenario'},400);
+    if (resource==='leaderboard' && params.has('scenario') && (params.get('scenario')!.length>80 || /[\x00-\x1f]/.test(params.get('scenario')!))) return json({error:'Invalid scenario'},400);
     try {return json(await context.read(resource,params));}
     catch {return json({error:'Trader is temporarily unavailable. Your saved records remain on this phone.'},502);}
   }
