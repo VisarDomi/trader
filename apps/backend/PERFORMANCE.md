@@ -102,6 +102,20 @@ The flag can be reverted by removing only that environment override and restarti
 and [processor-dependent defaults](https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/Options.cpp)
 are the primary reference for the marker setting; the measurements above are specific to this app.
 
+Post-change live validation (two consecutive 60-second windows):
+
+| Metric | Original live sample | One marker, minute 1 | One marker, minute 2 |
+|---|---:|---:|---:|
+| Mean CPU, one core | 19.94% | 3.15% | 3.30% |
+| One-second p95 CPU | 37.99% | 12.00% | 10.00% |
+| One-second maximum CPU | 46.98% | 21.99% | 19.99% |
+| Received quotes | 2,221 | 1,840 | 1,834 |
+| Final RSS | 170 MB | 258 MB | 271 MB |
+
+That is about **80–81% less CPU per received quote** in these short live samples. Event-loop p95 was
+1 ms, no HeapHelper CPU threads remained, and account/recorder checks passed. This is evidence of the
+live improvement, not a guarantee for every future bar burst. Watch the higher RSS as history grows.
+
 ## Reproduce and continue
 
 Build, replay and profiling jobs run inside trader.slice. The October 26 request authorizes scoped
@@ -118,6 +132,11 @@ or admission backtests.
    TRADER_RISK_BACKEND=js bun run benchmark-ticks --snapshot /private/snapshot.db --from EPOCH_MS --end EPOCH_MS
    TRADER_RISK_BACKEND=native bun run benchmark-ticks --snapshot /private/snapshot.db --from EPOCH_MS --end EPOCH_MS
    ```
+
+   To include paced delivery, persistence and real dashboard read handlers, add
+   `--pace-ms 25 --limit 800 --dashboard-every 200`. Compare GC settings in separate processes using
+   `BUN_JSC_numberOfGCMarkers=1` (or `2`); omit it for the runtime default. The temporary HTTP server
+   binds only loopback on an ephemeral port and closes in finally. It never contacts the broker.
 
    Require matching digests; separate profiling from timed trials. Working DB copies are cleaned in
    finally. Delete the input snapshot after comparison.

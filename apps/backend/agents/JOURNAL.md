@@ -3,6 +3,55 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-26 (Mon, user-requested) — CPU optimization loop and Rust risk prototype
+
+- Investigated CPU spikes with live per-thread samples, hardware perf counters, a frozen production
+  snapshot and captured quotes. Original 60-second live sample: 19.94% of one core on average,
+  37.99% one-second p95, 46.98% maximum, 2,221 received quotes, 170 MB RSS. GC helpers accounted
+  for 54% of an initial perf sample; a later live minute spent 9.48 CPU seconds in heap helpers
+  versus 5.01 seconds on the main thread. Trading arithmetic alone was not the live bottleneck.
+- Removed per-quote run-ID dirty lookups, empty-queue rule checks and no-op tick-callback dispatch;
+  eliminated temporary stop objects and cached funding-day results for identical quote timestamps.
+  Every run still processes tick risk/account updates, and capture remains lossless for received quotes.
+  No agent source, sizing, leverage, lifecycle threshold or history changed.
+- Built a Cargo-locked Rust/Node-API risk core with contiguous instrument-local buffers, sparse state
+  updates, no per-position JSON/IPC/allocation/threads and a checked synchronous boundary. It covers
+  long/short equity, drawdown, fixed/trailing stops, targets and margin checks. Funding, delayed orders,
+  scheduled/session exits and callbacks retain the reference path. Fixed an installed-Bun typed-array
+  mutation incompatibility by using Buffer views; ABI/mutation canary and boundary checks guard startup.
+- Nine final unprofiled trials replayed the same 4,561-run snapshot and 4,794 archived quotes. Identical
+  full snapshot/trade/equity/log digest throughout. Median tick CPU: original 801.6 ms, optimized JS
+  522.4 ms, JS plus Rust 569.6 ms; quote p95 0.231/0.146/0.158 ms. The selected JS path saves 35% CPU
+  and 37% p95 in that workload. Rust remains opt-in because the bridge still loses to optimized JS;
+  paced trials also failed to establish a native latency advantage. A larger account-state port is the
+  next Rust candidate, with differential replay required before admission. Research/design/commands:
+  [PERFORMANCE.md](../PERFORMANCE.md).
+- Did not stop at the replay result: the first live post-deploy minute still averaged 24.1% of one
+  core. Paced replay with persistence/dashboard reads tested default, two and one GC markers; one
+  reduced total CPU about 21%, with unchanged results/quote p95 and about 120 MB extra RSS. Applied
+  BUN_JSC_numberOfGCMarkers=1 only to the arena, through committed deploy/install configuration.
+- Two consecutive live minutes after that change averaged 3.15% and 3.30% of one core, with p95
+  12%/10%, maxima 22%/20%, 1,840/1,834 received quotes and 258/271 MB RSS. This is about 80–81%
+  less CPU per quote than the original live sample. Event-loop p95 1 ms; GC helper CPU threads are
+  gone. These are short measurements, not a promise about every future market/bar burst. Watch RSS.
+- Validation: 136 backend tests (including native/reference parity through callbacks, funding, DST,
+  pending orders, restore and removal, plus persistence/invalid-buffer regressions), Rust unit test,
+  typecheck, Rust formatting/Clippy, packaged native build/canary/parity and paced benchmark smoke.
+  Added a reusable bounded offline replay tool, including optional paced delivery and real dashboard
+  read handlers. All build/replay work ran within trader.slice. The scoped request authorized these
+  optimization jobs; TimesFM/nightly lab and the explicit resource hold remained untouched.
+- Deployed b2e95e8, then 9b25c93. All 4,561 run IDs, 63 source hashes, 450 Capital assignments and the
+  recording journal identity survived exactly; zero new runs/load errors. Two planned restarts left
+  about 24.6 seconds of explicit session coverage gaps. Zero dropped received quotes; no continuous
+  history was invented across those gaps. One archive job hit restart downtime; subsequent archival
+  caught up and the watchdog returned to zero alerts. No other account/app or user forecaster edits
+  were changed. No model resumption, new agents, retirements, or physical user action.
+- The canonical compressed archive remains the only permanent tick copy. Temporary application-state
+  snapshots used for benchmarking are removed after validation; no raw quote copies were created.
+  After cleanup, refreshed project estimate: 12.9 GB, two-year 32.3 GB, four-times-rate
+  69.8 GB against 100 GB. Next: monitor live CPU/RSS and archive continuity, then profile the next
+  bottleneck before expanding Rust. Keep the fastest measured backend active.
+
 ## 2026-10-26 (Mon) — virtual day 18.7; observation continues
 
 - Health: 4,561 virtual runs (551 standard, 4,010 correlated comparisons), 63 loaded variants and all
@@ -576,6 +625,9 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+User request 2026-10-26: performance loop only; no strategy additions/retirements or tuning. Rust risk
+prototype passes parity but stays opt-in after losing to optimized JS; live GC contention was reduced.
 
 Visit 2026-10-26: no additions/retirements; 407 strategies remain early, monkey sanity 0/36.
 Monday admissions deferred by the explicit heavy-resource hold despite 439 available virtual slots;
