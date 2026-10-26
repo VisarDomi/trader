@@ -20,6 +20,7 @@ import { BarSeries, type Candle } from './series.ts';
 import type { Tick } from './ticks.ts';
 import { MINUTE_MS } from './clock.ts';
 import { QUOTE_MAX_AGE_MS } from './venue.ts';
+import { RiskBatch, RISK_OUTPUT_WIDTH } from './risk-native.ts';
 
 export const TICK_HISTORY_LIMIT = 512;
 
@@ -39,17 +40,20 @@ export class MarketEngine {
   readonly series = new Map<Timeframe, BarSeries>();
   readonly runs: AgentRun[] = [];
   private readonly runsByPrimary = new Map<Timeframe, AgentRun[]>();
+  private readonly tickRuns: AgentRun[] = [];
   readonly ticks: Tick[] = [];
   private tickMinute: Candle | null = null;
   private completedThrough = 0;
   private lastTick: Tick | null = null;
   private completedCandles: Candle[] = [];
   rejectedTicks = 0;
+  private readonly risk: RiskBatch;
 
   constructor(
     readonly instrument: Instrument,
     private readonly forecasts: ForecastProvider | null = null,
-  ) {}
+    useNativeRisk = true,
+  ) { this.risk = new RiskBatch(useNativeRisk); }
 
   getSeries(tf: Timeframe): BarSeries {
     let s = this.series.get(tf);
@@ -90,6 +94,8 @@ export class MarketEngine {
       tickHistory: this.ticks,
     });
     this.runs.push(run);
+    if (run.agent.onTick) this.tickRuns.push(run);
+    this.risk.invalidate();
     const list = this.runsByPrimary.get(def.timeframe) ?? [];
     list.push(run);
     this.runsByPrimary.set(def.timeframe, list);
@@ -97,8 +103,11 @@ export class MarketEngine {
   }
 
   removeRun(run: AgentRun): void {
+    this.risk.invalidate();
     const i = this.runs.indexOf(run);
     if (i >= 0) this.runs.splice(i, 1);
+    const tickIndex = this.tickRuns.indexOf(run);
+    if (tickIndex >= 0) this.tickRuns.splice(tickIndex, 1);
     const list = this.runsByPrimary.get(run.primary.timeframe);
     const j = list?.indexOf(run) ?? -1;
     if (list && j >= 0) list.splice(j, 1);
@@ -143,7 +152,7 @@ export class MarketEngine {
   stepTick(q: Tick): ClosedBar[] | null {
     const previous = this.lastTick;
     if (
-      ![q.time, q.receivedAt, q.bid, q.ask].every(Number.isFinite) ||
+      !Number.isFinite(q.time) || !Number.isFinite(q.receivedAt) || !Number.isFinite(q.bid) || !Number.isFinite(q.ask) ||
       q.bid <= 0 ||
       q.ask < q.bid ||
       q.time > q.receivedAt + 1000 ||
@@ -189,12 +198,13 @@ export class MarketEngine {
         c.volume += q.volume ?? 1;
       }
     }
-    for (const r of this.runs) r.onTick(q, false);
+    const risk = this.risk.evaluate(this.runs, q);
+    for (let i = 0; i < this.runs.length; i++) this.runs[i]!.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
     return closed;
   }
 
   dispatchTick(q: Tick): void {
-    for (const r of this.runs) r.dispatchTick(q);
+    for (const r of this.tickRuns) r.dispatchTick(q);
   }
 
   processTick(q: Tick): boolean {

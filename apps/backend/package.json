@@ -17,7 +17,10 @@
     "review": "bun run src/lab/review.ts",
     "watchdog": "bun run src/lab/watchdog.ts",
     "audit-capital": "bun run src/lab/audit-capital.ts",
-    "benchmark-arena": "bun run src/lab/benchmark-arena.ts"
+    "benchmark-arena": "bun run src/lab/benchmark-arena.ts",
+    "benchmark-ticks": "bun run src/lab/benchmark-ticks.ts",
+    "build-native": "bash native/build.sh",
+    "test-native": "TRADER_RISK_BACKEND=native bun test src/engine/risk-native.test.ts"
   },
   "dependencies": {
     "@trader/shared": "*"
