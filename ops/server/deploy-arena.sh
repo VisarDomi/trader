@@ -26,7 +26,7 @@ SEED=""
 if [[ "${1:-}" == "--seed" ]]; then SEED="${2:?--seed needs a path}"; fi
 
 cd "$REPO"
-SHIPPED=(apps/backend/src apps/backend/agents apps/backend/native apps/backend/package.json apps/backend/tsconfig.json packages/shared)
+SHIPPED=(apps/backend/src apps/backend/agents apps/backend/native apps/backend/package.json apps/backend/tsconfig.json packages/shared ops/lab/trader-arena-performance.conf)
 if [[ -n "$(git status --porcelain -- "${SHIPPED[@]}")" ]]; then
   echo "uncommitted changes in shipped files; commit first so the server runs a known version." >&2
   git status --short -- "${SHIPPED[@]}" >&2
@@ -81,6 +81,10 @@ fi
 
 echo "== install unit + restart"
 if "$TRADER_PC_ACTIVE"; then
+  DROPIN_DIR="$HOME/.config/systemd/user/$UNIT.service.d"
+  mkdir -p "$DROPIN_DIR"
+  install -m 0644 "$TMP/ops/lab/trader-arena-performance.conf" "$DROPIN_DIR/performance.conf"
+  systemctl --user daemon-reload
   systemctl --user restart "$UNIT"
 else
   scp -q "$REPO/ops/server/trader-arena.service" "$SERVER:/tmp/trader-arena.service"

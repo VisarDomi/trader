@@ -17,6 +17,7 @@ if "$TRADER_PC_ACTIVE"; then
     mkdir -p "$dest/$unit.service.d"
     install -m 0644 "$here/pc-server-trader.conf" "$dest/$unit.service.d/trader-slice.conf"
   done
+  install -m 0644 "$here/trader-arena-performance.conf" "$dest/pc-server-trader-arena.service.d/performance.conf"
 else
   services+=(trader-tunnel.service)
 fi

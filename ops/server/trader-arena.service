@@ -8,6 +8,7 @@ Type=simple
 User=erdal
 WorkingDirectory=/home/erdal/trader-arena/app
 EnvironmentFile=/home/erdal/trader-arena/.env
+Environment=BUN_JSC_numberOfGCMarkers=1
 ExecStart=/usr/local/bin/bun src/arena/main.ts
 Restart=always
 RestartSec=10
