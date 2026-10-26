@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reduce tick work/allocation: instrument-level dirty tracking, empty-queue fast path, tick-callback
+  indexing, allocation-free stop checks and exact-timestamp funding-day caching. Add an opt-in
+  Cargo-locked Rust/Node-API risk batch with canary and differential tests; production-state replay
+  selected faster TypeScript as default. Add bounded tick benchmarking and committed-tree native
+  build/preflight. See PERFORMANCE.md for measurements and next steps.
+
 - Preserve observed holding-bar counts across restores with different warm-up origins, including
   SDK time stops. Recover old snapshots from observed bars, label incomplete recovery as a lower
   bound, persist that quality flag, and report unknown duration averages for invalid historical counts.

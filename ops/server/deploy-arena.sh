@@ -26,7 +26,7 @@ SEED=""
 if [[ "${1:-}" == "--seed" ]]; then SEED="${2:?--seed needs a path}"; fi
 
 cd "$REPO"
-SHIPPED=(apps/backend/src apps/backend/agents apps/backend/package.json apps/backend/tsconfig.json packages/shared)
+SHIPPED=(apps/backend/src apps/backend/agents apps/backend/native apps/backend/package.json apps/backend/tsconfig.json packages/shared)
 if [[ -n "$(git status --porcelain -- "${SHIPPED[@]}")" ]]; then
   echo "uncommitted changes in shipped files; commit first so the server runs a known version." >&2
   git status --short -- "${SHIPPED[@]}" >&2
@@ -44,6 +44,8 @@ git archive HEAD "${SHIPPED[@]}" | tar -x -C "$TMP"
 echo "== validate packaged imports"
 mkdir -p "$TMP/apps/backend/node_modules/@trader"
 ln -s "$TMP/packages/shared" "$TMP/apps/backend/node_modules/@trader/shared"
+echo "== build and verify optional Rust backend from committed sources"
+(cd "$TMP/apps/backend" && CARGO_TARGET_DIR="$REPO/apps/backend/native/target" bash native/build.sh && TRADER_RISK_BACKEND=native bun test src/engine/risk-native.test.ts)
 (cd "$TMP/apps/backend" && bun -e "await import('./src/arena/api.ts')")
 echo "== upload $SHA"
 if ! "$TRADER_PC_ACTIVE"; then ssh "$SERVER" "mkdir -p $REMOTE/app $REMOTE/data"; fi

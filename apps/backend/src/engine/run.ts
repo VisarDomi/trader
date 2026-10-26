@@ -48,6 +48,7 @@ export type RunStatus = (typeof RUN_STATUS)[keyof typeof RUN_STATUS];
 
 const SIDE_LONG: Side = 'long';
 const SIDE_SHORT: Side = 'short';
+const NATIVE_EXIT_REASON = [EXIT_REASON.STOP_LOSS, EXIT_REASON.TRAILING_STOP, EXIT_REASON.TAKE_PROFIT, EXIT_REASON.MARGIN_CALL] as const;
 
 /** Fraction of equity that may be locked as margin when sizing an order. */
 const MAX_MARGIN_USE = 0.9;
@@ -241,6 +242,8 @@ export class AgentRun {
   private rngState: number;
   private currentBar: Bar | null = null;
   private inFill = false;
+  private riskChanged?: () => void;
+  bindRisk(changed: () => void): void { this.riskChanged = changed; }
   /** Total agent time in onBar, for the performance check. */
   agentMs = 0;
   barsSeen = 0;
@@ -288,6 +291,7 @@ export class AgentRun {
   /** One 1-minute candle of this instrument (before it is pushed into the series). */
   onCandle(c: Candle, fromTicks = false): void {
     if(fromTicks && c.time+60_000<=this.lastTime)return;
+    this.riskChanged?.();
     if (this.startTime === 0) this.startTime = c.time;
     this.lastTime = c.time + 60_000;
     const precision = this.instrument.pricePrecision;
@@ -357,17 +361,17 @@ export class AgentRun {
   }
 
   /** Live quote (arena only): stops and margin at tick precision. */
-  onTick(q: Quote, dispatchAgent = true): void {
+  onTick(q: Quote, dispatchAgent = true, risk?: Float64Array, riskOffset = 0): void {
     // lastTime tracks candles only (it is the resume point after a restart).
-    if (this.execution && (q.time > this.now() + 1000 || this.now() - q.time > QUOTE_MAX_AGE_MS)) return;
+    if (this.execution && (q.time > this.now() + 1000 || this.now() - q.time > QUOTE_MAX_AGE_MS)) { this.riskChanged?.(); return; }
     if (!Number.isFinite(q.bid) || !Number.isFinite(q.ask) || q.bid <= 0 || q.ask < q.bid || (this.quote && q.time < this.quote.time))
-      return;
-    if(q.journalId!==undefined && q.journalId===this.tick?.journalId && q.sequence!==undefined && this.tick?.sequence!==undefined && q.sequence<=this.tick.sequence)return;
+      { this.riskChanged?.(); return; }
+    if(q.journalId!==undefined && q.journalId===this.tick?.journalId && q.sequence!==undefined && this.tick?.sequence!==undefined && q.sequence<=this.tick.sequence){ this.riskChanged?.(); return; }
     this.quote = q;
     this.tick = q.source !== undefined && q.receivedAt !== undefined ? q as Tick : {...q,receivedAt:q.receivedAt??q.time,source:q.source??TICK_SOURCE.SYNTHETIC};
     if (this.startTime === 0) this.startTime = this.tick.receivedAt;
     this.flushPending();
-    this.checkTickProtections(this.tick);
+    this.checkTickProtections(this.tick, risk, riskOffset);
     if (dispatchAgent) this.dispatchTick();
   }
 
@@ -377,9 +381,37 @@ export class AgentRun {
     try{this.onTick(q);}finally{this.replayTime=null;}
   }
 
-  private checkTickProtections(q: Tick): void {
+  /** Exceptional paths retain the reference implementation and its exact event ordering. */
+  writeRisk(out: Float64Array, offset: number, q: Tick, day: number): boolean {
+    const p = this.position;
+    if (!p || this.status !== RUN_STATUS.RUNNING || this.pending.length ||
+      p.closeAt !== undefined || this.agent.intradayOnly || day > p.lastFundingDay) return false;
+    out[offset] = p.side === SIDE_LONG ? 1 : -1;
+    out[offset + 1] = p.size;
+    out[offset + 2] = p.entryPrice;
+    out[offset + 3] = this.balance;
+    out[offset + 4] = this.peakEquity;
+    out[offset + 5] = this.maxDrawdown;
+    out[offset + 6] = p.stopLoss ?? NaN;
+    out[offset + 7] = p.trailingStop ?? NaN;
+    out[offset + 8] = p.takeProfit ?? NaN;
+    out[offset + 9] = p.trailAnchor;
+    out[offset + 10] = this.marginFactor;
+    return true;
+  }
+
+  private checkTickProtections(q: Tick, risk?: Float64Array, offset = 0): void {
     const pos = this.position;
     if (!pos || this.status !== RUN_STATUS.RUNNING) return;
+    if (risk && risk[offset]! >= 0) {
+      this.peakEquity = risk[offset + 1]!;
+      this.maxDrawdown = risk[offset + 2]!;
+      const reason = NATIVE_EXIT_REASON[risk[offset]! - 1];
+      if (reason) return this.closePosition(reason, this.exitPrice(pos.side), q.receivedAt);
+      pos.trailAnchor = risk[offset + 3]!;
+      return;
+    }
+    this.riskChanged?.();
     this.accrueFunding(q.receivedAt, q.bid);
     const tickEquity = this.markToMarket();
     this.peakEquity = Math.max(this.peakEquity, tickEquity);
@@ -390,10 +422,14 @@ export class AgentRun {
       else return this.closePosition(EXIT_REASON.SESSION_END,exitPx,q.receivedAt,SCHEDULED_EXIT_NOTE);
       if (!this.position) return;
     }
-    const stop = this.effectiveStop(pos);
-    if (stop) {
-      const hit = pos.side === SIDE_LONG ? exitPx <= stop.price : exitPx >= stop.price;
-      if (hit) return this.closePosition(stop.reason, exitPx, q.receivedAt);
+    // The common no-hit path must not allocate an object for every open position/tick.
+    const trail = pos.trailingStop === null ? null
+      : pos.side === SIDE_LONG ? pos.trailAnchor - pos.trailingStop : pos.trailAnchor + pos.trailingStop;
+    const useTrail = trail !== null && (pos.stopLoss === null || (pos.side === SIDE_LONG ? trail > pos.stopLoss : trail < pos.stopLoss));
+    const stopPrice = useTrail ? trail : pos.stopLoss;
+    if (stopPrice !== null) {
+      const hit = pos.side === SIDE_LONG ? exitPx <= stopPrice : exitPx >= stopPrice;
+      if (hit) return this.closePosition(useTrail ? EXIT_REASON.TRAILING_STOP : EXIT_REASON.STOP_LOSS, exitPx, q.receivedAt);
     }
     if (pos.takeProfit !== null) {
       const hit = pos.side === SIDE_LONG ? exitPx >= pos.takeProfit : exitPx <= pos.takeProfit;
@@ -506,6 +542,7 @@ export class AgentRun {
   }
 
   restore(s: RunSnapshot, trades: Trade[], equity: EquityPoint[]): void {
+    this.riskChanged?.();
     this.balance = s.balance;
     this.position = s.position ? { ...s.position } : null;
     if (this.position) this.position.heldCount = undefined;
@@ -537,6 +574,7 @@ export class AgentRun {
   }
 
   private enqueueCommand(command: PendingCommand): void {
+    this.riskChanged?.();
     if (this.pending.length >= 8) return this.reject('too many pending commands');
     const slot = this.execution?.gateway?.reserve(this.runId, this.leverage, command.kind, command.at);
     if (typeof slot === 'string') return this.reject(slot);
@@ -548,7 +586,8 @@ export class AgentRun {
   }
 
   private flushPending(): void {
-    if (!this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
+    if (!this.pending.length || !this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
+    this.riskChanged?.();
     while (this.pending[0] && this.pending[0].due <= this.now()) {
       const command = this.pending.shift()!;
       if (command.kind === 'open' && this.now() - command.at > Math.max(120_000, this.execution.latencyMs + QUOTE_MAX_AGE_MS)) {
@@ -654,6 +693,7 @@ export class AgentRun {
       lastFundingDay: fundingDay(time),
       entryReason: opts.reason,
     };
+    this.riskChanged?.();
     this.emit({
       type: 'open',
       decisionTime: this.decisionTime,
@@ -688,6 +728,7 @@ export class AgentRun {
   }
 
   private setStops(update: StopUpdate): void {
+    this.riskChanged?.();
     const pos = this.position;
     if (!pos || !this.canTrade('setStops')) return;
     if (this.execution && !this.executing) {
@@ -780,6 +821,7 @@ export class AgentRun {
   }
 
   private closePosition(reason: ExitReason, price: number, time: number, note?: string): void {
+    this.riskChanged?.();
     const pos = this.position;
     if (!pos) return;
     const px = roundTo(price, this.instrument.pricePrecision);
@@ -882,6 +924,7 @@ export class AgentRun {
       nights += this.instrument.weekendTripleSwap ? (weekday === 5 ? 3 : weekday === 6 || weekday === 0 ? 0 : 1) : 1;
     }
     pos.lastFundingDay = day;
+    this.riskChanged?.();
     if (this.fundingFree) return;
     const ratePct = pos.side === SIDE_LONG ? this.instrument.overnightLongPct : this.instrument.overnightShortPct;
     const amount = pos.size * price * (ratePct / 100) * nights;

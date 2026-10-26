@@ -28,6 +28,7 @@ const nyFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 const offsetByHour = new Map<number, number>();
+let lastFundingAt = NaN, lastFundingDay = 0;
 
 /** UTC offset of New York at time t, in ms (e.g. -4h in summer). Cached per UTC hour. */
 export function newYorkOffsetMs(t: number): number {
@@ -51,8 +52,10 @@ export function newYorkMinuteOfDay(t: number): number {
 
 /** Index of the funding day containing t; it increments at every 17:00 New York rollover. */
 export function fundingDay(t: number): number {
+  if (t === lastFundingAt) return lastFundingDay;
   const local = t + newYorkOffsetMs(t);
-  return Math.floor((local - ROLLOVER_MINUTE_NY * MINUTE_MS) / DAY_MS);
+  lastFundingAt = t;
+  return lastFundingDay = Math.floor((local - ROLLOVER_MINUTE_NY * MINUTE_MS) / DAY_MS);
 }
 
 /** True in the last minutes before the daily break: intradayOnly positions must be closed. */

@@ -49,6 +49,7 @@ import { QuoteStream } from './stream.ts';
 import type { TickJournal } from './tick-journal.ts';
 import {TICK_SOURCE,type Tick} from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
+import { riskBackend } from '../engine/risk-native.ts';
 
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
@@ -113,6 +114,8 @@ export class Arena {
   private lastMetricsAt = 0;
   private lastHourWritten = 0;
   private replayClock:number|null=null;
+  /** A quote dirties one instrument, not thousands of run-id hash lookups per second. */
+  private readonly dirtyEpics = new Set<string>();
 
   constructor(opts: ArenaOptions) {
     this.loopDelay.enable();
@@ -639,7 +642,7 @@ export class Arena {
     this.dispatchClosed(engine,closed);
     engine.dispatchTick(q);
     this.saveStreamCandles(epic,engine);
-    for(const r of engine.runs){const t=this.tracked.get(r.runId);if(t)t.dirty=true;}
+    this.dirtyEpics.add(epic);
   }
 
   private onRunEvent(e: RunEvent): void {
@@ -663,7 +666,7 @@ export class Arena {
     const writeHour = hour !== this.lastHourWritten;
     this.db.tx(() => {
       for (const t of this.tracked.values()) {
-        if (!t.dirty && !withMetrics && !writeHour) continue;
+        if (!t.dirty && !this.dirtyEpics.has(t.epic) && !withMetrics && !writeHour) continue;
         const { run } = t;
         for (let i = t.persistedTrades; i < run.trades.length; i++) this.db.appendTrade(run.runId, i, run.trades[i]!);
         t.persistedTrades = run.trades.length;
@@ -680,6 +683,7 @@ export class Arena {
         t.dirty = false;
       }
     });
+    this.dirtyEpics.clear();
     if (writeHour) this.lastHourWritten = hour;
     if (withMetrics && this.ready) this.demoteVirtual(now);
   }
@@ -818,6 +822,7 @@ export class Arena {
     return {
       ready: this.ready,
       model: VIRTUAL_MODEL,
+      riskBackend,
       runCap: VIRTUAL_RUN_CAP,
       standardRuns: [...this.tracked.keys()].filter(id => !isShadow(id)).length,
       comparisonRuns: [...this.tracked.keys()].filter(isShadow).length,

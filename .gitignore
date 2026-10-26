@@ -33,3 +33,7 @@ apps/ios/.build/
 apps/ios/.swiftpm/
 __pycache__/
 *.pyc
+
+# Rust native build products (source and Cargo.lock are committed).
+apps/backend/native/target/
+apps/backend/native/*.node
