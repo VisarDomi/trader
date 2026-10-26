@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Refresh compatible dashboard dependencies: SvelteKit 2.70.3, Svelte 5.57.2, Vite 7.3.7 and patched
+  serializers/build dependencies. Audit now has no moderate/high/critical findings. Four low-severity
+  package entries remain (Kit/adapters/cookie); the Kit advisories concern enhanced catch-all form
+  actions and untrusted prerender cache headers, neither used here. No forced Kit 3 migration.
+
 - Ship the native UIKit Trader iPhone client with adaptive portrait/landscape screens, cached
   navigation/scroll restoration, all trading stages, run/account/history/research views and device-key
   provisioning. The dedicated API keeps actual demo evidence and correlated comparisons distinct.
