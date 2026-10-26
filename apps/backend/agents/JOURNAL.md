@@ -3,6 +3,47 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-26 (Mon) — virtual day 18.7; observation continues
+
+- Health: 4,561 virtual runs (551 standard, 4,010 correlated comparisons), 63 loaded variants and all
+  450 Capital assignments across the nine intended leverage tiers. Every account is hedged, correctly
+  leveraged and recently reconciled; no killed accounts, load errors, pending virtual commands or
+  unpriced closes. Broker queue drained from two to zero during inspection. Arena observed at
+  173 MB RSS, 19% of one CPU core, event-loop p95 2 ms, last poll 6.9 s, HTTP p95 117 ms and adverse
+  open slippage p95 3.57 bp. Arena/UI still share the capped trader.slice.
+- The four errors in the review are recovered events: one broker connection failure on October 23
+  and three Capital session HTTP 500s on October 24. The stream has remained connected since
+  October 24 at 21:04 UTC; current quotes and account reconciliation are fresh. Read-only Capital
+  contract probe succeeded on all 20 markets using Arena 01. No probe orders or account changes.
+  Watchdog dry-run reports zero alerts. No repair or arena restart was necessary.
+- Verdicts: control 144, early 407, keep/leader/retire/retired 0; monkey sanity 0/36. Retired: none.
+  Added: none. Today meets the ordinary addition cadence, with 439 virtual slots free, but the user's
+  explicit heavy-resource hold still defers admission backtests and additions. TimesFM and the
+  nightly lab remain stopped; no heavy batch or GPU work started and no hold marker was cleared.
+  Next ordinary addition window November 2, subject to resumption and the usual gates.
+- Holding-counter follow-up: all 3,885 virtual trades closed since the October 22 deployment have
+  nonnegative, exact holding counters; no partial counts in that sample. Earlier invalid raw counters
+  remain preserved. The night experiment retains source 56ac3bdfe7c1 and its Capital assignment,
+  is flat with one historical closed trade, and skipped this morning after a neutral Friday session.
+  No parameters, source hashes or lifecycle thresholds changed.
+- Tick archive: forced transfer/read-back/acknowledgement succeeded through sequence 17,805,212,
+  preserving the same journal identity and single canonical compressed PostgreSQL copy. Zero dropped
+  received ticks, invalid messages or recording errors. Compressed tick table 128.7 MB; whole project
+  12.6 GB. Refreshed two-year estimate 31.7 GB, four-times-rate estimate 68.0 GB against 100 GB,
+  including the non-tick reserve. These remain measured-rate forecasts; no captured history removed.
+- Graveyard integrity: 393 archived forward records across 41 versions, every source and retirement
+  reason present. Public browser requests still redirect to Authelia; anonymous native API access is
+  refused and authenticated native status/agents/Graveyard reads succeed. No app control mutations.
+- Rechecked official [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) and
+  [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) decision schedules:
+  stored dates match, including October 28 FOMC and October 30 BOJ; coverage through 2027-12-31
+  exceeds 90 days. No calendar/runtime change required.
+- Re-ran review with unchanged run/assignment/verdict counts. This visit changes the journal and idea
+  log only, so publication does not restart trading or tick capture. Existing unrelated forecaster
+  edits were preserved. Next visit October 29: watch feed/archive continuity, time stops and the
+  observation windows as the oldest cohort approaches 28 days. No desktop notification needed.
+
 ## 2026-10-25 (Sun, user-requested) — native Trader iPhone app
 
 - User superseded the mobile-web request with a native iOS app and authorized delivery when the
@@ -522,6 +563,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-10-26: no additions/retirements; 407 strategies remain early, monkey sanity 0/36.
+Monday admissions deferred by the explicit heavy-resource hold despite 439 available virtual slots;
+next ordinary window November 2 if heavy work has resumed. No new/rejected idea or parameter tuning.
 
 Visit 2026-10-22: no additions/retirements; 407 strategies remain early and the heavy-resource hold
 defers GPU/batch work. Next ordinary addition date October 26, subject to explicit user resumption
