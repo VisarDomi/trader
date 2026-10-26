@@ -39,10 +39,23 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) decision schedules:
   stored dates match, including October 28 FOMC and October 30 BOJ; coverage through 2027-12-31
   exceeds 90 days. No calendar/runtime change required.
-- Re-ran review with unchanged run/assignment/verdict counts. This visit changes the journal and idea
-  log only, so publication does not restart trading or tick capture. Existing unrelated forecaster
-  edits were preserved. Next visit October 29: watch feed/archive continuity, time stops and the
-  observation windows as the oldest cohort approaches 28 days. No desktop notification needed.
+- Dashboard publication exposed dependency audit warnings. Updated compatible UI dependencies to
+  SvelteKit 2.70.3, Svelte 5.57.2, Vite 7.3.7 and patched transitive packages; minimum direct versions
+  and the lockfile agree. Audit fell from seven high/one moderate/two low package entries to four low
+  entries, with no moderate/high/critical findings. Remaining entries cover Kit/adapters and cookie:
+  the [enhanced-form redirect](https://github.com/sveltejs/kit/security/advisories/GHSA-pfhg-q3qv-9q6r)
+  requires catch-all form actions (our enhanced actions use the fixed /broker route), the
+  [prerender XSS](https://github.com/sveltejs/kit/security/advisories/GHSA-27mw-82g8-phjj) requires
+  untrusted prerender cache headers (not used), and this app does not set cookies with untrusted
+  names/options. A future Kit 3 migration can remove these low entries; no forced major update today.
+  Clean Svelte diagnostics, production build and all three native API contract tests (13 assertions).
+  Isolated loopback production smoke passed ten rendered pages and four authenticated native reads;
+  anonymous native access still fails closed. The temporary server was stopped after verification.
+- Re-ran review with unchanged run/assignment/verdict counts. Dashboard dependencies and journal
+  publish through the normal UI deploy; no arena restart or interruption to tick capture. Existing
+  unrelated forecaster edits were preserved. Next visit October 29: watch feed/archive continuity,
+  time stops and the observation windows as the oldest cohort approaches 28 days. No desktop
+  notification needed.
 
 ## 2026-10-25 (Sun, user-requested) — native Trader iPhone app
 
