@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reduce arena GC parallelism to one marker after paced replay showed 21% less total CPU with
+  matching state and unchanged quote p95, at roughly 120 MB extra RSS. Scope the setting to the
+  arena and publish it from committed deploy configuration; keep model/nightly hold intact.
+
 - Reduce tick work/allocation: instrument-level dirty tracking, empty-queue fast path, tick-callback
   indexing, allocation-free stop checks and exact-timestamp funding-day caching. Add an opt-in
   Cargo-locked Rust/Node-API risk batch with canary and differential tests; production-state replay
