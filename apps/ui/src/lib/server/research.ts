@@ -36,6 +36,7 @@ export interface Topic {
 const ROOT = '../../../../../research/';
 /** Tab names, in reading order; notes not listed come last, by title. */
 const TOPIC_NAMES: Record<string, string> = {
+	'agent-evidence': 'Agent health',
 	leverage: 'Leverage',
 	unlevered: 'Trading at 1:1',
 	anomalies: 'Anomalies',

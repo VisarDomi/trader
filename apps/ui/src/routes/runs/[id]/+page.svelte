@@ -1,6 +1,7 @@
 <script lang="ts">
 	import EquityChart from '$lib/components/EquityChart.svelte';
 	import StatTile from '$lib/components/StatTile.svelte';
+	import AgentEvidence from '$lib/components/AgentEvidence.svelte';
 	import { ago, duration, num, pct, pctPlain, price, sign, usd, utc } from '$lib/format';
 
 	let { data } = $props();
@@ -47,12 +48,13 @@
 		{#if run.kind === 'backtest'}<StatTile label="Annual return" value={pct(m?.annualReturn)} tone={sign(m?.annualReturn)} />{/if}
 		<StatTile label="Max drawdown" value={pctPlain(m?.maxDrawdown)} />
 		<StatTile label="Sharpe" value={num(m?.sharpe)} />
-		<StatTile label="Trades" value={String(m?.trades ?? 0)} />
+		<StatTile label="Closed trades" value={String(m?.trades ?? 0)} />
 		<StatTile label="Win rate" value={m?.trades ? pctPlain(m.winRate, 0) : '—'} />
 		<StatTile label="Profit factor" value={m?.trades ? num(m.profitFactor) : '—'} />
-		<StatTile label="t-stat" value={m && m.trades > 1 ? num(m.tStat, 1) : '—'} hint="Trade P&L mean / stdev × √n. Above ~2 is unlikely to be luck." />
+		<StatTile label="t-stat" value={m && m.trades > 1 ? num(m.tStat, 1) : '—'} hint="Trade P&L mean / stdev × √n. Unadjusted for selecting among many related trials." />
 		<StatTile label="Funding paid" value={usd(m?.funding)} tone={sign(m?.funding)} />
 	</div>
+	{#if run.evidence}<AgentEvidence evidence={run.evidence} />{/if}
 
 	<section class="card">
 		<h2>Equity ({run.kind === 'demo' ? 'hourly' : 'daily'}, $10,000 start)</h2>

@@ -1,5 +1,5 @@
 import { ENGINE_VERSION } from '../engine/version.ts';
-import { expect, test } from 'bun:test';
+import { expect, test, spyOn } from 'bun:test';
 import { startApi } from './api.ts';
 import { ArenaDB, DEAL_STATUS } from './db.ts';
 import type { Arena } from './arena.ts';
@@ -22,6 +22,9 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     status: 'completed', errors: 0, metrics, trades: [], equity: [], logs: [], ranAt: 2, agentUsPerBar: 0, bars: 0, candles: 0, durationMs: 0 } as BacktestResult);
   db.createDemoRun({ id: RUN, agentId: ID, codeHash: 'hash', epic: EPIC, leverage: 1, capital: 10_000, params: {}, now: 1 });
   db.db.query('UPDATE runs SET equity = ?, metrics = ? WHERE id = ?').run(12_345, JSON.stringify(metrics), RUN);
+  const snapshot=JSON.stringify({balance:10000,position:null,state:{large:'recovery-only'.repeat(1000)}});
+  db.db.query('UPDATE runs SET snapshot=? WHERE id=?').run(snapshot,RUN);
+  const recoveryLists=spyOn(db,'runs').mockImplementation(()=>{throw new Error('A read model loaded recovery snapshots');});
   const admission = { date: '2026-10-15', reason: 'user requested this demo experiment' };
   db.setRunExtra(RUN, { scenario: 'standard', demoAdmission: admission });
   db.insertDeal({ account: 'Arena 01', account_id: 'arena', run_id: RUN, epic: EPIC, side: 'long', size: 100, paper_size: 500, deal_id: 'ours',
@@ -43,6 +46,11 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     expect(virtual[0]!.metrics!.monthly).toHaveLength(0);
     const detail = await get<RunDetail>(`/api/runs/${encodeURIComponent(RUN)}`);
     expect(detail.metrics!.monthly).toHaveLength(1);
+    expect(detail.evidence?.costs?.closedTrades).toBe(0);
+    expect(db.run(RUN)!.snapshot).toBe(snapshot);
+    expect((await get<unknown[]>('/api/agents')).length).toBe(1);
+    expect((await fetch(`http://127.0.0.1:${api.port}/api/evidence/cost-candidates?from=0`)).status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${api.port}/api/evidence/costs`,{method:'POST',body:'[]'})).status).toBe(401);
     const waitingId = RUN.replace(':x1:', ':x2:');
     db.createDemoRun({ id: waitingId, agentId: ID, codeHash: 'hash', epic: EPIC, leverage: 2, capital: 10_000, params: {}, now: 1 });
     db.setRunExtra(waitingId, { scenario: 'standard', demoAdmission: admission });
@@ -54,5 +62,5 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     expect(waiting?.brokerEvidence?.closed).toBe(0);
     const response = await fetch(`http://127.0.0.1:${api.port}/api/backtests`, { method: 'POST', body: '{}' });
     expect(response.status).toBe(401);
-  } finally { await api.stop(true); db.db.close(); }
+  } finally {recoveryLists.mockRestore();await api.stop(true); db.db.close(); }
 });

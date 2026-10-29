@@ -4,6 +4,7 @@ import argparse,json,subprocess,time,urllib.parse,urllib.request
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--device',required=True);a=p.parse_args()
 OUT=Path('/tmp/trader-native-qa');OUT.mkdir(exist_ok=True)
+APPLE_TOOL=str(Path.home()/'Developer/ios-tools/native/scripts/apple-tool')
 def hook(path,**params):
  url='http://127.0.0.1:8765/'+path+('?' + urllib.parse.urlencode(params) if params else '')
  with urllib.request.urlopen(url,timeout=10) as r:return json.load(r)
@@ -14,7 +15,7 @@ def wait(screen,rows=1):
   time.sleep(.5)
  raise RuntimeError('Screen did not settle: '+screen+' '+str(s))
 def shot(name):
- subprocess.run(['xcrun','simctl','io',a.device,'screenshot',str(OUT/(name+'.png'))],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ subprocess.run([APPLE_TOOL,'simctl','io',a.device,'screenshot',str(OUT/(name+'.png'))],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  (OUT/(name+'.json')).write_text(json.dumps(hook('layout')))
 def orient(value):
  hook('action',name='orientation',value=value)
@@ -34,12 +35,31 @@ for _ in range(10):
 orient('portrait');wait('rankings',400);hook('action',name='top');time.sleep(.3);shot('rankings-portrait')
 state=orient('landscape');shot('rankings-landscape');print('Rankings landscape geometry',state['width'],state['height'],flush=True)
 orient('portrait')
-container=Path(subprocess.check_output(['xcrun','simctl','get_app_container',a.device,'com.visar.Trader.paid','data'],text=True).strip())
+container=Path(subprocess.check_output([APPLE_TOOL,'simctl','get_app_container',a.device,'com.visar.Trader.paid','data'],text=True).strip())
 responses=json.loads((container/'Library/Application Support/Trader/responses.json').read_text())
 runs=responses['leaderboard?stage=capital']['value']
 run=next((r for r in runs if r.get('slug')=='visar-night-trading'),runs[0])
 hook('action',name='open',screen='run',id=run['runId'],stage='capital');wait('run',5);shot('run-portrait')
 orient('landscape');shot('run-landscape');orient('portrait')
+hook('action',name='open',screen='rankings',stage='virtual');wait('rankings',400)
+for _ in range(40):
+ responses=json.loads((container/'Library/Application Support/Trader/responses.json').read_text())
+ virtual=responses.get('leaderboard?stage=virtual',{}).get('value',[])
+ supported=[r for r in virtual if r.get('evidence',{}).get('benchmark',{}).get('status')=='matched' and r.get('evidence',{}).get('costs',{}).get('measuredTrades',0)>0]
+ if supported:break
+ time.sleep(.5)
+else:raise RuntimeError('Virtual evidence did not reach the native cache')
+run=supported[0]
+hook('action',name='open',screen='run',id=run['runId'],stage='virtual');wait('run',10)
+seen=''
+for i in range(14):
+ layout=json.dumps(hook('layout'));seen+=layout
+ if 'Common-date comparison' in layout:shot('benchmark-portrait')
+ if 'Quote-supported subset' in layout:shot('costs-portrait')
+ if 'Fixed-trade double-spread scenario' in seen:break
+ hook('scroll',y=500);time.sleep(.3)
+assert 'Common-date comparison' in seen and 'Quote-supported subset' in seen and 'Fixed-trade double-spread scenario' in seen
+orient('landscape');shot('costs-landscape');orient('portrait')
 hook('action',name='tab',index=1);wait('agents',50);shot('agents-portrait')
 hook('action',name='tab',index=2);wait('accounts',10);shot('accounts-portrait')
 orient('landscape');shot('accounts-landscape');orient('portrait')

@@ -14,6 +14,7 @@ import type {
 	RunDetail,
 	RunKind,
 	GraveyardEntry,
+	EvidenceOverview,
 } from '@trader/shared';
 
 const DEFAULT_ARENA_URL = 'http://127.0.0.1:4120';
@@ -43,6 +44,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const arena = {
+	evidence: () => call<EvidenceOverview>('/api/evidence'),
 	execution: () => call<any>('/api/execution'),
 	scenarios: () => call<{ name: string; count: number }[]>('/api/scenarios'),
 	status: () => call<ArenaStatus>('/api/status'),

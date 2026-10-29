@@ -3,20 +3,21 @@
 	import { assess, luckBands, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { ago, isControl, lev, levTitle, median, num, pct, pctPlain, sign } from '$lib/format';
+	import { ago, day, isControl, lev, levTitle, median, num, pct, pctPlain, sign, usd, utc } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
 
 	let { data } = $props();
 
 	type View = 'virtual' | 'demo' | 'backtest' | 'overfit';
-	type Group = 'run' | 'agent';
+	type Group = 'run' | 'agent' | 'family';
 	const view = $derived((page.url.searchParams.get('view') as View) ?? 'virtual');
 
-	let group = $state<Group>('run');
+	let group = $state<Group>(page.url.searchParams.get('group')==='family'?'family':page.url.searchParams.get('group')==='agent'?'agent':'run');
 	let epic = $state('');
 	let timeframe = $state('');
 	let leverage = $state(page.url.searchParams.get('leverage') ?? '');
-	let query = $state('');
+	let query = $state(page.url.searchParams.get('q')??'');
+	let evidenceFilter = $state('all');
 	const scenario = $derived(page.url.searchParams.get('scenario') || 'standard');
 	let pageNumber = $state(1);
 	const PAGE_SIZE = 100;
@@ -25,7 +26,7 @@
 	let hideControls = $state(false);
 	let sortKey = $state<string>('totalReturn');
 	let sortDesc = $state(true);
-	$effect(() => { void [epic, timeframe, leverage, query, scenario, view]; pageNumber = 1; });
+	$effect(() => { void [epic, timeframe, leverage, query, scenario, view, evidenceFilter, group]; pageNumber = 1; });
 
 	const rows = $derived(view === 'backtest' ? data.backtest : view === 'demo' ? data.capital : data.demo);
 	const epics = $derived([...new Set(rows.map(r => r.epic))].sort());
@@ -40,6 +41,8 @@
 		if (timeframe && r.timeframe !== timeframe) return false;
 		if (leverage && String(r.leverage) !== leverage) return false;
 		if (hideControls && isControl(r)) return false;
+		if (evidenceFilter==='paused'&&(!(r.dependency??r.evidence?.dependency)||(r.dependency??r.evidence?.dependency)?.state==='available'))return false;
+		if (evidenceFilter!=='all'&&evidenceFilter!=='paused'&&r.evidence?.admission!==evidenceFilter)return false;
 		if (query && !`${r.name} ${r.agentId}`.toLowerCase().includes(query.toLowerCase())) return false;
 		return true;
 	}
@@ -65,6 +68,9 @@
 
 	// ------------------------------------------------------------ per-run rows
 	function metric(r: LeaderboardRow, key: string): number {
+		if(key==='excess')return r.evidence?.benchmark.excessReturn??-Infinity;
+		if(key==='exposure')return r.evidence?.exposure??-Infinity;
+		if(key==='activeDays')return observedDays(r)??-Infinity;
 		if (key === 'btSharpe') return r.backtest?.metrics?.sharpe ?? -Infinity;
 		if (key === 'btAnnual') return r.backtest?.metrics?.annualReturn ?? -Infinity;
 		if (key === 'name') return 0;
@@ -98,11 +104,15 @@
 		btMedianSharpe: number;
 		bestEpic: string;
 		worstEpic: string;
+		variants:number;
+		medianExcess:number;
+		benchmarkRuns:number;
+		href:string;
 	}
 
 	const agents = $derived.by((): AgentAgg[] => {
 		const by = new Map<string, LeaderboardRow[]>();
-		for (const r of filtered) by.set(r.agentId, [...(by.get(r.agentId) ?? []), r]);
+		for (const r of filtered) {const key=group==='family'?r.slug:r.agentId;const rs=by.get(key)??[];rs.push(r);by.set(key,rs);}
 		return [...by.entries()].map(([agentId, rs]) => {
 			const ms = rs.map(r => r.metrics).filter((m): m is RunMetrics => m !== null);
 			const byReturn = [...rs].sort((a, b) => (b.metrics?.totalReturn ?? 0) - (a.metrics?.totalReturn ?? 0));
@@ -111,7 +121,7 @@
 			const bt = rs.map(r => r.backtest?.metrics?.sharpe).filter((x): x is number => typeof x === 'number');
 			return {
 				agentId,
-				name: rs[0]!.name,
+				name: group==='family'?rs[0]!.name.replace(/\s*\([^)]*\)\s*$/,''):rs[0]!.name,
 				timeframe: rs[0]!.timeframe,
 				control: isControl(rs[0]!),
 				runs: rs.length,
@@ -123,6 +133,10 @@
 				btMedianSharpe: median(bt),
 				bestEpic: byReturn[0]?.epic ?? '',
 				worstEpic: byReturn.at(-1)?.epic ?? '',
+				variants:new Set(rs.map(r=>r.agentId)).size,
+				medianExcess:median(rs.flatMap(r=>r.evidence?.benchmark.excessReturn===undefined?[]:[r.evidence.benchmark.excessReturn])),
+				benchmarkRuns:rs.filter(r=>r.evidence?.benchmark.status==='matched').length,
+				href:group==='family'?`/?view=${view}&q=${encodeURIComponent(agentId)}`:`/agents/${agentId}`,
 			};
 		});
 	});
@@ -134,6 +148,7 @@
 		combined: 'combined',
 		profitable: 'profitable',
 		btSharpe: 'btMedianSharpe',
+		excess:'medianExcess',
 	};
 
 	const sortedAgents = $derived(
@@ -165,6 +180,7 @@
 	const tradedDemo = $derived(data.demo.filter(r => (r.metrics?.trades ?? 0) > 0).length);
 
 	function sortBy(key: string) {
+		pageNumber=1;
 		if (sortKey === key) sortDesc = !sortDesc;
 		else {
 			sortKey = key;
@@ -181,6 +197,12 @@
 		u.searchParams.set('view', v);
 		return `${u.pathname}${u.search}`;
 	}
+	function observedDays(r:LeaderboardRow):number|undefined {
+		if(view!=='virtual')return r.metrics?.days;
+		return Math.max(0,(r.evidence?.asOf??Date.now())-(r.observation?.since??r.startedAt)-(r.observation?.pausedMs??0))/86_400_000;
+	}
+	const accountFunding=$derived(data.evidence?.accountCashflows.totals.find(r=>r.type==='SWAP')?.amount);
+	const unallocatedFunding=$derived(data.evidence?.accountCashflows.unallocated.find(r=>r.type==='SWAP')?.amount);
 </script>
 
 <div class="stack">
@@ -189,8 +211,8 @@
 		{#if view === 'virtual'}
 			<p class="lede">
 				Every agent trades in the virtual broker on live Capital.com prices from the moment it is deployed, with $10,000 of virtual capital per
-				instrument and leverage (see <a href="/leverage">Leverage</a>). This is out-of-sample: nobody could have tuned an agent
-				to these prices. Treat results with fewer than ~30 trades as noise.
+				instrument and leverage (see <a href="/leverage">Leverage</a>). Lifetime returns, common-date comparisons and cost evidence are separate.
+        A high rank is not proof of skill; current records include controls, calibration and user experiments.
 			</p>
 		{:else if view === 'demo'}
 			<p class="lede">Actual orders on Capital.com demo accounts, ranked by realized trade P&L. Open profit and loss is excluded. Funding and corporate adjustments without deal IDs are shown at account level on Status. Missing closing values are shown as unavailable. The existing cohort is calibrating the virtual engine; new promotions need at least 28 days and 30 trades of virtual evidence.</p>
@@ -211,6 +233,24 @@
 		<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>
 	{/if}
 
+  {#if data.evidence && view!=='overfit'}
+    <section class="card stack evidence-summary">
+      <h2>Evidence behind the ranking</h2>
+      <p>{data.evidence.strategyVariants} strategy variants · {data.evidence.strategyRuns} strategy × market/tier records · {data.evidence.comparisonRuns} correlated latency comparisons.</p>
+      {#if view==='demo'}
+        <p>Actual account funding: <strong class={sign(accountFunding)}>{usd(accountFunding)}</strong> · funding without a strategy link: {usd(unallocatedFunding)}.
+          These cashflows cover all Arena accounts and are not fully allocated to the rows below. Open P&L and intratrade risk are excluded from realized-cash rankings.</p>
+      {:else}
+        <p>Across standard forward strategy records: {data.evidence.measuredTrades} of {data.evidence.storedTrades} stored trades have quote-supported cost evidence. {view==='backtest'?'Historical rows have their own simulation cost records.':''} Open a run for at-fill versus reconstructed references and unknown costs.</p>
+        <p class="muted">“Excess vs hold” aligns stored dates with the same instrument's 1:1 control. Its window can be shorter than lifetime Return. Sizing differs; it is not risk-adjusted alpha.</p>
+      {/if}
+      {#if view!=='backtest'&&data.evidence.dependency && data.evidence.dependency.state!=='available'}
+        <p class="dependency-note"><strong>TimesFM {data.evidence.dependency.state==='user-paused'?'paused by resource hold':'unavailable'}</strong>.
+          Forecast-dependent records retain their history; known unavailable time is excluded from virtual maturity. Risk checks and exits continue.</p>
+      {/if}
+    </section>
+  {/if}
+
 	<div class="row" role="toolbar" aria-label="Leaderboard filters">
 		<div class="pill-group" aria-label="View">
 			<a href={viewHref('backtest')} class:active={view === 'backtest'}>Backtest</a>
@@ -222,6 +262,7 @@
 			<div class="pill-group" aria-label="Group">
 				<button class:active={group === 'run'} onclick={() => (group = 'run')}>Agent × instrument</button>
 				<button class:active={group === 'agent'} onclick={() => (group = 'agent')}>Per agent</button>
+        <button class:active={group==='family'} onclick={()=>group='family'}>Per family</button>
 			</div>
 		{/if}
 		<select bind:value={epic} aria-label="Instrument">
@@ -236,6 +277,12 @@
 			<option value="">All leverages</option>
 			{#each leverages as l}<option value={String(l)}>1:{l}</option>{/each}
 		</select>
+    <select bind:value={evidenceFilter} aria-label="Admission and dependency evidence">
+      <option value="all">All evidence</option><option value="backtest-qualified">Backtest-qualified</option>
+      <option value="calibration">Calibration</option><option value="user-experiment">User experiments</option>
+      <option value="backtest-rejected">Fails new-admission gate</option>
+      <option value="control">Controls</option><option value="paused">Forecast paused/unavailable</option>
+    </select>
 		{#if view === 'virtual' || view === 'overfit'}
       <select value={scenario} aria-label="Execution scenario" onchange={event => { const u = new URL(page.url); u.searchParams.set('scenario', event.currentTarget.value); void goto(u); }}>
         <option value="all">All scenarios (correlated)</option>
@@ -249,17 +296,17 @@
 	{#if view === 'virtual'}
 		<div class="row secondary" style="font-size: 13px">
 			<span>Virtual trading since {demoStarted ? new Date(demoStarted).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'} ({ago(demoStarted)})</span>
-			<span>· {tradedDemo} of {data.demo.length} runs in this scenario have traded · {totalVirtual} virtual runs total</span>
+			<span>· {tradedDemo} of {data.demo.length} runs in this scenario have closed trades · {totalVirtual} virtual runs total</span>
 		</div>
 	{/if}
 
 	{#if luck && view !== 'overfit'}
 		<div class="card luck">
-			<strong>Luck band.</strong>
+			<strong>Random-control context.</strong>
 			{luck.n} random-entry "monkey" runs in this view returned between
 			<span class={sign(luck.minReturn)}>{pct(luck.minReturn)}</span> and
 			<span class={sign(luck.maxReturn)}>{pct(luck.maxReturn)}</span>
-			(best Sharpe {num(luck.maxSharpe)}). An agent inside this range has not shown skill yet.
+			These raw returns are not matched for dates, exposure or trade cadence; this range cannot establish or rule out skill.
 		</div>
 	{/if}
 
@@ -275,15 +322,17 @@
 						<th title="Account leverage: see the Leverage page"><button onclick={() => sortBy('leverage')}>Lev.{arrow('leverage')}</button></th>
 						<th>TF</th>
             {#if view === 'virtual'}<th>Execution</th>{/if}
-						<th class="num"><button onclick={() => sortBy('days')}>Days{arrow('days')}</button></th>
-						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
+						<th class="num" title="Virtual maturity excludes known forecast outages; other views show the reported period"><button onclick={() => sortBy('activeDays')}>{view==='virtual'?'Observed days':'Days'}{arrow('activeDays')}</button></th>
+						<th class="num"><button onclick={() => sortBy('trades')}>Closed trades{arrow('trades')}</button></th>
 						<th class="num"><button onclick={() => sortBy('totalReturn')}>Return{arrow('totalReturn')}</button></th>
 						{#if view === 'backtest'}<th class="num"><button onclick={() => sortBy('annualReturn')}>Annual{arrow('annualReturn')}</button></th>{/if}
-						<th class="num"><button onclick={() => sortBy('maxDrawdown')}>Max DD{arrow('maxDrawdown')}</button></th>
+            {#if view!=='demo'}<th class="num" title="Percentage-point difference over the common benchmark window, not lifetime return or risk-adjusted alpha"><button onclick={()=>sortBy('excess')}>Excess vs hold{arrow('excess')}</button></th>{/if}
+            <th class="num" title="Current virtual notional divided by liquidation equity; account leverage is only a ceiling"><button onclick={()=>sortBy('exposure')}>Exposure{arrow('exposure')}</button></th>
+						<th class="num" title={view==='demo'?'Realized-cash drawdown excludes open-position/intratrade risk':''}><button onclick={() => sortBy('maxDrawdown')}>{view==='demo'?'Cash DD':'Max DD'}{arrow('maxDrawdown')}</button></th>
 						<th class="num"><button onclick={() => sortBy('sharpe')}>Sharpe{arrow('sharpe')}</button></th>
 						<th class="num"><button onclick={() => sortBy('winRate')}>Win{arrow('winRate')}</button></th>
 						<th class="num"><button onclick={() => sortBy('profitFactor')}>PF{arrow('profitFactor')}</button></th>
-						<th class="num" title="t-statistic of trade P&L: above ~2 is unlikely to be luck"><button onclick={() => sortBy('tStat')}>t{arrow('tStat')}</button></th>
+						<th class="num" title="Trade statistic, unadjusted for selecting among many related trials"><button onclick={() => sortBy('tStat')}>t{arrow('tStat')}</button></th>
 						{#if view === 'virtual'}
 							<th class="num" title="Backtest Sharpe of the same agent on the same instrument"><button onclick={() => sortBy('btSharpe')}>BT Sharpe{arrow('btSharpe')}</button></th>
 							<th title="Lifecycle stage: see the Journal page"><button onclick={() => sortBy('stage')}>Verdict{arrow('stage')}</button></th>
@@ -298,18 +347,26 @@
 							<td>
 								<a href="/agents/{r.agentId}">{r.name}</a>
 								{#if isControl(r)}<span class="badge">control</span>{/if}
-								{#if r.usesForecast}<span class="badge">TimesFM</span>{/if}
+								{#if r.usesForecast}<span class="badge" title={(r.dependency??r.evidence?.dependency)?.note??'Forecast-dependent strategy'}>TimesFM{(r.dependency??r.evidence?.dependency)&&(r.dependency??r.evidence?.dependency)?.state!=='available'?' paused':''}</span>{/if}
 								{#if r.demoAdmission}<span class="badge" title={r.demoAdmission.reason}>user experiment</span>{/if}
+                {#if r.evidence?.admission==='calibration'}<span class="badge" title="Forward record retained; does not pass the current admission backtest gate">calibration</span>{/if}
+                {#if r.evidence?.admission==='backtest-rejected'}<span class="badge" title="Fails the current new-admission gate. Earlier forward calibration or explicit user experiments may retain records.">fails new-admission gate</span>{/if}
                 {#if view === 'backtest' && r.data}<span class="badge" title="Tick provenance; open the run for counts and path assumptions">{r.data.recordedTicks && r.data.syntheticTicks ? 'mixed ticks' : r.data.recordedTicks ? 'recorded ticks' : r.data.syntheticTicks ? 'synthetic ticks' : 'no tick data'}</span>{/if}
 							</td>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.epic}</a></td>
 							<td class="lev" title={levTitle(r)}>{lev(r)}</td>
 							<td class="muted">{r.timeframe}</td>
               {#if view === 'virtual'}<td class="muted">{r.scenario ?? 'standard'}</td>{/if}
-							<td class="num">{num(m?.days, 1)}</td>
+							<td class="num" title={r.observation?.pausedMs?`${num((r.observation.pausedMs)/86_400_000,1)} known unavailable days excluded`:''}>{num(observedDays(r), 1)}</td>
 							<td class="num">{m?.trades ?? 0}</td>
 							<td class="num {sign(m?.totalReturn)}">{pct(m?.totalReturn)}</td>
 							{#if view === 'backtest'}<td class="num {sign(m?.annualReturn)}">{pct(m?.annualReturn)}</td>{/if}
+              {#if view!=='demo'}
+                <td class="num" title={r.evidence?.benchmark.status==='matched'?`${utc(r.evidence.benchmark.from)} → ${utc(r.evidence.benchmark.through)}. ${r.evidence.benchmark.note}`:r.evidence?.benchmark.note??'No comparison data'}>
+                  {#if r.evidence?.benchmark.excessReturn!==undefined}<a class={sign(r.evidence.benchmark.excessReturn)} href="/runs/{encodeURIComponent(r.runId)}">{num(r.evidence.benchmark.excessReturn*100,2)} pp</a><small class="muted">{day(r.evidence.benchmark.from)} → {day(r.evidence.benchmark.through)}</small>{:else}—{/if}
+                </td>
+              {/if}
+              <td class="num" title={r.evidence?.stopRisk!=null?`${pctPlain(r.evidence.stopRisk)} downside to current stop; gaps/fees can change this`:'Broker exposure and shared margin are not inferred from virtual sizing'}>{r.evidence?.exposure!=null?`${num(r.evidence.exposure)}×`:'—'}</td>
 							<td class="num">{pctPlain(m?.maxDrawdown)}</td>
 							<td class="num">{num(m?.sharpe)}</td>
 							<td class="num">{m && m.trades ? pctPlain(m.winRate, 0) : '—'}</td>
@@ -355,10 +412,11 @@
 						<th><button onclick={() => sortBy('name')}>Agent{arrow('name')}</button></th>
 						<th>TF</th>
 						<th class="num"><button onclick={() => sortBy('profitable')}>Profitable on{arrow('profitable')}</button></th>
-						<th class="num" title="Return of all its instruments combined"><button onclick={() => sortBy('combined')}>Combined{arrow('combined')}</button></th>
+						<th class="num" title="Sum of record equity divided by sum of starting capital, not a rebalanced or correlation-adjusted portfolio"><button onclick={() => sortBy('combined')}>Equal-capital aggregate{arrow('combined')}</button></th>
 						<th class="num"><button onclick={() => sortBy('totalReturn')}>Avg return{arrow('totalReturn')}</button></th>
 						<th class="num"><button onclick={() => sortBy('sharpe')}>Median Sharpe{arrow('sharpe')}</button></th>
 						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
+            {#if view!=='demo'}<th class="num" title="Median per-record excess over its own common-date control; not portfolio alpha"><button onclick={()=>sortBy('excess')}>Median excess{arrow('excess')}</button></th>{/if}
 						{#if view === 'virtual'}<th class="num"><button onclick={() => sortBy('btSharpe')}>BT median Sharpe{arrow('btSharpe')}</button></th>{/if}
 						<th>Best / worst</th>
 					</tr>
@@ -366,13 +424,14 @@
 				<tbody>
 					{#each sortedAgents as a (a.agentId)}
 						<tr class:control={a.control}>
-							<td><a href="/agents/{a.agentId}">{a.name}</a>{#if a.control}<span class="badge">control</span>{/if}</td>
+								<td><a href={a.href}>{a.name}</a>{#if a.control}<span class="badge">control</span>{/if}{#if group==='family'}<small class="muted">{a.variants} variants</small>{/if}</td>
 							<td class="muted">{a.timeframe}</td>
 							<td class="num">{a.profitable} / {a.runs}</td>
 							<td class="num {sign(a.combined)}">{pct(a.combined)}</td>
 							<td class="num {sign(a.avgReturn)}">{pct(a.avgReturn)}</td>
 							<td class="num">{num(a.medianSharpe)}</td>
 							<td class="num">{a.trades}</td>
+              {#if view!=='demo'}<td class="num {sign(a.medianExcess)}">{Number.isFinite(a.medianExcess)?`${num(a.medianExcess*100,2)} pp`:'—'}<small class="muted">{a.benchmarkRuns}/{a.runs} matched</small></td>{/if}
 							{#if view === 'virtual'}<td class="num">{num(a.btMedianSharpe)}</td>{/if}
 							<td class="muted">{a.bestEpic} / {a.worstEpic}</td>
 						</tr>
@@ -401,4 +460,6 @@
 	td .badge {
 		margin-left: 6px;
 	}
+  td small{display:block;font-size:11px;white-space:nowrap;margin-top:3px}
+  .evidence-summary{gap:7px;font-size:13px}.evidence-summary h2{font-size:15px}.dependency-note{border-left:3px solid var(--warning);padding-left:10px}
 </style>

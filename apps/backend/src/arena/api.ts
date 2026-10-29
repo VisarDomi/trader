@@ -20,6 +20,8 @@ import { RUN_KIND } from './db.ts';
 import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
 import { graveyard } from './graveyard.ts';
+import { AgentEvidenceService } from './evidence.ts';
+import { costFingerprint, ingestCosts } from './cost-ingest.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -46,6 +48,17 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     routes.push({ method, pattern, keys, handler, auth });
   };
   const db = arena.db;
+  const evidence = new AgentEvidenceService(arena);
+  add(METHOD_GET,'/api/evidence',()=>json(evidence.overview()));
+  add(METHOD_GET,'/api/evidence/cost-candidates',(_req,_p,url)=>{
+    const from=Number(url.searchParams.get('from')),limit=Number(url.searchParams.get('limit')??5000);
+    if(!Number.isSafeInteger(from)||from<0||!Number.isInteger(limit)||limit<1||limit>5000)return json({error:'invalid candidate window'},400);
+    return json(db.costCandidates(from,limit).map(t=>({...t,fingerprint:costFingerprint(t)})));
+  },true);
+  add(METHOD_POST,'/api/evidence/costs',async req=>{
+    try {const result=ingestCosts(db,await req.json());evidence.invalidate();return json(result);}
+    catch(error){return json({error:error instanceof Error?error.message:'invalid costs'},400);}
+  },true);
 
   add(METHOD_GET, '/api/health', () => json({ ok: true, ready: arena.ready, time: Date.now() }));
   add(METHOD_GET, TICK_API.STATUS, () => json(arena.tickJournal?.status() ?? null));
@@ -111,16 +124,14 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
 
   add(METHOD_GET, '/api/leaderboard', (_req, _p, url) => {
     const kind = url.searchParams.get('kind') === RUN_KIND.BACKTEST ? RUN_KIND.BACKTEST : RUN_KIND.DEMO;
-    const rows = leaderboard(arena, kind, url.searchParams.get('retired') === '1').filter(
-      r =>
-        !url.searchParams.has('scenario') || url.searchParams.get('scenario') === 'all' || r.scenario === url.searchParams.get('scenario'),
-    );
-    return json(url.searchParams.get('stage') === STAGE.DEMO ? demoLeaderboard(arena, rows) : rows);
+    const actual=url.searchParams.get('stage')===STAGE.DEMO;
+    const rows = leaderboard(arena, kind, url.searchParams.get('retired') === '1',actual?undefined:evidence,url.searchParams.get('scenario'));
+    return json(actual ? demoLeaderboard(arena, rows,evidence) : rows);
   });
 
   add(METHOD_GET, '/api/scenarios', () =>
     json(
-      [...Map.groupBy(db.runs(RUN_KIND.DEMO), r => (r.extra ? (JSON.parse(r.extra).scenario ?? 'standard') : 'standard'))].map(
+      [...Map.groupBy(db.listRuns(RUN_KIND.DEMO), r => (r.extra ? (JSON.parse(r.extra).scenario ?? 'standard') : 'standard'))].map(
         ([name, rs]) => ({ name, count: rs.length }),
       ),
     ),
@@ -135,8 +146,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   );
 
   add(METHOD_GET, '/api/agents', () => {
-    const demo = db.runs(RUN_KIND.DEMO);
-    const bt = db.runs(RUN_KIND.BACKTEST);
+    const demo = db.listRuns(RUN_KIND.DEMO);
+    const bt = db.listRuns(RUN_KIND.BACKTEST);
     return json(
       db.agents().map(a => ({
         ...agentJson(a),
@@ -153,7 +164,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     return json({
       ...agentJson(a),
       versions: db.agentVersions(a.id),
-      runs: db.runsForAgent(a.id).map(runSummary),
+      runs: db.listRunsForAgent(a.id).map(runSummary),
     });
   });
 
@@ -164,6 +175,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     const tracked = arena.tracked.get(runId);
     return json({
       ...runSummary(r),
+      evidence:evidence.forRun(r),
       params: JSON.parse(r.params),
       extra: r.extra ? JSON.parse(r.extra) : null,
       position: tracked?.run.position ?? (r.snapshot ? (JSON.parse(r.snapshot) as { position: unknown }).position : null),
@@ -225,6 +237,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       // Results from a lab without leverage tiers cannot be matched to a demo run.
       const results = (body.results ?? []).filter(r => typeof r.leverage === 'number');
       for (const r of results) db.saveBacktest(r);
+      evidence.invalidate();
       arena.scheduleAdmissions();
       return json({
         stored: results.length,
@@ -262,23 +275,28 @@ function compactMetrics(raw: string): RunMetrics {
   return { ...metrics, monthly: [] };
 }
 
-function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.BACKTEST, includeRetired: boolean): LeaderboardRow[] {
+function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.BACKTEST, includeRetired: boolean,
+  evidence?:AgentEvidenceService,scenario:string|null=null): LeaderboardRow[] {
   const db = arena.db;
   const agents = new Map(db.agents().map(a => [a.id, a]));
-  const backtests = new Map(db.runs(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
+  const now=Date.now();
+  const backtests = new Map(db.listRuns(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const demotions = db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
+  const demoRows=db.listRuns(RUN_KIND.DEMO);
   const forward = new Map(
-    db
-      .runs(RUN_KIND.DEMO)
+    demoRows
       .filter(r => !isShadow(r.id))
       .map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]),
   );
-  return db.runs(kind, includeRetired).map(r => {
+  const rows=kind===RUN_KIND.DEMO&&!includeRetired?demoRows:db.listRuns(kind,includeRetired);
+  return rows.filter(r=>!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario).map(r => {
     const activeForward = forward.get(runKey(r.agent_id, r.epic, r.leverage ?? 0));
     const extra = r.extra ? JSON.parse(r.extra) : {};
     const a = agents.get(r.agent_id);
     const bt = kind === RUN_KIND.DEMO ? backtests.get(runKey(r.agent_id, r.epic, r.leverage ?? 0)) : undefined;
+    const evaluation=evidence&&!isShadow(r.id)?evidence.forRun(r,now):undefined;
+    const dependency=r.kind===RUN_KIND.DEMO&&!r.retired&&a?.uses_forecast?arena.forecastAvailability?.evidence(demotions[r.id]?.at??r.started_at,now):undefined;
     return {
       runId: r.id,
       agentId: r.agent_id,
@@ -296,6 +314,8 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       metrics: r.metrics ? compactMetrics(r.metrics) : null,
       data:extra.data??null,
       usesForecast: Boolean(a?.uses_forecast),
+      ...(dependency?{dependency}:{}),
+      ...(evaluation?{evidence:evaluation}:{}),
       backtest: bt
         ? {
             runId: bt.id,
@@ -322,12 +342,13 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       scenario: extra.scenario ?? 'standard',
       comparisonOnly: isShadow(r.id),
       ...(extra.demoAdmission ? { demoAdmission: extra.demoAdmission } : {}),
-      ...(demotions[r.id]
+      ...(demotions[r.id] || dependency
         ? {
             observation: {
-              since: demotions[r.id]!.at,
-              trades: (arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at).length,
-              tStat: tradeT((arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= demotions[r.id]!.at)),
+              since: demotions[r.id]?.at??r.started_at,
+              trades: (arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= (demotions[r.id]?.at??0)).length,
+              tStat: tradeT((arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= (demotions[r.id]?.at??0))),
+              pausedMs:dependency?.pausedMs??0,
             },
           }
         : {}),
@@ -341,7 +362,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
   });
 }
 
-function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[] {
+function demoLeaderboard(arena: Arena, rows: LeaderboardRow[], evidence?:AgentEvidenceService): LeaderboardRow[] {
   const deals = arena.db.deals(100_000);
   const grouped = Map.groupBy(deals, d => d.run_id);
   const scale = arena.broker?.status().scale ?? 0.2;
@@ -365,6 +386,8 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[]
         barsHeld: 0,
       }));
       const adjustmentsOnOpen = mine.filter(d => d.status === 'open').reduce((n, d) => n + (d.cash_adjustment ?? 0), 0);
+      const open=mine.filter(d=>d.status==='open');
+      const unrealized=open.every(d=>d.upl!=null&&Date.now()-(d.reconciled_at??0)<5*60_000)?open.reduce((n,d)=>n+d.upl!,0):null;
       const equity = capital + trades.reduce((n, t) => n + t.pnl, 0) + adjustmentsOnOpen;
       const since = mine[0]?.open_time ?? r.startedAt;
       // Gross broker results must never be replaced by virtual metrics. Missing closes are explicit.
@@ -398,6 +421,7 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[]): LeaderboardRow[]
         startedAt: since,
         equity,
         metrics,
+        ...(evidence?{evidence:evidence.forCapital(r,unrealized,open.length>0)}:{}),
         brokerEvidence: {
           closed: closed.length,
           priced: priced.length,

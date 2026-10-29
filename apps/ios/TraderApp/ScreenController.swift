@@ -47,8 +47,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
             control.selectedSegmentIndex=["capital","virtual","backtest"].firstIndex(of:place.stage) ?? 0
             control.addTarget(self,action:#selector(stageChanged(_:)),for:.valueChanged);control.accessibilityIdentifier="ranking.stage"
             stages=control;header.addArrangedSubview(control)
-            let actions=["Return","Sharpe","Trades"].enumerated().map { i,label in UIAction(title:label,state:state.sort==i ? .on:.off){[weak self] _ in self?.changeSort(i)} }
-            navigationItem.rightBarButtonItem=UIBarButtonItem(title:"Sort",image:UIImage(systemName:"arrow.up.arrow.down"),menu:UIMenu(children:actions))
+            updateSortingMenu()
         }
         header.axis = .vertical;header.spacing=12;header.isLayoutMarginsRelativeArrangement=true
         header.layoutMargins=UIEdgeInsets(top:12,left:20,bottom:8,right:20)
@@ -80,13 +79,20 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     @objc private func pullRefresh(){load(refresh:true)}
     @objc private func stageChanged(_ sender:UISegmentedControl) {
         place.stage=["capital","virtual","backtest"][sender.selectedSegmentIndex]
+        if place.stage=="capital" && state.sort==3 {state.sort=0}
+        updateSortingMenu()
         deferred=nil;deferredStatus=nil
         if place.stage != "virtual" {place.scenario=nil}
         state.anchorKey=nil;state.atTop=true;restored=true
         content.sections=[];tableView.reloadData();tableView.setContentOffset(CGPoint(x:0,y:-tableView.adjustedContentInset.top),animated:false)
         load(refresh:true);stateChanged()
     }
-    private func changeSort(_ value:Int){deferred=nil;deferredStatus=nil;state.sort=value;state.anchorKey=nil;state.atTop=true;load(refresh:false);stateChanged()}
+    private func updateSortingMenu(){
+        let labels=["Return","Sharpe","Closed trades"]+(place.stage=="capital" ? []:["Excess vs hold"])
+        let actions=labels.enumerated().map { i,label in UIAction(title:label,state:state.sort==i ? .on:.off){[weak self] _ in self?.changeSort(i)} }
+        navigationItem.rightBarButtonItem=UIBarButtonItem(title:"Sort",image:UIImage(systemName:"arrow.up.arrow.down"),menu:UIMenu(children:actions))
+    }
+    private func changeSort(_ value:Int){deferred=nil;deferredStatus=nil;state.sort=value;updateSortingMenu();state.anchorKey=nil;state.atTop=true;load(refresh:false);stateChanged()}
     func updateSearchResults(for searchController:UISearchController) {
         let query=searchController.searchBar.text ?? ""
         guard !configuringSearch,query != state.query else{return}

@@ -35,6 +35,8 @@ import type { Instrument } from './instruments.ts';
 import { effectiveLeverage, isFundingFree } from './leverage.ts';
 import type { EquityPoint, RunMetrics } from './metrics.ts';
 import { computeMetrics } from './metrics.ts';
+import { fillQuote, executionCosts } from './costs.ts';
+import type { FillQuoteEvidence } from '@trader/shared/types';
 import type { BarSeries, Candle } from './series.ts';
 
 export const RUN_STATUS = {
@@ -116,6 +118,7 @@ export interface RunOptions {
 }
 
 interface OpenPosition {
+  entryQuote?: FillQuoteEvidence;
   closeAt?: number;
   validUntil?: number;
   side: Side;
@@ -145,7 +148,7 @@ export interface LogLine {
 }
 
 /** Serializable run state for the arena to persist and resume. */
-type PendingCommand = { due: number; at: number; barCloseTime?: number } & (
+type PendingCommand = { due: number; at: number; barCloseTime?: number; decisionMid?: number } & (
   | { kind: 'open'; side: Side; opts: OrderOptions }
   | { kind: 'close'; reason?: string; exitReason?: ExitReason }
   | { kind: 'stops'; update: StopUpdate }
@@ -219,6 +222,7 @@ export class AgentRun {
   private openAttempts: number[] = [];
   private executing = false;
   private decisionTime: number | undefined;
+  private decisionMid: number | undefined;
   private barCloseTime: number | undefined;
   executionStats: ExecutionStats = {
     submitted: 0,
@@ -582,6 +586,7 @@ export class AgentRun {
     if (slot !== undefined) command.due = Math.max(command.due, slot + this.execution!.latencyMs);
     if (command.kind === 'open' && this.currentBar) command.barCloseTime = this.currentBar.time + this.primary.tfMs;
     this.executionStats.submitted++;
+    if (this.quote) command.decisionMid = (this.quote.bid + this.quote.ask) / 2;
     this.pending.push(command);
   }
 
@@ -596,6 +601,7 @@ export class AgentRun {
       }
       this.executing = true;
       this.decisionTime = command.at;
+      this.decisionMid = command.decisionMid;
       this.barCloseTime = command.barCloseTime;
       try {
         const before = this.position;
@@ -613,6 +619,7 @@ export class AgentRun {
       } finally {
         this.executing = false;
         this.decisionTime = undefined;
+        this.decisionMid = undefined;
         this.barCloseTime = undefined;
       }
     }
@@ -675,6 +682,8 @@ export class AgentRun {
       return;
     }
     this.position = {
+      entryQuote: fillQuote(this.quote, side, true, entry, this.instrument.pricePrecision,
+        this.execution && this.executing ? this.decisionMid : (this.quote!.bid + this.quote!.ask) / 2, time),
       closeAt: opts.closeAt,
       validUntil: opts.validUntil,
       side,
@@ -842,6 +851,9 @@ export class AgentRun {
       barsHeld: this.holdingBars(pos),
       ...(pos.barsHeldPartial ? {barsHeldPartial:true} : {}),
     };
+    const exitQuote = fillQuote(this.quote, pos.side, false, px, this.instrument.pricePrecision,
+      this.execution && this.executing ? this.decisionMid : this.quote ? (this.quote.bid + this.quote.ask) / 2 : undefined, time);
+    if (pos.entryQuote && exitQuote) trade.execution = executionCosts(trade, pos.entryQuote, exitQuote);
     // Funding was already debited from the balance as it accrued.
     this.balance += gross;
     this.position = null;

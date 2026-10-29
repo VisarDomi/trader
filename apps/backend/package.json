@@ -17,6 +17,7 @@
     "review": "bun run src/lab/review.ts",
     "watchdog": "bun run src/lab/watchdog.ts",
     "audit-capital": "bun run src/lab/audit-capital.ts",
+    "audit-costs": "bun run src/lab/audit-costs.ts",
     "benchmark-arena": "bun run src/lab/benchmark-arena.ts",
     "benchmark-ticks": "bun run src/lab/benchmark-ticks.ts",
     "build-native": "bash native/build.sh",

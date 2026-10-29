@@ -50,6 +50,7 @@ import type { TickJournal } from './tick-journal.ts';
 import {TICK_SOURCE,type Tick} from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
 import { riskBackend } from '../engine/risk-native.ts';
+import { ForecastAvailability } from './dependency.ts';
 
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
@@ -88,6 +89,7 @@ export class Arena {
   readonly tickJournal: TickJournal | null;
   private readonly client: CapitalClient;
   readonly forecasts: LiveForecastProvider;
+  readonly forecastAvailability: ForecastAvailability;
   readonly broker: BrokerMirror | null;
   private readonly agentsDir?: string;
   private readonly liveMode: boolean;
@@ -123,6 +125,7 @@ export class Arena {
     this.tickJournal = opts.tickJournal ?? null;
     this.client = opts.dataClient;
     this.forecasts = new LiveForecastProvider(opts.forecasterUrl);
+    this.forecastAvailability = new ForecastAvailability(opts.db);
     this.broker = opts.broker;
     this.agentsDir = opts.agentsDir;
     this.liveMode = opts.live !== false;
@@ -168,6 +171,7 @@ export class Arena {
 
     this.ready = true;
     if (!this.liveMode) return;
+    this.forecastAvailability.observe(this.forecasts.reachable,Date.now());
     this.stream = new QuoteStream(
       this.client,
       epics,
@@ -179,6 +183,7 @@ export class Arena {
     this.schedulePoll();
     this.clockTimer = setInterval(() => {
       const now = Date.now();
+      this.forecastAvailability.observe(this.forecasts.reachable,now);
       this.tickJournal?.maintain(now);
       this.broker?.onClock(now);
       for(const [epic,engine] of this.engines) {
@@ -694,7 +699,9 @@ export class Arena {
       if (control) continue;
       const row = this.db.run(id)!;
       const demoted = this.db.getSetting<Record<string, { at: number }>>('broker.demotions', {})[id];
-      const days = (now - (demoted?.at ?? row.started_at)) / DAY_MS;
+      const since = demoted?.at ?? row.started_at;
+      const pausedMs = t.agent.def.forecast ? (this.forecastAvailability.evidence(since,now)?.pausedMs??0) : 0;
+      const days = Math.max(0,now-since-pausedMs) / DAY_MS;
       const trades = t.run.trades.filter(tr => tr.entryTime >= (demoted?.at ?? 0));
       const mature =
         (trades.length >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) ||
@@ -704,7 +711,7 @@ export class Arena {
           ? 'virtual account busted'
           : t.run.status === RUN_STATUS.ERROR
             ? 'agent errors'
-            : trades.length === 0 && days >= LIFECYCLE.SILENT_DAYS
+            : trades.length === 0 && !t.run.position && days >= LIFECYCLE.SILENT_DAYS
               ? 'no trades in 60 days'
               : mature && tradeT(trades) <= LIFECYCLE.RETIRE_TSTAT
                 ? 'losing virtual trade evidence'
@@ -760,9 +767,11 @@ export class Arena {
     for (const t of this.tracked.values()) {
       if (t.run.status !== RUN_STATUS.RUNNING || isShadow(t.run.runId)) continue;
       const p = t.run.position;
-      const eligible = virtualEligible(
+      const since = demotions[t.run.runId]?.at ?? t.startedAt;
+      const dependency = t.agent.def.forecast ? this.forecastAvailability.evidence(since,now) : undefined;
+      const eligible = (!dependency || dependency.state === 'available') && virtualEligible(
         t.run.trades.filter(tr => tr.entryTime >= (demotions[t.run.runId]?.at ?? 0)),
-        demotions[t.run.runId]?.at ?? t.startedAt,
+        since + (dependency?.pausedMs??0),
         now,
         monkeys.get(t.epic) ?? 0,
       );

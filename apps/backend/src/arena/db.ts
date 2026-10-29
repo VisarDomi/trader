@@ -13,6 +13,7 @@ import type { Candle } from '../engine/series.ts';
 import type { Trade } from '../sdk/types.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
 import { backtestRunId } from '../engine/run-id.ts';
+import type { ExecutionCostEvidence } from '@trader/shared/types';
 
 export const RUN_KIND = {
   DEMO: 'demo',
@@ -95,6 +96,7 @@ CREATE TABLE IF NOT EXISTS trades (
   exit_note TEXT,
   bars_held INTEGER NOT NULL,
   bars_held_partial INTEGER NOT NULL DEFAULT 0,
+  execution TEXT,
   PRIMARY KEY (run_id, idx)
 );
 
@@ -207,6 +209,17 @@ export interface RunRow {
   retired: number;
 }
 
+const RUN_LIST_COLUMNS = `id,kind,agent_id,code_hash,epic,window_id,status,capital,params,started_at,updated_at,ended_at,equity,metrics,NULL snapshot,extra,retired,leverage`;
+export interface CostAggregate {
+  runId:string;closedTrades:number;closedNetPnl:number;closedFunding:number;beforeFundingPnl:number;
+  measuredTrades:number;capturedTrades:number;reconstructedTrades:number;measuredNetPnl:number;measuredFunding:number;midpointPnl:number;spreadCost:number;
+  adjustmentPnl:number;timedTrades:number;timingCost:number;timedSignalPnl:number;timedNetPnl:number;
+}
+export interface CostCandidate {
+  run_id:string;idx:number;epic:string;side:Trade['side'];size:number;entry_time:number;exit_time:number;
+  entry_price:number;exit_price:number;pnl:number;funding:number;execution:string|null;
+}
+
 export interface AgentRow {
   id: string;
   slug: string;
@@ -273,6 +286,7 @@ export class ArenaDB {
   private migrate(): void {
     const tradeColumns = this.db.query<{name:string}, []>(`PRAGMA table_info(trades)`).all().map(c => c.name);
     if (!tradeColumns.includes('bars_held_partial')) this.db.exec(`ALTER TABLE trades ADD COLUMN bars_held_partial INTEGER NOT NULL DEFAULT 0`);
+    if (!tradeColumns.includes('execution')) this.db.exec(`ALTER TABLE trades ADD COLUMN execution TEXT`);
     const dealColumns = this.db
       .query<{ name: string }, []>(`PRAGMA table_info(broker_deals)`)
       .all()
@@ -293,6 +307,9 @@ export class ArenaDB {
     for (const name of ['cash_adjustment', 'upl', 'reconciled_at']) {
       if (!dealColumns.includes(name)) this.db.exec(`ALTER TABLE broker_deals ADD COLUMN ${name} REAL`);
     }
+    // Covers exact account/deal attribution and deal-id recovery. Without it the
+    // unallocated-cashflow check scans every deal for every cashflow row.
+    this.db.exec(`CREATE INDEX IF NOT EXISTS deals_by_identity ON broker_deals(deal_id,account_id)`);
     const runColumns = this.db
       .query<{ name: string }, []>(`PRAGMA table_info(runs)`)
       .all()
@@ -376,6 +393,16 @@ export class ArenaDB {
       .all(kind, includeRetired ? 1 : 0);
   }
 
+  /** Read models never need to materialize recovery snapshots. Recovery uses run()/runs(). */
+  listRuns(kind: RunKind, includeRetired = false): RunRow[] {
+    return this.db.query<RunRow, [string, number]>(`SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE kind=? AND (retired=0 OR ?) ORDER BY id`)
+      .all(kind, includeRetired ? 1 : 0);
+  }
+
+  listRunsForAgent(agentId: string): RunRow[] {
+    return this.db.query<RunRow, [string]>(`SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE agent_id=? ORDER BY kind,epic,started_at DESC`).all(agentId);
+  }
+
   runsForAgent(agentId: string): RunRow[] {
     return this.db.query<RunRow, [string]>(`SELECT * FROM runs WHERE agent_id = ? ORDER BY kind, epic, started_at DESC`).all(agentId);
   }
@@ -441,8 +468,8 @@ export class ArenaDB {
   appendTrade(runId: string, idx: number, t: Trade): void {
     this.db
       .query(
-        `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held, bars_held_partial)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held, bars_held_partial, execution)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         runId,
@@ -460,7 +487,56 @@ export class ArenaDB {
         t.exitNote ?? null,
         t.barsHeld,
         t.barsHeldPartial ? 1 : 0,
+        t.execution ? JSON.stringify(t.execution) : null,
       );
+  }
+
+  costTotals(kind: RunKind, includeRetired = false, runId?:string, standardOnly=false): CostAggregate[] {
+    return this.db.query<CostAggregate, (string|number)[]>(`
+      SELECT t.run_id runId, COUNT(*) closedTrades, SUM(t.pnl) closedNetPnl, SUM(t.funding) closedFunding,
+        SUM(t.pnl-t.funding) beforeFundingPnl,
+        COUNT(t.execution) measuredTrades,
+        SUM(CASE WHEN json_extract(t.execution,'$.method')='fill-quotes' THEN 1 ELSE 0 END) capturedTrades,
+        SUM(CASE WHEN json_extract(t.execution,'$.method')='archived-quote-match' THEN 1 ELSE 0 END) reconstructedTrades,
+        SUM(CASE WHEN t.execution IS NOT NULL THEN t.pnl ELSE 0 END) measuredNetPnl,
+        SUM(CASE WHEN t.execution IS NOT NULL THEN t.funding ELSE 0 END) measuredFunding,
+        COALESCE(SUM(json_extract(t.execution,'$.midpointPnl')),0) midpointPnl,
+        COALESCE(SUM(json_extract(t.execution,'$.spreadCost')),0) spreadCost,
+        COALESCE(SUM(json_extract(t.execution,'$.adjustmentPnl')),0) adjustmentPnl,
+        COUNT(json_extract(t.execution,'$.timingCost')) timedTrades,
+        COALESCE(SUM(json_extract(t.execution,'$.timingCost')),0) timingCost,
+        COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN json_extract(t.execution,'$.midpointPnl')+json_extract(t.execution,'$.timingCost') ELSE 0 END),0) timedSignalPnl,
+        COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN t.pnl ELSE 0 END),0) timedNetPnl
+      FROM trades t JOIN runs r ON r.id=t.run_id
+      WHERE r.kind=? AND (r.retired=0 OR ?) ${runId?'AND t.run_id=?':''}
+        ${standardOnly?"AND instr(r.id,':delay=')=0":''} GROUP BY t.run_id`)
+      .all(kind, includeRetired ? 1 : 0,...(runId?[runId]:[]));
+  }
+
+  costCandidates(from: number, limit: number): CostCandidate[] {
+    return this.db.query<CostCandidate, [number, number]>(`SELECT t.*,r.epic FROM trades t JOIN runs r ON r.id=t.run_id
+      WHERE r.kind='demo' AND r.retired=0 AND instr(r.id,':delay=')=0 AND t.execution IS NULL AND t.entry_time>=?
+      ORDER BY t.exit_time DESC LIMIT ?`).all(from, limit);
+  }
+
+  attachExecution(runId: string, idx: number, evidence: ExecutionCostEvidence): boolean {
+    return this.db.query(`UPDATE trades SET execution=? WHERE run_id=? AND idx=? AND execution IS NULL`)
+      .run(JSON.stringify(evidence), runId, idx).changes > 0;
+  }
+
+  tradeRow(runId: string, idx: number): CostCandidate | null {
+    return this.db.query<CostCandidate,[string,number]>(`SELECT t.*,r.epic FROM trades t JOIN runs r ON r.id=t.run_id WHERE t.run_id=? AND t.idx=?`).get(runId,idx);
+  }
+
+  /** Two common completed-hour observations, with exact timestamp joins, not interpolated curves. */
+  matchedEquity(runId: string, benchmarkId: string, since: number) {
+    const first = this.db.query<{t:number;strategy:number;benchmark:number},[string,string,number]>(`
+      SELECT s.t,s.equity strategy,b.equity benchmark FROM equity s JOIN equity b ON b.run_id=? AND b.t=s.t
+      WHERE s.run_id=? AND s.t>=? ORDER BY s.t LIMIT 1`).get(benchmarkId,runId,since);
+    const last = this.db.query<{t:number;strategy:number;benchmark:number},[string,string]>(`
+      SELECT s.t,s.equity strategy,b.equity benchmark FROM equity s JOIN equity b ON b.run_id=? AND b.t=s.t
+      WHERE s.run_id=? ORDER BY s.t DESC LIMIT 1`).get(benchmarkId,runId);
+    return { first, last };
   }
 
   trades(runId: string, limit = 5000): Trade[] {
@@ -777,5 +853,6 @@ function rowToTrade(r: Record<string, unknown>): Trade {
     exitNote: (r.exit_note as string | null) ?? undefined,
     barsHeld: r.bars_held as number,
     ...(r.bars_held_partial ? {barsHeldPartial:true} : {}),
+    ...(r.execution ? {execution:JSON.parse(r.execution as string)} : {}),
   };
 }
