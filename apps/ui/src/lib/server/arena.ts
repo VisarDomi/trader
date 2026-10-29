@@ -29,8 +29,9 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 	let res: Response;
 	try {
 		res = await fetch(`${base()}${path}`, { ...init, signal: AbortSignal.timeout(15_000) });
-	} catch {
-		throw new ArenaUnavailable(`The arena API at ${base()} is not reachable.`);
+	} catch (error) {
+		const timedOut=error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError');
+		throw new ArenaUnavailable(timedOut?'The arena request timed out.':'The arena is temporarily unavailable.');
 	}
 	const text = await res.text();
 	let body: unknown;

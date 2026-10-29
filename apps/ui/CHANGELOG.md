@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Recover leaderboard pages automatically after backend/deployment timeouts. Refresh visible tabs at
+  30-second intervals, retry failures after five seconds, and serialize requests. Supporting endpoint
+  failures no longer erase successful rows; a bounded ten-minute last-success summary is clearly
+  timestamped during an outage. Missing scenario counts stay unknown. No trading mutations are retried.
+
 - Add common-window excess-over-hold, actual virtual exposure, evidence/admission filters and family
   grouping. Run pages separate closed cash, quote-supported cost subsets, unknown legacy costs and
   frozen-trade stress diagnostics. Label dependency pauses, closed trades and realized-only cash DD.

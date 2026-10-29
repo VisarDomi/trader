@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { ago, day, isControl, lev, levTitle, median, num, pct, pctPlain, sign, usd, utc } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
+  import LiveRefresh from '$lib/components/LiveRefresh.svelte';
 
 	let { data } = $props();
 
@@ -21,8 +22,8 @@
 	const scenario = $derived(page.url.searchParams.get('scenario') || 'standard');
 	let pageNumber = $state(1);
 	const PAGE_SIZE = 100;
-	const scenarios = $derived(data.scenarios.map(s => s.name));
-	const totalVirtual = $derived(data.scenarios.reduce((n, s) => n + s.count, 0));
+	const scenarios = $derived([...new Set(['standard',...data.scenarios.map(s => s.name),...(scenario==='all'?[]:[scenario])])]);
+	const totalVirtual = $derived(data.scenarios.length?data.scenarios.reduce((n, s) => n + s.count, 0):null);
 	let hideControls = $state(false);
 	let sortKey = $state<string>('totalReturn');
 	let sortDesc = $state(true);
@@ -205,6 +206,8 @@
 	const unallocatedFunding=$derived(data.evidence?.accountCashflows.unallocated.find(r=>r.type==='SWAP')?.amount);
 </script>
 
+<LiveRefresh recovering={!!data.error||data.warnings.length>0||!data.arena.up} />
+
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Leaderboard</h1>
@@ -230,8 +233,12 @@
 	</header>
 
 	{#if data.error}
-		<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>
+		<div class="card" role="status"><span class="status-dot status-critical"></span>{data.error}
+      {#if data.savedAt}<p>Showing the last successful leaderboard from {utc(data.savedAt)}.</p>{/if}
+      <p class="muted">Retrying automatically every five seconds while this tab is visible.</p>
+    </div>
 	{/if}
+  {#each data.warnings as warning}<p class="notice" role="status">{warning} Retrying automatically.</p>{/each}
 
   {#if data.evidence && view!=='overfit'}
     <section class="card stack evidence-summary">
@@ -293,10 +300,10 @@
 		<label class="row" style="gap: 4px"><input type="checkbox" bind:checked={hideControls} /> Hide control agents</label>
 	</div>
 
-	{#if view === 'virtual'}
+	{#if view === 'virtual' && (!data.error || data.savedAt)}
 		<div class="row secondary" style="font-size: 13px">
 			<span>Virtual trading since {demoStarted ? new Date(demoStarted).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '—'} ({ago(demoStarted)})</span>
-			<span>· {tradedDemo} of {data.demo.length} runs in this scenario have closed trades · {totalVirtual} virtual runs total</span>
+			<span>· {tradedDemo} of {data.demo.length} runs in this scenario have closed trades · {totalVirtual===null?'total count temporarily unavailable':`${totalVirtual} virtual runs total`}</span>
 		</div>
 	{/if}
 
@@ -310,7 +317,9 @@
 		</div>
 	{/if}
 
-	{#if view === 'overfit'}
+	{#if data.error && !data.savedAt}
+    <p class="muted" role="status">Waiting for the leaderboard to reconnect.</p>
+	{:else if view === 'overfit'}
 		<OverfitScatter rows={filtered} />
 	{:else if group === 'run'}
 		<div class="table-wrap">

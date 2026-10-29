@@ -3,6 +3,25 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-29 (Thu, user-requested) — public dashboard timeout recovery
+
+- Investigated the screenshot's empty leaderboard. Hetzner's Trader block forwards both protected
+  web and device-key routes to the PC gateway; local/public status identifies the same active arena.
+  No stale Hetzner writer was started and no shared edge/authentication rule needed changing.
+- Repeated twelve local web loads and health probes: all succeeded, page times 0.34–1.62 seconds.
+  The dashboard nevertheless had a real recovery bug: a deployment/backend timeout stayed on screen
+  until manual reload, and a failed scenario-count request discarded otherwise successful rows.
+- UI-only repair: independent primary/supporting loads; automatic visible-tab refresh every 30 seconds
+  and failure retries after five seconds, with no overlap. A bounded memory-only last-success summary
+  can keep rows visible for up to ten minutes during an outage, explicitly labeled with its timestamp.
+  Cache keys separate actual cash, backtests, archived runs and execution scenarios; six pages / 16 MiB
+  maximum, no credentials or raw ticks. Optional evidence/count failures are warnings; unknown counts
+  are no longer shown as zero. Timeout messages no longer expose an internal loopback address.
+- Validation: nine UI/domain/authentication tests pass; Svelte diagnostics clear and production build
+  passes. Isolated production-build fault injection verified healthy rows, supporting-endpoint failure,
+  primary outage with labeled retained rows, and fresh recovery. Trading backend/source/assignments,
+  recording and resource hold remain unchanged. Publish via the UI watcher only; no arena restart.
+
 ## 2026-10-29 (Thu, user-requested) — agent evidence and frozen execution study
 
 - Shipped arena/dashboard `54984fa`: common-date 1:1 controls, exposure/stop downside, cost coverage,
