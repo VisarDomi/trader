@@ -3,6 +3,50 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-29 (Thu) — virtual day 21.7; healthy observation
+
+- Health: 4,561 virtual runs (551 standard, 4,010 correlated execution comparisons), 63 loaded variants,
+  all 450 Capital assignments preserved across nine correctly hedged/leverage-tiered Arena accounts.
+  Stream connected, fresh account reconciliation, broker queue zero, no pending virtual commands,
+  load errors, unconfirmed active deals, foreign positions or unpriced broker closes. Read-only Capital
+  market probe passed all 20 instruments on Arena 01; no orders/account changes. Watchdog zero alerts.
+- Sanity-checked all five errors in the last three days. The October 27 US500 open timed out, then
+  reconciliation adopted its confirmed position within the next minute. The October 28 EURUSD order
+  with a missing confirmation was marked failed after no matching position was found; a subsequent
+  entry closed normally. Remaining account/cycle timeouts recovered. No ambiguous POST was manually
+  replayed, no broker position was left untracked, and no platform/agent repair was needed.
+- CPU follow-up: a 60-second sample measured 3.27% of one core, one-second p95 7.0%, maximum 14.0%,
+  1,890 received quotes, event-loop p95 1 ms. The selected JS backend and arena-only single-marker
+  configuration remain active; both live services share the capped trader.slice. RSS briefly reached
+  521 MB during API checks and a later review reported 509 MB; a separate 30-second read-only process
+  sample settled at 419–421 MB. This is a burst above the approximate 500 MB target, not a sustained
+  outage or a reason to restart trading. Watch memory headroom before any new admissions. No heavy
+  replay/build/model/backtest work was started; the user's TimesFM/nightly hold remains intact.
+- Verdicts: control 144, early 407, keep/leader/retire/retired zero; monkey sanity 0/36. Retired: none.
+  Added: none (Thursday). Still 439 numerical virtual slots free; next ordinary addition window
+  November 2 also requires explicit heavy-work resumption, memory headroom and the usual gates.
+  The oldest cohort reaches 28 days around November 4; do not judge it early or tune away losses.
+- Restore-accounting follow-up: all 9,347 virtual trades closed since the October 22 fix have exact,
+  nonnegative holding counters, with no partial counts in that sample. Old invalid raw values stay
+  preserved. The night experiment keeps source 56ac3bdfe7c1 and its demo assignment, is flat with one
+  historical closed trade and no overdue actual position. Graveyard retains all 393 archived forward
+  records across 41 versions; every source and recorded reason remains available.
+- Archive/read-back/acknowledgement verified through sequence 25,048,035, with the same journal
+  identity, zero dropped received ticks, invalid messages or recording errors. One permanent compressed
+  PostgreSQL archive, 182.9 MB tick table; no history removed or extra tick copies created. Refreshed
+  whole-project storage 13.0 GB, two-year estimate 32.9 GB, four-times-rate estimate 72.6 GB against
+  100 GB, including the non-tick reserve. These remain measured-rate projections.
+- Official [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) and
+  [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) calendars rechecked:
+  decision dates unchanged, including October 28 FOMC and October 30 BOJ; coverage through 2027-12-31
+  exceeds 90 days. Browser access redirects to sign-in; native reads succeed with the device credential
+  and anonymous native access returns 401. No credentials printed or control mutations performed.
+- Re-ran review: unchanged runs/assignments/verdicts and no retirements. Only journal/idea-log updates
+  ship today, with no arena restart or recording interruption. Preserved the unrelated forecaster
+  working-tree edit. Next: watch RSS bursts, archival growth and mature-judgement eligibility.
+  No desktop notification or physical user action needed.
+
 ## 2026-10-26 (Mon, user-requested) — CPU optimization loop and Rust risk prototype
 
 - Investigated CPU spikes with live per-thread samples, hardware perf counters, a frozen production
@@ -625,6 +669,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-10-29: no strategy additions/retirements or tuning; 407 strategies remain early, monkey
+sanity 0/36. Next ordinary window November 2 requires resumed heavy work and admission/memory gates.
+CPU remains low; monitor transient RSS bursts before expanding the virtual pool.
 
 User request 2026-10-26: performance loop only; no strategy additions/retirements or tuning. Rust risk
 prototype passes parity but stays opt-in after losing to optimized JS; live GC contention was reduced.
