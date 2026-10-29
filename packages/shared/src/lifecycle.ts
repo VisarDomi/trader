@@ -60,10 +60,10 @@ export function assess(row: LeaderboardRow, bands: LuckBands, now = Date.now()):
 	if (row.status === STATUS_BUSTED) return { verdict: VERDICT.RETIRE, reason: 'account busted' };
 	if (row.status === STATUS_ERROR) return { verdict: VERDICT.RETIRE, reason: 'agent stopped on errors (fix the bug or retire)' };
 
-	const days = (now - (row.observation?.since ?? row.startedAt)) / DAY_MS;
+	const days = Math.max(0,now - (row.observation?.since ?? row.startedAt) - (row.observation?.pausedMs??0)) / DAY_MS;
 	const trades = row.observation?.trades ?? row.metrics?.trades ?? 0;
 	const t = row.observation?.tStat ?? row.metrics?.tStat ?? 0;
-	if (trades === 0 && days >= LIFECYCLE.SILENT_DAYS) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
+	if (trades === 0 && !row.evidence?.openPosition && days >= LIFECYCLE.SILENT_DAYS) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
 
 	const judged =
 		(trades >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) || (days >= LIFECYCLE.SLOW_MIN_DAYS && trades >= LIFECYCLE.SLOW_MIN_TRADES);

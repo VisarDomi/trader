@@ -9,6 +9,7 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 - [`agents/GUIDE.md`](agents/GUIDE.md) — writing an agent (the SDK contract, sizing, indicators, TimesFM).
 - [`TICKS.md`](TICKS.md) — tick callbacks, capture/replay, single-copy compression and storage budget.
 - [`PERFORMANCE.md`](PERFORMANCE.md) — CPU optimization loop, replay evidence and opt-in Rust risk core.
+- [`EVIDENCE.md`](EVIDENCE.md) — common-date controls, cost coverage/backfill and dependency observation clocks.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: three stages, topology, code map,
   simulation model, arena, broker mirror, known limitations.
 - [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.

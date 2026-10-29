@@ -56,6 +56,8 @@
       "mtf-pullback": [200],
       "bollinger-fade": [200],
       "visar-night-trading": [200],
+      "night-risk-twin": [3],
+      "quote-breakout": [3],
       "random-baseline/monkey-c": [200]
     }
   },

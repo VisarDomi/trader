@@ -35,3 +35,24 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     #expect(c.queryItems?.filter{$0.name=="stage"}.count==1)
     #expect(c.queryItems?.first{$0.name=="id"}?.value==r.id)
 }
+@Test func evidenceDistinguishesMatchedWindowAndUnknownCosts() throws {
+    let e=try json("""
+    {"basis":"virtual-equity","admission":"calibration","benchmark":{"status":"matched","from":1000,"through":2000,"strategyReturn":0.02,"benchmarkReturn":0.01,"excessReturn":0.01,"note":"Sizing differs"},"exposure":0.9,"costs":{"closedTrades":3,"reportedTrades":3,"historyComplete":true,"measuredTrades":0,"capturedTrades":0,"reconstructedTrades":0,"closedNetPnl":-10,"beforeFundingPnl":-8,"closedFunding":-2},"dependency":{"state":"user-paused","note":"Model held"}}
+    """)
+    let sections=Presentation.evidenceSections(e)
+    #expect(sections.contains{$0.title=="Forecast dependency"})
+    let rows=sections.flatMap(\.rows)
+    #expect(rows.contains{$0.stats.contains{$0.label=="Excess" && $0.value.contains("pp")}})
+    #expect(rows.contains{$0.body.contains("unknown, not zero")})
+}
+@Test func rankingShowsClosedTradesAndUsesDependencyState() throws {
+    let data=try json("""
+    [{"runId":"demo:fixture","name":"Fixture","epic":"US500","leverage":20,"metrics":{"totalReturn":0.02,"trades":0},"dependency":{"state":"user-paused","note":"Model held"},"evidence":{"exposure":0.5,"benchmark":{"status":"matched","excessReturn":-0.01,"from":1000,"through":2000}}}]
+    """)
+    let c=Presentation.make(Route(screen:.rankings,stage:"virtual"),data:data)
+    let row=c.sections[0].rows[0]
+    #expect(row.badge=="Forecast paused")
+    #expect(row.stats[1].label=="Closed trades")
+    #expect(row.stats[2].value.contains("pp"))
+    #expect(row.body.contains("Exposure") && row.body.contains("×"))
+}

@@ -122,6 +122,7 @@ export interface Trade {
   exitNote?: string;
   barsHeld: number;
   barsHeldPartial?: boolean;
+  execution?: import('@trader/shared/types').ExecutionCostEvidence;
 }
 
 export interface Fill {

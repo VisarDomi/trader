@@ -4,6 +4,12 @@ import argparse,fcntl,json,os,subprocess,sys
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--simulator',action='store_true');a=p.parse_args()
 root=Path(__file__).resolve().parents[1]
+if not os.environ.get('IOS_WORKLOAD_ACTIVE'):
+ guard=Path.home()/'Developer/ios-tools/native/scripts/mac-workload'
+ if not guard.exists():raise SystemExit('Shared mac-workload guard is required for Trader compilation')
+ command=['sudo','-n','launchctl','asuser',str(os.getuid()),'sudo','-n','-H','-u',os.environ['USER'],
+  '/usr/bin/caffeinate','-i','/usr/bin/python3',str(guard),'build','--timeout','900','--',sys.executable,str(Path(__file__).resolve()),*sys.argv[1:]]
+ raise SystemExit(subprocess.run(command).returncode)
 def build():
  subprocess.run([sys.executable,str(root/'scripts/project.py')],check=True)
  cmd=['xcodebuild','-project',str(root/'build/Trader.xcodeproj'),'-scheme','Trader','-configuration','Release','-derivedDataPath',str(root/'build/DerivedData'),'-jobs','2','SYMROOT='+str(root/'build')]

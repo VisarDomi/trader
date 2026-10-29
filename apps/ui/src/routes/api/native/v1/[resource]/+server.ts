@@ -39,8 +39,8 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
       }
       case 'broker': return arena.broker();
       case 'status': {
-        const [status,execution,events,scenarios]=await Promise.all([arena.status(),arena.execution(),arena.events(60),arena.scenarios()]);
-        return {status,execution,events,scenarios,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
+        const [status,execution,events,scenarios,evidence]=await Promise.all([arena.status(),arena.execution(),arena.events(60),arena.scenarios(),arena.evidence().catch(()=>null)]);
+        return {status,execution,events,scenarios,evidence,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
       }
       case 'graveyard': return {entries:await arena.graveyard(),platform:PLATFORM_HISTORY};
       case 'journal': return {title:'Arena journal',markdown:journal};

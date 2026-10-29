@@ -3,6 +3,9 @@
 _First pass, 2026-10-13. Six topics researched in parallel, plus 40 Reddit threads. Each topic has its own note with
 the evidence, and the library has every source, most with a saved copy._
 
+October 29 platform follow-up: [agent health, common-date controls and measured execution costs](topics/agent-evidence.md)
+records the first quote-supported audit and the frozen immediate/spread-gated breakout study.
+
 ## The short version
 
 - **Leverage pays only when it is timed or scaled to volatility, and almost never above about 3×

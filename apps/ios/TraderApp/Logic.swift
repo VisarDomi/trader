@@ -92,6 +92,34 @@ enum Presentation {
     }
     static func tone(_ n: Double?) -> Int { guard let n else { return 0 }; return n > 0 ? 1 : n < 0 ? -1 : 0 }
     static func tier(_ j: JSON) -> String { j.value.map { "1:\(Int($0))" } ?? "Pre-tiers" }
+    static func points(_ n:Double?) -> String {guard let n else{return "—"};return (n>0 ? "+":"")+number(n*100)+" pp"}
+    static func evidenceSections(_ e:JSON)->[Section] {
+        guard !e.isNull else{return []}
+        var sections:[Section]=[]
+        let b=e["benchmark"],c=e["costs"],dependency=e["dependency"]
+        if !dependency.isNull && dependency["state"].text != "available" {
+            sections.append(Section(title:"Forecast dependency",rows:[Row(id:"dependency",title:dependency["state"].text=="user-paused" ? "TimesFM paused by resource hold":"TimesFM unavailable",body:dependency["note"].text+" Known downtime is excluded from virtual maturity.")]))
+        }
+        var rows:[Row]=[]
+        if b["status"].text=="matched" {
+            rows.append(Row(id:"benchmark",title:"Common-date comparison",subtitle:"\(date(b["from"].value)) → \(date(b["through"].value))",body:b["note"].text,
+                stats:[Stat(label:"Strategy",value:percent(b["strategyReturn"].value)),Stat(label:"Buy & hold",value:percent(b["benchmarkReturn"].value)),Stat(label:"Excess",value:points(b["excessReturn"].value),tone:tone(b["excessReturn"].value))]))
+        } else {rows.append(Row(id:"benchmark",title:"Benchmark unavailable",body:b["note"].text))}
+        rows.append(Row(id:"exposure",title:"Actual sizing · \(e["admission"].text.replacingOccurrences(of:"-",with:" "))",body:"Notional / equity differs from the account leverage ceiling. Stop downside is measured from current equity; gaps and fees can change it.",
+            stats:[Stat(label:"Exposure",value:e["exposure"].value.map{number($0)+"×"} ?? "—"),Stat(label:"Stop downside",value:percent(e["stopRisk"].value)),Stat(label:"Open P&L",value:money(e["unrealizedPnl"].value))]))
+        sections.append(Section(title:"Benchmark and risk evidence",rows:rows))
+        if c.isNull {sections.append(Section(title:"Actual demo cash coverage",rows:[Row(id:"coverage",title:"Realized cash is separate from held equity",body:e["note"].text)]));return sections}
+        var costs=[Row(id:"totals",title:"Stored closed-trade accounting",body:"Executable bid/ask price P&L still contains spread and timing effects.",stats:[Stat(label:"Before funding",value:money(c["beforeFundingPnl"].value)),Stat(label:"Funding",value:money(c["closedFunding"].value)),Stat(label:"Net",value:money(c["closedNetPnl"].value))]),
+            Row(id:"coverage",title:"\(number(c["measuredTrades"].value,digits:0))/\(number(c["closedTrades"].value,digits:0)) quote-supported trades",body:"\(number(c["capturedTrades"].value,digits:0)) at-fill references · \(number(c["reconstructedTrades"].value,digits:0)) archived quote matches. Missing costs are unknown, not zero.")]
+        if !c["historyComplete"].flag {costs.append(Row(id:"partial",title:"Stored history is a subset",body:"\(number(c["closedTrades"].value,digits:0)) stored of \(number(c["reportedTrades"].value,digits:0)) reported trades. Totals cover stored trades."))}
+        if (c["measuredTrades"].value ?? 0)>0 {
+            costs.append(Row(id:"decomposition",title:"Quote-supported subset",body:"Midpoint P&L minus quoted spread, plus funding and rounding/protection adjustments equals subset net. Reconstructed quote identity is inferred; old decision timing is unknown.",stats:[Stat(label:"Midpoint",value:money(c["midpointPnl"].value)),Stat(label:"Spread",value:money(c["spreadCost"].value)),Stat(label:"Net",value:money(c["measuredNetPnl"].value))]))
+            let timingNote=(c["timedTrades"].value ?? 0)>0 ? "Timed-subset signal P&L \(money(c["timedSignalPnl"].value)); net \(money(c["timedNetPnl"].value)).":"Decision-price attribution is unknown for these trades."
+            costs.append(Row(id:"stress",title:"Fixed-trade double-spread scenario",body:"Observed sizes/trades are unchanged; signals, stops and liquidations are not re-simulated. Both decision quotes known for \(number(c["timedTrades"].value,digits:0)) trades. "+timingNote,stats:[Stat(label:"Scenario P&L",value:money(c["doubledSpreadPnl"].value)),Stat(label:"Timing cost",value:(c["timedTrades"].value ?? 0)>0 ? money(c["timingCost"].value):"Unknown")]))
+        }
+        costs.append(Row(id:"qualification",title:"Evidence limits",body:e["note"].text))
+        sections.append(Section(title:e["basis"].text=="historical-equity" ? "Historical simulation costs":"Virtual execution costs",rows:costs));return sections
+    }
     static func performance(_ m: JSON) -> [Stat] {
         [Stat(label: "Return", value: percent(m["totalReturn"].value), tone: tone(m["totalReturn"].value)),
          Stat(label: "Trades", value: number(m["trades"].value, digits: 0)),
@@ -107,9 +135,19 @@ enum Presentation {
         else if stage == "capital" { badge = r["mirrored"].flag ? "Capital demo":"Past demo assignment" }
         else if stage == "virtual" && badge.isEmpty { badge = r["forwardVerdict"].text.isEmpty ? "Forward record":r["forwardVerdict"].text.capitalized+" evidence" }
         let period=stage=="backtest" ? (r["windowId"].text.isEmpty ? id.split(separator:":").dropFirst().first.map(String.init) ?? "":r["windowId"].text):r["timeframe"].text
+        let e=r["evidence"],b=e["benchmark"]
+        var stats=performance(r["metrics"]),body=""
+        if stage != "capital",b["status"].text=="matched" {stats[2]=Stat(label:"Excess vs hold",value:points(b["excessReturn"].value),tone:tone(b["excessReturn"].value));body="Matched \(date(b["from"].value)) → \(date(b["through"].value)); sizing differs."}
+        if let exposure=e["exposure"].value {body += " Exposure \(number(exposure))× equity."}
+        if e["admission"].text=="calibration" && badge.isEmpty {badge="Calibration"}
+        if e["admission"].text=="backtest-rejected" && badge.isEmpty {badge="Fails admission gate"}
+        let dependency=r["dependency"].isNull ? e["dependency"]:r["dependency"]
+        if !dependency.isNull && dependency["state"].text != "available" {if stage=="virtual" && r["status"].text != "retired" {badge="Forecast paused"};body += " "+dependency["note"].text}
+        if stage=="capital" {stats[2]=Stat(label:"Cash drawdown",value:percent(r["metrics"]["maxDrawdown"].value));body="Realized cash excludes open P&L and unallocated funding. Cash drawdown excludes intratrade risk."}
+        stats[1].label="Closed trades"
         return Row(id: id, title: name ?? (r["name"].text.isEmpty ? r["epic"].text : r["name"].text),
                    subtitle: [r["epic"].text, tier(r["leverage"]), period].filter { !$0.isEmpty }.joined(separator: " · "),
-                   badge: badge, stats: performance(r["metrics"]), route: Route(screen: .run, id: id, stage: stage))
+                   body:body,badge: badge, stats:stats, route: Route(screen: .run, id: id, stage: stage))
     }
     static func matches(_ row: Row, query: String) -> Bool {
         query.isEmpty || "\(row.title) \(row.subtitle) \(row.body) \(row.badge)".localizedCaseInsensitiveContains(query)
@@ -120,6 +158,7 @@ enum Presentation {
         case .rankings:
             let stageName = route.stage == "capital" ? "Capital demo" : route.stage == "virtual" ? "Virtual engine" : "Backtests"
             let items = data.items.sorted { a,b in
+                if sort==3{return (a["evidence"]["benchmark"]["excessReturn"].value ?? -Double.greatestFiniteMagnitude)>(b["evidence"]["benchmark"]["excessReturn"].value ?? -Double.greatestFiniteMagnitude)}
                 let key = sort == 1 ? "sharpe" : sort == 2 ? "trades" : "totalReturn"
                 return (a["metrics"][key].value ?? -Double.greatestFiniteMagnitude) > (b["metrics"][key].value ?? -Double.greatestFiniteMagnitude)
             }
@@ -150,6 +189,8 @@ enum Presentation {
             var summary = Row(id:"summary",title:"\(label) equity \(money(data["equity"].value))",subtitle:"\(date(data["startedAt"].value)) · code \(data["codeHash"].text)",badge:data["status"].text,stats:performance(metrics))
             if !data["extra"]["retirement"].isNull { summary.body = data["extra"]["retirement"]["reason"].text }
             sections.append(Section(title:label,rows:[summary,Row(id:"risk",title:"Risk and evidence",stats:[Stat(label:"Max drawdown",value:percent(metrics["maxDrawdown"].value)),Stat(label:"Trade t",value:number(metrics["tStat"].value)),Stat(label:"Win rate",value:percent(metrics["winRate"].value))])]))
+            if route.stage=="capital" && !data["capitalDemo"]["evidence"].isNull {sections += evidenceSections(data["capitalDemo"]["evidence"])}
+            sections += evidenceSections(data["evidence"])
             let comparison=data["backtestComparison"]
             if !isBacktest && !comparison.isNull {sections.append(Section(title:"Backtest of the same strategy code",rows:[runRow(comparison,stage:"backtest",name:"Compare with historical simulation")]))}
             let points = data["equityCurve"].items.compactMap { p -> Plot? in guard let t=p["t"].value, let v=p["equity"].value else {return nil};return Plot(t:t,value:v) }
@@ -191,6 +232,7 @@ enum Presentation {
             out=Content(title:"Platform status",subtitle:s["stream"]["connected"].flag ? "Live Capital feed connected":"Feed reconnecting",sections:[
                 Section(title:"Execution",rows:[Row(id:"health",title:"\(number(s["demoRuns"].value,digits:0)) virtual records",stats:[Stat(label:"Memory",value:"\(number(s["memoryMb"].value,digits:0)) MB"),Stat(label:"CPU / core",value:"\(number(e["virtual"]["cpuCorePercent"].value,digits:0))%"),Stat(label:"Pending",value:number(e["virtual"]["pending"].value,digits:0))]),Row(id:"parity",title:"Demo execution",stats:[Stat(label:"HTTP p95",value:"\(number(e["network"]["requestP95Ms"].value,digits:0)) ms"),Stat(label:"Missing closes",value:number(e["parity"]["unpricedCloses"].value,digits:0))])]),
                 Section(title:"Model and storage",rows:[Row(id:"model",title:s["forecaster"]["reachable"].flag ? "TimesFM reachable":data["heavyResourcesPaused"].flag ? "TimesFM paused by user":"TimesFM offline",body:"Forecast-based agents wait while the model is unavailable. Trading protections and recording continue."),Row(id:"ticks",title:"\(number(ticks["acknowledged"].value,digits:0)) quotes archived",subtitle:"\(number(ticks["lostTicks"].value,digits:0)) dropped received quotes · one compressed archive",stats:[Stat(label:"Project",value:"\(number(storage["totalBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"2y stress",value:"\(number(storage["stressTwoYearBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"Budget",value:"100 GB")])]),
+                Section(title:"Research evidence",rows:[Row(id:"evidence",title:"\(number(data["evidence"]["strategyVariants"].value,digits:0)) strategy variants",body:"Latency copies are correlated; a high rank is not proof of skill.",stats:[Stat(label:"Quote-supported",value:number(data["evidence"]["measuredTrades"].value,digits:0)),Stat(label:"Stored trades",value:number(data["evidence"]["storedTrades"].value,digits:0))])]),
                 Section(title:"Recent events",rows:data["events"].items.prefix(30).enumerated().map { i,v in Row(id:"event\(i)",title:v["source"].text,subtitle:date(v["time"].value),body:v["message"].text,badge:v["level"].text) })])
         case .scenarios:
             out=Content(title:"Execution comparisons",subtitle:"Paired strategy copies under frozen latency assumptions. They are excluded from independent verdicts and Capital promotion.",sections:[Section(title:"Virtual cohorts",rows:data["scenarios"].items.sorted{$0["name"].text<$1["name"].text}.map { s in Row(id:s["name"].text,title:s["name"].text,subtitle:"\(number(s["count"].value,digits:0)) virtual records",route:Route(screen:.rankings,stage:"virtual",scenario:s["name"].text)) })])

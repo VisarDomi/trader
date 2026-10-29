@@ -3,6 +3,92 @@
 export type RunKind = 'demo' | 'backtest';
 export type Side = 'long' | 'short';
 
+/** Derived evidence at a fill, not another stored tick tape. */
+export interface FillQuoteEvidence {
+  mid: number;
+  spread: number;
+  source: 'recorded' | 'synthetic' | 'live' | 'candle';
+  decisionMid?: number;
+  ageMs?: number;
+  journalId?: string;
+  sequence?: number;
+}
+export interface ExecutionCostEvidence {
+  method: 'fill-quotes' | 'archived-quote-match';
+  source: 'recorded' | 'synthetic' | 'live' | 'candle' | 'mixed';
+  entry: FillQuoteEvidence;
+  exit: FillQuoteEvidence;
+  midpointPnl: number;
+  spreadCost: number;
+  /** Positive = adverse timing; negative = favorable. Unknown for old decisions. */
+  timingCost: number | null;
+  /** Fill rounding and negative-balance protection; never disguised as fees. */
+  adjustmentPnl: number;
+}
+
+export interface CostSummary {
+  reportedTrades: number;
+  historyComplete: boolean;
+  closedTrades: number;
+  closedNetPnl: number;
+  closedFunding: number;
+  beforeFundingPnl: number;
+  measuredTrades: number;
+  capturedTrades: number;
+  reconstructedTrades: number;
+  measuredNetPnl: number;
+  measuredFunding: number;
+  midpointPnl: number;
+  spreadCost: number;
+  adjustmentPnl: number;
+  timedTrades: number;
+  timingCost: number;
+  timedSignalPnl: number;
+  timedNetPnl: number;
+  doubledSpreadPnl: number | null;
+  diagnosis: 'unmeasured' | 'negative-before-spread' | 'costs-exceed-gain' | 'positive-after-costs';
+}
+export interface BenchmarkComparison {
+  status: 'matched' | 'unavailable';
+  basis: 'shared-hourly-equity' | 'same-backtest-window' | 'unavailable';
+  benchmarkRunId?: string;
+  from?: number;
+  through?: number;
+  strategyReturn?: number;
+  benchmarkReturn?: number;
+  excessReturn?: number;
+  note: string;
+}
+export interface DependencyEvidence {
+  state: 'available' | 'unavailable' | 'user-paused';
+  since: number;
+  trackedSince: number;
+  pausedMs: number;
+  note: string;
+}
+export interface AgentEvidence {
+  asOf:number;
+  basis: 'virtual-equity' | 'historical-equity' | 'broker-realized-cash';
+  admission: 'control' | 'user-experiment' | 'calibration' | 'backtest-qualified' | 'backtest-rejected';
+  benchmark: BenchmarkComparison;
+  costs: CostSummary | null;
+  exposure: number | null;
+  openPosition: boolean;
+  stopRisk: number | null;
+  openFunding: number | null;
+  unrealizedPnl: number | null;
+  dependency?: DependencyEvidence;
+  /** Comparison copies do not multiply the independent research count. */
+  strategyVariants: number;
+  note: string;
+}
+export interface EvidenceOverview {
+  asOf:number;strategyVariants:number;standardRuns:number;strategyRuns:number;comparisonRuns:number;
+  measuredTrades:number;storedTrades:number;
+  accountCashflows:{totals:{type:string;n:number;amount:number}[];unallocated:{type:string;n:number;amount:number}[]};
+  dependency:DependencyEvidence|null;note:string;
+}
+
 export interface ReplayDataInfo {
   mode: 'auto' | 'recorded' | 'synthetic';
   generator: string;
@@ -85,6 +171,8 @@ export interface LeaderboardRow {
 	equity: number;
 	metrics: RunMetrics | null;
 	usesForecast: boolean;
+	dependency?: DependencyEvidence;
+	evidence?: AgentEvidence;
 	/** Demo rows: the backtest of the same agent, instrument and leverage. */
 	backtest: { runId: string; metrics: RunMetrics | null; codeHash: string; sameCode: boolean; sameEngine?:boolean; data?:ReplayDataInfo|null } | null;
 	data?:ReplayDataInfo|null;
@@ -96,7 +184,7 @@ export interface LeaderboardRow {
 	/** User-requested, source-version-specific demo admission, independent of earned rank. */
 	demoAdmission?: { date: string; reason: string };
 	stageReason?: string;
-	observation?: { since: number; trades: number; tStat: number };
+	observation?: { since: number; trades: number; tStat: number; pausedMs?: number };
 	brokerEvidence?: { closed: number; priced: number; failed: number; open: number; basis: string };
 }
 
@@ -186,6 +274,7 @@ export interface Trade {
 	exitNote?: string;
 	barsHeld: number;
 	barsHeldPartial?: boolean;
+	execution?: ExecutionCostEvidence;
 }
 
 export interface EquityPoint {
@@ -231,6 +320,7 @@ export interface OpenPositionView {
 }
 
 export interface RunDetail extends RunSummary {
+	evidence?: AgentEvidence;
 	params: Record<string, unknown>;
 	extra: Record<string, unknown> | null;
 	position: OpenPositionView | null;

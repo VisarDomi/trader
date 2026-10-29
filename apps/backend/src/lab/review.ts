@@ -68,7 +68,7 @@ const runs: RunReview[] = standard.map(r => {
     epic: r.epic,
     leverage: r.leverage,
     timeframe: r.timeframe,
-    days: Math.round(((now - (r.observation?.since ?? r.startedAt)) / DAY_MS) * 10) / 10,
+    days: Math.round((Math.max(0,now - (r.observation?.since ?? r.startedAt) - (r.observation?.pausedMs??0)) / DAY_MS) * 10) / 10,
     trades: r.observation?.trades ?? r.metrics?.trades ?? 0,
     totalReturn: r.metrics?.totalReturn ?? 0,
     tStat: r.observation?.tStat ?? r.metrics?.tStat ?? 0,

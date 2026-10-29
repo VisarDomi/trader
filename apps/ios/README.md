@@ -4,6 +4,8 @@ Native UIKit client for the existing Backtest → Virtual engine → Capital dem
 iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 
 - Rankings, sort/search, independent virtual evidence, historical backtests and actual demo cashflows.
+- Common-date benchmark excess, exposure/stop downside, quote-supported cost breakdowns and paused
+  dependencies. Realized cash drawdown is labeled separately from virtual position risk.
 - Agent parameters/source, exact archived versions, run equity curves, trades and broker deals.
 - Nine Arena accounts, explicit demo mirror/exclusion confirmations, execution comparisons.
 - Platform status, resource hold, tick/storage health, Graveyard, journal and research.
@@ -77,6 +79,12 @@ set interface orientation, scroll to the top, refresh and simulate offline respo
 on the phone. Captures go to `/tmp/trader-native-qa`; verify live screens, portrait/landscape, exact old
 source, offline reading and first-frame restoration. Run one simulator at a time and shut it down
 after the batch. No video playback or demo mutations are part of these tests.
+
+Builds self-enter the shared mac-workload guard; signing locks and two compiler jobs remain in place.
+Follow the current MAC-WORKLOADS.md before QA: build with all guests shut down, use a separate
+trader-validation mirror for simulator tests, run only the exact owned guest under a guarded visible
+session, and use apple-tool instead of launcher stubs. Never substitute physical-phone automation
+for a simulator failure. Explicit in-place delivery to an unlocked phone remains a separate operation.
 
 Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime files are under
 `Library/Application Support/Trader/`; `diagnostic.json` identifies the launched source and loaded

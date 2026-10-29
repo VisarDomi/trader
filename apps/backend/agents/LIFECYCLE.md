@@ -48,7 +48,7 @@ Computed by `packages/shared/src/lifecycle.ts`, shown in the dashboard's Stage c
 | Verdict | Rule |
 |---|---|
 | early | fewer than 30 closed trades or fewer than 28 days live (slow agents: judged at 90 days with ≥ 10 trades) |
-| retire | judged and trade t-statistic ≤ −1; or no trades in 60 days; or busted; or stopped on errors |
+| retire | judged and trade t-statistic ≤ −1; or zero closed trades while flat after 60 observed days; or busted; or stopped on errors |
 | leader | judged, t ≥ 2 and a higher t than every random monkey on the same instrument |
 | keep | judged, anything else |
 
@@ -61,6 +61,11 @@ different leverages; the t-statistic does not.
 
 Do not change these thresholds casually. If the evidence says they are wrong (e.g. monkeys keep passing
 the leader bar), change them in `lifecycle.ts` and explain why in the journal.
+
+Known forecast-dependency outages, including the resource hold, are removed from virtual observation
+time. Calendar age/P&L remain intact; an open holding with zero closed trades is not silent. Newly
+recorded dependency intervals survive restarts, while earlier unknown availability is not invented.
+Paused dependencies cannot earn new Capital promotion. See [evidence](../EVIDENCE.md).
 
 ## Retiring
 
@@ -143,6 +148,9 @@ agents that size with `marginPct` use the high leverage.
    pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
    is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
     Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).
+   Cost evidence: after archival, `bun run audit-costs --backfill --limit 5000` attaches missing,
+   quote-supported metadata from the canonical archive. Run this bounded CPU job in trader.slice;
+   no prices/P&L are rewritten and unmatched old costs remain unknown.
    Keep the user's one-copy, 100 GB/two-year budget: compressed PostgreSQL is canonical; do not create
    another raw archive. Never delete captured history to make room; act on growth forecasts early.
    The arena/UI moved to the PC on October 16. The migration `ACTIVE` marker selects the local runtime

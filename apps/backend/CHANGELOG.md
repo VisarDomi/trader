@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add common-date buy-and-hold comparisons, current exposure/stop downside, cost provenance and
+  fixed-trade spread/timing/funding diagnostics. Capture derived fill references going forward;
+  backfill only price-matched archived quote evidence, with unknowns and coverage explicit.
+  Preserve all original cash/prices/trades/hashes. Separate broker cash coverage from virtual costs.
+- Persist forecast availability, exclude known outages from virtual maturity/promotion and protect
+  open passive holdings from zero-closed-trade silence retirement. Keep safety/error/ruin checks active.
+- Add the predeclared quote-breakout execution pair and a small-risk night twin through normal
+  backtest gates, with no inherited special demo exception. Existing strategy files stay unchanged.
+- Use snapshot-free API read models and cached evidence; keep comparison copies out of independent
+  evidence counts. See EVIDENCE.md and agents/RESEARCH-2026-10-29.md.
+
 - Reduce arena GC parallelism to one marker after paced replay showed 21% less total CPU with
   matching state and unchanged quote p95, at roughly 120 MB extra RSS. Scope the setting to the
   arena and publish it from committed deploy configuration; keep model/nightly hold intact.

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Add common-window excess-over-hold, actual virtual exposure, evidence/admission filters and family
+  grouping. Run pages separate closed cash, quote-supported cost subsets, unknown legacy costs and
+  frozen-trade stress diagnostics. Label dependency pauses, closed trades and realized-only cash DD.
+  The native app presents the same evidence and supports excess-return sorting without changing its
+  saved route identities. Keep actual broker cash and virtual diagnostics distinct.
+
 - Refresh compatible dashboard dependencies: SvelteKit 2.70.3, Svelte 5.57.2, Vite 7.3.7 and patched
   serializers/build dependencies. Audit now has no moderate/high/critical findings. Four low-severity
   package entries remain (Kit/adapters/cookie); the Kit advisories concern enhanced catch-all form
