@@ -3,6 +3,71 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-10-29 (Thu, user-requested) — agent evidence and frozen execution study
+
+- Shipped arena/dashboard `54984fa`: common-date 1:1 controls, exposure/stop downside, cost coverage,
+  family grouping, calibration/admission labels and known forecast-outage clocks. Price/funding/fill
+  rules and engine version are unchanged. Existing 63 source hashes, 551 standard IDs, all 450 exact
+  Capital assignments and 393 archived forward records across 41 versions were preserved. Original
+  night source `56ac3bdfe7c1` and its special demo admission remain unchanged.
+- Live: 66 registered variants, 4,601 virtual records = 555 standard + 4,046 correlated comparisons;
+  55 non-control forward variants. Verdicts: control 144, early 411, keep/leader/retire/retired zero;
+  monkey sanity 0/36. Retired none. The four new standard records and 36 latency comparisons are
+  the two frozen quote-breakout variants on US500/US100 at tier 3, 0.5% planned risk. Existing gates
+  admit all four to virtual observation; none is promoted to Capital. Capacity remains 50 per tier,
+  450 assignments total, with 399 numerical virtual slots free.
+- Frozen primary backtests (Jan 2024–Sep 2026): immediate/gated US100 +22.9%/+20.8%, Sharpe
+  1.03/1.06; US500 -3.1%/+2.5%, Sharpe -0.13/0.20. The small-risk night twin returned -4.9%, DD
+  5.0%, Sharpe -1.25 over 71 trades: rejected by the ordinary gate, visible in backtest only, with no
+  inherited demo exception. No tuning followed the results. Seed-7 and tiny recorded-only checks
+  remain separate sensitivity records; historical synthetic spreads cannot establish a tick-execution
+  edge. Brief: [RESEARCH-2026-10-29.md](RESEARCH-2026-10-29.md); outcomes:
+  [agent-health note](../../../research/topics/agent-evidence.md).
+- New fills capture midpoint/spread references and known decision timing. The live archive audits
+  attached 2,438 inferred quote-side matches (2,349 initially, then 89 after archival caught up), without
+  rewriting prices/P&L or raw quotes. At the final evidence snapshot, 1,871 of 3,559 stored non-control
+  trades had coverage; pre-recording entries remain unknown. Old decision timing remains unknown
+  even when both archived fill prices match. The frozen 1,799-trade example was negative before
+  quoted spread, so funding alone did not explain that subset; it is virtual money, not actual Capital
+  cash or a portfolio. Actual realized cash, open P&L and unallocated adjustments remain distinct.
+- Common-date TSLA comparison in the frozen copy: volatility-managed +6.62494%, hold +6.62173%,
+  only about 0.0032 percentage points apart. Different lifetime start dates had exaggerated their
+  apparent difference. Excess return is explicitly not risk-adjusted alpha. Forecast-dependent runs
+  show the persistent user hold and exclude only known downtime from virtual maturity/promotion;
+  older unknown outages are not invented. Open holdings with no closed trades are not called silent.
+- Validation: 147 backend tests pass with native parity enabled, six Swift tests pass, typechecks and
+  web production build pass with zero Svelte diagnostics. Frozen-copy existing business fields match
+  for virtual/actual/backtest leaderboards, agents and original night detail. Ten web routes returned
+  200; evidence cards inspected at 390/728px. Snapshot-free list reads, a covering deal-identity index,
+  cached forward aggregates and lazy historical cost reads keep reporting work off the quote path.
+- Deployment needed one clean restart. Host disk waits delayed save/restore beyond the deploy
+  script's readiness deadline; the service continued and became live at 21:47:44 local without a
+  second restart. Capture sessions explicitly retain the approximately 6m58s gap from the last
+  pre-restart received quote to the new connection; candles are not relabeled as recovered ticks.
+  Post-deploy 60-second sample: 4.28% of one core, one-second p95 23.0%, max 46.0%; RSS
+  403.5–643.7 MB, ending 403.5 MB. Monitor API/GC bursts and disk latency before further additions;
+  the approximate 500 MB target is not a claim that every transient read stays below it.
+- Found and repaired a separate archive schedule failure after today's 15:52 PC reboot: timer was
+  active/elapsed, next trigger infinity, service inactive since 15:45. About one million received
+  quotes remained safely in the protected spool. Switched to a persistent minute calendar timer;
+  verified the unit/calendar, recurring successful runs and future triggers. Drained/read-back/acked
+  through sequence 26,844,468, same journal identity, zero received-tick drops, invalid messages or
+  recording errors. No captured history deleted or second permanent tick copy created. Removed the
+  temporary app-state validation database. Storage refreshed: 13.1 GB now, two-year 33.4 GB,
+  four-times-rate stress 74.3 GB / 100 GB, including non-tick reserve; estimates, not guarantees.
+- Native update `55c99bbd1d99b77a` built/signed and installed wirelessly in place on the unlocked
+  primary phone. Its diagnostic confirms this revision, live data and 501 actual-demo history rows;
+  pairing bootstrap absent and November 25 renewal retained. New simulator screen/restoration QA
+  is incomplete: the old guest reported Data Migration Failed before app checks. Stopped the guarded
+  session, verified no guest/GUI/owned command remained and no new panic/GPU reset. No repeated
+  boot, erase, driver change or physical-phone UI test substituted. Both builds and domain tests pass.
+- Reconciliation recovered normally; no manual order replay/account changes. Authenticated native
+  reads work locally and publicly, anonymous access returns 401. Watchdog dry run zero alerts. Both
+  live units remain in trader.slice; TimesFM/nightly stay held, and the unrelated forecaster edit is
+  preserved. Only scoped CPU validation was authorized by this user request; no GPU/nightly restart.
+  Next ordinary addition window is November 9 (Monday, at least seven days after this batch), still
+  subject to resource resumption and headroom. No desktop notification or physical help needed.
+
 ## 2026-10-29 (Thu) — virtual day 21.7; healthy observation
 
 - Health: 4,561 virtual runs (551 standard, 4,010 correlated execution comparisons), 63 loaded variants,
@@ -669,6 +734,15 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+User request 2026-10-29: evaluation/cost infrastructure shipped without changing old sources or
+Capital assignments. Two quote-breakout variants × US500/US100 admitted to virtual at tier 3;
+small-risk night twin failed the normal backtest gate and remains backtest-only. Frozen results and
+sensitivity limits are in RESEARCH-2026-10-29.md and the agent-health research note. No tuning or
+retirements. Next ordinary addition window November 9, conditional on resources and headroom.
+
+- quote-breakout (immediate, spread-gated) — previous-session range breakout; paired tick spread/adverse-price gate, 0.5% risk — virtual on US500/US100 at 1:3 (2026-10-29)
+- night-risk-twin — frozen original night signal, 100× lower initial exposure/risk budget, ordinary gate — rejected (2026-10-29): primary Sharpe -1.25; no special demo exception
 
 Visit 2026-10-29: no strategy additions/retirements or tuning; 407 strategies remain early, monkey
 sanity 0/36. Next ordinary window November 2 requires resumed heavy work and admission/memory gates.

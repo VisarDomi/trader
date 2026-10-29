@@ -2,8 +2,8 @@
 Description=Archive trader quote ticks every minute
 
 [Timer]
-OnBootSec=30
-OnUnitActiveSec=60
+# Calendar scheduling re-arms across user-manager restarts; missed runs catch up once.
+OnCalendar=*-*-* *:*:00
 AccuracySec=5
 Persistent=true
 

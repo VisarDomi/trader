@@ -22,6 +22,12 @@ Quotes are read from the sole compressed PostgreSQL archive and the raw tick tap
 These are archived-quote **reconstructions**, not proof of the exact quote identity used historically.
 Decision timing is unknown for those old trades. New fills capture the references directly.
 
+The live deployment exposed an archive timer that had stopped scheduling after the PC reboot.
+Captured quotes remained in the protected spool. After repairing the timer and draining it, the two
+live audits attached 2,438 archived-quote matches (2,349 initially, then 89). The initial unmatched
+development cases were resolved by archive catch-up; pre-recording entries still remain unknown.
+The monetary example below remains the original frozen subset, not the expanded live total.
+
 For the non-control strategy subset in that snapshot, 1,799 trades had quote-supported evidence:
 
 | Component | Virtual USD |
