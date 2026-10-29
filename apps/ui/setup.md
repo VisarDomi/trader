@@ -18,6 +18,10 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   actions that send `ARENA_TOKEN`.
 - API types come from `@trader/shared` (`packages/shared/src/types.ts`); change them together with
   `apps/backend/src/arena/api.ts`.
+- The leaderboard refreshes visible tabs every 30 seconds and retries failed loads after five seconds,
+  without overlapping refreshes. Optional count/evidence outages preserve rows. A failed primary read
+  may show an explicitly timestamped last-success summary for up to ten minutes. The server cache is
+  memory-only, capped at six pages / 16 MiB serialized; it holds no orders, credentials or tick tape.
 - Agent ids are `<file>` or `<file>/<variant>` (e.g. `ema-cross/fast`); demo run ids are
   `demo:<agentId>:<epic>:<codeHash>`.
 - Pages: `/` leaderboard (Backtest, Virtual engine, Capital demo, Overfit views), `/agents`, `/agents/<id>` (versioned
