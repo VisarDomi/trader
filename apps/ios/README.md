@@ -91,6 +91,16 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
+## Delivery — October 29, 2026
+
+- Signed ARM64 and unsigned simulator builds pass; six Swift domain tests pass. Source `55c99bbd1d99b77a`.
+- Installed wirelessly in place on the unlocked primary phone. Its diagnostic confirms this source,
+  live responses and 501 actual-demo history rows. Pairing bootstrap removed; November 25 renewal retained.
+- New simulator screen/restoration QA is incomplete: the existing guest reported Data Migration Failed
+  before app checks. Stopped the guarded session, verified guest/GUI cleanup and no new panic/GPU-reset
+  report. No fresh boot, device erase or physical-phone UI test was substituted. Mobile web evidence
+  views were checked at portrait and landscape widths; the earlier native baseline below remains historical.
+
 ## Verified delivery — October 25, 2026
 
 - Unsigned simulator and paid ARM64 device builds pass; signed source revision `925c0a25fbd99af3`.

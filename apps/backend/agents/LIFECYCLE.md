@@ -148,6 +148,8 @@ agents that size with `marginPct` use the high leverage.
    pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
    is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
     Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).
+   Confirm `trader-tick-archive.timer` has a future trigger and that verified acknowledgements advance;
+   an active-but-elapsed timer with an inactive service is not a healthy schedule.
    Cost evidence: after archival, `bun run audit-costs --backfill --limit 5000` attaches missing,
    quote-supported metadata from the canonical archive. Run this bounded CPU job in trader.slice;
    no prices/P&L are rewritten and unmatched old costs remain unknown.
