@@ -6,9 +6,6 @@ import { PLATFORM_HISTORY } from '$lib/platform-history';
 import journal from '../../../../../../../backend/agents/JOURNAL.md?raw';
 import type { RequestHandler } from './$types';
 import { CONTROL_SLUGS, assess, luckBands } from '@trader/shared';
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 const handler:RequestHandler=({request,params})=>nativeResponse(request,params.resource,{
   hash:env.TRADER_NATIVE_ACCESS_SHA256,
@@ -40,7 +37,7 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
       case 'broker': return arena.broker();
       case 'status': {
         const [status,execution,events,scenarios,evidence]=await Promise.all([arena.status(),arena.execution(),arena.events(60),arena.scenarios(),arena.evidence().catch(()=>null)]);
-        return {status,execution,events,scenarios,evidence,heavyResourcesPaused:existsSync(join(homedir(),'.local/share/heavy-resources/user-pause.json'))};
+        return {status,execution,events,scenarios,evidence,heavyResourcesPaused:evidence?.dependency?.state==='user-paused'};
       }
       case 'graveyard': return {entries:await arena.graveyard(),platform:PLATFORM_HISTORY};
       case 'journal': return {title:'Arena journal',markdown:journal};

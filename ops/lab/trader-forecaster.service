@@ -1,7 +1,6 @@
 [Unit]
 Description=Trader TimesFM 3 forecaster (GPU, 127.0.0.1:4130)
 After=network.target
-ConditionPathExists=!%h/.local/share/heavy-resources/user-pause.json
 
 [Service]
 Type=simple
@@ -9,6 +8,8 @@ Slice=trader.slice
 WorkingDirectory=%h/Documents/work/trading/trader/apps/forecaster
 Environment=PYTHONUNBUFFERED=1
 Environment=FORECASTER_BATCH=256
+Environment=HF_HUB_OFFLINE=1
+ExecCondition=/usr/bin/python3 %h/Documents/work/trading/trader/ops/lab/forecaster-control.py check
 ExecStart=%h/Documents/work/trading/trader/apps/forecaster/.venv/bin/python server.py
 Restart=always
 RestartSec=15

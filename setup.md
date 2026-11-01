@@ -105,6 +105,10 @@ An existing `~/.local/share/heavy-resources/user-pause.json` is an explicit user
 do not restart TimesFM, run heavy manual lab jobs, or clear the marker during maintenance. Its systemd
 conditions prevent model/lab starts, and the watchdog suppresses the expected model/lab outage alarms.
 The commands live in `~/Documents/environment/shell/heavy_resources.py`.
+The marker's `services` list owns each hold: a user-requested model-only resume can remove
+`trader-forecaster.service` while leaving lab/video entries intact. Use
+`python3 ops/lab/forecaster-control.py resume` for that scoped action. Forecaster startup, dependency
+evidence and health checks honour the service list; a later global stop reinstates every hold.
 
 ## Secrets
 
