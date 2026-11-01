@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { ArenaEvent, ArenaStatus, BrokerStatus } from '@trader/shared';
-import { FORECASTER_UNIT, HEAVY_RESOURCE_PAUSE_FILE, LAB_HEALTH_UNITS, SERVER_RUNTIME_ROOT } from './runtime.ts';
+import { FORECASTER_UNIT, resourcePaused, LAB_HEALTH_UNITS, SERVER_RUNTIME_ROOT } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const STATE_PATH = resolve(import.meta.dir, '..', '..', 'data', 'watchdog.json');
@@ -71,15 +71,17 @@ function unitState(unit: string, verb: 'is-active' | 'is-failed'): string {
   return r.stdout.toString().trim();
 }
 
-export async function check(state: State, now: number, heavyResourcesPaused = existsSync(HEAVY_RESOURCE_PAUSE_FILE)): Promise<Alert[]> {
+export async function check(state: State, now: number, heavyResourcesPaused?:boolean): Promise<Alert[]> {
   const alerts: Alert[] = [];
+  const forecasterPaused=heavyResourcesPaused??resourcePaused(FORECASTER_UNIT);
+  const nightlyPaused=heavyResourcesPaused??resourcePaused(NIGHTLY_UNIT);
   for (const unit of LAB_UNITS) {
-    if (heavyResourcesPaused && unit === FORECASTER_UNIT) continue;
+    if (forecasterPaused && unit === FORECASTER_UNIT) continue;
     if (unitState(unit, 'is-active') !== 'active') {
       alerts.push({ key: `unit:${unit}`, title: `${unit} is not running`, body: `The lab service ${unit} stopped. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
     }
   }
-  if (!heavyResourcesPaused && unitState(NIGHTLY_UNIT, 'is-failed') === 'failed') {
+  if (!nightlyPaused && unitState(NIGHTLY_UNIT, 'is-failed') === 'failed') {
     alerts.push({ key: 'nightly', title: 'Nightly lab job failed', body: `journalctl --user -u ${NIGHTLY_UNIT} has the details. ${ASK_CLAUDE}`, userAction: false });
   }
   if(unitState('trader-tick-archive.service','is-failed')==='failed')alerts.push({key:'tick-archive',title:'Tick archive transfer failed',body:`The server is retaining unacknowledged quotes. Check trader-tick-archive.service before its bounded spool fills. ${ASK_CLAUDE}`,userAction:false,needsStreak:true});
@@ -123,7 +125,7 @@ export async function check(state: State, now: number, heavyResourcesPaused = ex
       alerts.push({ key: `candles:${epic}`, title: `No new ${epic} candles`, body: `The arena's last ${epic} candle is ${Math.round((now - last) / MINUTE_MS)} minutes old. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
     }
   }
-  if (!heavyResourcesPaused && !status.forecaster.reachable && now - Math.max(status.forecaster.lastSuccessAt, status.startedAt) > FORECASTER_DOWN_MS) {
+  if (!forecasterPaused && !status.forecaster.reachable && now - Math.max(status.forecaster.lastSuccessAt, status.startedAt) > FORECASTER_DOWN_MS) {
     alerts.push({ key: 'forecaster', title: 'TimesFM forecaster unreachable', body: `Forecast agents have been paused for over an hour. ${ASK_CLAUDE}`, userAction: false });
   }
   if (status.loadErrors.length > 0) {

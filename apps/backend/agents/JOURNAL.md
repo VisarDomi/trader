@@ -3,6 +3,28 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-01 (Sun, user-requested) — resume TimesFM GPU only
+
+- Explicitly resumed TimesFM without invoking the all-workloads start command. The video pipeline was
+  already running and was left alone; the nightly lab remains inactive/held. The persistent hold now
+  excludes only trader-forecaster.service, retaining its other entries and original pause timestamp.
+- Enabled the model service for subsequent boots. Its ExecCondition reads the service list afresh at
+  every start; legacy/malformed holds fail closed, and a later heavy-resources-stop writes the full list
+  again and takes precedence. Scoped state writes use atomic replacement plus file/directory fsync.
+  Dependency evidence, review/watchdog and native status distinguish the model resume from other holds.
+- Service loaded google/timesfm-3.0-pytorch on CUDA in 7.3 seconds, with 1,323 MB allocated GPU memory.
+  HF_HUB_OFFLINE=1 uses the existing local checkpoint, avoiding a network dependency during reboot.
+  A 512-point synthetic-input smoke request returned 16 finite forecast steps and nine quantiles in
+  2.975 seconds. No training, historical batch, Capital order or account change was used for this check.
+  The arena's normal five-minute probe detected the model again and ended its known dependency pause.
+- Resource containment unchanged: model/arena/UI in trader.slice, aggregate six CPU cores / 15 GiB.
+  No nightly schedule or unrelated pipeline control was resumed. The existing uncommitted forecaster
+  memory-trimming edit is preserved separately. No strategy source, admission, allocation or history reset.
+- Validation: 148 backend tests including native parity, two Python scoped-hold/restart-policy tests,
+  three native API authorization tests; typechecks and production UI build pass. The Python checks
+  simulate a new process reading a resumed hold and a later global stop, without rebooting the PC or
+  stopping other workloads. The enabled service's cold start succeeded using the offline cache.
+
 ## 2026-10-29 (Thu, user-requested) — public dashboard timeout recovery
 
 - Investigated the screenshot's empty leaderboard. Hetzner's Trader block forwards both protected

@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assess,VERDICT,type LeaderboardRow } from '@trader/shared';
 import { matchCostQuote } from '../lab/audit-costs.ts';
+import { resourceHold } from '../engine/resource-hold.ts';
 const EPIC='US500',HOUR=3600000,DAY=24*HOUR,T=Date.UTC(2026,9,29,10),RUN='demo:fixture:US500:x1:hash',BASE='demo:buy-hold:US500:x1:hash';
 function agent(id:string):LoadedAgent {
   return {id,slug:id,variant:null,file:'',source:'',codeHash:'hash',params:{},def:defineAgent({name:id,description:id,instruments:[EPIC],timeframe:'1h',params:{},onBar(){}})};
@@ -87,6 +88,20 @@ test('resource-hold downtime survives restores and stops accumulating after resu
     expect(restored.evidence(T-3*DAY,T+HOUR)?.pausedMs).toBe(2*DAY+HOUR);
     unlinkSync(marker);restored.observe(true,T+2*HOUR);
     expect(restored.evidence(T-3*DAY,T+3*HOUR)).toMatchObject({state:'available',pausedMs:2*DAY+2*HOUR});
+  }finally{db.db.close();rmSync(directory,{recursive:true,force:true});}
+});
+test('a scoped model resume leaves other holds intact and a later global stop takes precedence',()=>{
+  const directory=mkdtempSync(join(tmpdir(),'trader-scoped-hold-')),marker=join(directory,'pause.json'),db=new ArenaDB(':memory:');
+  try{
+    writeFileSync(marker,JSON.stringify({paused_at:new Date(T-DAY).toISOString(),services:['trader-lab.service']}));
+    expect(resourceHold('trader-forecaster.service',marker)).toBeNull();
+    expect(resourceHold('trader-lab.service',marker)).not.toBeNull();
+    const availability=new ForecastAvailability(db,marker);availability.observe(false,T);
+    expect(availability.evidence(T-DAY,T)?.state).toBe('unavailable');
+    availability.observe(true,T+HOUR);expect(availability.evidence(T-DAY,T+HOUR)?.state).toBe('available');
+    writeFileSync(marker,JSON.stringify({paused_at:new Date(T+HOUR).toISOString(),services:['trader-lab.service','trader-forecaster.service']}));
+    availability.observe(false,T+2*HOUR);expect(availability.evidence(T-DAY,T+2*HOUR)?.state).toBe('user-paused');
+    for(const raw of ['{','null','{}','{"services":[42]}']){writeFileSync(marker,raw);expect(resourceHold('trader-forecaster.service',marker)).not.toBeNull();}
   }finally{db.db.close();rmSync(directory,{recursive:true,force:true});}
 });
 test('a live held position is not silent and recorded forecast downtime does not manufacture maturity',()=>{

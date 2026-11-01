@@ -24,8 +24,21 @@ uv sync                                   # Python 3.12 venv in .venv with times
 Env: `FORECASTER_HOST`, `FORECASTER_PORT`, `FORECASTER_BATCH` (the service uses 256),
 `FORECASTER_SYMMETRIC=1` (TimesFM's symmetric-input option; off by default).
 The first start downloads the model from Hugging Face (`google/timesfm-3.0-pytorch`).
+The installed service uses `HF_HUB_OFFLINE=1` with the already verified local cache, so routine
+reboots do not depend on Hugging Face availability. Initial provisioning still downloads the model.
 
 `heavy-resources-stop` unloads this GPU service and pauses the video pipeline/nightly lab. The persistent
 hold blocks automatic restarts, including after reboot. `heavy-resources-start` reloads the model and
 resumes the pipeline and normal lab schedule. Trading and tick recording keep running; forecast-based
 agents wait while the model is paused.
+
+To resume **only TimesFM** while preserving other holds:
+
+```sh
+python3 ops/lab/forecaster-control.py resume # from the repo root
+```
+
+The enabled service checks its membership in the persistent hold's `services` list at each start.
+The scoped resume removes only `trader-forecaster.service` from that list. A later global
+`heavy-resources-stop` writes a fresh complete list and takes precedence again. Legacy or malformed
+hold files fail closed. The global start command retains its existing all-workloads behavior.

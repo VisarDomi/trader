@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { DependencyEvidence } from '@trader/shared/types';
 import type { ArenaDB } from './db.ts';
+import { resourceHold } from '../engine/resource-hold.ts';
 
 const HISTORY_KEY = 'evidence.forecaster-availability-v1';
 const MARKER = join(homedir(), '.local/share/heavy-resources/user-pause.json');
@@ -22,10 +23,11 @@ export class ForecastAvailability {
   observe(reachable: boolean, now: number): void {
     if (now - this.holdCheckedAt >= HOLD_CHECK_MS) {
       this.holdCheckedAt = now; this.holdSince = null;
-      if (existsSync(this.marker)) {
+      const hold=resourceHold('trader-forecaster.service',this.marker);
+      if (hold) {
         try {
-          const raw = JSON.parse(readFileSync(this.marker,'utf8')).paused_at;
-          const at = typeof raw === 'number' ? (raw < 1e12 ? raw * 1000 : raw) : Date.parse(raw);
+          const raw = hold.paused_at;
+          const at = typeof raw === 'number' ? (raw < 1e12 ? raw * 1000 : raw) : typeof raw==='string'?Date.parse(raw):NaN;
           const since = Number.isFinite(at) ? at : statSync(this.marker).mtimeMs;
           if (since > 0 && since <= now) this.holdSince = since;
         } catch { try { this.holdSince = Math.min(now,statSync(this.marker).mtimeMs); } catch { this.holdSince = null; } }

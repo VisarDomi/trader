@@ -11,8 +11,7 @@
  */
 import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow } from '@trader/shared';
 import { assess, LIFECYCLE, luckBands, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
-import { existsSync } from 'node:fs';
-import { HEAVY_RESOURCE_PAUSE_FILE } from './runtime.ts';
+import { FORECASTER_UNIT,resourcePaused } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const FLAG_JSON = '--json';
@@ -115,7 +114,7 @@ const report = {
   health: {
     stream: status.stream.connected,
     forecaster: status.forecaster.reachable,
-    forecasterPaused: !status.forecaster.reachable && existsSync(HEAVY_RESOURCE_PAUSE_FILE),
+    forecasterPaused: !status.forecaster.reachable && resourcePaused(FORECASTER_UNIT),
     memoryMb: status.memoryMb,
     loadErrors: status.loadErrors,
     ticks: status.ticks ?? null,
