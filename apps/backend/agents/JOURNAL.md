@@ -3,6 +3,60 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-02 (Mon) — virtual day 25.7; healthy observation
+
+- Health: 66 loaded variants, 4,601 virtual records (555 standard, 4,046 correlated execution
+  comparisons), all 450 exact Capital assignments preserved across nine Arena accounts. Stream
+  connected, fresh account reconciliation, correct tiers/hedging, queue zero, no pending virtual
+  commands, missing open IDs/prices, unpriced closes, foreign positions or load errors. Read-only
+  Capital contract probe passed all 20 markets on Arena 01; no orders or account-setting changes.
+- Reviewed all 32 error entries in the last three days: 26 connectivity failures (11 stream logins,
+  15 broker jobs/cycles) and six broker-job timeouts, concentrated October 30 and the November 1
+  10:41–10:52 local connectivity interruption. Normal reconnect/reconciliation recovered. Short code
+  1006 reconnects also occurred, especially Saturday morning; current stream has been stable since
+  Sunday 23:04 local. Their cause is not established by the logs. No ambiguous order was replayed
+  manually. Capture gaps remain recorded as gaps; zero received-tick drops does not imply every
+  quote during an external outage was captured. Watchdog dry run zero alerts; no user action needed.
+- Verdicts unchanged on re-review: control 144, early 411, keep/leader/retire/retired zero; monkey
+  sanity 0/36. Retired none. Added none: the frozen October 29 batch is only four days old, so the
+  next ordinary Monday window is November 9, and the nightly lab hold still forbids heavy additions/
+  backtests until explicitly resumed. There are 399 numerical virtual slots; headroom remains a gate.
+  The first older cohorts approach their 28-day threshold around November 4; do not judge/tune early.
+- TimesFM remains enabled and reachable on CUDA after the user's model-only resume. The arena has
+  made 176 successful forecast requests with zero failures since its latest start; the model health
+  counter shows 177 successful requests including yesterday's smoke check. Allocated GPU memory
+  about 1.33 GB, process-reserved memory about 1,494 MiB. Known model downtime stays excluded from
+  maturity; other user holds remain intact. No GPU training/precompute or nightly batch was started.
+- Resource check: all three running Trader services remain in trader.slice, capped at six CPU cores /
+  15 GiB. A 60-second process sample measured 4.51% of one core, one-second p95 8.0%, max 44.0%;
+  RSS 485.5–510.3 MB. The initial review briefly reported 536 MB; later status settled to 429 MB.
+  Event-loop p95 1 ms, latest poll about 7 seconds, median/p95 sampled HTTP response 96/120 ms.
+  Continue watching transient API/GC memory bursts before expanding the pool. All live services and
+  archive/watchdog timers are enabled, user lingering is enabled, and the archive timer has future
+  calendar triggers; no restart was needed during this visit.
+- Archival is recurring successfully and acknowledgements advanced, same journal identity, zero
+  received-tick drops, invalid messages or recording errors. Canonical archive verified through
+  sequence 31,127,435 at the storage check; normal bounded transfer batching leaves a short pending
+  tail. One permanent compressed tick archive, 226.5 MB tick table. Refreshed whole-project storage
+  13.2 GB, two-year estimate 32.6 GB, four-times-rate stress 70.2 GB / 100 GB, including non-tick
+  reserve. These remain measured-rate projections. No history deleted or additional tick copy made.
+- Attached 76 missing archived-quote cost references after archive verification; no fills, P&L or source
+  changed. Final sampled non-control coverage 2,153 / 3,863 stored trades. These are inferred archived
+  fill-price matches; pre-recording costs and old decision timing remain unknown. Original night
+  experiment retains source 56ac3bdfe7c1, its demo assignment, one historical closed trade, and is flat.
+  Each of the four new quote-breakout standard records is running with one closed trade. Graveyard
+  still preserves 393 forward records across 41 versions and their sources/reasons.
+- Rechecked official [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) and
+  [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) schedules: stored
+  decision dates unchanged, coverage through 2027-12-31 remains beyond 90 days. No calendar/agent
+  source was edited. Public native reads succeed, anonymous native access returns 401, browser
+  access retains the sign-in redirect; three dashboard reads completed in 0.39–0.62 seconds.
+- Only this journal and idea-log update ship today, with no arena restart or recording interruption.
+  Preserved the unrelated forecaster working-tree edit. Next: watch mature-evidence eligibility,
+  forecast continuity, self-recovered connectivity interruptions and memory headroom. No desktop
+  notification or physical help required.
+
 ## 2026-11-01 (Sun, user-requested) — resume TimesFM GPU only
 
 - Explicitly resumed TimesFM without invoking the all-workloads start command. The video pipeline was
@@ -775,6 +829,11 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-11-02: no additions, retirements or parameter tuning; 411 strategy records remain early,
+monkey sanity 0/36. October 29 batch is not seven days old. Next ordinary window November 9,
+conditional on explicit lab resumption, normal admission gates and memory headroom. TimesFM alone
+is resumed; nightly additions/backtests remain held. Backfilled 76 archived-quote cost references.
 
 User request 2026-10-29: evaluation/cost infrastructure shipped without changing old sources or
 Capital assignments. Two quote-breakout variants × US500/US100 admitted to virtual at tier 3;
