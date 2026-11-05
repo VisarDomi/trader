@@ -3,6 +3,70 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-05 (Thu) — virtual day 28.7; first mature demotions
+
+- Health after review/deploy: 66 loaded variants, 4,599 active virtual records = 553 standard + 4,046
+  correlated execution comparisons; 444 Capital assignments across nine healthy Arena accounts.
+  Stream/TimesFM reachable, correct hedging/tiers, fresh reconciliation, queue/pending commands zero,
+  no foreign positions, missing open IDs/prices, unpriced closes or load errors. Watchdog zero alerts.
+  Read-only Capital probe passed all 20 markets on Arena 01; no test orders or account changes.
+- First 28-day decisions fired automatically November 4 around 17:48 local. Verified two virtual-only
+  BTCUSD records archived to backtest and retained in Graveyard: macd-trend/ema200 at 1:100 (31
+  closed trades, t -1.3105, return -7.35%) and macd-trend/ema50 at 1:100 (30 trades, t -2.1203,
+  return -9.33%). Both satisfied the trade/day/loss thresholds. They are individual run retirements;
+  other markets in the family continue. Source/reasons/history retained; no roster/source reset.
+- Six losing mature runs lost Capital slots and continue virtually with fresh observation from that
+  demotion: ema-cross/9-21 EURUSD and ETHUSD at 1:10; hma-slope BTCUSD, ETHUSD and OIL_CRUDE
+  at 1:50; rsi2-reversion/both ETHUSD at 1:10. Verified 30–39 lifetime trades and t below -1 for each,
+  persisted fresh-window timestamps, and no remaining actual open deals for those six runs. Their
+  old evidence is preserved. Arena 05/07 now each have 47 assignments; six slots stay vacant because
+  replacements must earn the existing gate. No new candidate or control was shoehorned in.
+- Current verdicts: control 144, early 401, keep 8, leader 0, retire/retired zero in the active review;
+  the two archived records are outside that active list. Monkey sanity 0/36. No additional manual or
+  whole-agent retirement needed. Keep means continued observation, not proven skill. Model-dependent
+  runs retain their known-outage adjustment and remain early. Added none (Thursday); next ordinary
+  window November 9 remains conditional on explicit lab resumption and resource/admission gates.
+- Fixed a reboot-only comparison lifecycle bug found during this audit. Existing frozen latency
+  records could continue after a standard record retired, then be incorrectly archived at restart as
+  an unplanned tier. They now restore independently, while new comparisons still require an admitted
+  standard run. Retired standards and explicitly retired comparisons stay retired; no new experiment
+  is admitted by the fix. The two retired BTC MACD records never had comparison copies, so no live
+  history had to be recovered or rewritten. Reproduced the defect in an isolated database test first.
+- Shipped 872b566. All 149 backend tests pass with native parity, including two database reopen cycles
+  preserving an open comparison position/state without reviving retired rows or adding records, even
+  with a passing backtest. Typecheck and packaged/native deploy preflight pass. Actual restart preserved
+  every one of 4,599 active IDs, 4,046 comparison IDs, all 66 source hashes and all 444 exact Capital
+  assignments. Graveyard now has 395 forward records across 41 versions. Capture session metadata
+  records an approximately 11.2-second planned restart gap; no synthetic quotes relabeled as captured.
+- Reviewed 15 recent broker-cycle errors (12 timeouts, three Capital /session 504 responses), all in
+  the November 4 22:20–22:35 local interval. Normal recovery/reconciliation succeeded; no ambiguous
+  order was manually replayed. Current accounts/deals are reconciled with lastError clear. Source
+  response latency sample median/p95 about 99/124 ms; latest poll about seven seconds, event-loop
+  p95 1 ms. Historical maxima remain historical; there is no current command backlog.
+- TimesFM remains on CUDA; initial arena counters showed 88 forecast requests with zero failures.
+  Allocated GPU memory about 1.33 GB. Its enabled offline-cache startup succeeded on this boot;
+  the model-only resume persists while nightly lab holds remain intact. All running Trader services
+  share trader.slice (six CPU cores / 15 GiB); no training, precompute or nightly job started.
+  Pre-deploy 60-second sample: 3.87% of one core, one-second p95 8.0%, max 23.0%; RSS 507–540 MB
+  during reads, with post-deploy review at 327 MB. Monitor transient memory headroom before additions.
+- Tick archive has future minute triggers and advancing acknowledgements, unchanged journal identity,
+  zero received-tick drops/invalid messages/recording errors. Verified through sequence 39,049,850
+  after deploy, with normal bounded pending batching. One canonical compressed archive; no extra tick
+  copy/history deletion. Storage refresh: 13.3 GB project, 284.7 MB tick table at that snapshot; two-year
+  33.3 GB and four-times-rate stress 73.3 GB / 100 GB including reserve. These are projections.
+  Attached 40 missing archived-quote cost references; final sampled strategy coverage 2,898 / 4,587
+  stored trades. Old decision timing/pre-recording costs remain unknown; prices/P&L were not rewritten.
+- Original night source 56ac3bdfe7c1 and its special demo assignment remain intact. Rechecked official
+  [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+  [BOJ 2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf) and
+  [BOJ 2027](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref260731a.pdf) calendars: stored
+  decision dates unchanged, coverage through 2027-12-31 still exceeds 90 days. No agent/calendar source
+  changed. Public/native reads and browser sign-in policy pass; three dashboard reads took 0.39–0.59 s.
+- Re-review confirmed 444 assignments and unchanged verdicts with zero watchdog alerts. Journal/idea
+  log publish separately without another arena restart. Preserved the unrelated forecaster working-tree
+  edit. Next: watch fresh post-demotion samples, mature keep candidates, comparison continuity and
+  memory headroom. No desktop notification or physical user action needed.
+
 ## 2026-11-02 (Mon) — virtual day 25.7; healthy observation
 
 - Health: 66 loaded variants, 4,601 virtual records (555 standard, 4,046 correlated execution
@@ -829,6 +893,13 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-11-05: first mature actions verified: macd-trend/ema200 and ema50 BTCUSD at 1:100 archived
+for losing virtual trade evidence; other family runs continue. Six losing Capital runs demoted to fresh
+virtual observation (EMA 9/21 EURUSD/ETHUSD, HMA BTCUSD/ETHUSD/OIL, RSI2-both ETHUSD). No new
+strategy, tuning or forced replacement. Active verdicts: 401 early / 8 keep / 0 leaders, plus 144 controls;
+monkey sanity 0/36. Fixed comparison restoration across reboot, preserving all active IDs. Next ordinary
+addition window November 9 still requires lab resumption and resource/admission gates.
 
 Visit 2026-11-02: no additions, retirements or parameter tuning; 411 strategy records remain early,
 monkey sanity 0/36. October 29 batch is not seven days old. Next ordinary window November 9,
