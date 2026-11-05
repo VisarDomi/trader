@@ -316,15 +316,14 @@ export class Arena {
       });
     }
     // Each scenario changes order-to-fill delay, keeping strategy parameters and random stream fixed.
-    // A current-code backtest is required; shadows never take scarce Capital slots.
-    const qualified = plan.runs.filter(
-      ({ agent, epic, leverage }) =>
-        this.tracked.has(demoRunId(agent.id, epic, leverage, agent.codeHash)) &&
-        (fresh.has(demoRunId(agent.id,epic,leverage,agent.codeHash)) ||
-          active.some(r=>r.id.startsWith(demoRunId(agent.id,epic,leverage,agent.codeHash)+SHADOW_MARKER))) &&
-        (backtestGate(backtests.get(runKey(agent.id, epic, leverage)), agent.codeHash, agent.slug).passed ||
-          active.some(r=>r.id.startsWith(demoRunId(agent.id,epic,leverage,agent.codeHash)+SHADOW_MARKER))),
-    );
+    // New comparisons need an admitted standard run. Existing frozen comparisons have their own
+    // history and survive that standard run's performance retirement; they never take Capital slots.
+    const existingComparisons=new Set(active.filter(r=>isShadow(r.id)).map(r=>r.id.slice(0,r.id.indexOf(SHADOW_MARKER))));
+    const qualified = plan.runs.filter(({agent,epic,leverage})=>{
+      const base=demoRunId(agent.id,epic,leverage,agent.codeHash);
+      return existingComparisons.has(base)||(this.tracked.has(base)&&fresh.has(base)&&
+        backtestGate(backtests.get(runKey(agent.id,epic,leverage)),agent.codeHash,agent.slug).passed);
+    });
     const comparisonScenarios = EXECUTION_SCENARIOS.slice(
       0,
       Math.floor((VIRTUAL_COMPARISON_TARGET - this.tracked.size) / Math.max(1, qualified.length)),
@@ -335,8 +334,8 @@ export class Arena {
         const baseId = demoRunId(agent.id, epic, leverage, agent.codeHash);
         const id = `${baseId}${SHADOW_MARKER}${latencyMs}`;
         const row = this.db.run(id);
-        if(!this.tracked.has(baseId) || (!row && (!comparisonScenarios.includes(latencyMs) ||
-          !backtestGate(backtests.get(runKey(agent.id,epic,leverage)),agent.codeHash,agent.slug).passed)))continue;
+        if(!row && (!this.tracked.has(baseId) || !comparisonScenarios.includes(latencyMs) ||
+          !backtestGate(backtests.get(runKey(agent.id,epic,leverage)),agent.codeHash,agent.slug).passed))continue;
         if (row?.retired) continue;
         const run = this.engines.get(epic)!.addRun({
           runId: id,
