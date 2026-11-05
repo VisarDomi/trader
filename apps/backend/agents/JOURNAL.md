@@ -38,6 +38,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   every one of 4,599 active IDs, 4,046 comparison IDs, all 66 source hashes and all 444 exact Capital
   assignments. Graveyard now has 395 forward records across 41 versions. Capture session metadata
   records an approximately 11.2-second planned restart gap; no synthetic quotes relabeled as captured.
+- A host reboot was observed at 09:42 local during this visit (cause not established here). TimesFM
+  automatically restarted at 09:42:36 and loaded its cached CUDA model in 6.4 seconds, while the
+  nightly hold remained intact. The pre-reboot ID/hash/assignment baseline also matched after the
+  subsequent planned deployment; automatic retirements and fresh demotion windows survived both.
 - Reviewed 15 recent broker-cycle errors (12 timeouts, three Capital /session 504 responses), all in
   the November 4 22:20–22:35 local interval. Normal recovery/reconciliation succeeded; no ambiguous
   order was manually replayed. Current accounts/deals are reconciled with lastError clear. Source
