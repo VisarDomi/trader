@@ -39,6 +39,9 @@ live-money stage.
 
 Execution comparisons have separate records and labels, but are correlated copies of a strategy under
 frozen latency assumptions. They never take Capital slots and never multiply strategy/monkey verdicts.
+Existing comparison histories continue independently when a standard run is retired for performance,
+including across restarts. This does not admit new comparisons or revive the retired standard record;
+explicit roster, source-version and comparison retirements still apply.
 See [`../EXECUTION.md`](../EXECUTION.md) for the empirical contract and limits.
 
 ## Verdicts

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore existing frozen latency comparisons after their standard run is retired for performance.
+  Keep standard/explicit comparison retirements intact and require an admitted standard run before
+  creating comparisons. Reopening the database no longer changes the active experimental cohort.
+
 - Add common-date buy-and-hold comparisons, current exposure/stop downside, cost provenance and
   fixed-trade spread/timing/funding diagnostics. Capture derived fill references going forward;
   backfill only price-matched archived quote evidence, with unknowns and coverage explicit.
