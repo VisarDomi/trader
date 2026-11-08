@@ -199,7 +199,7 @@ enum Presentation {
                 let priced=data["deals"].items.filter{$0["status"].text=="closed" && !$0["pnl"].isNull}.sorted{($0["close_time"].value ?? 0)<($1["close_time"].value ?? 0)}
                 var cash:Double=0
                 let curve=priced.compactMap{d->Plot? in guard let t=d["close_time"].value,let p=d["pnl"].value else{return nil};cash+=p;return Plot(t:t,value:cash)}
-                if !curve.isEmpty {sections.append(Section(title:"Closed-trade P&L",rows:[Row(id:"cash-chart",title:"Priced closes · before account adjustments",points:curve)]))}
+                if !curve.isEmpty {sections.append(Section(title:"Closed-trade P&L",rows:[Row(id:"cash-chart",title:"Priced closes · before account adjustments",chart:Graph(series:[GraphSeries(name:"P&L",points:curve)]))]))}
             } else {
                 let curve=data["equityCurve"].items.compactMap{p->Plot? in guard let t=p["t"].value,let value=p["equity"].value else{return nil};return Plot(t:t,value:value)}
                 if !curve.isEmpty {
@@ -231,6 +231,7 @@ enum Presentation {
                 }))
             }
             if !actual, !m["monthly"].items.isEmpty {sections.append(Section(title:"Monthly return",rows:[Row(id:"monthly",title:"By calendar month",chart:Graph(kind:"bars",bars:m["monthly"].items.map{GraphBar(name:$0["month"].text,value:($0["ret"].value ?? 0)*100,total:true)},unit:"%",height:Double(max(180,m["monthly"].items.count*24+20))))]))}
+            if !historical,!data["backtestComparison"].isNull {sections.append(Section(title:"Same-code backtest",rows:[runRow(data["backtestComparison"],stage:"backtest",name:"Compare historical simulation")]))}
             let evidence=actual ? data["capitalDemo"]["evidence"]:data["evidence"]
             let benchmark=evidence["benchmark"]
             if benchmark["status"].text=="matched"{

@@ -1,7 +1,7 @@
 import Foundation
 
 struct GraphSeries:Codable,Sendable,Hashable {var name:String;var points:[Plot]}
-struct GraphMarker:Codable,Sendable,Hashable {var t:Double;var value:Double;var label:String;var detail:String = ""}
+struct GraphMarker:Codable,Sendable,Hashable {var t:Double;var value:Double?;var label:String;var detail:String = ""}
 struct GraphCandle:Codable,Sendable,Hashable {var t:Double;var open:Double;var high:Double;var low:Double;var close:Double}
 struct GraphGap:Codable,Sendable,Hashable {var from:Double;var through:Double}
 struct GraphBar:Codable,Sendable,Hashable {var name:String;var value:Double;var total:Bool = false}
@@ -31,7 +31,7 @@ extension Presentation {
         g.candles=j["price"]["candles"].items.compactMap{c in guard let t=c["t"].value,let o=c["open"].value,let h=c["high"].value,let l=c["low"].value,let close=c["close"].value else{return nil};return GraphCandle(t:t,open:o,high:h,low:l,close:close)}
         g.gaps=j["coverage"]["gaps"].items.compactMap{c in guard let f=c["from"].value,let t=c["through"].value else{return nil};return GraphGap(from:f,through:t)}
         if let t=s["entryTime"].value,let p=s["entryPrice"].value {g.markers.append(GraphMarker(t:t,value:p,label:"OPEN",detail:s["entryReason"].text))}
-        if let t=s["exitTime"].value,let p=s["exitPrice"].value {g.markers.append(GraphMarker(t:t,value:p,label:"CLOSE",detail:s["exitReason"].text))}
+        if let t=s["exitTime"].value {g.markers.append(GraphMarker(t:t,value:s["exitPrice"].value,label:"CLOSE",detail:s["exitPrice"].isNull ? "Fill price not recorded":s["exitReason"].text))}
         g.from=j["window"]["from"].value;g.through=j["window"]["through"].value
         g.precision=["EURUSD","GBPUSD","AUDUSD"].contains(s["epic"].text) ? 5:2
         return g
@@ -48,7 +48,7 @@ extension Presentation {
         let exit=s["exitTime"].isNull ? "Still open":s["exitReason"].text.isEmpty ? "Exit reason not recorded":s["exitReason"].text
         return Row(id:"inspection-"+s["key"].text,title:s["side"].text.capitalized+" · "+money(c["net"].value),
             subtitle:inspectionDate(s["entryTime"].value)+" → "+inspectionDate(s["exitTime"].value),
-            body:"Open: "+entry+"\nClose: "+exit,badge:coverage["complete"].flag ? "Recorded ticks":"Partial ticks · minute candles / gaps",
+            body:"Open: "+entry+"\nClose: "+exit,badge:coverage["complete"].flag ? "Recorded ticks":"Partial tick history",
             stats:[Stat(label:"Price drawdown",value:riskValue(j),tone:-1),Stat(label:"Spread cost",value:money(c["spread"].value)),Stat(label:"Funding",value:money(c["funding"].value))],
             route:Route(screen:.trade,id:runId,stage:stage,version:s["key"].text),chart:tradeGraph(j,height:200),badgeTone:coverage["complete"].flag ? 1:0)
     }
@@ -85,7 +85,7 @@ extension Presentation {
             costRows.append(Row(id:"cost-waterfall",title:"Signal to net",subtitle:s["stage"].text=="backtest" ? "Simulated fill quotes":c["method"].text=="archived-quote-match" ? "Reconstructed fill quotes":"Captured fill quotes",chart:Graph(kind:"waterfall",bars:bars)))
         } else {costRows.append(Row(id:"cost-unknown",title:"Spread attribution unavailable",body:s["stage"].text=="capital" ? "Account funding can be unallocated. Public feed quotes do not prove broker execution costs.":"Complete entry / exit quote references were not recorded. Unknown costs stay unknown."))}
         sections.append(Section(title:"Costs",rows:costRows))
-        var coverageRows=[Row(id:"coverage",title:complete ? "Full trade tick coverage":"Incomplete trade tick coverage",subtitle:"\(number(coverage["ticks"].value,digits:0)) valid quotes · \(number(coverage["candles"].value,digits:0)) fallback candles",body:complete ? "":"Drawdown is measured only over captured prices. Minute candles do not recover intraminute order.")]
+        var coverageRows=[Row(id:"coverage",title:complete ? "Full trade tick coverage":"Incomplete trade tick coverage",subtitle:"\(number(coverage["ticks"].value,digits:0)) valid quotes · \(number(coverage["candles"].value,digits:0)) fallback candles",body:(complete ? "":"Drawdown is measured only over captured prices. Minute candles do not recover intraminute order.")+(j["window"]["clipped"].flag ? " Latest seven days shown.":"")+(coverage["limited"].flag ? " Read limit reached; some quotes were not scanned.":""))]
         for gap in coverage["gaps"].items {coverageRows.append(Row(id:"gap-"+String(gap["from"].value ?? 0),title:"Tick gap",subtitle:inspectionDate(gap["from"].value)+" → "+inspectionDate(gap["through"].value)))}
         coverageRows += j["checks"].items.map{check in Row(id:"check-"+check["label"].text,title:check["label"].text,badge:check["state"].text.capitalized,badgeTone:["matched","recorded","complete"].contains(check["state"].text) ? 1:0)}
         sections.append(Section(title:"Evidence checks",rows:coverageRows))

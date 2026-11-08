@@ -27,7 +27,7 @@ final class TraderGraphView:UIView,UIGestureRecognizerDelegate {
         let first=graph.from ?? times.min() ?? graph.markers.map(\.t).min() ?? 0,last=graph.through ?? times.max() ?? graph.markers.map(\.t).max() ?? first+60000
         let timeSpan=max(1,last-first)
         let visibleMarkers=graph.markers.filter{$0.t>=first && $0.t<=last}
-        let values=all.map(\.value)+graph.candles.flatMap{[$0.low,$0.high]}+visibleMarkers.map(\.value)
+        let values=all.map(\.value)+graph.candles.flatMap{[$0.low,$0.high]}+visibleMarkers.compactMap(\.value)
         guard let minimum=values.min(),let maximum=values.max()else{text("No price history",x:box.minX,y:box.midY);return}
         let pad=max((maximum-minimum)*0.10,max(abs(maximum)*0.00001,0.000001)),lo=minimum-pad,hi=maximum+pad
         let x:(Double)->CGFloat={box.minX+box.width*CGFloat(($0-first)/timeSpan)}
@@ -57,9 +57,9 @@ final class TraderGraphView:UIView,UIGestureRecognizerDelegate {
             };colors[i%colors.count].setStroke();path.lineWidth=1.6;path.stroke()
         }
         for m in visibleMarkers {
-            let xx=x(m.t),yy=y(m.value),color:UIColor=m.label=="OPEN" ? .systemBlue:.systemGreen
+            let xx=x(m.t),color:UIColor=m.label=="OPEN" ? .systemBlue:.systemGreen
             ctx.saveGState();ctx.setStrokeColor(color.withAlphaComponent(0.5).cgColor);ctx.setLineDash(phase:0,lengths:[3,3]);ctx.move(to:CGPoint(x:xx,y:box.minY));ctx.addLine(to:CGPoint(x:xx,y:box.maxY));ctx.strokePath();ctx.restoreGState()
-            color.setFill();ctx.fillEllipse(in:CGRect(x:xx-4,y:yy-4,width:8,height:8))
+            if let value=m.value {color.setFill();ctx.fillEllipse(in:CGRect(x:xx-4,y:y(value)-4,width:8,height:8))}
             let label=m.label;let width=(label as NSString).size(withAttributes:[.font:font]).width;text(label,x:min(box.maxX-width,max(box.minX,xx-width/2)),y:box.minY-15,color:color)
         }
         for(i,t)in [first,(first+last)/2,last].enumerated(){let label=Date(timeIntervalSince1970:t/1000).formatted(timeSpan>172800000 ? .dateTime.month(.abbreviated).day():.dateTime.hour().minute());let w=(label as NSString).size(withAttributes:[.font:font]).width;let xx=i==0 ? box.minX:i==2 ? box.maxX-w:box.midX-w/2;text(label,x:xx,y:box.maxY+8)}
