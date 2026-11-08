@@ -11,8 +11,6 @@
  let{data}=$props();
  const run=$derived(data.run),actual=$derived(data.stage==='capital'),m=$derived(actual?data.capital?.metrics:run.metrics);
  let choice=$state<string|null>(null),loaded=$state<Inspection|null>(null),loading=$state(false),failure=$state('');
- const key=$derived(choice??data.selected??data.inspections[0]?.subject.key??options[0]?.key??(run.position?'open':''));
- const selected=$derived.by(()=>{const cached=data.inspections.find(i=>i.subject.key===key)??null;const fetched=loaded?.subject.runId===run.id&&loaded.subject.stage===data.stage&&loaded.subject.key===key?loaded:null;return fetched&&(!cached||fetched.asOf>cached.asOf)?fetched:cached});
 
  const curve=$derived(run.equityCurve.map(p=>({t:p.t,value:p.equity})));
  const dd=$derived.by(()=>{let peak=run.capital;return curve.map(p=>{peak=Math.max(peak,p.value);return{t:p.t,value:peak>0?(p.value/peak-1)*100:0}})});
@@ -21,6 +19,9 @@
   const rows=actual?deals.filter(d=>d.status!=='failed').map(d=>({key:String(d.id),label:`${utc(d.open_time)} · ${d.side} · ${usd(d.pnl)}`})):trades.filter(t=>t.index!==undefined).map(t=>({key:String(t.index),label:`${utc(t.entryTime)} · ${t.side} · ${usd(t.pnl)}`}));
   const keys=new Set(rows.map(r=>r.key));for(const i of data.inspections)if(!keys.has(i.subject.key)){rows.push({key:i.subject.key,label:`${utc(i.subject.entryTime)} · ${i.subject.side} · ${usd(i.subject.pnl)}`});keys.add(i.subject.key)}return rows;
  });
+
+ const key=$derived(choice??data.selected??data.inspections[0]?.subject.key??options[0]?.key??(run.position?'open':''));
+ const selected=$derived.by(()=>{const cached=data.inspections.find(i=>i.subject.key===key)??null;const fetched=loaded?.subject.runId===run.id&&loaded.subject.stage===data.stage&&loaded.subject.key===key?loaded:null;return fetched&&(!cached||fetched.asOf>cached.asOf)?fetched:cached});
 
  $effect(()=>{const id=run.id,stage=data.stage,target=key;if(!target||selected)return;let cancelled=false;const controller=new AbortController();loading=true;failure='';void fetch('/api/inspection?'+new URLSearchParams({id,stage,trade:target}),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error('Trade detail unavailable');return r.json()as Promise<Inspection>}).then(d=>{if(!cancelled)loaded=d}).catch(e=>{if(!cancelled&&e.name!=='AbortError')failure='Trade chart unavailable. Retry after reconnecting.'}).finally(()=>{if(!cancelled)loading=false});return()=>{cancelled=true;controller.abort()};});
  function choose(value:string){choice=value;const u=new URL(page.url);u.searchParams.set('trade',value);replaceState(u,page.state)}
