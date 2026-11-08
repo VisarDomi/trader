@@ -21,3 +21,8 @@ The memory-only response cache is capped at twelve entries / 16 MiB. Requests co
 no background scans are performed. Closed-trade responses expire after five minutes, open after ten
 seconds. Reboot recovery uses the same databases and stable trade indices, with no writable migration
 or strategy admission in this service.
+
+Strategy context comes from `../strategy`: exact bounded entry frames are preferred; missing old
+frames are reconstructed on demand from closed PG candles plus the arena's retained feed bars/daily
+seeds. Source versions are pinned. Original model forecasts and persistent strategy state are not
+invented. No quote re-download, model rerun or trade mutation is performed.

@@ -13,7 +13,7 @@ import type { LiveExecution } from './venue.ts';
  */
 import type { Bar, Forecast, ForecastSpec, Timeframe } from '../sdk/types.ts';
 import type { Instrument } from './instruments.ts';
-import type { RunEvent } from './run.ts';
+import type { RunEvent, RunOptions } from './run.ts';
 import { AgentRun } from './run.ts';
 import type { LoadedAgent } from './loader.ts';
 import { BarSeries, type Candle } from './series.ts';
@@ -73,6 +73,8 @@ export class MarketEngine {
     checkStopsOnCandles: boolean;
     execution?: LiveExecution;
     onEvent?: (e: RunEvent) => void;
+    onEntryDecision?: RunOptions['onEntryDecision'];
+    beforeEntryContext?:RunOptions['beforeEntryContext'];
   }): AgentRun {
     const def = opts.agent.def;
     const primary = this.getSeries(def.timeframe);
@@ -91,6 +93,8 @@ export class MarketEngine {
       checkStopsOnCandles: opts.checkStopsOnCandles,
       execution: opts.execution,
       onEvent: opts.onEvent,
+      onEntryDecision: opts.onEntryDecision,
+      beforeEntryContext: opts.beforeEntryContext,
       tickHistory: this.ticks,
     });
     this.runs.push(run);

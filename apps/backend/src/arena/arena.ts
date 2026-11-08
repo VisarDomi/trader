@@ -1,4 +1,5 @@
 import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
+import { explain,beforeEntryState } from '../strategy/evidence.ts';
 import { VirtualVenue, VirtualGateway, DEFAULT_EXECUTION_MS, VIRTUAL_MODEL, type CapitalMarket } from '../engine/venue.ts';
 import {
   backtestGate,
@@ -275,6 +276,12 @@ export class Arena {
           entryAllowed:()=>this.tickJournal?.lastError==null,
         },
         onEvent: e => this.onRunEvent(e),
+        beforeEntryContext:['timesfm-band','timesfm-vol-breakout'].includes(agent.slug)?state=>beforeEntryState(agent.slug,state):undefined,
+        onEntryDecision: (ctx,side,options,at,before) => {
+          if(!this.ready)return;
+          try {const frame=explain(agent.id,agent.codeHash,ctx,side,options,'recorded',before);frame.at=at;this.db.saveDecision(id,at,JSON.stringify(frame));}
+          catch {this.db.event('warn','evidence',`entry context could not be retained for ${id}`);}
+        },
       });
       const row = this.db.run(id);
       if (row && !row.retired && row.snapshot) {
@@ -650,6 +657,9 @@ export class Arena {
   }
 
   private onRunEvent(e: RunEvent): void {
+    if(e.type==='open'&&!isShadow(e.runId)){
+      try {this.db.linkDecision(e.runId,e.decisionTime??e.time,e.time);}catch {/* Derived metadata cannot affect fills. */}
+    }
     const t = this.tracked.get(e.runId);
     if (t) t.dirty = true;
     if (e.type === 'log' || e.type === 'error')

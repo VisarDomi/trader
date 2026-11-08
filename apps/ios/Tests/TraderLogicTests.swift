@@ -96,3 +96,14 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     #expect(markers.count==2)
     #expect(markers[1].label=="CLOSE" && markers[1].t==4000 && markers[1].value==nil)
 }
+@Test func strategyContextShowsThresholdMarginsAndSourceBasis() throws {
+    let data=try json("""
+    {"basis":"reconstructed","title":"Directional NY day","note":"Original inputs not saved","panels":[{"title":"Previous session","unit":"Price","note":"09:30–16:00 New York","series":[{"name":"Price","points":[{"t":1000,"value":100},{"t":2000,"value":101}]}],"guides":[{"label":"Minimum bullish close","value":100.25}],"markers":[]}],"gates":[{"label":"Directional move","value":0.3,"op":">=","limit":0.25,"unit":"%","margin":0.05,"state":"pass"},{"label":"Forecast","value":null,"op":">","limit":0,"unit":"","margin":null,"state":"unknown"}],"exitRule":"08:27 close","protections":{}}
+    """)
+    let rows=Presentation.strategySections(data).flatMap(\.rows)
+    #expect(rows.first?.badge=="Reconstructed")
+    #expect(rows.first{$0.id=="strategy-panel-0"}?.chart?.guides?.first?.value==100.25)
+    #expect(rows.first{$0.id=="strategy-gate-0"}?.stats[2].value.contains("pp")==true)
+    #expect(rows.first{$0.id=="strategy-gate-1"}?.badge=="Unknown")
+    #expect(rows.first{$0.id=="strategy-gate-0"}?.chart?.meter?.limit==0.25)
+}

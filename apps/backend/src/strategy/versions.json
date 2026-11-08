@@ -1,0 +1,282 @@
+{
+  "adx-dmi": {
+    "hash": "3d5900485ae4",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "+DI/-DI crossovers confirmed by ADX above a threshold; exits when ADX fades."
+  },
+  "bold-play": {
+    "hash": "b44145334bbc",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Control: bets as much as 1:200 allows (or just enough to reach $20,000) on ±0.25% moves until the account doubles or is ruined."
+  },
+  "bollinger-fade": {
+    "hash": "32e7f7ea2eda",
+    "timeframe": "15m",
+    "extra": [],
+    "description": "Fades Bollinger band extremes back to the mean while ADX says the market is ranging."
+  },
+  "buy-hold": {
+    "hash": "2c9413600d31",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Benchmark: long from the first bar at 1:1 and never sells; crypto and shares hold fee-free, the rest pay CFD funding."
+  },
+  "constant-leverage": {
+    "hash": "de306341fd0a",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Control: holds half the account leverage as a constant multiple of equity (1×, 2.5×, 10×), rebalanced like a leveraged ETF."
+  },
+  "crypto-sunday-asia": {
+    "hash": "b18ac4ad918d",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Long BTC and ETH from Sunday 19:00 to Monday 19:00 New York, as Asia opens the week; 1:1, fee-free."
+  },
+  "donchian-breakout": {
+    "hash": "f6251624fb4d",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Turtle-style breakout of the previous N-bar high/low, exit on the shorter opposite channel."
+  },
+  "donchian-ensemble": {
+    "hash": "3919028cd59f",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Averages five breakout systems (10 to 200 days) into one long-only position, volatility-scaled, on BTC and ETH at 1:1."
+  },
+  "ema-cross": {
+    "hash": "29fd8dff922d",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Fast/slow EMA crossover with an ATR stop; always in the market after the first signal."
+  },
+  "gold-session": {
+    "hash": "d6a0bcac7f83",
+    "timeframe": "30m",
+    "extra": [],
+    "description": "Long gold from the London afternoon fix (15:00) to the next morning fix (10:30); the \"both\" variant is short in between."
+  },
+  "hma-slope": {
+    "hash": "9d4fce07f5f5",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Goes with the slope of a Hull moving average; reverses when the slope turns."
+  },
+  "ibs-dip": {
+    "hash": "8177128c28c5",
+    "timeframe": "30m",
+    "extra": [
+      "1d"
+    ],
+    "description": "Buys US indices when the cash session closes near its low (IBS < 0.2) above the 200-day average; out on the next strong close."
+  },
+  "inside-bar": {
+    "hash": "d16097f81a8e",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Trades the breakout of a mother bar after an inside-bar consolidation."
+  },
+  "keltner-trend": {
+    "hash": "c5d795df6272",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Enters on closes outside the Keltner channel and exits back at the middle line."
+  },
+  "leverage-ladder": {
+    "hash": "1ba31a7af930",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Control: one signal on every leverage tier with 10% of equity as margin, to show what leverage does on its own."
+  },
+  "london-breakout": {
+    "hash": "76300d84a11f",
+    "timeframe": "15m",
+    "extra": [],
+    "description": "Trades the first break of the Asian-session range during the London morning."
+  },
+  "lrs-sma200": {
+    "hash": "924b3fcda1b2",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Long the index at 1×, 2× or 3× equity while it closes above its 200-day average, in cash below."
+  },
+  "macd-trend": {
+    "hash": "9d7934f14b6f",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "MACD signal-line crossovers taken only in the direction of a long EMA trend."
+  },
+  "martingale-monkey": {
+    "hash": "e4e4e22e173b",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Control: random entries, 1 ATR stop and target, risk doubling after each loss (0.5% up to 64%) at 1:200, to show how martingales end."
+  },
+  "mtf-pullback": {
+    "hash": "9ef48cbba3c6",
+    "timeframe": "1h",
+    "extra": [
+      "4h"
+    ],
+    "description": "Buys 1h pullbacks inside a 4h uptrend (and sells rallies in a 4h downtrend)."
+  },
+  "night-risk-twin": {
+    "hash": "8362c8e6f3c2",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "Frozen night signals and deadline, with 0.5% planned capital loss and about 1.8× initial exposure at tier 1:3. Separate normal-gate research; no special demo admission."
+  },
+  "noise-area-momentum": {
+    "hash": "3547598324bb",
+    "timeframe": "30m",
+    "extra": [],
+    "description": "Rides US index moves that leave their usual intraday range (14-day noise band by time of day); VWAP/band trailing stop, flat by 16:00 New York."
+  },
+  "orb-ny": {
+    "hash": "8417a48be5e6",
+    "timeframe": "5m",
+    "extra": [],
+    "description": "Trades the first breakout of the New York opening range on US indices; one trade a day, flat by the close."
+  },
+  "overnight-drift": {
+    "hash": "11869a7c8f2f",
+    "timeframe": "30m",
+    "extra": [],
+    "description": "Holds US indices from the cash close to the next cash open to capture the overnight premium."
+  },
+  "quote-breakout": {
+    "hash": "19e0ac04be2a",
+    "timeframe": "15m",
+    "extra": [],
+    "description": "Paired 15m range-breakout study: immediate entry versus a two-minute tick gate for spread and adverse price movement. Identical 0.5% planned risk; US indices only."
+  },
+  "random-baseline": {
+    "hash": "f19f63b4f9cf",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Control: random long/short entries with a 2 ATR stop and target. Measures how good luck looks."
+  },
+  "rsi2-reversion": {
+    "hash": "b196e0eebb07",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Buys RSI(2) extremes in the direction of the 200-bar trend and exits on the snap-back."
+  },
+  "shannon-demon": {
+    "hash": "b1f0cc5dcd5c",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Holds 50% of equity in a volatile asset and 50% cash at 1:1; rebalances to 50% when the mix leaves 45-55%."
+  },
+  "skew-monkey": {
+    "hash": "9b3db602e20f",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Control: random entries with a 0.5 ATR target and a 3 ATR stop (wins ~85% of trades, no edge), to show what negative skew looks like."
+  },
+  "squeeze-breakout": {
+    "hash": "4c5cf413ccab",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Waits for Bollinger bands to squeeze inside Keltner, then trades the breakout with a trailing stop."
+  },
+  "stoch-range": {
+    "hash": "b6e32a9ad258",
+    "timeframe": "30m",
+    "extra": [],
+    "description": "Stochastic %K/%D crosses at the extremes, taken only in low-ADX (ranging) conditions."
+  },
+  "supertrend": {
+    "hash": "3ec70740a69b",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Rides SuperTrend flips and trails the stop on the SuperTrend line."
+  },
+  "swing-reversal": {
+    "hash": "40110ef52e64",
+    "timeframe": "15m",
+    "extra": [],
+    "description": "Enters after price moves a fixed percentage off its recent swing low/high (v1 trend-follower)."
+  },
+  "timesfm-band": {
+    "hash": "a43b012d6e51",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Fades closes that land outside the previous bar's TimesFM 10-90% band when the new forecast expects a retrace."
+  },
+  "timesfm-drift": {
+    "hash": "0ef166b85243",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Follows the TimesFM 3 median forecast when its expected move is large relative to the forecast band."
+  },
+  "timesfm-swing": {
+    "hash": "ea671b87dd73",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Trades a day-ahead TimesFM forecast on 4h bars only when its inner (30-70%) band is entirely above or below the price."
+  },
+  "timesfm-trend": {
+    "hash": "b29663801a74",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Takes EMA-trend trades only when the TimesFM forecast agrees; exits on disagreement."
+  },
+  "timesfm-vol-breakout": {
+    "hash": "8eaf3846f181",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Channel breakouts taken only when TimesFM forecasts unusually wide price ranges (expected volatility expansion)."
+  },
+  "tsmom-12m": {
+    "hash": "1c4de411a2b9",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Long or short each market by the sign of its 12-month return, sized to 15% annual volatility (up to 3×), rebalanced monthly."
+  },
+  "tsmom": {
+    "hash": "f7e169e857d7",
+    "timeframe": "4h",
+    "extra": [],
+    "description": "Holds long when the trailing return is positive and short when negative (trend premium)."
+  },
+  "turn-of-month": {
+    "hash": "1c1506eb979f",
+    "timeframe": "30m",
+    "extra": [],
+    "description": "Holds US indices and the largest Nasdaq shares from two days before the month ends to the third trading day of the next; flat otherwise."
+  },
+  "visar-night-trading": {
+    "hash": "56ac3bdfe7c1",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200."
+  },
+  "vol-managed-hold": {
+    "hash": "7e43195f79f7",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Holds the 8 largest Nasdaq shares, BTC and ETH at 1:1, scaled down when the last month is more volatile than the last year."
+  },
+  "vol-target": {
+    "hash": "fc3bd99f3b25",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Long US indices sized to a 15% annual volatility from the last month of returns (0-2× equity), rebalanced monthly."
+  },
+  "volatility-breakout": {
+    "hash": "c6cec84136d3",
+    "timeframe": "15m",
+    "extra": [],
+    "description": "Enters when price moves k × yesterday's range away from today's open; flat by the daily close."
+  },
+  "zscore-fade": {
+    "hash": "213fddf40be0",
+    "timeframe": "1h",
+    "extra": [],
+    "description": "Fades price when it stretches more than ~2 standard deviations from its rolling mean."
+  }
+}

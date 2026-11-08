@@ -23,11 +23,12 @@ final class TraderGraphView:UIView,UIGestureRecognizerDelegate {
         let box=CGRect(x:58,y:28,width:max(10,rect.width-66),height:max(10,rect.height-55))
         if graph.kind=="waterfall"{waterfall(ctx,box);return}
         if graph.kind=="bars"{bars(ctx,rect);return}
+        if graph.kind=="meter"{meter(ctx,rect);return}
         let all=graph.series.flatMap(\.points),times=all.map(\.t)+graph.candles.map(\.t)
         let first=graph.from ?? times.min() ?? graph.markers.map(\.t).min() ?? 0,last=graph.through ?? times.max() ?? graph.markers.map(\.t).max() ?? first+60000
         let timeSpan=max(1,last-first)
         let visibleMarkers=graph.markers.filter{$0.t>=first && $0.t<=last}
-        let values=all.map(\.value)+graph.candles.flatMap{[$0.low,$0.high]}+visibleMarkers.compactMap(\.value)
+        let values=all.map(\.value)+graph.candles.flatMap{[$0.low,$0.high]}+visibleMarkers.compactMap(\.value)+(graph.guides ?? []).map(\.value)
         guard let minimum=values.min(),let maximum=values.max()else{text("No price history",x:box.minX,y:box.midY);return}
         let pad=max((maximum-minimum)*0.10,max(abs(maximum)*0.00001,0.000001)),lo=minimum-pad,hi=maximum+pad
         let x:(Double)->CGFloat={box.minX+box.width*CGFloat(($0-first)/timeSpan)}
@@ -43,6 +44,9 @@ final class TraderGraphView:UIView,UIGestureRecognizerDelegate {
         }
         for gap in graph.gaps where gap.through>=first && gap.from<=last {
             let left=x(max(first,gap.from)),right=x(min(last,gap.through));UIColor.tertiarySystemFill.setFill();ctx.fill(CGRect(x:left,y:box.minY,width:max(1,right-left),height:box.height))
+        }
+        for guide in graph.guides ?? [] {
+            ctx.saveGState();ctx.setStrokeColor(UIColor.secondaryLabel.withAlphaComponent(0.6).cgColor);ctx.setLineDash(phase:0,lengths:[5,4]);ctx.move(to:CGPoint(x:box.minX,y:y(guide.value)));ctx.addLine(to:CGPoint(x:box.maxX,y:y(guide.value)));ctx.strokePath();ctx.restoreGState()
         }
         for c in graph.candles where c.t>=first && c.t<=last {
             let xx=x(c.t);ctx.setStrokeColor(UIColor.tertiaryLabel.cgColor);ctx.setLineWidth(1)
@@ -80,6 +84,16 @@ final class TraderGraphView:UIView,UIGestureRecognizerDelegate {
             text(b.name,x:0,y:yy+step/2-6);(b.value<0 ? UIColor.systemRed:UIColor.systemTeal).withAlphaComponent(0.8).setFill();ctx.fill(CGRect(x:b.value<0 ? zero-ww:zero,y:yy+step*0.25,width:ww,height:max(2,step*0.5)))
             text(b.value.formatted(.number.precision(.fractionLength(1)))+graph.unit,x:box.maxX+8,y:yy+step/2-6,color:.label)
         }
+    }
+    private func meter(_ ctx:CGContext,_ rect:CGRect){
+        guard let m=graph.meter else{return}
+        let span=max(abs(m.limit)*(m.price==true ? 0.001:0.5),abs(m.value-m.limit)*1.6,m.limit==0 ? 1:0.000001),left:CGFloat=4,width=max(10,rect.width-8),mid=left+width/2
+        let box=CGRect(x:left,y:10,width:width,height:8)
+        UIColor.tertiarySystemFill.setFill();ctx.fill(box)
+        UIColor.systemGreen.withAlphaComponent(0.18).setFill();ctx.fill(CGRect(x:m.above ? mid:left,y:10,width:width/2,height:8))
+        ctx.setStrokeColor(UIColor.secondaryLabel.cgColor);ctx.setLineDash(phase:0,lengths:[2,2]);ctx.move(to:CGPoint(x:mid,y:5));ctx.addLine(to:CGPoint(x:mid,y:23));ctx.strokePath();ctx.setLineDash(phase:0,lengths:[])
+        let x=left+width*CGFloat(min(1,max(0,(m.value-m.limit+span)/(2*span))))
+        UIColor.label.setFill();ctx.fill(CGRect(x:x-2,y:7,width:4,height:14))
     }
     private func waterfall(_ ctx:CGContext,_ box:CGRect){
         var sum:Double=0,segments:[(GraphBar,Double,Double)]=[]

@@ -7,6 +7,7 @@ export interface Subject {
   runId:string;key:string;stage:'virtual'|'capital'|'backtest';name:string;epic:string;side:'long'|'short';size:number;
   entryTime:number;exitTime:number|null;entryPrice:number;exitPrice:number|null;pnl:number|null;funding:number|null;
   entryEquity:number|null;leverage?:number|null;entryReason:string|null;exitReason:string|null;exitCode:string|null;
+  agentId?:string;codeHash?:string;timeframe?:string;params?:Record<string,unknown>;intentEntryTime?:number;decisionTime?:number;
   execution?:ExecutionCostEvidence;stopLoss?:number|null;takeProfit?:number|null;
   timeline:{label:string;t:number}[];
 }
@@ -84,6 +85,7 @@ export function inspect(subject:Subject,raw:Quote[],sessions:Interval[],candles:
       adjustment:e?.adjustmentPnl??identity,method:e?.method??null,entryQuote:observed(subject.entryTime),exitQuote:subject.exitTime?observed(subject.exitTime):null},
     checks:[{label:'Entry reason',state:subject.entryReason?'recorded':'unknown'},{label:'Exit reason',state:subject.exitTime?(subject.exitReason?'recorded':'unknown'):'open'},
       {label:'Price coverage',state:complete?'complete':'partial'},{label:'Spread attribution',state:e?'recorded':'unknown'},
-      {label:'P&L reconciliation',state:identity===null?'unknown':Math.abs(identity)<.011?'matched':'adjustment'}],asOf:now};
+      {label:'P&L reconciliation',state:identity===null?'unknown':Math.abs(identity)<.011?'matched':'adjustment'}],asOf:now,
+    strategy:null as import('../strategy/evidence').StrategyContext|null};
 }
 export type Inspection=ReturnType<typeof inspect>;

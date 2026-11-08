@@ -6,7 +6,7 @@ Run via mac-workload simulator --visible --device UUID --timeout 600 -- ...
 """
 import argparse,json,subprocess,time,urllib.parse,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--device',required=True);p.add_argument('--fixture',required=True);p.add_argument('--restore-only',action='store_true');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--device',required=True);p.add_argument('--fixture',required=True);p.add_argument('--restore-only',action='store_true');p.add_argument('--strategy',action='store_true');a=p.parse_args()
 OUT=Path('/tmp/trader-native-qa');OUT.mkdir(exist_ok=True)
 ROOT=Path(__file__).resolve().parents[1];TOOLS=Path.home()/'Developer/ios-tools/native/scripts'
 APPLE=str(TOOLS/'apple-tool');BUNDLE='com.visar.Trader.qa'
@@ -37,7 +37,7 @@ def orient(value):
 def layout():return hook('layout')['layout']
 def scan(prefix,terms):
     seen=''
-    for i in range(18):
+    for i in range(24 if a.strategy else 18):
         hook('scroll',y=i*500);time.sleep(.18);part=json.dumps(layout());seen+=part
         if i in [0,2,4,6]:shot(prefix+'-'+str(i))
     for term in terms:
@@ -62,7 +62,7 @@ try:
         scan('run', ['Recorded ticks','bearish day','scheduled exit'])
         hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
         orient('portrait');shot('trade-portrait')
-        scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown'])
+        scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown']+(['Previous New York session','Path efficiency','Headroom','Minimum bullish close','22:00 reference'] if a.strategy else []))
         orient('landscape');shot('trade-landscape');orient('portrait')
         hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
         shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])

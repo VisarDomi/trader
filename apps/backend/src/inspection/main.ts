@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { readPath } from './archive';
 import { inspect,INSPECTION_LIMITS } from './model';
 import { subject } from './subjects';
+import { strategyContext } from '../strategy/history';
 const arenaPath=process.env.INSPECTION_ARENA_DB??join(homedir(),'.local/share/hetzner-pc/mirror/home/erdal/trader-arena/data/arena.db');
 const spoolPath=process.env.INSPECTION_TICK_DB??join(dirname(arenaPath),'ticks.db');
 const db=new Database(arenaPath,{readonly:true});
@@ -12,7 +13,9 @@ let serial=Promise.resolve();
 async function load(id:string,key:string,stage:string){
   const s=subject(db,id,key,stage);const end=s.exitTime??Date.now(),from=Math.max(s.entryTime,end-INSPECTION_LIMITS.windowMs);
   const path=await readPath(s.epic,from,end,spoolPath);
-  const body=JSON.stringify(inspect(s,path.quotes,path.sessions,path.candles,Date.now(),path.limited));
+  const result=inspect(s,path.quotes,path.sessions,path.candles,Date.now(),path.limited);
+  result.strategy=await strategyContext(db,s).catch(()=>null);
+  const body=JSON.stringify(result);
   cache.delete(`${id}|${stage}|${key}`);cache.set(`${id}|${stage}|${key}`,{body,until:Date.now()+(s.exitTime?300000:10000),bytes:Buffer.byteLength(body)});
   while(cache.size>INSPECTION_LIMITS.cacheEntries||[...cache.values()].reduce((n,c)=>n+c.bytes,0)>INSPECTION_LIMITS.cacheBytes)cache.delete(cache.keys().next().value!);
   return body;

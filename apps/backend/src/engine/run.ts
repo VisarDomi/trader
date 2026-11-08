@@ -114,6 +114,9 @@ export interface RunOptions {
   checkStopsOnCandles: boolean;
   execution?: LiveExecution;
   onEvent?: (event: RunEvent) => void;
+  /** Optional observational hook. Errors cannot reject or change an order. */
+  onEntryDecision?: (context: AgentContext, side: Side, options: OrderOptions, at: number, before?:Record<string,unknown>) => void;
+  beforeEntryContext?: (state:Record<string,unknown>)=>Record<string,unknown>;
   tickHistory?: readonly Tick[];
 }
 
@@ -199,6 +202,9 @@ export class AgentRun {
   readonly warmup: number;
   private readonly checkStopsOnCandles: boolean;
   private readonly onEvent?: (event: RunEvent) => void;
+  private readonly onEntryDecision?: RunOptions['onEntryDecision'];
+  private readonly beforeEntryContext?: RunOptions['beforeEntryContext'];
+  private entryBefore?:Record<string,unknown>;
 
   balance: number;
   position: OpenPosition | null = null;
@@ -283,6 +289,8 @@ export class AgentRun {
     this.extra = opts.extra;
     this.checkStopsOnCandles = opts.checkStopsOnCandles;
     this.onEvent = opts.onEvent;
+    this.onEntryDecision = opts.onEntryDecision;
+    this.beforeEntryContext = opts.beforeEntryContext;
     this.balance = opts.capital;
     this.peakEquity = opts.capital;
     this.warmup = opts.agent.warmup ?? DEFAULT_WARMUP;
@@ -469,6 +477,7 @@ export class AgentRun {
     this.currentBar = bar;
     this.barsSeen++;
     const ctx = this.makeContext(bar);
+    if(this.beforeEntryContext){try{this.entryBefore=this.beforeEntryContext(this.state);}catch{this.entryBefore=undefined;}}
     const started = performance.now();
     try {
       this.agent.onBar?.(ctx as never);
@@ -588,6 +597,12 @@ export class AgentRun {
     this.executionStats.submitted++;
     if (this.quote) command.decisionMid = (this.quote.bid + this.quote.ask) / 2;
     this.pending.push(command);
+    if(command.kind==='open')this.observeEntry(command.side,command.opts,command.at);
+  }
+
+  private observeEntry(side:Side,options:OrderOptions,at:number):void {
+    if(!this.onEntryDecision||!this.currentBar)return;
+    try {this.onEntryDecision(this.makeContext(this.currentBar),side,options,at,this.entryBefore);}catch {/* Observation must never affect trading. */}
   }
 
   private flushPending(): void {
@@ -681,6 +696,7 @@ export class AgentRun {
       this.reject('insufficient margin or changed size limits at execution');
       return;
     }
+    if(!this.execution)this.observeEntry(side,opts,time);
     this.position = {
       entryQuote: fillQuote(this.quote, side, true, entry, this.instrument.pricePrecision,
         this.execution && this.executing ? this.decisionMid : (this.quote!.bid + this.quote!.ask) / 2, time),

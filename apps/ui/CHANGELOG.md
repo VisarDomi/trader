@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Add strategy-specific context charts and filter gauges to the native inspector and PWA: previous NY
+  session/overnight reference for night trading, trend/crossovers, oscillators/bands, breakout ranges,
+  calendar windows, volatility allocation and retained forecasts. Show observed value, exact rule and
+  headroom; label historical reconstruction and missing state/model inputs.
+
 - Put results, charts and trades first; move methodology, extended filters and source/logs behind
   details. Add per-trade bid/ask, open/close markers, executable P&L, drawdown, spread, cost bars
   and recorded reasons. Native iPhone adds inline trade charts and a dedicated inspection screen;

@@ -32,6 +32,11 @@ const SCHEMA = `
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
 PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS decision_frames (
+  run_id TEXT NOT NULL, decision_time INTEGER NOT NULL, entry_time INTEGER,
+  payload BLOB NOT NULL, PRIMARY KEY(run_id, decision_time)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS decision_frames_by_entry ON decision_frames(run_id,entry_time);
 
 CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,
@@ -550,6 +555,15 @@ export class ArenaDB {
   viewTrades(runId:string,limit=1000) {
     return this.db.query<Record<string,unknown>,[string,number]>(`SELECT * FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT ?`)
       .all(runId,limit).reverse().map(row=>({...rowToTrade(row),index:Number(row.idx)}));
+  }
+
+  saveDecision(runId:string,at:number,payload:string):void {
+    if(Buffer.byteLength(payload)>24*1024)throw Error('Decision context exceeds its storage bound');
+    this.db.query('INSERT OR IGNORE INTO decision_frames(run_id,decision_time,payload) VALUES (?,?,?)').run(runId,at,Bun.gzipSync(payload,{level:1}));
+  }
+
+  linkDecision(runId:string,decisionTime:number,entryTime:number):void {
+    this.db.query('UPDATE decision_frames SET entry_time=? WHERE run_id=? AND decision_time=? AND entry_time IS NULL').run(entryTime,runId,decisionTime);
   }
 
   upsertEquity(runId: string, t: number, equity: number): void {
