@@ -4,8 +4,12 @@ extension Presentation {
     static func gateNumber(_ n:Double?,unit:String)->String {
         guard let n else{return "Unknown"}
         if unit=="yes/no"{return n==1 ? "Yes":"No"}
-        let digits=unit=="Price" && abs(n)<10 ? 5:unit=="Price" ? 2:3
-        return n.formatted(.number.precision(.fractionLength(0...digits)))+(unit.isEmpty ? "":" "+unit)
+        if unit=="direction"{return n>0 ? "Bullish":n<0 ? "Bearish":"Unqualified"}
+        if unit=="minute of day"{return String(format:"%02d:%02d",Int(n)/60,Int(n)%60)}
+        if unit=="Sunday = 0"{return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][min(6,max(0,Int(n)))]}
+        if unit=="fraction"{return gateNumber(n*100,unit:"%") }
+        let digits=abs(n)>0 && abs(n)<0.01 ? 6:unit=="Price" && abs(n)<10 ? 5:unit=="Price" ? 2:3
+        return n.formatted(.number.precision(.fractionLength(0...digits)))+(unit.isEmpty || unit=="Price" ? "":" "+unit)
     }
     static func strategySections(_ d:JSON)->[Section] {
         let basis=d["basis"].text
@@ -25,8 +29,8 @@ extension Presentation {
             sections.append(Section(title:"Strategy context",rows:[row]))
         }
         let gates=d["gates"].items.enumerated().map{i,g->Row in
-            let value=g["value"].value,limit=g["limit"].value,margin=g["margin"].value,unit=g["unit"].text,op=g["op"].text,state=g["state"].text
-            let headroom=margin.map{($0>0 ? "+":"")+gateNumber($0,unit:unit=="%" ? "pp":unit)} ?? "Unknown"
+            let value=g["value"].value,limit=g["limit"].value,margin=g["margin"].value,unit=g["label"].text=="Session direction" ? "direction":g["unit"].text,op=g["op"].text,state=g["state"].text
+            let headroom=margin.map{($0>0 ? "+":"")+gateNumber(unit=="fraction" ? $0*100:$0,unit:unit=="%" || unit=="fraction" ? "pp":unit=="minute of day" ? "minutes":unit)+(unit=="Price" ? " points":"")} ?? "Unknown"
             var row=Row(id:"strategy-gate-\(i)",title:g["label"].text,body:g["note"].text,
                 badge:state=="unknown" ? "Unknown":state=="pass" ? "Meets rule":"Outside rule",
                 stats:[Stat(label:"Value",value:gateNumber(value,unit:unit)),Stat(label:"Rule",value:op+" "+gateNumber(limit,unit:unit)),Stat(label:op=="=" ? "Match":"Headroom",value:op=="=" ? (state=="unknown" ? "Unknown":state=="pass" ? "Yes":"No"):headroom,tone:state=="unknown" ? 0:state=="pass" ? 1:-1)],badgeTone:state=="unknown" ? 0:state=="pass" ? 1:-1)

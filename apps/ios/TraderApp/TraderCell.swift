@@ -16,6 +16,7 @@ enum TraderFonts {
 final class TraderCell:UITableViewCell {
     private let stack=UIStackView(), titleLabel=UILabel(),subtitleLabel=UILabel(),bodyLabel=UILabel(),badgeLabel=UILabel(),stats=UIStackView()
     private var chart:TraderGraphView?
+    private let roundingSpace=UIView()
     private var statValues:[UILabel]=[],statNames:[UILabel]=[]
     override init(style:UITableViewCell.CellStyle,reuseIdentifier:String?) {
         super.init(style:style,reuseIdentifier:reuseIdentifier)
@@ -28,16 +29,27 @@ final class TraderCell:UITableViewCell {
         subtitleLabel.font = TraderFonts.caption;subtitleLabel.textColor = .secondaryLabel
         bodyLabel.font = TraderFonts.body;bodyLabel.textColor = .secondaryLabel
         badgeLabel.font = TraderFonts.small;badgeLabel.textColor = .systemTeal
-        for label in [titleLabel,subtitleLabel,bodyLabel,badgeLabel]{label.adjustsFontForContentSizeCategory=true}
+        for label in [titleLabel,subtitleLabel,bodyLabel,badgeLabel]{
+            label.adjustsFontForContentSizeCategory=true
+            label.setContentHuggingPriority(.required,for:.vertical)
+            label.setContentCompressionResistancePriority(.required,for:.vertical)
+        }
         stats.axis = .horizontal;stats.distribution = .fillEqually;stats.spacing=12;stack.addArrangedSubview(stats)
         for _ in 0..<3 {
             let column=UIStackView();column.axis = .vertical;column.spacing=2
             let value=UILabel();value.font=TraderFonts.metric;value.adjustsFontForContentSizeCategory=true
             value.adjustsFontSizeToFitWidth=true;value.minimumScaleFactor=0.65
             let label=UILabel();label.font=TraderFonts.small;label.adjustsFontForContentSizeCategory=true;label.textColor = .secondaryLabel;label.numberOfLines=2
+            for l in [value,label]{l.setContentHuggingPriority(.required,for:.vertical);l.setContentCompressionResistancePriority(.required,for:.vertical)}
             column.addArrangedSubview(value);column.addArrangedSubview(label);stats.addArrangedSubview(column)
             statValues.append(value);statNames.append(label)
         }
+        // UITableView rounds automatic row heights. Keep that spare fraction in a
+        // spacer instead of letting equal-priority labels trade a point of height.
+        roundingSpace.setContentHuggingPriority(.init(1),for:.vertical)
+        roundingSpace.setContentCompressionResistancePriority(.init(1),for:.vertical)
+        roundingSpace.heightAnchor.constraint(greaterThanOrEqualToConstant:0).isActive=true
+        stack.addArrangedSubview(roundingSpace)
     }
     required init?(coder:NSCoder){fatalError("init(coder:)")}
     func configure(_ row:Row) {
@@ -51,6 +63,8 @@ final class TraderCell:UITableViewCell {
             badgeLabel.textColor=row.badgeTone.map{$0>0 ? UIColor.systemGreen:$0<0 ? UIColor.systemRed:UIColor.systemOrange} ?? .systemTeal
             stats.isHidden=row.stats.isEmpty
             stats.axis=traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical:.horizontal
+            stats.alignment=stats.axis == .horizontal ? .top:.fill
+            stats.distribution=stats.axis == .horizontal ? .fillEqually:.fill
             for i in 0..<3 {
                 stats.arrangedSubviews[i].isHidden=i>=row.stats.count
                 guard i<row.stats.count else{continue}
@@ -61,11 +75,13 @@ final class TraderCell:UITableViewCell {
             chart?.removeFromSuperview();chart=nil
             if let graph=row.chart {
                 let v=TraderGraphView();v.graph=graph;v.heightAnchor.constraint(equalToConstant:graph.height).isActive=true
-                if graph.kind=="price"{stack.insertArrangedSubview(v,at:2)}else{stack.addArrangedSubview(v)};chart=v
+                if graph.kind=="price"{stack.insertArrangedSubview(v,at:2)}else{stack.insertArrangedSubview(v,at:stack.arrangedSubviews.count-1)};chart=v
             } else if !row.points.isEmpty {
                 let v=TraderGraphView();v.graph=Graph(series:[GraphSeries(name:"Equity",points:row.points)],height:200);v.heightAnchor.constraint(equalToConstant:200).isActive=true
-                stack.addArrangedSubview(v);chart=v
+                stack.insertArrangedSubview(v,at:stack.arrangedSubviews.count-1);chart=v
             }
+            let visible=stack.arrangedSubviews.filter{!$0.isHidden && $0 !== roundingSpace}
+            for v in visible{stack.setCustomSpacing(v === visible.last ? 0:7,after:v)}
             accessoryType=row.route != nil ? .disclosureIndicator:.none
             selectionStyle=(row.route != nil || !row.action.isEmpty) ? .default:.none
             accessibilityIdentifier=row.id

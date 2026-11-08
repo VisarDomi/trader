@@ -2,7 +2,17 @@
  import type{StrategyContext}from'../../../../backend/src/strategy/evidence';
  import TimeChart from'./TimeChart.svelte';
  let {context:d}:{context:StrategyContext}=$props();
- const number=(v:number|null,unit:string)=>v===null?'Unknown':unit==='yes/no'?(v?'Yes':'No'):v.toLocaleString(undefined,{maximumFractionDigits:unit==='Price'?5:3})+(unit==='%'?'%':unit?` ${unit}`:'');
+ function number(v:number|null,unit:string):string{
+  if(v===null)return 'Unknown';if(unit==='yes/no')return v?'Yes':'No';if(unit==='direction')return v>0?'Bullish':v<0?'Bearish':'Unqualified';
+  if(unit==='minute of day')return `${String(Math.floor(v/60)).padStart(2,'0')}:${String(v%60).padStart(2,'0')}`;
+  if(unit==='Sunday = 0')return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][Math.max(0,Math.min(6,v))];
+  if(unit==='fraction')return number(v*100,'%');
+  return v.toLocaleString(undefined,{maximumFractionDigits:unit==='Price'?5:Math.abs(v)>0&&Math.abs(v)<.01?6:3})+(unit==='%'?'%':unit&&unit!=='Price'?` ${unit}`:'');
+ }
+ function headroom(g:StrategyContext['gates'][number]):string{
+  if(g.margin===null)return 'Headroom unknown';if(g.op==='=')return 'Exact match required';
+  return `${g.margin>=0?'+':''}${number(g.unit==='fraction'?g.margin*100:g.margin,g.unit==='%'||g.unit==='fraction'?'pp':g.unit==='minute of day'?'minutes':g.unit)}${g.unit==='Price'?' points':''} headroom`;
+ }
  function geometry(g:StrategyContext['gates'][number]){
   const limit=g.limit??0,span=Math.max(Math.abs(limit)*(g.unit==='Price'?.001:.5),Math.abs((g.value??limit)-limit)*1.6,limit===0?1:.000001),low=limit-span,high=limit+span;
   return {limit:50,value:((g.value??limit)-low)/(high-low)*100,above:g.op==='>'||g.op==='>='};
@@ -11,7 +21,7 @@
 <section class="stack strategy-context">
  <header><div class="row"><h2>{d.title}</h2><span class="badge">{d.basis==='recorded'?'Saved at entry':d.basis==='reconstructed'?'Reconstructed':'Unavailable for this version'}</span></div><p class="muted provenance">{d.note}</p></header>
  {#each d.panels as panel}<section class="context-panel"><h3>{panel.title}</h3><p class="muted small">{panel.note}</p>{#if panel.series.some(s=>s.points.length)}<TimeChart series={panel.series} guides={panel.guides} markers={panel.markers} candles={panel.candles??[]} from={panel.from} through={panel.through} unit={panel.unit} height={220}/>{:else}{#each panel.guides as guide}<div class="row"><span>{guide.label}</span><strong>{number(guide.value,panel.unit)}</strong></div>{/each}{/if}</section>{/each}
- {#if d.gates.length}<section><h3>Entry filters · distance to rejection</h3><div class="gates">{#each d.gates as g}{@const geo=geometry(g)}<div class="gate"><div class="row"><strong>{g.label}</strong><span class:up={g.state==='pass'} class:down={g.state==='fail'} class="badge">{g.state==='unknown'?'Unknown':g.state==='pass'?'Meets rule':'Outside rule'}</span></div><div class="numbers"><span>{number(g.value,g.unit)}</span><span class="muted">{g.op} {number(g.limit,g.unit)}</span><span class:up={g.margin!==null&&g.state==='pass'} class:down={g.state==='fail'}>{g.margin===null?'Headroom unknown':g.op==='='?'Exact match required':`${g.margin>=0?'+':''}${number(g.margin,g.unit==='%'?'pp':g.unit)} headroom`}</span></div>{#if g.op!=='='&&g.value!==null&&g.limit!==null}<div class="gauge" role="img" aria-label={`${g.label}: ${number(g.value,g.unit)}, rule ${g.op} ${number(g.limit,g.unit)}`}><div class="allowed" style:left={geo.above?'50%':'0'}></div><i class="limit"></i><i class="value" style:left={`${Math.max(0,Math.min(100,geo.value))}%`}></i></div>{/if}{#if g.note}<p class="muted small">{g.note}</p>{/if}</div>{/each}</div></section>{/if}
+ {#if d.gates.length}<section><h3>Entry filters · distance to rejection</h3><div class="gates">{#each d.gates as g}{@const geo=geometry(g)}{@const unit=g.label==='Session direction'?'direction':g.unit}<div class="gate"><div class="row"><strong>{g.label}</strong><span class:up={g.state==='pass'} class:down={g.state==='fail'} class="badge">{g.state==='unknown'?'Unknown':g.state==='pass'?'Meets rule':'Outside rule'}</span></div><div class="numbers"><span>{number(g.value,unit)}</span><span class="muted">{g.op} {number(g.limit,unit)}</span><span class:up={g.margin!==null&&g.state==='pass'} class:down={g.state==='fail'}>{headroom(g)}</span></div>{#if g.op!=='='&&g.value!==null&&g.limit!==null}<div class="gauge" role="img" aria-label={`${g.label}: ${number(g.value,unit)}, rule ${g.op} ${number(g.limit,unit)}`}><div class="allowed" style:left={geo.above?'50%':'0'}></div><i class="limit"></i><i class="value" style:left={`${Math.max(0,Math.min(100,geo.value))}%`}></i></div>{/if}{#if g.note}<p class="muted small">{g.note}</p>{/if}</div>{/each}</div></section>{/if}
  <div class="exit"><small class="muted">Exit plan</small><p>{d.exitRule}</p>{#if d.protections.stopLoss!==null||d.protections.takeProfit!==null}<p class="small">At entry request · {d.protections.stopLoss!==null?`stop ${number(d.protections.stopLoss,'Price')}`:''} {d.protections.takeProfit!==null?`target ${number(d.protections.takeProfit,'Price')}`:''}</p>{/if}</div>
 </section>
 <style>
