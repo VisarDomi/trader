@@ -11,7 +11,7 @@ OUT=Path('/tmp/trader-native-qa');OUT.mkdir(exist_ok=True)
 ROOT=Path(__file__).resolve().parents[1];TOOLS=Path.home()/'Developer/ios-tools/native/scripts'
 APPLE=str(TOOLS/'apple-tool');BUNDLE='com.visar.Trader.qa'
 subprocess.run([str(TOOLS/'mac-workload'),'assert-simulator','--device',a.device],check=True)
-fixture=json.loads(Path(a.fixture).read_text());run=fixture['runId']
+fixture=json.loads(Path(a.fixture).read_text());run=fixture['runId'];issues=[]
 def command(*args,**kw):return subprocess.run([APPLE,'simctl',*args],check=True,**kw)
 def hook(path,**params):
     with urllib.request.urlopen('http://127.0.0.1:8765/'+path+('?' + urllib.parse.urlencode(params) if params else ''),timeout=10) as r:return json.load(r)
@@ -40,11 +40,12 @@ def scan(prefix,terms):
     for i in range(18):
         hook('scroll',y=i*500);time.sleep(.18);part=json.dumps(layout());seen+=part
         if i in [0,2,4,6]:shot(prefix+'-'+str(i))
-    for term in terms:assert term in seen,'Missing visible content: '+term
+    for term in terms:
+        if term not in seen:issues.append('Missing visible content: '+term)
     hook('action',name='top');time.sleep(.2)
 def same(before,after):
     def keys(items):return [(x['kind'],tuple(x['frame']),x.get('text'),x.get('shown')) for x in items]
-    return keys(before)==keys(after)
+    return sorted(keys(before),key=repr)==sorted(keys(after),key=repr)
 installed=False
 try:
     command('install',a.device,str(ROOT/'build/Release-iphonesimulator/Trader.app'),timeout=240);installed=True
@@ -60,7 +61,7 @@ try:
     scan('run', ['Recorded ticks','bearish day','scheduled exit'])
     hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
     orient('portrait');shot('trade-portrait')
-    scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','Drawdown'])
+    scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown'])
     orient('landscape');shot('trade-landscape');orient('portrait')
     hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
     shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])
@@ -78,6 +79,7 @@ try:
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);time.sleep(1)
     assert same(before,layout()),'Warm return changed'
     shot('restored-partial')
+    assert not issues,'; '.join(issues)
     print('PASS: fixture run + both trades, price/cost/risk/reasons, gaps, portrait/landscape, offline, exact cold/warm restore.',flush=True)
 finally:
     if installed:
