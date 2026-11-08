@@ -88,3 +88,11 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     #expect(card.chart?.series.count==2)
     #expect(try JSONDecoder().decode(Row.self,from:JSONEncoder().encode(card))==card)
 }
+@Test func unpricedBrokerCloseRetainsItsTimeWithoutInventingAFillPrice() throws {
+    let data=try json("""
+    {"subject":{"stage":"capital","entryTime":1000,"entryPrice":100,"exitTime":4000,"exitPrice":null},"price":{},"window":{"from":1000,"through":4000}}
+    """)
+    let markers=Presentation.tradeGraph(data).markers
+    #expect(markers.count==2)
+    #expect(markers[1].label=="CLOSE" && markers[1].t==4000 && markers[1].value==nil)
+}

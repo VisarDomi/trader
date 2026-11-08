@@ -1,9 +1,9 @@
 <script lang="ts">
- type Point={t:number;value:number};type Series={name:string;points:Point[]};type Marker={t:number;value:number;label:string};type Candle={t:number;open:number;high:number;low:number;close:number};
+ type Point={t:number;value:number};type Series={name:string;points:Point[]};type Marker={t:number;value:number|null;label:string};type Candle={t:number;open:number;high:number;low:number;close:number};
  let {series,markers=[],candles=[],gaps=[],height=260,unit='USD',precision=2,from=undefined,through=undefined}:{series:Series[];markers?:Marker[];candles?:Candle[];gaps?:{from:number;through:number}[];height?:number;unit?:string;precision?:number;from?:number;through?:number}=$props();
  const points=$derived(series.flatMap(s=>s.points)),times=$derived([...points.map(p=>p.t),...candles.map(c=>c.t)]);
  const start=$derived(from??(times.length?Math.min(...times):Math.min(...markers.map(m=>m.t)))),end=$derived(through??(times.length?Math.max(...times):Math.max(...markers.map(m=>m.t))));
- const values=$derived([...points.map(p=>p.value),...candles.flatMap(c=>[c.low,c.high]),...markers.filter(m=>m.t>=start&&m.t<=end).map(m=>m.value)]);
+ const values=$derived([...points.map(p=>p.value),...candles.flatMap(c=>[c.low,c.high]),...markers.filter(m=>m.t>=start&&m.t<=end).flatMap(m=>m.value===null?[]:[m.value])]);
  const low=$derived(values.length?Math.min(...values):0),high=$derived(values.length?Math.max(...values):1),pad=$derived(Math.max((high-low)*.08,Math.abs(high)*.00001,.000001));
  const x=(t:number)=>(t-start)/Math.max(1,end-start)*1000,y=(v:number)=>240-(v-low+pad)/(high-low+pad*2)*240;
  const path=(ps:Point[])=>ps.map((p,i)=>`${i===0||gaps.some(g=>g.from<p.t&&g.through>(ps[i-1]?.t??p.t))?'M':'L'}${x(p.t).toFixed(2)},${y(p.value).toFixed(2)}`).join(' ');
@@ -26,10 +26,10 @@
     {#each gaps as g}<rect x={Math.max(0,x(g.from))} y="0" width={Math.max(0,Math.min(1000,x(g.through))-Math.max(0,x(g.from)))} height="240" class="gap"/>{/each}
     {#each candles as c}<line x1={x(c.t)} x2={x(c.t)} y1={y(c.high)} y2={y(c.low)} class="candle"/><line x1={x(c.t)-1} x2={x(c.t)+1} y1={y(c.open)} y2={y(c.close)} class="candle"/>{/each}
     {#each series as s,i}<path d={path(s.points)} fill="none" style:stroke={i===0?'var(--series-1)':i===1?'var(--series-2)':'var(--good)'} class="line"/>{/each}
-    {#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<line x1={x(m.t)} x2={x(m.t)} y1="0" y2="240" class="marker"/><circle cx={x(m.t)} cy={y(m.value)} r="4" class="fill"/>{/each}
+    {#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<line x1={x(m.t)} x2={x(m.t)} y1="0" y2="240" class="marker"/>{#if m.value!==null}<circle cx={x(m.t)} cy={y(m.value)} r="4" class="fill"/>{/if}{/each}
     {#if hover!==null}<line x1={hover*1000} x2={hover*1000} y1="0" y2="240" class="crosshair"/>{/if}
    </svg>
-   <div class="marker-labels">{#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<span style:left={`clamp(46px, ${x(m.t)/10}%, calc(100% - 46px))`}>{m.label} {fmt(m.value)}</span>{/each}</div>
+   <div class="marker-labels">{#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<span style:left={`clamp(72px, ${x(m.t)/10}%, calc(100% - 72px))`}>{m.label} {m.value===null?'price unknown':fmt(m.value)}</span>{/each}</div>
   </div>
   <div></div><div class="axis-x"><span>{time(start)}</span><span>{time((start+end)/2)}</span><span>{time(end)}</span></div>
  </div>
