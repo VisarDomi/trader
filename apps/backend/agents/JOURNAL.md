@@ -3,6 +3,47 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-08 (Sun, user-requested) — night backtest versus 2/2 forward wins
+
+- Audited unchanged source 56ac3bdfe7c1 rather than tuning it. Standard 973,384 minute rows are
+  byte-identical to a fresh PG read (SHA in agent contract). Current replay exactly reproduces all
+  71 primary trades, $2.205 raw /$2.21 displayed ending capital, −99.9779%, 31 wins /40 losses,
+  11 stops, zero funding/errors. Independent Python/ZoneInfo feature math reproduces all 72 signal
+  dates, every side, 03:27 entries and 08:27 timed exits across DST; Decimal accounting and lot-size
+  checks match all 71 fills. July 3, 2024's missing 03:27 minute causes an expiry at 03:28, correctly
+  explaining 72 opportunities versus 71 fills. Corrected the prior documentation's capital explanation.
+- Frozen sensitivity: seeds 2/3 end $2.17/$1.85; 64 ticks/minute $2.36. Zero-spread replay still ends
+  $5.70 at 1:200. Same rules at tier 20 end $6,614.25; tier 1 $9,810.31 (zero-spread $9,869.76).
+  Margin use is 90%, so exposures are roughly 180×/18×/0.9×. Fresh-capital annual checks all lose:
+  2024 −86.56%, 2025 −82.45%, 2026 Jan–Sep −99.13%. Small negative historical price returns,
+  concentrated downside and compounding are the main explanation; neither funding nor one seed
+  creates the ruin. Ordinary stop losses range about 49.8–52.3% with rounding/quote slippage.
+- Replaying only 122,785 archived Nov 2–3 quotes with actual entry capital exactly reproduces the
+  second win: 287.8 short, 7548.5 →7522.0, $7,626.70, zero funding. First win's entry/early path
+  predates capture and remains approximate. Mixed forward replay finds the same two wins (+93.54%
+  vs actual +96.96%); its first trade differs by about 0.9 index point across entry/exit, explaining
+  the gap and subsequent capital/size difference. No captured quotes were copied into another archive.
+- Two wins alone are plausible under historical p=31/71 (about 19.1% under independent stationary
+  trials); 15/70 adjacent historical pairs won and a four-win streak occurred during the losing
+  history. The recent +97% magnitude is nevertheless stronger than any historical adjacent pair
+  (+87.3% maximum). About 0.97% of empirical independent two-trade resamples reach it, a descriptive
+  post-observation comparison with strong assumptions, not a probability that skill/luck is true.
+  Exact 95% win-rate interval for 2/2 is ~15.8–100%. One further planned −50% loss roughly wipes
+  out both wins. Mirrored Capital trades are the same signals, not extra independent observations.
+- Found/fixed a lab reporting defect: newer synthetic-only requests can lack recent minute inputs
+  (here, tape ends Oct 21 01:34 UTC despite requested Nov 7). `uncoveredMinutes=0` had not verified
+  calendar coverage. New results expose requested/actual input bounds and unknown calendar gaps;
+  CLI flags large missing tails. The primary Jan 2024–Sep 2026 tape reaches its requested end and
+  its financial result is unaffected. Added meaningful empty/truncated-window regressions; typecheck
+  and all 165 backend/native-parity tests pass. Lab-only correction needs no arena restart.
+- Audit jobs were explicitly user-requested, isolated, no-push and bounded inside trader.slice
+  (up to two cores /2 GiB per replay, within aggregate 50%). Existing video/nightly holds were left
+  intact; no ordinary heavy service was resumed. Agent source/roster, Capital assignments, original
+  primary history and two forward records stay unchanged. No user physical action needed.
+- Full results/limits/reproduction are appended to visar-night-trading.md; raw audit JSON and the
+  independent oracle remain privately in data/night-audit-20261108. Continue the frozen demo
+  experiment to obtain more comparable forward evidence. No profitability claim from two wins.
+
 ## 2026-11-08 (Sun, user-requested) — remove non-content
 
 - User reiterated that the app must contain content only. Removed generic setup/strategy introduction

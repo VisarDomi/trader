@@ -30,7 +30,9 @@ export interface ReplayData {
   syntheticTicks: number;
   recordedMinutes: number;
   syntheticMinutes: number;
-  uncoveredMinutes: number;
+  /** Unknown without an instrument/session/holiday calendar; zero must not imply complete data. */
+  uncoveredMinutes: number | null;
+  window?:import('@trader/shared').ReplayDataInfo['window'];
   firstTickAt: number | null;
   lastTickAt: number | null;
   rejectedTicks: number;
@@ -54,7 +56,7 @@ export function replayData(options: ReplayOptions = {}): ReplayData {
     syntheticTicks: 0,
     recordedMinutes: 0,
     syntheticMinutes: 0,
-    uncoveredMinutes: 0,
+    uncoveredMinutes: null,
     firstTickAt: null,
     lastTickAt: null,
     rejectedTicks: 0,
@@ -160,7 +162,6 @@ export async function* tickMinutes(
       stats.syntheticMinutes++;
       stats.syntheticTicks += minute.ticks.length;
     } else {
-      stats.uncoveredMinutes++;
       continue;
     }
     const first = minute.ticks[0]!.receivedAt,

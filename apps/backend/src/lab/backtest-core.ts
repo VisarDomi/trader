@@ -14,6 +14,7 @@ import { tickMinutes, recordingSnapshot, replayData, TICK_MODE, type ReplayOptio
 import { DEFAULT_EXECUTION_MS, VirtualVenue, VirtualGateway, type CapitalMarket } from '../engine/venue.ts';
 import marketSnapshot from '../engine/fixtures/capital-markets.json';
 import { MINUTE_MS } from '../engine/clock.ts';
+import { replayWindow } from './replay-coverage.ts';
 
 export interface BacktestWindow {
   id: string;
@@ -105,6 +106,7 @@ export async function backtestEpic(
     n++;
   }
   data.rejectedTicks=engine.rejectedTicks;
+  data.window=replayWindow(window.start,window.end,data.firstTickAt,data.lastTickAt);
   const endTime=n>0?clock:window.end;
   for (const run of runs) run.finish(endTime);
 

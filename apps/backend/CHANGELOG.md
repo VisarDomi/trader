@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Audit visar-night-trading historical/forward execution. Correct replay coverage reporting: retain
+  requested and actual input bounds, leave unknown calendar gaps null, and warn on large missing
+  tails. Financial replay, strategy parameters and existing forward records remain unchanged.
+
 - Add source-pinned strategy explanations across all 46 current families: pre-entry paths, indicator/
   forecast bands, range boundaries, session/calendar rules and numeric headroom to rejection. Capture
   compressed standard-run entry context and link it to fills; retain source hashes and financial behavior.
