@@ -102,6 +102,17 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
+## Delivery — November 8, 2026 · content-only cleanup
+
+- Removed generated introductions/methodology, repeated headings and positive verification badges;
+  charts lead, numeric comparisons/deltas replace verbose filter tiles. Only essential data-gap labels
+  remain. Native/web module AGENTS.md files persist this presentation rule.
+- Eleven domain checks, simulator/paid builds, portrait/landscape, offline and exact cold/warm
+  restoration pass. PWA a7cac72 is live; no trading service restart or financial-data change.
+- Job `20261108T123547Z-5688e0b951` is **awaiting_ota**, not installed: the Mac cannot reach the phone.
+  Signed build is available at the existing tailnet installer; turn on Tailscale on the iPhone and
+  open `https://mac.tailf47c4e.ts.net:8443/`, then Install Trader. Direct delivery retries automatically.
+
 ## Delivery — November 8, 2026 · strategy context
 
 - Native setup charts and threshold gauges installed in place through job

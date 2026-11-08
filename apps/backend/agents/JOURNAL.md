@@ -3,6 +3,30 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-08 (Sun, user-requested) — remove non-content
+
+- User reiterated that the app must contain content only. Removed generic setup/strategy introduction
+  cards, methodology and provenance paragraphs, repeated section headings, positive verification/
+  success badges, refresh instructions, static exit-plan prose and duplicate dates/status labels.
+  Native charts now lead their cards; filters show their actual comparison and signed delta in one
+  line with the gauge. Recorded trade reasons, chart levels, numeric costs/limits, nonzero adjustments
+  and compact missing/partial/recomputed labels remain. The PWA has the same cleanup, including its
+  expanded benchmark/cost details. Research, journal history and strategy definitions remain content.
+- Persisted the rule in apps/ios/AGENTS.md and apps/ui/AGENTS.md so feature work does not reintroduce
+  explanatory filler. Successful-network banners and empty native headers are removed. Actual error
+  states and demo controls remain functional. No agent, engine, tick/archive, account or roster change;
+  the arena was not restarted for this presentation-only work. Unrelated working-tree edits retained.
+- Native domain checks (11) and simulator build pass. Compact charts/gauges, portrait/landscape,
+  offline content and exact first-frame/eight-second cold plus warm restoration verified. One script
+  check needed Unicode-aware JSON matching for the delta symbol; the app rendered it correctly.
+  Svelte check has zero errors/warnings and production build passes. PWA a7cac72 published normally.
+- Paid build a7cac72 passed signing/validation, but the Mac could not reach the phone. Durable job
+  `20261108T123547Z-5688e0b951` published the signed app through the existing tailnet installer and
+  remains `awaiting_ota`, with automatic direct-delivery retries. Installation is not claimed. Sent
+  the required desktop notification with the Tailscale/Install Trader instructions because device
+  access now needs the user. Shared compiler-cache warnings were nonfatal. Simulator/owned GUI
+  shut down and QA app/temporary fixture removed; unrelated work-tree edits preserved.
+
 ## 2026-11-08 (Sun, user-requested) — strategy context, criteria and near misses
 
 - Added source-pinned explanation adapters for all 46 current families / 66 variants. Native is primary;
