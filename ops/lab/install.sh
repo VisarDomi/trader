@@ -5,10 +5,10 @@ here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/../server/runtime.sh"
 dest="$HOME/.config/systemd/user"
 mkdir -p "$dest"
-for f in trader.slice trader-forecaster.service trader-tunnel.service trader-lab.service trader-lab.timer trader-watchdog.service trader-watchdog.timer trader-tick-archive.service trader-tick-archive.timer; do
+for f in trader.slice trader-forecaster.service trader-inspector.service trader-tunnel.service trader-lab.service trader-lab.timer trader-watchdog.service trader-watchdog.timer trader-tick-archive.service trader-tick-archive.timer; do
   install -m 0644 "$here/$f" "$dest/$f"
 done
-services=(trader-forecaster.service)
+services=(trader-forecaster.service trader-inspector.service)
 if "$TRADER_PC_ACTIVE"; then
   systemctl --user disable --now trader-tunnel.service
   mkdir -p "$dest/trader-tick-archive.service.d"

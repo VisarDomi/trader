@@ -6,6 +6,9 @@ iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 - Rankings, sort/search, independent virtual evidence, historical backtests and actual demo cashflows.
 - Common-date benchmark excess, exposure/stop downside, quote-supported cost breakdowns and paused
   dependencies. Realized cash drawdown is labeled separately from virtual position risk.
+- Inline trade charts and a native inspector: bid/ask, open/close, recorded decisions, executable
+  P&L, price drawdown, quoted spread, cost waterfall and order timing. Capture gaps stay visible;
+  unknown legacy costs stay unknown. Charts support horizontal scrubbing and both orientations.
 - Agent parameters/source, exact archived versions, run equity curves, trades and broker deals.
 - Nine Arena accounts, explicit demo mirror/exclusion confirmations, execution comparisons.
 - Platform status, resource hold, tick/storage health, Graveyard, journal and research.
@@ -26,15 +29,17 @@ Mac mirror is `~/Developer/trader/apps/ios`. Use trusted `ssh mac`, not a fixed 
 ```sh
 python3 apps/ios/scripts/deploy.py sync
 python3 apps/ios/scripts/deploy.py simulator
-python3 apps/ios/scripts/deploy.py build
-python3 apps/ios/scripts/deploy.py install
+ios-push trader --source /home/visar/Documents/work/trading/trader
+ios-push status JOB
 ```
 
-`all` builds and installs. Signing runs attached in the logged-in Mac GUI session under the shared
+Use the durable shared `ios-push` queue for ordinary phone updates; only an `installed` job is
+verified delivery. It retains renewal dates and resumes after reboot/network recovery. The older
+`deploy.py` helper remains available for initial provisioning. Signing runs attached in the logged-in Mac GUI session under the shared
 signing lock. The team and primary device come from the Mac's private `ios-tools.local.json`.
 The signed artifact is `build/Release-iphoneos/Trader.app`, identity `com.visar.Trader.paid`.
-The installer requires a real unlocked-device check, installs in place, seeds the dedicated connection
-through the app's data container and launches it. Never uninstall for an update.
+The queue installs in place without launching or driving the phone UI. Pairing is already stored
+in the phone Keychain. Never uninstall for an update.
 
 `scripts/renewal.py` registers the app with the shared paid monthly renewal runner. A successful
 delivery approves its exact build inputs; installation enables only `com.visar.renewal.trader`.
@@ -74,6 +79,7 @@ ssh mac 'python3 ~/Developer/trader/apps/ios/scripts/check-simulator.py --device
 /home/visar/Documents/work/ios-tools/native/scripts/restore-check com.visar.Trader.paid
 ```
 
+The simulator uses the isolated `com.visar.Trader.qa` bundle and x86_64-only compilation.
 Simulator builds expose NativeKit test hooks at Mac loopback 8765. Extra actions choose a tab/screen,
 set interface orientation, scroll to the top, refresh and simulate offline responses. They compile out
 on the phone. Captures go to `/tmp/trader-native-qa`; verify live screens, portrait/landscape, exact old

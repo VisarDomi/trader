@@ -28,3 +28,15 @@ test('scenario labels may contain display punctuation but cannot contain control
   const invalid=new Request('https://trader.invalid/api/native/v1/leaderboard?scenario=%00',{headers:{Authorization:`Bearer ${TOKEN}`}});
   expect((await nativeResponse(invalid,'leaderboard',ctx)).status).toBe(400);
 });
+test('trade inspection requires the device credential, a stable trade key and a known stage; it is read-only',async()=>{
+  const calls:string[]=[];const ctx:NativeContext={hash:HASH,read:async(r,q)=>{calls.push(r);return {trade:q.get('trade')}},mutate:async()=>{throw Error('Must not mutate')}};
+  const selected='inspection?id=demo%3Atest%3AUS500%3Ahash&trade=0&stage=virtual';
+  expect((await nativeResponse(request(selected,'wrong'),'inspection',ctx)).status).toBe(401);
+  for(const trade of ['', '-1', '1/../../status', '1000000000']){
+    expect((await nativeResponse(request('inspection?id=demo:test&trade='+encodeURIComponent(trade)),'inspection',ctx)).status).toBe(400);
+  }
+  expect((await nativeResponse(request(selected.replace('virtual','live')),'inspection',ctx)).status).toBe(400);
+  expect((await nativeResponse(request(selected,TOKEN,{}),'inspection',ctx)).status).toBe(405);
+  expect((await nativeResponse(request(selected),'inspection',ctx)).status).toBe(200);
+  expect(calls).toEqual(['inspection']);
+});

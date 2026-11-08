@@ -12,10 +12,7 @@
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Journal</h1>
-		<p class="lede">
-			The coding agent looks after the arena twice a week: it retires agents that have shown they lose, adds new ones, and fixes
-			what breaks. Every visit is written down here, newest first.
-		</p>
+
 	</header>
 
 	<section class="card policy">

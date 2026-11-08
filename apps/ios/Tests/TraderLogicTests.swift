@@ -12,14 +12,14 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     #expect(c.sections[0].rows[0].route?.stage=="capital")
     #expect(c.sections[0].rows[0].stats[0].value.contains("12"))
 }
-@Test func capitalRunUsesBrokerMetricsAndLabelsVirtualCurve() throws {
+@Test func capitalRunNeverLabelsVirtualEquityAsActualCash() throws {
     let data=try json("""
     {"id":"demo:fixture","kind":"demo","epic":"US500","capital":10000,"equity":9999,"metrics":{"totalReturn":-0.1},"capitalDemo":{"metrics":{"totalReturn":0.25}},"equityCurve":[{"t":1,"equity":10000},{"t":2,"equity":9999}]}
     """)
     let c=Presentation.make(Route(screen:.run,id:"demo:fixture"),data:data)
-    #expect(c.sections[0].title.contains("actual broker"))
+    #expect(c.sections[0].title.contains("Capital demo"))
     #expect(c.sections[0].rows[0].stats[0].value.contains("25"))
-    #expect(c.sections.contains{$0.title.contains("Virtual strategy equity")})
+    #expect(!c.sections.contains{$0.rows.contains{$0.id=="chart"}})
 }
 @Test func archiveSelectsExactSourceAndPreservesUnknownMetrics() throws {
     let data=try json("""
@@ -55,4 +55,36 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     #expect(row.stats[1].label=="Closed trades")
     #expect(row.stats[2].value.contains("pp"))
     #expect(row.body.contains("Exposure") && row.body.contains("×"))
+}
+
+@Test func tradeRoutesEscapeTheIndexAndRetainStage() {
+    let route=Route(screen:.trade,id:"demo:fixture:US500:x200:hash",stage:"virtual",version:"1&stage=capital")
+    let u=URLComponents(string:"https://trader.invalid/api/native/v1/"+route.cacheKey)!
+    #expect(u.queryItems?.filter{$0.name=="stage"}.count==1)
+    #expect(u.queryItems?.first{$0.name=="trade"}?.value==route.version)
+}
+@Test func virtualRunMapsEquityFieldsWithoutLosingTheCurve() throws {
+    let data=try json("""
+    {"kind":"demo","capital":10000,"equity":10020,"equityCurve":[{"t":1000,"equity":10000},{"t":2000,"equity":10020}],"metrics":{"trades":0}}
+    """)
+    let c=Presentation.make(Route(screen:.run,id:"demo:fixture",stage:"virtual"),data:data)
+    let row=c.sections.flatMap(\.rows).first{$0.id=="chart"}
+    #expect(row?.points.map(\.value)==[10000,10020])
+    #expect(c.sections.flatMap(\.rows).first{$0.id=="equity-dd"}?.chart?.series.first?.points.count==2)
+}
+@Test func inspectionChartsRetainMarkersReasonsAndUnknownCosts() throws {
+    let data=try json("""
+    {"subject":{"runId":"demo:fixture","key":"7","stage":"virtual","epic":"US500","side":"short","size":10,"entryTime":1000,"exitTime":4000,"entryPrice":100,"exitPrice":95,"entryReason":"bearish day, bounce","exitReason":"scheduled exit","timeline":[]},"window":{"from":1000,"through":4000},"price":{"bid":[{"t":1000,"value":100},{"t":4000,"value":94}],"ask":[{"t":1000,"value":101},{"t":4000,"value":95}],"candles":[]},"coverage":{"complete":false,"ticks":2,"candles":0,"gaps":[{"from":2000,"through":3000}]},"risk":{"maxDrawdown":30,"drawdownFraction":0.03,"mae":-30,"mfe":60,"fullTrade":false},"costs":{"net":48,"funding":-2,"spread":null,"timing":null,"midpoint":null},"pnl":[{"t":1000,"value":-10},{"t":4000,"value":50}],"drawdown":[{"t":1000,"value":-10},{"t":4000,"value":-30}],"spread":[{"t":1000,"value":1},{"t":4000,"value":1}],"checks":[]}
+    """)
+    let sections=Presentation.inspectionSections(data),rows=sections.flatMap(\.rows)
+    #expect(rows.first?.chart?.markers.map(\.label)==["OPEN","CLOSE"])
+    #expect(rows.first?.chart?.gaps.count==1)
+    #expect(rows.contains{$0.body=="bearish day, bounce"})
+    #expect(rows.contains{$0.body=="scheduled exit"})
+    #expect(rows.first?.stats[1].value.contains("≥")==true)
+    #expect(rows.first?.stats[2].value=="—")
+    let card=Presentation.tradeCard(data,runId:"demo:fixture",stage:"virtual")
+    #expect(card.route?.screen == .trade && card.route?.version=="7")
+    #expect(card.chart?.series.count==2)
+    #expect(try JSONDecoder().decode(Row.self,from:JSONEncoder().encode(card))==card)
 }

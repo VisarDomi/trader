@@ -547,6 +547,11 @@ export class ArenaDB {
       .map(rowToTrade);
   }
 
+  viewTrades(runId:string,limit=1000) {
+    return this.db.query<Record<string,unknown>,[string,number]>(`SELECT * FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT ?`)
+      .all(runId,limit).reverse().map(row=>({...rowToTrade(row),index:Number(row.idx)}));
+  }
+
   upsertEquity(runId: string, t: number, equity: number): void {
     this.db.query(`INSERT OR REPLACE INTO equity (run_id, t, equity) VALUES (?, ?, ?)`).run(runId, t, equity);
   }

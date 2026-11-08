@@ -30,7 +30,7 @@ enum JSON: Codable, Sendable, Equatable {
     var isNull: Bool { self == .null }
 }
 
-enum Screen: String, Codable, Sendable, Hashable { case rankings, agents, agent, run, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
+enum Screen: String, Codable, Sendable, Hashable { case rankings, agents, agent, run, trade, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
 struct Route: Codable, Sendable, Hashable {
     var screen: Screen
     var id = ""
@@ -50,6 +50,9 @@ struct Route: Codable, Sendable, Hashable {
         case .agents: return "agents"
         case .agent, .source: return "agent?id=\(id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+?#"))) ?? id)"
         case .run: return "run?id=\(id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+?#"))) ?? id)&stage=\(stage)"
+        case .trade:
+            let tradeKey=version.addingPercentEncoding(withAllowedCharacters:.urlQueryAllowed.subtracting(CharacterSet(charactersIn:"&+?#"))) ?? version
+            return "inspection?id=\(id.addingPercentEncoding(withAllowedCharacters:.urlQueryAllowed.subtracting(CharacterSet(charactersIn:"&+?#"))) ?? id)&trade=\(tradeKey)&stage=\(stage)"
         case .accounts, .account: return "broker"
         case .status, .scenarios: return "status"
         case .graveyard, .archive: return "graveyard"
@@ -73,6 +76,8 @@ struct Row: Codable, Sendable, Hashable {
     var action = ""
     var code = false
     var points: [Plot] = []
+    var chart:Graph? = nil
+    var badgeTone:Int? = nil
 }
 struct Section: Codable, Sendable, Hashable { var title: String; var rows: [Row] }
 struct Content: Codable, Sendable { var title: String; var subtitle = ""; var sections: [Section]; var refreshed: Double = 0;var renderID:Int = 0 }
@@ -102,22 +107,22 @@ enum Presentation {
         }
         var rows:[Row]=[]
         if b["status"].text=="matched" {
-            rows.append(Row(id:"benchmark",title:"Common-date comparison",subtitle:"\(date(b["from"].value)) → \(date(b["through"].value))",body:b["note"].text,
+            rows.append(Row(id:"benchmark",title:"Common-date comparison",subtitle:"\(date(b["from"].value)) → \(date(b["through"].value))",body:"",
                 stats:[Stat(label:"Strategy",value:percent(b["strategyReturn"].value)),Stat(label:"Buy & hold",value:percent(b["benchmarkReturn"].value)),Stat(label:"Excess",value:points(b["excessReturn"].value),tone:tone(b["excessReturn"].value))]))
-        } else {rows.append(Row(id:"benchmark",title:"Benchmark unavailable",body:b["note"].text))}
-        rows.append(Row(id:"exposure",title:"Actual sizing · \(e["admission"].text.replacingOccurrences(of:"-",with:" "))",body:"Notional / equity differs from the account leverage ceiling. Stop downside is measured from current equity; gaps and fees can change it.",
+        } else {rows.append(Row(id:"benchmark",title:"Benchmark unavailable",body:""))}
+        rows.append(Row(id:"exposure",title:"Actual sizing · \(e["admission"].text.replacingOccurrences(of:"-",with:" "))",body:"",
             stats:[Stat(label:"Exposure",value:e["exposure"].value.map{number($0)+"×"} ?? "—"),Stat(label:"Stop downside",value:percent(e["stopRisk"].value)),Stat(label:"Open P&L",value:money(e["unrealizedPnl"].value))]))
         sections.append(Section(title:"Benchmark and risk evidence",rows:rows))
         if c.isNull {sections.append(Section(title:"Actual demo cash coverage",rows:[Row(id:"coverage",title:"Realized cash is separate from held equity",body:e["note"].text)]));return sections}
-        var costs=[Row(id:"totals",title:"Stored closed-trade accounting",body:"Executable bid/ask price P&L still contains spread and timing effects.",stats:[Stat(label:"Before funding",value:money(c["beforeFundingPnl"].value)),Stat(label:"Funding",value:money(c["closedFunding"].value)),Stat(label:"Net",value:money(c["closedNetPnl"].value))]),
+        var costs=[Row(id:"totals",title:"Stored closed-trade accounting",body:"",stats:[Stat(label:"Before funding",value:money(c["beforeFundingPnl"].value)),Stat(label:"Funding",value:money(c["closedFunding"].value)),Stat(label:"Net",value:money(c["closedNetPnl"].value))]),
             Row(id:"coverage",title:"\(number(c["measuredTrades"].value,digits:0))/\(number(c["closedTrades"].value,digits:0)) quote-supported trades",body:"\(number(c["capturedTrades"].value,digits:0)) at-fill references · \(number(c["reconstructedTrades"].value,digits:0)) archived quote matches. Missing costs are unknown, not zero.")]
         if !c["historyComplete"].flag {costs.append(Row(id:"partial",title:"Stored history is a subset",body:"\(number(c["closedTrades"].value,digits:0)) stored of \(number(c["reportedTrades"].value,digits:0)) reported trades. Totals cover stored trades."))}
         if (c["measuredTrades"].value ?? 0)>0 {
-            costs.append(Row(id:"decomposition",title:"Quote-supported subset",body:"Midpoint P&L minus quoted spread, plus funding and rounding/protection adjustments equals subset net. Reconstructed quote identity is inferred; old decision timing is unknown.",stats:[Stat(label:"Midpoint",value:money(c["midpointPnl"].value)),Stat(label:"Spread",value:money(c["spreadCost"].value)),Stat(label:"Net",value:money(c["measuredNetPnl"].value))]))
+            costs.append(Row(id:"decomposition",title:"Quote-supported subset",body:"",stats:[Stat(label:"Midpoint",value:money(c["midpointPnl"].value)),Stat(label:"Spread",value:money(c["spreadCost"].value)),Stat(label:"Net",value:money(c["measuredNetPnl"].value))]))
             let timingNote=(c["timedTrades"].value ?? 0)>0 ? "Timed-subset signal P&L \(money(c["timedSignalPnl"].value)); net \(money(c["timedNetPnl"].value)).":"Decision-price attribution is unknown for these trades."
             costs.append(Row(id:"stress",title:"Fixed-trade double-spread scenario",body:"Observed sizes/trades are unchanged; signals, stops and liquidations are not re-simulated. Both decision quotes known for \(number(c["timedTrades"].value,digits:0)) trades. "+timingNote,stats:[Stat(label:"Scenario P&L",value:money(c["doubledSpreadPnl"].value)),Stat(label:"Timing cost",value:(c["timedTrades"].value ?? 0)>0 ? money(c["timingCost"].value):"Unknown")]))
         }
-        costs.append(Row(id:"qualification",title:"Evidence limits",body:e["note"].text))
+
         sections.append(Section(title:e["basis"].text=="historical-equity" ? "Historical simulation costs":"Virtual execution costs",rows:costs));return sections
     }
     static func performance(_ m: JSON) -> [Stat] {
@@ -137,13 +142,13 @@ enum Presentation {
         let period=stage=="backtest" ? (r["windowId"].text.isEmpty ? id.split(separator:":").dropFirst().first.map(String.init) ?? "":r["windowId"].text):r["timeframe"].text
         let e=r["evidence"],b=e["benchmark"]
         var stats=performance(r["metrics"]),body=""
-        if stage != "capital",b["status"].text=="matched" {stats[2]=Stat(label:"Excess vs hold",value:points(b["excessReturn"].value),tone:tone(b["excessReturn"].value));body="Matched \(date(b["from"].value)) → \(date(b["through"].value)); sizing differs."}
+        if stage != "capital",b["status"].text=="matched" {stats[2]=Stat(label:"Excess vs hold",value:points(b["excessReturn"].value),tone:tone(b["excessReturn"].value));body=""}
         if let exposure=e["exposure"].value {body += " Exposure \(number(exposure))× equity."}
         if e["admission"].text=="calibration" && badge.isEmpty {badge="Calibration"}
         if e["admission"].text=="backtest-rejected" && badge.isEmpty {badge="Fails admission gate"}
         let dependency=r["dependency"].isNull ? e["dependency"]:r["dependency"]
         if !dependency.isNull && dependency["state"].text != "available" {if stage=="virtual" && r["status"].text != "retired" {badge="Forecast paused"};body += " "+dependency["note"].text}
-        if stage=="capital" {stats[2]=Stat(label:"Cash drawdown",value:percent(r["metrics"]["maxDrawdown"].value));body="Realized cash excludes open P&L and unallocated funding. Cash drawdown excludes intratrade risk."}
+        if stage=="capital" {stats[2]=Stat(label:"Cash drawdown",value:percent(r["metrics"]["maxDrawdown"].value));body=""}
         stats[1].label="Closed trades"
         return Row(id: id, title: name ?? (r["name"].text.isEmpty ? r["epic"].text : r["name"].text),
                    subtitle: [r["epic"].text, tier(r["leverage"]), period].filter { !$0.isEmpty }.joined(separator: " · "),
@@ -162,7 +167,7 @@ enum Presentation {
                 let key = sort == 1 ? "sharpe" : sort == 2 ? "trades" : "totalReturn"
                 return (a["metrics"][key].value ?? -Double.greatestFiniteMagnitude) > (b["metrics"][key].value ?? -Double.greatestFiniteMagnitude)
             }
-            out = Content(title: "Rankings", subtitle: route.stage == "capital" ? "Actual demo cashflows · active and past assignments" : route.stage == "virtual" ? "Independent virtual capital · live Capital quotes" : "Historical simulation · recorded and synthetic paths are labeled", sections: [
+            out = Content(title: "Rankings", subtitle: route.stage == "capital" ? "Realized results" : route.stage == "virtual" ? "Forward results" : "Historical results", sections: [
                 Section(title: "\(stageName) · \(items.count) records", rows: items.map { runRow($0, stage: route.stage) })])
             if let scenario=route.scenario,scenario != "standard" {out.subtitle="\(scenario) · correlated execution comparisons, not independent strategies"}
         case .agents:
@@ -172,39 +177,68 @@ enum Presentation {
                     badge: a["usesForecast"].flag ? "TimesFM" : "", route: Route(screen: .agent, id: a["id"].text))
             })])
         case .agent:
-            let runs = data["runs"].items
-            out = Content(title: data["name"].text, subtitle: data["description"].text, sections: [
-                Section(title: "Strategy", rows: [Row(id: "source", title: "View current source", subtitle: data["codeHash"].text, route: Route(screen: .source,id: route.id,version: data["codeHash"].text)),Row(id:"parameters",title:"Parameters",body:String(data:(try? JSONEncoder().encode(data["params"])) ?? Data(),encoding:.utf8) ?? "",code:true)]),
-                Section(title: "Virtual records", rows: runs.filter { $0["kind"].text == "demo" && $0["status"].text != "retired" }.map { runRow($0) }),
-                Section(title: "Backtests", rows: runs.filter { $0["kind"].text == "backtest" && $0["status"].text != "retired" }.map { runRow($0,stage:"backtest") }),
-                Section(title: "Archived records", rows: runs.filter { $0["status"].text == "retired" }.map { runRow($0) })])
+            let runs=data["runs"].items
+            let live=runs.filter{$0["kind"].text=="demo" && $0["status"].text != "retired"}
+            let bars=live.compactMap{r->GraphBar? in guard let value=r["metrics"]["totalReturn"].value else{return nil};return GraphBar(name:r["epic"].text+" "+tier(r["leverage"]),value:value*100,total:true)}
+            var sections:[Section]=[]
+            if !bars.isEmpty{sections.append(Section(title:"Virtual return by market",rows:[Row(id:"markets-chart",title:"Lifetime return",chart:Graph(kind:"bars",bars:bars,unit:"%",height:Double(max(180,bars.count*24+20))))]))}
+            sections += [Section(title:"Virtual records",rows:live.map{runRow($0)}),Section(title:"Backtests",rows:runs.filter{$0["kind"].text=="backtest" && $0["status"].text != "retired"}.map{runRow($0,stage:"backtest")}),Section(title:"Archived records",rows:runs.filter{$0["status"].text=="retired"}.map{runRow($0)}),Section(title:"Strategy source",rows:[Row(id:"source",title:"Source and parameters",subtitle:data["codeHash"].text,route:Route(screen:.source,id:route.id,version:data["codeHash"].text))])]
+            out=Content(title:data["name"].text,subtitle:data["description"].text,sections:sections)
+        case .trade:
+            out=Content(title:data["subject"]["epic"].text+" · "+data["subject"]["side"].text.capitalized,sections:inspectionSections(data))
         case .run:
-            let metrics = data["metrics"]
-            let isBacktest = data["kind"].text == "backtest"
-            let label = isBacktest ? "Backtest" : "Virtual strategy"
-            var sections: [Section] = []
-            if !data["capitalDemo"].isNull && !isBacktest && route.stage == "capital" {
-                sections.append(Section(title:"Capital demo · actual broker results",rows:[Row(id:"actual",title:"Realized demo performance",subtitle:data["capitalDemo"]["brokerEvidence"]["basis"].text,stats:performance(data["capitalDemo"]["metrics"]))]))
+            let actual=route.stage=="capital",historical=data["kind"].text=="backtest"
+            let m=actual ? data["capitalDemo"]["metrics"]:data["metrics"]
+            let label=actual ? "Capital demo":historical ? "Backtest":"Virtual"
+            var sections:[Section]=[Section(title:label+" · "+data["epic"].text,rows:[Row(id:"summary",title:money(actual ? data["capitalDemo"]["equity"].value:data["equity"].value),subtitle:tier(data["leverage"])+" · "+date(data["startedAt"].value),badge:data["extra"]["demoAdmission"].isNull ? data["status"].text:"User experiment",
+                stats:[Stat(label:"Return",value:percent(m["totalReturn"].value),tone:tone(m["totalReturn"].value)),Stat(label:actual ? "Closed-cash DD":"Max drawdown",value:percent(m["maxDrawdown"].value)),Stat(label:"Closed trades",value:number(m["trades"].value,digits:0))])])]
+            let other=actual ? "virtual":"capital"
+            if !historical {sections.append(Section(title:"View",rows:[Row(id:"other-stage",title:actual ? "Virtual strategy":"Capital demo executions",route:Route(screen:.run,id:route.id,stage:other))]))}
+            if !data["extra"]["retirement"].isNull {sections.append(Section(title:"Retirement",rows:[Row(id:"retirement",title:data["extra"]["retirement"]["reason"].text,subtitle:date(data["extra"]["retirement"]["at"].value))]))}
+            if actual {
+                let priced=data["deals"].items.filter{$0["status"].text=="closed" && !$0["pnl"].isNull}.sorted{($0["close_time"].value ?? 0)<($1["close_time"].value ?? 0)}
+                var cash:Double=0
+                let curve=priced.compactMap{d->Plot? in guard let t=d["close_time"].value,let p=d["pnl"].value else{return nil};cash+=p;return Plot(t:t,value:cash)}
+                if !curve.isEmpty {sections.append(Section(title:"Closed-trade P&L",rows:[Row(id:"cash-chart",title:"Priced closes · before account adjustments",points:curve)]))}
+            } else {
+                let curve=data["equityCurve"].items.compactMap{p->Plot? in guard let t=p["t"].value,let value=p["equity"].value else{return nil};return Plot(t:t,value:value)}
+                if !curve.isEmpty {
+                    sections.append(Section(title:historical ? "Equity · daily snapshots":"Equity · hourly snapshots",rows:[Row(id:"chart",title:"Equity",points:curve)]))
+                    var peak=data["capital"].value ?? 10000
+                    let dd=curve.map{p->Plot in peak=max(peak,p.value);return Plot(t:p.t,value:peak>0 ? (p.value/peak-1)*100:0)}
+                    sections.append(Section(title:"Snapshot drawdown",rows:[Row(id:"equity-dd",title:"Below the previous sampled peak",chart:Graph(series:[GraphSeries(name:"Drawdown",points:dd)],unit:"%",height:160))]))
+                }
             }
-            var summary = Row(id:"summary",title:"\(label) equity \(money(data["equity"].value))",subtitle:"\(date(data["startedAt"].value)) · code \(data["codeHash"].text)",badge:data["status"].text,stats:performance(metrics))
-            if !data["extra"]["retirement"].isNull { summary.body = data["extra"]["retirement"]["reason"].text }
-            sections.append(Section(title:label,rows:[summary,Row(id:"risk",title:"Risk and evidence",stats:[Stat(label:"Max drawdown",value:percent(metrics["maxDrawdown"].value)),Stat(label:"Trade t",value:number(metrics["tStat"].value)),Stat(label:"Win rate",value:percent(metrics["winRate"].value))])]))
-            if route.stage=="capital" && !data["capitalDemo"]["evidence"].isNull {sections += evidenceSections(data["capitalDemo"]["evidence"])}
-            sections += evidenceSections(data["evidence"])
-            let comparison=data["backtestComparison"]
-            if !isBacktest && !comparison.isNull {sections.append(Section(title:"Backtest of the same strategy code",rows:[runRow(comparison,stage:"backtest",name:"Compare with historical simulation")]))}
-            let points = data["equityCurve"].items.compactMap { p -> Plot? in guard let t=p["t"].value, let v=p["equity"].value else {return nil};return Plot(t:t,value:v) }
-            if !points.isEmpty { sections.append(Section(title:"\(label) equity · sampled curve",rows:[Row(id:"chart",title:"Equity history",points:points)])) }
-            let tape=data["extra"]["data"]
-            if !tape.isNull { sections.append(Section(title:"Replay provenance",rows:[Row(id:"data",title:"Recorded \(number(tape["recordedTicks"].value,digits:0)) · synthetic \(number(tape["syntheticTicks"].value,digits:0))",body:tape["execution"].text)])) }
-            let p=data["position"]
-            if !p.isNull { sections.append(Section(title:"Open virtual position",rows:[Row(id:"position",title:"\(p["side"].text.capitalized) · \(number(p["size"].value,digits:3)) units",subtitle:"Entry \(number(p["entryPrice"].value)) · \(date(p["entryTime"].value))",body:"Stop \(number(p["stopLoss"].value)) · Target \(number(p["takeProfit"].value))")])) }
-            sections.append(Section(title:"Closed strategy trades",rows:data["trades"].items.reversed().enumerated().map { i,t in
-                Row(id:"trade\(i)",title:"\(t["side"].text.capitalized) · \(money(t["pnl"].value))",subtitle:date(t["exitTime"].value),body:"\(number(t["entryPrice"].value)) → \(number(t["exitPrice"].value)) · \(t["exitReason"].text)",stats:[Stat(label:"Funding",value:money(t["funding"].value)),Stat(label:"Size",value:number(t["size"].value,digits:3))])
-            }))
-            if !data["deals"].items.isEmpty { sections.append(Section(title:"Actual Capital demo deals",rows:data["deals"].items.prefix(100).enumerated().map { i,d in Row(id:"deal\(i)",title:"\(d["account"].text) · \(d["status"].text)",subtitle:date(d["close_time"].value ?? d["open_time"].value),body:"\(d["side"].text) · \(number(d["size"].value,digits:3)) · P&L \(money(d["pnl"].value))") })) }
-            if !isBacktest && data["status"].text != "retired" && !route.id.contains(":delay=") {sections.append(Section(title:"Demo mirror control",rows:[Row(id:"exclude",title:data["brokerExcluded"].flag ? "Allow this strategy on Capital demo":"Exclude this strategy from Capital demo",body:"The virtual strategy and its history continue independently.",action:"exclude:\(data["brokerExcluded"].flag ? "false":"true"):\(route.id)")]))}
-            out = Content(title:"\(data["epic"].text) · \(tier(data["leverage"]))",subtitle:isBacktest ? data["windowId"].text : "\(label) record · Capital deals shown separately",sections:sections)
+            let previews=data["inspections"].items
+            let ids=Set(previews.map{$0["subject"]["key"].text})
+            if !previews.isEmpty {sections.append(Section(title:actual ? "Recent broker trades":"Recent strategy trades",rows:previews.map{tradeCard($0,runId:route.id,stage:route.stage)}))}
+            if !actual && !data["position"].isNull {
+                let p=data["position"]
+                sections.append(Section(title:"Open position",rows:[Row(id:"position",title:p["side"].text.capitalized+" · "+number(p["size"].value,digits:3)+" units",subtitle:inspectionDate(p["entryTime"].value),
+                    stats:[Stat(label:"Open P&L",value:money(data["evidence"]["unrealizedPnl"].value)),Stat(label:"Stop",value:number(p["stopLoss"].value)),Stat(label:"Funding",value:money(data["evidence"]["openFunding"].value))],route:Route(screen:.trade,id:route.id,stage:route.stage,version:"open"))]))
+            }
+            if actual {
+                sections.append(Section(title:"Broker trade history",rows:data["deals"].items.reversed().compactMap{d in
+                    guard d["status"].text != "failed" else{return nil};let key=String(Int(d["id"].value ?? -1));if ids.contains(key){return nil}
+                    return Row(id:"deal-"+key,title:d["side"].text.capitalized+" · "+money(d["pnl"].value),subtitle:inspectionDate(d["open_time"].value)+" · "+d["status"].text,
+                        route:Route(screen:.trade,id:route.id,stage:"capital",version:key))
+                }))
+            } else {
+                sections.append(Section(title:"Trade history",rows:data["trades"].items.reversed().compactMap{t in
+                    let key=t["index"].value.map{String(Int($0))} ?? "";if ids.contains(key){return nil}
+                    return Row(id:"trade-"+key+String(t["entryTime"].value ?? 0),title:t["side"].text.capitalized+" · "+money(t["pnl"].value),subtitle:inspectionDate(t["entryTime"].value)+" → "+inspectionDate(t["exitTime"].value),
+                        body:t["entryReason"].text+(t["exitNote"].text.isEmpty ? "":"\nClose: "+t["exitNote"].text),route:key.isEmpty ? nil:Route(screen:.trade,id:route.id,stage:route.stage,version:key))
+                }))
+            }
+            if !actual, !m["monthly"].items.isEmpty {sections.append(Section(title:"Monthly return",rows:[Row(id:"monthly",title:"By calendar month",chart:Graph(kind:"bars",bars:m["monthly"].items.map{GraphBar(name:$0["month"].text,value:($0["ret"].value ?? 0)*100,total:true)},unit:"%",height:Double(max(180,m["monthly"].items.count*24+20))))]))}
+            let evidence=actual ? data["capitalDemo"]["evidence"]:data["evidence"]
+            let benchmark=evidence["benchmark"]
+            if benchmark["status"].text=="matched"{
+                sections.append(Section(title:"Common-date benchmark",rows:[Row(id:"benchmark",title:date(benchmark["from"].value)+" → "+date(benchmark["through"].value),subtitle:"Return · sizing differs",
+                    stats:[Stat(label:"Strategy",value:percent(benchmark["strategyReturn"].value)),Stat(label:"1:1 hold",value:percent(benchmark["benchmarkReturn"].value)),Stat(label:"Excess",value:points(benchmark["excessReturn"].value))],
+                    chart:Graph(kind:"bars",bars:[GraphBar(name:"Strategy",value:(benchmark["strategyReturn"].value ?? 0)*100,total:true),GraphBar(name:"1:1 hold",value:(benchmark["benchmarkReturn"].value ?? 0)*100,total:true)],unit:"%",height:110))]))
+            }
+            out=Content(title:data["epic"].text,subtitle:label,sections:sections)
         case .accounts:
             let b=data["status"]
             out = Content(title:"Accounts",subtitle:"Capital demo only · Arena 01–09",sections:[

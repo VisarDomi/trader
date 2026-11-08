@@ -26,7 +26,7 @@ SEED=""
 if [[ "${1:-}" == "--seed" ]]; then SEED="${2:?--seed needs a path}"; fi
 
 cd "$REPO"
-SHIPPED=(apps/backend/src apps/backend/agents apps/backend/native apps/backend/package.json apps/backend/tsconfig.json packages/shared ops/lab/trader-arena-performance.conf)
+SHIPPED=(apps/backend/src apps/backend/agents apps/backend/native apps/backend/package.json apps/backend/tsconfig.json packages/shared ops/lab/trader-arena-performance.conf ops/lab/trader-inspector.service)
 if [[ -n "$(git status --porcelain -- "${SHIPPED[@]}")" ]]; then
   echo "uncommitted changes in shipped files; commit first so the server runs a known version." >&2
   git status --short -- "${SHIPPED[@]}" >&2
@@ -84,8 +84,11 @@ if "$TRADER_PC_ACTIVE"; then
   DROPIN_DIR="$HOME/.config/systemd/user/$UNIT.service.d"
   mkdir -p "$DROPIN_DIR"
   install -m 0644 "$TMP/ops/lab/trader-arena-performance.conf" "$DROPIN_DIR/performance.conf"
+  install -m 0644 "$TMP/ops/lab/trader-inspector.service" "$HOME/.config/systemd/user/trader-inspector.service"
   systemctl --user daemon-reload
   systemctl --user restart "$UNIT"
+  systemctl --user enable trader-inspector.service
+  systemctl --user restart trader-inspector.service
 else
   scp -q "$REPO/ops/server/trader-arena.service" "$SERVER:/tmp/trader-arena.service"
   ssh "$SERVER" "sudo install -m 0644 /tmp/trader-arena.service /etc/systemd/system/$UNIT.service && sudo systemctl daemon-reload && sudo systemctl enable $UNIT >/dev/null 2>&1; sudo systemctl restart $UNIT"

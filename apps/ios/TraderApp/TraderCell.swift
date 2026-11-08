@@ -15,7 +15,7 @@ enum TraderFonts {
 @MainActor
 final class TraderCell:UITableViewCell {
     private let stack=UIStackView(), titleLabel=UILabel(),subtitleLabel=UILabel(),bodyLabel=UILabel(),badgeLabel=UILabel(),stats=UIStackView()
-    private var chart:EquityView?
+    private var chart:TraderGraphView?
     private var statValues:[UILabel]=[],statNames:[UILabel]=[]
     override init(style:UITableViewCell.CellStyle,reuseIdentifier:String?) {
         super.init(style:style,reuseIdentifier:reuseIdentifier)
@@ -48,6 +48,7 @@ final class TraderCell:UITableViewCell {
             bodyLabel.font=row.code ? TraderFonts.code:TraderFonts.body
             bodyLabel.lineBreakMode=row.code ? .byCharWrapping:.byWordWrapping
             badgeLabel.text=row.badge;badgeLabel.isHidden=row.badge.isEmpty
+            badgeLabel.textColor=row.badgeTone.map{$0>0 ? UIColor.systemGreen:$0<0 ? UIColor.systemRed:UIColor.systemOrange} ?? .systemTeal
             stats.isHidden=row.stats.isEmpty
             stats.axis=traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical:.horizontal
             for i in 0..<3 {
@@ -58,29 +59,16 @@ final class TraderCell:UITableViewCell {
                 statNames[i].text=stat.label
             }
             chart?.removeFromSuperview();chart=nil
-            if !row.points.isEmpty {
-                let v=EquityView();v.backgroundColor = .clear;v.isOpaque=false;v.points=row.points;v.heightAnchor.constraint(equalToConstant:180).isActive=true
+            if let graph=row.chart {
+                let v=TraderGraphView();v.graph=graph;v.heightAnchor.constraint(equalToConstant:graph.height).isActive=true
+                if graph.kind=="price"{stack.insertArrangedSubview(v,at:2)}else{stack.addArrangedSubview(v)};chart=v
+            } else if !row.points.isEmpty {
+                let v=TraderGraphView();v.graph=Graph(series:[GraphSeries(name:"Equity",points:row.points)],height:200);v.heightAnchor.constraint(equalToConstant:200).isActive=true
                 stack.addArrangedSubview(v);chart=v
             }
             accessoryType=row.route != nil ? .disclosureIndicator:.none
             selectionStyle=(row.route != nil || !row.action.isEmpty) ? .default:.none
             accessibilityIdentifier=row.id
-        }
-    }
-}
-
-@MainActor
-final class EquityView:UIView {
-    var points:[Plot]=[]{didSet{setNeedsDisplay()}}
-    override func draw(_ rect:CGRect) {
-        guard points.count>1,let context=UIGraphicsGetCurrentContext() else{return}
-        FrameMonitor.shared.measure("trader.chart") {
-            let values=points.map(\.value),lo=values.min()!,hi=values.max()!,span=max(hi-lo,1),box=rect.insetBy(dx:3,dy:12)
-            context.setStrokeColor(UIColor.separator.cgColor);context.setLineWidth(0.5)
-            for i in 0...3 {let y=box.minY+box.height*CGFloat(i)/3;context.move(to:CGPoint(x:box.minX,y:y));context.addLine(to:CGPoint(x:box.maxX,y:y))};context.strokePath()
-            let path=UIBezierPath()
-            for (i,p) in points.enumerated(){let x=box.minX+box.width*CGFloat(i)/CGFloat(points.count-1),y=box.maxY-box.height*CGFloat((p.value-lo)/span);if i==0{path.move(to:CGPoint(x:x,y:y))}else{path.addLine(to:CGPoint(x:x,y:y))}}
-            UIColor.systemTeal.setStroke();path.lineWidth=2;path.stroke()
         }
     }
 }

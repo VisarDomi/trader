@@ -180,7 +180,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       extra: r.extra ? JSON.parse(r.extra) : null,
       position: tracked?.run.position ?? (r.snapshot ? (JSON.parse(r.snapshot) as { position: unknown }).position : null),
       state: tracked?.run.state ?? null,
-      trades: db.trades(runId, Number(url.searchParams.get('trades') ?? 1000)),
+      trades: db.viewTrades(runId, Number(url.searchParams.get('trades') ?? 1000)),
       equityCurve: db.equity(runId),
       logs: db.logs(runId, 200),
       deals: db.dealsForRun(runId),

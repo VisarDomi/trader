@@ -8,12 +8,12 @@ if not os.environ.get('IOS_WORKLOAD_ACTIVE'):
  guard=Path.home()/'Developer/ios-tools/native/scripts/mac-workload'
  if not guard.exists():raise SystemExit('Shared mac-workload guard is required for Trader compilation')
  command=['sudo','-n','launchctl','asuser',str(os.getuid()),'sudo','-n','-H','-u',os.environ['USER'],
-  '/usr/bin/caffeinate','-i','/usr/bin/python3',str(guard),'build','--timeout','900','--',sys.executable,str(Path(__file__).resolve()),*sys.argv[1:]]
+  '/usr/bin/python3',str(guard),'build','--timeout','900','--',sys.executable,str(Path(__file__).resolve()),*sys.argv[1:]]
  raise SystemExit(subprocess.run(command).returncode)
 def build():
  subprocess.run([sys.executable,str(root/'scripts/project.py')],check=True)
  cmd=['xcodebuild','-project',str(root/'build/Trader.xcodeproj'),'-scheme','Trader','-configuration','Release','-derivedDataPath',str(root/'build/DerivedData'),'-jobs','2','SYMROOT='+str(root/'build')]
- if a.simulator:cmd+=['-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','CODE_SIGNING_ALLOWED=NO']
+ if a.simulator:cmd+=['-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','CODE_SIGNING_ALLOWED=NO','ARCHS=x86_64','ONLY_ACTIVE_ARCH=YES','PRODUCT_BUNDLE_IDENTIFIER=com.visar.Trader.qa']
  else:
   config=json.loads((Path.home()/'Developer/ios-tools/ios-tools.local.json').read_text())
   team=os.environ.get('DEVELOPMENT_TEAM',config['team']);device=os.environ.get('SIGNING_DEVICE',config['device'])

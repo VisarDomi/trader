@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add a separate bounded, read-only tick-history inspector for native and web trade charts, costs,
+  decisions and drawdown. Preserve capture gaps and unknown legacy costs. Expose stable trade
+  indices without changing engine recovery, source hashes, stored fills or strategy behavior.
+
 - Restore existing frozen latency comparisons after their standard run is retired for performance.
   Keep standard/explicit comparison retirements intact and require an admitted standard run before
   creating comparisons. Reopening the database no longer changes the active experimental cohort.
