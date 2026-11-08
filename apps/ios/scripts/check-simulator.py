@@ -72,14 +72,14 @@ try:
     hook('action',name='refresh');time.sleep(.4);assert hook('state')['trader']['rows']>=12
     # Persist a scrolled trade, then verify cold and warm first-frame restoration.
     hook('scroll',y=420);time.sleep(.4);before=layout()
-    (OUT/'restore-before.json').write_text(json.dumps({'layout':before,'state':hook('state')}))
+    (OUT/'restore-before-state.json').write_text(json.dumps({'layout':before,'state':hook('state')}))
     shot('restore-before')
     command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
     command('terminate',a.device,BUNDLE,stdout=subprocess.DEVNULL)
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);wait('trade',12);time.sleep(8)
     samples=hook('timeline')['timeline'];assert samples and samples[0]['sinceFirstFrame']==0
     (OUT/'restore-timeline.json').write_text(json.dumps(samples))
-    (OUT/'restore-after.json').write_text(json.dumps({'layout':layout(),'state':hook('state')}))
+    (OUT/'restore-after-state.json').write_text(json.dumps({'layout':layout(),'state':hook('state')}))
     shot('restore-after')
     if not same(before,samples[0]['layout']):issues.append('Cold first-frame layout changed')
     if not all(same(before,s['layout']) for s in samples):issues.append('Cold restore later changed')
