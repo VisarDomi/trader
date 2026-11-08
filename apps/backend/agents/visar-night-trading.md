@@ -126,5 +126,104 @@ At unchanged source `56ac3bdfe7c1`, engine `2026-10-ticks-v2` produces 71 funded
 (−99.9779%), Sharpe −1.2393, profit factor 0.3682, zero agent errors. This supersedes the candle-engine
 result above for current comparisons. It uses generated historical tick paths (seed 1, 16 ticks/minute),
 not captured tick history; 2024–September 2026 predates recording. Frequency calibration counts remain
-72 opportunities; available capital and the revised fill/stop path affect executed trades. No thresholds
+72 opportunities. The November 8 independent audit below identifies the missing fill: no 03:27
+candle on July 3, 2024; the request expired at 03:28. This was not capital exhaustion. No thresholds
 were tuned for profit and the explicit Arena 09 demo experiment remains.
+
+## Backtest audit — 2026-11-08
+
+Requested after the unchanged forward experiment reached two wins from two trades (+96.96%).
+Conclusion: the historical loss reproduces and follows the coded rule; two forward wins cannot
+establish an edge. This audits the operational proxy for the user's manual pattern, not whether
+the proxy captures every subjective feature of that pattern. No thresholds were retuned.
+
+### Data, signals, clocks and accounting
+
+- Source remains 56ac3bdfe7c1; current engine 2026-10-ticks-v2. The standard 973,384 minute rows
+  exactly match a fresh PostgreSQL read, SHA-256
+  `d46c624908259285b9e886a3211fb80cae159473101b43fb5602b219cc2d0285`; zero differing fields.
+- A separate Python/ZoneInfo implementation, using its own feature math, reproduces 72 qualifying
+  dates (25 /25 /22 by year) and every filled direction. All minute OHLC bounds are valid.
+  The engine executes 71. July 3, 2024 has no 03:27 candle; the next arrives 03:28, exactly when
+  the entry expires. The rejection log confirms this. The engine correctly avoids an invented fill.
+- Every executed entry is 03:27 Tirana and every scheduled exit 08:27, across DST changes.
+  Independent Decimal checks match all 71 lot-rounded 90%-margin sizes and all dollar P&L
+  identities. Final unrounded cash is $2.205, displayed $2.21. Capital was not reset.
+- Eleven stops lost 49.8–52.3% of then-current capital; rounding and first-available simulated
+  quote slippage explain the distance from the 50% target. Funding is zero for every trade: the
+  five-hour holding period does not cross the modeled rollover. Stops remain ordinary market stops.
+
+### Frozen sensitivity diagnostics
+
+Same original rules and January 2024–September 2026 window; starting capital $10,000. These are
+isolated diagnostics, not new agents, promoted results or replacements of the primary history.
+
+| Diagnostic | Trades | Ending capital | Total return |
+|---|---:|---:|---:|
+| 1:200, seed 1, 16 ticks/minute (primary reproduction) | 71 | $2.21 | −99.9779% |
+| 1:200, seed 2, 16/minute | 71 | $2.17 | −99.9783% |
+| 1:200, seed 3, 16/minute | 71 | $1.85 | −99.9815% |
+| 1:200, seed 1, 64/minute | 71 | $2.36 | −99.9764% |
+| 1:200, zero spread, stops/sizes replayed | 71 | $5.70 | −99.9430% |
+| 1:20, normal spread | 71 | $6,614.25 | −33.8575% |
+| 1:1, normal spread | 71 | $9,810.31 | −1.8969% |
+| 1:1, zero spread | 71 | $9,869.76 | −1.3024% |
+
+The margin setting means roughly 180×, 18× and 0.9× exposure respectively; the stop still targets
+half of account capital, so its price distance changes with leverage. The loss persists without
+spread, and funding contributes nothing. Leverage, large loss budgets and compounding magnify a
+slightly negative historical price signal; a particular synthetic path is not creating the ruin.
+Fresh-capital annual diagnostics also lose: 2024 −86.56% (24 fills), 2025 −82.45% (25),
+January–September 2026 −99.13% (22). Full-period compounding remains the primary result.
+
+### Forward replay and luck
+
+- November 3, replaying only 122,785 archived quotes for November 2–3 with the actual $12,069.072
+  entry capital, produces exactly 287.8 short units, 7,548.5 →7,522.0 and $7,626.70 profit.
+  The simulated entry timestamp differs by 1 ms; prices, size, exit time and P&L agree. No
+  synthetic quote is used. This validates that recorded winning trade through the replay engine.
+- October 16 entered before tick recording began, so its entry/early risk cannot be exactly
+  validated. Mixed replay generates its missing part, yielding +93.54% for the two-trade period
+  versus actual +96.96%; approximately 0.9 index point of entry/exit differences on the first
+  trade explains the gap. The second trade's changed dollar profit in that combined replay is
+  its changed starting capital, not a changed price outcome.
+- Historical wins: 31/71 =43.66%; two wins under a stationary independent version of that win rate
+  occur about 19.06% of the time. Fifteen of 70 historical adjacent pairs were both winners.
+  Four consecutive wins occurred within the losing history. Win counts alone are weak evidence.
+- The *magnitude* is more unusual: actual +20.69% then +63.19% compounds to +96.96%, beyond the
+  best historical adjacent pair (+87.28%). About 0.97% of all empirical two-trade draws with
+  replacement reach the live gain. This is a descriptive, post-observation, stationarity-dependent
+  comparison; it is not a calibrated probability of luck or proof of a new regime/edge.
+- With two successes, the exact two-sided 95% binomial win-rate interval is about 15.81–100%,
+  under independent identical trials. [NIST's exact-binomial method](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm).
+  Real trades need not be independent/stationary. The mirrored Capital wins are the same two
+  signals, not two extra independent observations.
+- One further −50% trade would reduce $19,695.77 to about $9,847.89, erasing both gains.
+  Historical average percentage win was about +17.96% versus −26.16% average loss; win rate
+  by itself does not measure profitability.
+
+### Reporting defect fixed and remaining limits
+
+The primary dataset reaches September 30 and the reproduced loss is unaffected. A requested
+October 14–November 7 **synthetic-only** diagnostic, however, only has minute inputs through
+October 21 01:34 UTC while the nightly ingest is held. Recorded quotes supply the later dates in
+auto replay. The old `uncoveredMinutes=0` did not count absent source dates and could be mistaken
+for verified complete coverage. New replays record requested/actual input bounds, leave calendar
+coverage explicitly unchecked (`uncoveredMinutes=null`), and warn about a large missing tail in
+the CLI. They do not fabricate missing history. A missing-market-minute total requires a verified
+instrument/holiday calendar and is still unknown. Metadata correction does not change trading math
+or invalidate the primary reproduced cashflows.
+
+Historical fills still approximate intraminute order, spread, liquidity, gaps and historical dealing
+rules from minute data/current rule snapshots. The recorded second-trade agreement is encouraging
+engine evidence, not verification of every earlier simulated stop. The original aggressive strategy
+and its special demo admission remain unchanged; exact forward inputs/ticks continue to accumulate.
+
+Audit raw results and independent oracle are retained privately under
+`apps/backend/data/night-audit-20261108/`. Baseline reproduction uses
+`bun run backtest visar-night-trading --epic US500 --workers 1 --no-push --force`; sensitivities add
+`--tick-seed 2`, `--tick-seed 3` or `--ticks-per-minute 64`. Jobs run inside trader.slice.
+Calendar references: [Fed](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm),
+[BOJ 2024](https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_2024/index.htm),
+[2025](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref240731a.pdf),
+[2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf).

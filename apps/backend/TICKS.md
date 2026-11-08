@@ -90,3 +90,11 @@ RAM is separate: the live service retains its 500 MB soft / 700 MB hard cap; hea
   errors. A three-minute, 5,946-quote workload with actual agents and restored positions used 385 MB RSS;
   quote processing p50 0.137 ms, p95 0.493 ms; 340 ms to persist all states. GPU/network delay and shared
   server scheduling remain separate from this offline CPU measurement.
+
+## Backtest input coverage
+
+New replay results retain `data.window` with requested bounds and actual input endpoints.
+`calendarVerified` is false and `uncoveredMinutes` is null until an instrument/session/holiday
+calendar establishes expected market minutes. A zero on older results did not prove no data gaps.
+The CLI warns when input is empty or ends more than seven calendar days before the requested end.
+Those diagnostics expose availability; they do not generate prices or change execution/P&L.

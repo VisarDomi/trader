@@ -30,6 +30,16 @@ const DEFAULT_WORKERS = 5;
 const RUNS_PER_JOB = 20;
 const PUSH_BATCH = 8;
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
+const coverageNotices=new Set<string>();
+function reportCoverage(r:BacktestResult):void {
+  const end=r.data?.window?.inputEnd??(r.data?.lastTickAt===null?null:r.data?.lastTickAt);
+  const key=`${r.epic}:${r.windowId}`;
+  if(coverageNotices.has(key))return;
+  if(end===null){console.warn(`${r.epic}: no input prices for the requested window`);coverageNotices.add(key);}
+  else if(end!==undefined&&r.windowEnd-end>7*86_400_000){
+    console.warn(`${r.epic}: input ends ${new Date(end).toISOString()}, requested end ${new Date(r.windowEnd).toISOString()} (partial window)`);coverageNotices.add(key);
+  }
+}
 
 interface Args {
   prefix: string | null;
@@ -97,6 +107,7 @@ function runJob(job: WorkerJob): Promise<BacktestResult[]> {
 }
 
 export async function pushResults(results: BacktestResult[]): Promise<boolean> {
+  for(const r of results)reportCoverage(r);
   const token = process.env.ARENA_TOKEN;
   if (!token) {
     console.warn('ARENA_TOKEN not set — skipping push');
@@ -198,7 +209,7 @@ async function main(): Promise<void> {
     for (let job = queue.shift(); job; job = queue.shift()) {
       try {
         const results = await runJob(job);
-        for (const r of results) await Bun.write(resultPath(r.agentId, r.epic, r.leverage,r.windowId), JSON.stringify(r));
+        for (const r of results) {reportCoverage(r);await Bun.write(resultPath(r.agentId, r.epic, r.leverage,r.windowId), JSON.stringify(r));}
         all.push(...results);
         done++;
         const secs = ((Date.now() - started) / 1000).toFixed(0);

@@ -90,6 +90,8 @@ export interface EvidenceOverview {
 }
 
 export interface ReplayDataInfo {
+  /** Absent on legacy results. Input endpoints do not establish calendar coverage. */
+  window?: {requestedStart:number;requestedEnd:number;inputStart:number|null;inputEnd:number|null;trailingGapMs:number|null;calendarVerified:false};
   mode: 'auto' | 'recorded' | 'synthetic';
   generator: string;
   seed: number;
