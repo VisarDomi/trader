@@ -1,7 +1,7 @@
 import type { AgentContext, Bar, OrderOptions, Side } from '../sdk/types';
 import { TIMEFRAME_MS } from '../sdk/types';
 import { localTime, TZ } from '../sdk/time';
-import { nightSessionFeatures, nightCalendarAllows } from '../../agents/visar-night-trading';
+import { nightSessionFeatures, nightCalendarAllows,classifyNightSession } from '../../agents/visar-night-trading';
 import versions from './versions.json';
 
 export type Basis = 'recorded' | 'reconstructed' | 'unavailable';
@@ -84,10 +84,10 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
     const specs:[string,number,Gate['op'],number,string][]=[['Directional move',f?.movePct??NaN,'>=',p.trendPct,'%'],['Path efficiency',(f?.efficiency??NaN)*100,'>=',p.minEfficiency*100,'%'],['Agreeing 15-minute steps',(f?.directionalShare??NaN)*100,'>=',p.minDirectionalShare*100,'%'],['Largest counter-move / range',(f?.retraceShare??NaN)*100,'<=',p.maxRetraceShare*100,'%'],['Session range',f?.rangePct??NaN,'<=',p.maxRangePct,'%'],['Net move / range',(f?.bodyShare??NaN)*100,'>=',p.minBodyShare*100,'%'],['Observed minutes',f?.minutes??NaN,'>=',Math.ceil(390*p.minCoverage),'minutes'],['15-minute checkpoints',f?.checkpoints??NaN,'=',27,'points']];
     for(const x of specs)g(...x);
     if(day?.date&&f){
-      const start=atLocal(day.date,TZ.NEW_YORK,570),points=day.points.map((value:number,i:number)=>({t:start+i*900000,value}));
-      out.panels.push({title:`Previous New York session · ${f.direction>0?'bullish':f.direction<0?'bearish':'neutral'}`,unit:'Price',note:'09:30–16:00 New York · 15-minute decision checkpoints. Intraminute retraces use conservative high/low excursions.',series:[{name:'Session path',points}],guides:[{label:'Cash open',value:day.open},{label:'Minimum bullish close',value:day.open*(1+p.trendPct/100)},{label:'Maximum bearish close',value:day.open*(1-p.trendPct/100)}],markers:[],from:start,through:start+390*60000});
+      const start=atLocal(day.date,TZ.NEW_YORK,570),points=day.points.map((value:number,i:number)=>({t:start+i*900000,value})),classified=classifyNightSession(f,p as any);
+      out.panels.push({title:`Previous New York session · ${classified>0?'bullish':classified<0?'bearish':'did not qualify'}`,unit:'Price',note:'09:30–16:00 New York · 15-minute decision checkpoints. Intraminute retraces use conservative high/low excursions.',series:[{name:'Session path',points}],guides:[{label:'Cash open',value:day.open},{label:'Minimum bullish close',value:day.open*(1+p.trendPct/100)},{label:'Maximum bearish close',value:day.open*(1-p.trendPct/100)}],markers:[],from:start,through:start+390*60000});
       const entry=localTime(c.time,p.timeZone),yesterday=new Date(Date.UTC(entry.year,entry.month-1,entry.day)-86400000).toISOString().slice(0,10);
-      g('Session direction',f.direction,'=',dir,'');g('Calendar allows entry',nightCalendarAllows(yesterday,entry.date)?1:0,'=',1,'yes/no');
+      g('Session direction',classified,'=',dir,'');g('Calendar allows entry',nightCalendarAllows(yesterday,entry.date)?1:0,'=',1,'yes/no');
       g('Entry clock',entry.minuteOfDay,'=',207,'minute of day');
       g('Weekday entry',entry.weekday>=1&&entry.weekday<=5?1:0,'=',1,'yes/no');
       g('Reference belongs to previous day',s.referenceDate===yesterday?1:0,'=',1,'yes/no');
@@ -99,7 +99,7 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
     out.exitRule=`08:27 ${p.timeZone}; protective loss budget ${p.lossPct}% of entry capital. Opening/reference candles, coverage and policy-event filters must qualify.`;
   }else if(['ema-cross','timesfm-trend'].includes(slug)){
     const a=ta.series.ema(p.fast),z=ta.series.ema(p.slow);panel('Price and trend averages',{Price:priceSeries(),[`EMA ${p.fast}`]:a,[`EMA ${p.slow}`]:z});
-    if(slug==='ema-cross')cross('EMA crossover',a,z);else threshold('Fast vs slow EMA',last(a),last(z));
+    if(slug==='ema-cross')cross('EMA crossover',a,z);else g('Fast vs slow EMA',last(a),dir>0?'>':'<=',last(z),'Price');
     out.exitRule='Opposite crossover / forecast disagreement, or the recorded protective stop.';
   }else if(slug==='macd-trend'){
     const m=ta.series.macd(12,26,9),trend=ta.series.ema(p.trend);panel('Price and trend EMA',{Price:priceSeries(),[`EMA ${p.trend}`]:trend});panel('MACD crossover',{MACD:m.macd,Signal:m.signal},'points');cross('MACD cross',m.macd,m.signal);threshold('Price vs trend EMA',price,last(trend));out.exitRule='Opposite MACD cross, stop or profit target.';

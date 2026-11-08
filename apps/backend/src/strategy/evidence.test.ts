@@ -61,3 +61,8 @@ test('IBS composite alternatives do not falsely fail a valid RSI/three-down setu
  const c=input(b,a.params);c.state={high:110,low:90,closes:[110,109,108,105]};
  const x=explain(a.id,a.codeHash,c,'long');expect(x.gates.find(g=>g.label==='At least one dip condition')?.state).toBe('pass');expect(x.gates.some(g=>g.label==='Session IBS')).toBe(false);
 });
+
+test('TimesFM short trend permits equal EMAs as the reviewed source does',async()=>{
+ const {agents}=await loadAgents(),a=agents.find(a=>a.slug==='timesfm-trend')!;const bars=Array.from({length:220},(_,i)=>({time:Date.UTC(2026,0,1)+i*3600000,open:100,high:101,low:99,close:100,volume:1,spread:.1}));
+ const c=input(bars,a.params);const x=explain(a.id,a.codeHash,c,'short');expect(x.gates.find(g=>g.label==='Fast vs slow EMA')).toMatchObject({op:'<=',state:'pass',margin:0});
+});
