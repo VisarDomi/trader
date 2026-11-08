@@ -239,7 +239,8 @@ enum Presentation {
                     stats:[Stat(label:"Strategy",value:percent(benchmark["strategyReturn"].value)),Stat(label:"1:1 hold",value:percent(benchmark["benchmarkReturn"].value)),Stat(label:"Excess",value:points(benchmark["excessReturn"].value))],
                     chart:Graph(kind:"bars",bars:[GraphBar(name:"Strategy",value:(benchmark["strategyReturn"].value ?? 0)*100,total:true),GraphBar(name:"1:1 hold",value:(benchmark["benchmarkReturn"].value ?? 0)*100,total:true)],unit:"%",height:110))]))
             }
-            out=Content(title:data["epic"].text,subtitle:label,sections:sections)
+            if !historical,data["status"].text != "retired",!route.id.contains(":delay=") {sections.append(Section(title:"Demo control",rows:[Row(id:"exclude",title:data["brokerExcluded"].flag ? "Allow this strategy on Capital demo":"Exclude this strategy from Capital demo",action:"exclude:\(data["brokerExcluded"].flag ? "false":"true"):\(route.id)")]))}
+            out=Content(title:data["epic"].text,subtitle:[data["agentId"].text,label].filter{!$0.isEmpty}.joined(separator:" · "),sections:sections)
         case .accounts:
             let b=data["status"]
             out = Content(title:"Accounts",subtitle:"Capital demo only · Arena 01–09",sections:[

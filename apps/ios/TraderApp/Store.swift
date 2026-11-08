@@ -11,6 +11,7 @@ struct ScreenState: Codable, Sendable {
     var anchorKey: String? = nil
     var anchorFraction = 0.0
     var atTop = true
+    var notice:String? = nil
 }
 struct AppState: Codable, Sendable { var selectedTab = 0 }
 struct Diagnostic:Codable,Sendable {var screen:String;var record:String;var rows:Int;var refreshed:Double;var source:String;var phase:String}

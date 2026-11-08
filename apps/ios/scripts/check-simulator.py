@@ -6,7 +6,7 @@ Run via mac-workload simulator --visible --device UUID --timeout 600 -- ...
 """
 import argparse,json,subprocess,time,urllib.parse,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--device',required=True);p.add_argument('--fixture',required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--device',required=True);p.add_argument('--fixture',required=True);p.add_argument('--restore-only',action='store_true');a=p.parse_args()
 OUT=Path('/tmp/trader-native-qa');OUT.mkdir(exist_ok=True)
 ROOT=Path(__file__).resolve().parents[1];TOOLS=Path.home()/'Developer/ios-tools/native/scripts'
 APPLE=str(TOOLS/'apple-tool');BUNDLE='com.visar.Trader.qa'
@@ -57,30 +57,38 @@ try:
     # All UI checks read this bounded fixture. The invalid test-only connection has no live credentials.
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL)
     wait('rankings',100);hook('action',name='offline',value='true');orient('portrait');shot('rankings-portrait')
-    hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',8)
-    scan('run', ['Recorded ticks','bearish day','scheduled exit'])
-    hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
-    orient('portrait');shot('trade-portrait')
-    scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown'])
-    orient('landscape');shot('trade-landscape');orient('portrait')
-    hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
-    shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])
+    if not a.restore_only:
+        hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',8)
+        scan('run', ['Recorded ticks','bearish day','scheduled exit'])
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
+        orient('portrait');shot('trade-portrait')
+        scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown'])
+        orient('landscape');shot('trade-landscape');orient('portrait')
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
+        shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])
+    else:
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
     # Offline refresh preserves saved chart data.
     hook('action',name='refresh');time.sleep(.4);assert hook('state')['trader']['rows']>=12
     # Persist a scrolled trade, then verify cold and warm first-frame restoration.
     hook('scroll',y=420);time.sleep(.4);before=layout()
+    (OUT/'restore-before.json').write_text(json.dumps({'layout':before,'state':hook('state')}))
+    shot('restore-before')
     command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
     command('terminate',a.device,BUNDLE,stdout=subprocess.DEVNULL)
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);wait('trade',12);time.sleep(8)
     samples=hook('timeline')['timeline'];assert samples and samples[0]['sinceFirstFrame']==0
-    assert same(before,samples[0]['layout']),'Cold first-frame layout changed'
-    assert all(same(before,s['layout']) for s in samples),'Cold restore later changed'
+    (OUT/'restore-timeline.json').write_text(json.dumps(samples))
+    (OUT/'restore-after.json').write_text(json.dumps({'layout':layout(),'state':hook('state')}))
+    shot('restore-after')
+    if not same(before,samples[0]['layout']):issues.append('Cold first-frame layout changed')
+    if not all(same(before,s['layout']) for s in samples):issues.append('Cold restore later changed')
     before=layout();command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);time.sleep(1)
-    assert same(before,layout()),'Warm return changed'
+    if not same(before,layout()):issues.append('Warm return changed')
     shot('restored-partial')
     assert not issues,'; '.join(issues)
-    print('PASS: fixture run + both trades, price/cost/risk/reasons, gaps, portrait/landscape, offline, exact cold/warm restore.',flush=True)
+    print('PASS: '+('focused offline cold/warm restore' if a.restore_only else 'fixture run + both trades, price/cost/risk/reasons, gaps, portrait/landscape, offline, exact cold/warm restore'),flush=True)
 finally:
     if installed:
         subprocess.run([APPLE,'simctl','terminate',a.device,BUNDLE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

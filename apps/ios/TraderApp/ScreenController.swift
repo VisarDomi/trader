@@ -18,10 +18,11 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private let search=UISearchController(searchResultsController:nil)
     private let header=UIStackView(),notice=UILabel(),descriptionLabel=UILabel()
     private var stages:UISegmentedControl?
-    private var statusText=""
+    private var statusText="" {didSet{state.notice=statusText.isEmpty ? nil:statusText}}
     var route:Data {(try? JSONEncoder().encode(place)) ?? Data()}
     init(route:Route,state:ScreenState=ScreenState(),prepared:Content?=nil) {
         place=route;self.state=state
+        statusText=state.notice ?? ""
         content=prepared ?? Content(title:route.title.isEmpty ? route.screen.rawValue.capitalized:route.title,sections:[])
         super.init(style:.insetGrouped)
         title=content.title
