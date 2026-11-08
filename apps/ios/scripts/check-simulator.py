@@ -38,7 +38,7 @@ def layout():return hook('layout')['layout']
 def scan(prefix,terms):
     seen=''
     for i in range(24 if a.strategy else 18):
-        hook('scroll',y=i*500);time.sleep(.18);part=json.dumps(layout());seen+=part
+        hook('scroll',y=i*500);time.sleep(.18);part=json.dumps(layout(),ensure_ascii=False);seen+=part
         if i in [0,2,4,6]:shot(prefix+'-'+str(i))
     for term in terms:
         if term not in seen:issues.append('Missing visible content: '+term)
@@ -58,25 +58,25 @@ try:
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL)
     wait('rankings',100);hook('action',name='offline',value='true');orient('portrait');shot('rankings-portrait')
     if not a.restore_only:
-        hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',8)
-        scan('run', ['Recorded ticks','bearish day','scheduled exit'])
-        hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
+        hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',6)
+        scan('run', ['bearish day','scheduled exit'])
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',9)
         orient('portrait');shot('trade-portrait')
-        scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','drawdown']+(['Previous New York session','Path efficiency','Headroom','Minimum bullish close','22:00 reference'] if a.strategy else []))
+        scan('trade', ['Open','Close','bearish day','scheduled exit','Price P','Signal','Spread','Drawdown']+(['NY session','Path efficiency','Δ','Minimum bullish close','22:00'] if a.strategy else []))
         orient('landscape');shot('trade-landscape');orient('portrait')
-        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
-        shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',9)
+        shot('partial-portrait');scan('partial',['Tick gaps','Gap'])
     else:
-        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
+        hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',9)
     # Offline refresh preserves saved chart data.
-    hook('action',name='refresh');time.sleep(.4);assert hook('state')['trader']['rows']>=12
+    hook('action',name='refresh');time.sleep(.4);assert hook('state')['trader']['rows']>=9
     # Persist a scrolled trade, then verify cold and warm first-frame restoration.
     hook('scroll',y=420);time.sleep(.4);before=layout()
     (OUT/'restore-before-state.json').write_text(json.dumps({'layout':before,'state':hook('state')}))
     shot('restore-before')
     command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
     command('terminate',a.device,BUNDLE,stdout=subprocess.DEVNULL)
-    command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);wait('trade',12);time.sleep(8)
+    command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);wait('trade',9);time.sleep(8)
     samples=hook('timeline')['timeline'];assert samples and samples[0]['sinceFirstFrame']==0
     (OUT/'restore-timeline.json').write_text(json.dumps(samples))
     (OUT/'restore-after-state.json').write_text(json.dumps({'layout':layout(),'state':hook('state')}))

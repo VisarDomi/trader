@@ -52,7 +52,7 @@ extension Presentation {
         let exit=s["exitTime"].isNull ? "Still open":s["exitReason"].text.isEmpty ? "Exit reason not recorded":s["exitReason"].text
         return Row(id:"inspection-"+s["key"].text,title:s["side"].text.capitalized+" · "+money(c["net"].value),
             subtitle:inspectionDate(s["entryTime"].value)+" → "+inspectionDate(s["exitTime"].value),
-            body:"Open: "+entry+"\nClose: "+exit,badge:coverage["complete"].flag ? "Recorded ticks":"Partial tick history",
+            body:"Open: "+entry+"\nClose: "+exit,badge:coverage["complete"].flag ? "":"Tick gaps",
             stats:[Stat(label:"Price drawdown",value:riskValue(j),tone:-1),Stat(label:"Spread cost",value:money(c["spread"].value)),Stat(label:"Funding",value:money(c["funding"].value))],
             route:Route(screen:.trade,id:runId,stage:stage,version:s["key"].text),chart:tradeGraph(j,height:200),badgeTone:coverage["complete"].flag ? 1:0)
     }
@@ -60,41 +60,42 @@ extension Presentation {
         let s=j["subject"],c=j["costs"],risk=j["risk"],coverage=j["coverage"]
         let complete=coverage["complete"].flag
         let stage=s["stage"].text=="capital" ? "Capital demo":s["stage"].text=="backtest" ? "Backtest":"Virtual"
-        var sections=[Section(title:stage+" · "+s["epic"].text,rows:[Row(id:"price",title:s["side"].text.capitalized+" · "+number(s["size"].value,digits:3)+" units",
-            subtitle:inspectionDate(s["entryTime"].value)+" → "+inspectionDate(s["exitTime"].value),badge:complete ? "Recorded bid / ask":"Partial tick coverage",
+        var sections=[Section(title:stage,rows:[Row(id:"price",title:s["side"].text.capitalized+" · "+number(s["size"].value,digits:3)+" units",
+            subtitle:inspectionDate(s["entryTime"].value)+" → "+inspectionDate(s["exitTime"].value),badge:complete ? "":"Tick gaps",
             stats:[Stat(label:"Net P&L",value:money(c["net"].value),tone:tone(c["net"].value)),Stat(label:"Price drawdown",value:riskValue(j),tone:-1),Stat(label:"Spread cost",value:money(c["spread"].value))],chart:tradeGraph(j,height:280),badgeTone:complete ? 1:0)])]
         let notional=(s["size"].value ?? 0)*(s["entryPrice"].value ?? 0)
         let equity=s["entryEquity"].value
-        sections.append(Section(title:"Sizing",rows:[Row(id:"sizing",title:tier(s["leverage"]),subtitle:s["stage"].text=="capital" ? "Shared broker account":(equity==nil ? "Entry equity unavailable":"Entry equity reconstructed from the complete trade ledger"),
+        sections.append(Section(title:"Sizing",rows:[Row(id:"sizing",title:tier(s["leverage"]),
             stats:[Stat(label:"Notional",value:money(notional)),Stat(label:"Entry equity",value:money(equity)),Stat(label:"Exposure",value:equity.map{number(notional/$0)+"×"} ?? "—")])]))
         var decisions:[Row]=[]
         for (label,key,time,price) in [("Open","entryReason","entryTime","entryPrice"),("Close","exitReason","exitTime","exitPrice")] {
             let reason=s[key].text.isEmpty ? (s[time].isNull ? "Still open":"Reason not recorded"):s[key].text
             decisions.append(Row(id:key,title:label+" · "+number(s[price].value,digits:["EURUSD","GBPUSD","AUDUSD"].contains(s["epic"].text) ? 5:2),subtitle:inspectionDate(s[time].value),body:reason))
         }
-        sections.append(Section(title:"Decisions",rows:decisions))
+        sections.append(Section(title:"",rows:decisions))
         if !j["strategy"].isNull {sections += strategySections(j["strategy"])}
         let gaps=tradeGraph(j).gaps,from=j["window"]["from"].value,through=j["window"]["through"].value
         if !j["pnl"].items.isEmpty {
-            sections.append(Section(title:"During the trade",rows:[
-                Row(id:"trade-pnl",title:"Executable-price P&L",subtitle:"Before funding / protection adjustments",stats:[Stat(label:complete ? "Worst adverse":"Observed adverse",value:money(risk["mae"].value),tone:-1),Stat(label:complete ? "Best favorable":"Observed favorable",value:money(risk["mfe"].value),tone:1),Stat(label:"Max decline",value:money(risk["maxDrawdown"].value),tone:-1)],chart:Graph(series:[GraphSeries(name:"P&L",points:plots(j["pnl"]))],gaps:gaps,from:from,through:through)),
-                Row(id:"trade-dd",title:complete ? "Price drawdown":"Observed price drawdown · lower bound",subtitle:"Peak to trough · before funding",chart:Graph(series:[GraphSeries(name:"Drawdown",points:plots(j["drawdown"]))],gaps:gaps,from:from,through:through)),
-                Row(id:"trade-spread",title:"Quoted bid–ask spread",subtitle:"Points · spread quoted over time, not a recurring fee",chart:Graph(series:[GraphSeries(name:"Spread",points:plots(j["spread"]))],gaps:gaps,unit:"Points",precision:5,from:from,through:through))]))
+            sections.append(Section(title:"",rows:[
+                Row(id:"trade-pnl",title:"Price P&L",stats:[Stat(label:complete ? "Worst adverse":"Observed adverse",value:money(risk["mae"].value),tone:-1),Stat(label:complete ? "Best favorable":"Observed favorable",value:money(risk["mfe"].value),tone:1),Stat(label:"Max decline",value:money(risk["maxDrawdown"].value),tone:-1)],chart:Graph(series:[GraphSeries(name:"P&L",points:plots(j["pnl"]))],gaps:gaps,from:from,through:through)),
+                Row(id:"trade-dd",title:complete ? "Drawdown":"Drawdown · partial",chart:Graph(series:[GraphSeries(name:"Drawdown",points:plots(j["drawdown"]))],gaps:gaps,from:from,through:through)),
+                Row(id:"trade-spread",title:"Spread",chart:Graph(series:[GraphSeries(name:"Spread",points:plots(j["spread"]))],gaps:gaps,unit:"Points",precision:5,from:from,through:through))]))
         }
-        var costRows=[Row(id:"cost-values",title:"Trade accounting",stats:[Stat(label:"Net P&L",value:money(c["net"].value)),Stat(label:"Funding",value:money(c["funding"].value)),Stat(label:"Timing cost",value:money(c["timing"].value))])]
+        var costRows=[Row(id:"cost-values",title:"",stats:[Stat(label:"Funding",value:money(c["funding"].value)),Stat(label:"Timing cost",value:money(c["timing"].value))])]
+        if abs(c["adjustment"].value ?? 0)>0.011 {costRows[0].stats.append(Stat(label:"Adjustment",value:money(c["adjustment"].value)))}
         if let midpoint=c["midpoint"].value,let spread=c["spread"].value,let net=c["net"].value {
             var bars:[GraphBar]=[]
             if let timing=c["timing"].value {bars=[GraphBar(name:"Signal",value:midpoint+timing,total:true),GraphBar(name:"Timing",value:-timing)]}
             else{bars=[GraphBar(name:"Midpoint",value:midpoint,total:true)]}
             bars += [GraphBar(name:"Spread",value:-spread),GraphBar(name:"Funding",value:c["funding"].value ?? 0),GraphBar(name:"Adjust",value:c["adjustment"].value ?? 0),GraphBar(name:"Net",value:net,total:true)]
-            costRows.append(Row(id:"cost-waterfall",title:"Signal to net",subtitle:s["stage"].text=="backtest" ? "Simulated fill quotes":c["method"].text=="archived-quote-match" ? "Reconstructed fill quotes":"Captured fill quotes",chart:Graph(kind:"waterfall",bars:bars)))
-        } else {costRows.append(Row(id:"cost-unknown",title:"Spread attribution unavailable",body:s["stage"].text=="capital" ? "Account funding can be unallocated. Public feed quotes do not prove broker execution costs.":"Complete entry / exit quote references were not recorded. Unknown costs stay unknown."))}
-        sections.append(Section(title:"Costs",rows:costRows))
-        var coverageRows=[Row(id:"coverage",title:complete ? "Full trade tick coverage":"Incomplete trade tick coverage",subtitle:"\(number(coverage["ticks"].value,digits:0)) valid quotes · \(number(coverage["candles"].value,digits:0)) fallback candles",body:(complete ? "":"Drawdown is measured only over captured prices. Minute candles do not recover intraminute order.")+(j["window"]["clipped"].flag ? " Latest seven days shown.":"")+(coverage["limited"].flag ? " Read limit reached; some quotes were not scanned.":""))]
-        for gap in coverage["gaps"].items {coverageRows.append(Row(id:"gap-"+String(gap["from"].value ?? 0),title:"Tick gap",subtitle:inspectionDate(gap["from"].value)+" → "+inspectionDate(gap["through"].value)))}
-        coverageRows += j["checks"].items.map{check in Row(id:"check-"+check["label"].text,title:check["label"].text,badge:check["state"].text.capitalized,badgeTone:["matched","recorded","complete"].contains(check["state"].text) ? 1:0)}
-        sections.append(Section(title:"Evidence checks",rows:coverageRows))
-        if !s["timeline"].items.isEmpty {sections.append(Section(title:"Recorded order timing",rows:s["timeline"].items.enumerated().map{i,t in Row(id:"timing-\(i)",title:t["label"].text,subtitle:inspectionDate(t["t"].value))}))}
+            costRows.append(Row(id:"cost-waterfall",title:"Signal → net",chart:Graph(kind:"waterfall",bars:bars)))
+        }
+        sections.append(Section(title:"",rows:costRows))
+        var coverageRows:[Row]=[]
+        if !complete {coverageRows.append(Row(id:"coverage",title:"\(number(coverage["ticks"].value,digits:0)) quotes · \(number(coverage["candles"].value,digits:0)) candles",badge:j["window"]["clipped"].flag ? "Last 7 days":coverage["limited"].flag ? "Partial":"",badgeTone:0))}
+        for gap in coverage["gaps"].items {coverageRows.append(Row(id:"gap-"+String(gap["from"].value ?? 0),title:"Gap",subtitle:inspectionDate(gap["from"].value)+" → "+inspectionDate(gap["through"].value)))}
+        if !coverageRows.isEmpty {sections.append(Section(title:"",rows:coverageRows))}
+        if s["timeline"].items.count>2 {sections.append(Section(title:"Orders",rows:s["timeline"].items.enumerated().map{i,t in Row(id:"timing-\(i)",title:t["label"].text,subtitle:inspectionDate(t["t"].value))}))}
         return sections
     }
 }

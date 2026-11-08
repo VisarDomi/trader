@@ -75,7 +75,7 @@ final class TraderCell:UITableViewCell {
             chart?.removeFromSuperview();chart=nil
             if let graph=row.chart {
                 let v=TraderGraphView();v.graph=graph;v.heightAnchor.constraint(equalToConstant:graph.height).isActive=true
-                if graph.kind=="price"{stack.insertArrangedSubview(v,at:2)}else{stack.insertArrangedSubview(v,at:stack.arrangedSubviews.count-1)};chart=v
+                stack.insertArrangedSubview(v,at:2);chart=v
             } else if !row.points.isEmpty {
                 let v=TraderGraphView();v.graph=Graph(series:[GraphSeries(name:"Equity",points:row.points)],height:200);v.heightAnchor.constraint(equalToConstant:200).isActive=true
                 stack.insertArrangedSubview(v,at:stack.arrangedSubviews.count-1);chart=v

@@ -1,6 +1,9 @@
 # Trader for iPhone
 
 Native UIKit client for the existing Backtest → Virtual engine → Capital demo platform.
+
+Content only: charts, trade facts/reasons, values, dates, thresholds and necessary controls.
+Generic guidance, repeated success badges and methodology prose stay out of the app.
 iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 
 - Rankings, sort/search, independent virtual evidence, historical backtests and actual demo cashflows.

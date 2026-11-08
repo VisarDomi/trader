@@ -137,8 +137,8 @@ enum Presentation {
         else if r["comparisonOnly"].flag {badge = r["control"].flag ? "Control · comparison":"Execution comparison"}
         else if r["control"].flag {badge = "Control"}
         else if !r["demoAdmission"].isNull { badge = "User experiment" }
-        else if stage == "capital" { badge = r["mirrored"].flag ? "Capital demo":"Past demo assignment" }
-        else if stage == "virtual" && badge.isEmpty { badge = r["forwardVerdict"].text.isEmpty ? "Forward record":r["forwardVerdict"].text.capitalized+" evidence" }
+        else if stage == "capital" { badge = r["mirrored"].flag ? "":"Past assignment" }
+        else if stage == "virtual" && badge.isEmpty { badge = r["forwardVerdict"].text.capitalized }
         let period=stage=="backtest" ? (r["windowId"].text.isEmpty ? id.split(separator:":").dropFirst().first.map(String.init) ?? "":r["windowId"].text):r["timeframe"].text
         let e=r["evidence"],b=e["benchmark"]
         var stats=performance(r["metrics"]),body=""
@@ -147,7 +147,7 @@ enum Presentation {
         if e["admission"].text=="calibration" && badge.isEmpty {badge="Calibration"}
         if e["admission"].text=="backtest-rejected" && badge.isEmpty {badge="Fails admission gate"}
         let dependency=r["dependency"].isNull ? e["dependency"]:r["dependency"]
-        if !dependency.isNull && dependency["state"].text != "available" {if stage=="virtual" && r["status"].text != "retired" {badge="Forecast paused"};body += " "+dependency["note"].text}
+        if !dependency.isNull && dependency["state"].text != "available" {if stage=="virtual" && r["status"].text != "retired" {badge="Forecast paused"}}
         if stage=="capital" {stats[2]=Stat(label:"Cash drawdown",value:percent(r["metrics"]["maxDrawdown"].value));body=""}
         stats[1].label="Closed trades"
         return Row(id: id, title: name ?? (r["name"].text.isEmpty ? r["epic"].text : r["name"].text),
@@ -167,12 +167,12 @@ enum Presentation {
                 let key = sort == 1 ? "sharpe" : sort == 2 ? "trades" : "totalReturn"
                 return (a["metrics"][key].value ?? -Double.greatestFiniteMagnitude) > (b["metrics"][key].value ?? -Double.greatestFiniteMagnitude)
             }
-            out = Content(title: "Rankings", subtitle: route.stage == "capital" ? "Realized results" : route.stage == "virtual" ? "Forward results" : "Historical results", sections: [
+            out = Content(title: "Rankings", subtitle: "", sections: [
                 Section(title: "\(stageName) · \(items.count) records", rows: items.map { runRow($0, stage: route.stage) })])
-            if let scenario=route.scenario,scenario != "standard" {out.subtitle="\(scenario) · correlated execution comparisons, not independent strategies"}
+            if let scenario=route.scenario,scenario != "standard" {out.subtitle=scenario}
         case .agents:
             let items = data.items.filter { $0["active"].flag }.sorted { $0["name"].text.localizedStandardCompare($1["name"].text) == .orderedAscending }
-            out = Content(title: "Agents", subtitle: "Strategies, controls and their current source", sections: [Section(title: "\(items.count) active variants", rows: items.map { a in
+            out = Content(title: "Agents", sections: [Section(title: "\(items.count) active variants", rows: items.map { a in
                 Row(id: a["id"].text, title: a["name"].text, subtitle: "\(a["timeframe"].text) · \(a["instruments"].items.map(\.text).joined(separator: ", "))", body: a["description"].text,
                     badge: a["usesForecast"].flag ? "TimesFM" : "", route: Route(screen: .agent, id: a["id"].text))
             })])
@@ -190,23 +190,23 @@ enum Presentation {
             let actual=route.stage=="capital",historical=data["kind"].text=="backtest"
             let m=actual ? data["capitalDemo"]["metrics"]:data["metrics"]
             let label=actual ? "Capital demo":historical ? "Backtest":"Virtual"
-            var sections:[Section]=[Section(title:label+" · "+data["epic"].text,rows:[Row(id:"summary",title:money(actual ? data["capitalDemo"]["equity"].value:data["equity"].value),subtitle:tier(data["leverage"])+" · "+date(data["startedAt"].value),badge:data["extra"]["demoAdmission"].isNull ? data["status"].text:"User experiment",
+            var sections:[Section]=[Section(title:label+" · "+data["epic"].text,rows:[Row(id:"summary",title:money(actual ? data["capitalDemo"]["equity"].value:data["equity"].value),subtitle:tier(data["leverage"])+" · "+date(data["startedAt"].value),badge:data["extra"]["demoAdmission"].isNull ? (["running","completed"].contains(data["status"].text) ? "":data["status"].text):"User experiment",
                 stats:[Stat(label:"Return",value:percent(m["totalReturn"].value),tone:tone(m["totalReturn"].value)),Stat(label:actual ? "Closed-cash DD":"Max drawdown",value:percent(m["maxDrawdown"].value)),Stat(label:"Closed trades",value:number(m["trades"].value,digits:0))])])]
             let other=actual ? "virtual":"capital"
-            if !historical {sections.append(Section(title:"View",rows:[Row(id:"other-stage",title:actual ? "Virtual strategy":"Capital demo executions",route:Route(screen:.run,id:route.id,stage:other))]))}
+            if !historical {sections.append(Section(title:"",rows:[Row(id:"other-stage",title:actual ? "Virtual":"Capital demo",route:Route(screen:.run,id:route.id,stage:other))]))}
             if !data["extra"]["retirement"].isNull {sections.append(Section(title:"Retirement",rows:[Row(id:"retirement",title:data["extra"]["retirement"]["reason"].text,subtitle:date(data["extra"]["retirement"]["at"].value))]))}
             if actual {
                 let priced=data["deals"].items.filter{$0["status"].text=="closed" && !$0["pnl"].isNull}.sorted{($0["close_time"].value ?? 0)<($1["close_time"].value ?? 0)}
                 var cash:Double=0
                 let curve=priced.compactMap{d->Plot? in guard let t=d["close_time"].value,let p=d["pnl"].value else{return nil};cash+=p;return Plot(t:t,value:cash)}
-                if !curve.isEmpty {sections.append(Section(title:"Closed-trade P&L",rows:[Row(id:"cash-chart",title:"Priced closes · before account adjustments",chart:Graph(series:[GraphSeries(name:"P&L",points:curve)]))]))}
+                if !curve.isEmpty {sections.append(Section(title:"",rows:[Row(id:"cash-chart",title:"Closed P&L",subtitle:"Before account adjustments",chart:Graph(series:[GraphSeries(name:"P&L",points:curve)]))]))}
             } else {
                 let curve=data["equityCurve"].items.compactMap{p->Plot? in guard let t=p["t"].value,let value=p["equity"].value else{return nil};return Plot(t:t,value:value)}
                 if !curve.isEmpty {
-                    sections.append(Section(title:historical ? "Equity · daily snapshots":"Equity · hourly snapshots",rows:[Row(id:"chart",title:"Equity",points:curve)]))
+                    sections.append(Section(title:"",rows:[Row(id:"chart",title:historical ? "Equity · daily":"Equity · hourly",points:curve)]))
                     var peak=data["capital"].value ?? 10000
                     let dd=curve.map{p->Plot in peak=max(peak,p.value);return Plot(t:p.t,value:peak>0 ? (p.value/peak-1)*100:0)}
-                    sections.append(Section(title:"Snapshot drawdown",rows:[Row(id:"equity-dd",title:"Below the previous sampled peak",chart:Graph(series:[GraphSeries(name:"Drawdown",points:dd)],unit:"%",height:160))]))
+                    sections.append(Section(title:"",rows:[Row(id:"equity-dd",title:"Drawdown · sampled",chart:Graph(series:[GraphSeries(name:"Drawdown",points:dd)],unit:"%",height:160))]))
                 }
             }
             let previews=data["inspections"].items
@@ -230,12 +230,12 @@ enum Presentation {
                         body:t["entryReason"].text+(t["exitNote"].text.isEmpty ? "":"\nClose: "+t["exitNote"].text),route:key.isEmpty ? nil:Route(screen:.trade,id:route.id,stage:route.stage,version:key))
                 }))
             }
-            if !actual, !m["monthly"].items.isEmpty {sections.append(Section(title:"Monthly return",rows:[Row(id:"monthly",title:"By calendar month",chart:Graph(kind:"bars",bars:m["monthly"].items.map{GraphBar(name:$0["month"].text,value:($0["ret"].value ?? 0)*100,total:true)},unit:"%",height:Double(max(180,m["monthly"].items.count*24+20))))]))}
-            if !historical,!data["backtestComparison"].isNull {sections.append(Section(title:"Same-code backtest",rows:[runRow(data["backtestComparison"],stage:"backtest",name:"Compare historical simulation")]))}
+            if !actual, !m["monthly"].items.isEmpty {sections.append(Section(title:"",rows:[Row(id:"monthly",title:"Monthly return",chart:Graph(kind:"bars",bars:m["monthly"].items.map{GraphBar(name:$0["month"].text,value:($0["ret"].value ?? 0)*100,total:true)},unit:"%",height:Double(max(180,m["monthly"].items.count*24+20))))]))}
+            if !historical,!data["backtestComparison"].isNull {sections.append(Section(title:"Same-code backtest",rows:[runRow(data["backtestComparison"],stage:"backtest",name:"Backtest")]))}
             let evidence=actual ? data["capitalDemo"]["evidence"]:data["evidence"]
             let benchmark=evidence["benchmark"]
             if benchmark["status"].text=="matched"{
-                sections.append(Section(title:"Common-date benchmark",rows:[Row(id:"benchmark",title:date(benchmark["from"].value)+" → "+date(benchmark["through"].value),subtitle:"Return · sizing differs",
+                sections.append(Section(title:"Common-date benchmark",rows:[Row(id:"benchmark",title:date(benchmark["from"].value)+" → "+date(benchmark["through"].value),
                     stats:[Stat(label:"Strategy",value:percent(benchmark["strategyReturn"].value)),Stat(label:"1:1 hold",value:percent(benchmark["benchmarkReturn"].value)),Stat(label:"Excess",value:points(benchmark["excessReturn"].value))],
                     chart:Graph(kind:"bars",bars:[GraphBar(name:"Strategy",value:(benchmark["strategyReturn"].value ?? 0)*100,total:true),GraphBar(name:"1:1 hold",value:(benchmark["benchmarkReturn"].value ?? 0)*100,total:true)],unit:"%",height:110))]))
             }
@@ -244,8 +244,8 @@ enum Presentation {
         case .accounts:
             let b=data["status"]
             out = Content(title:"Accounts",subtitle:"Capital demo only · Arena 01–09",sections:[
-                Section(title:"Broker mirror",rows:[Row(id:"mirror",title:b["enabled"].flag ? "Demo orders enabled" : "Demo orders paused",subtitle:"\(number(b["coverage"]["mirrored"].value,digits:0)) assigned · queue \(number(b["queued"].value,digits:0))",badge:b["enabled"].flag ? "Active" : "Paused",action:b["enabled"].flag ? "mirror:off":"mirror:on")]),
-                Section(title:"Nine leverage tiers",rows:b["accounts"].items.map { a in Row(id:a["id"].text,title:a["name"].text,subtitle:"\(tier(a["leverage"])) · \(a["runs"].items.count)/\(number(a["slots"].value,digits:0)) slots",badge:a["killed"].flag ? "Kill switch" : "Hedged",stats:[Stat(label:"Equity",value:money(a["equity"].value)),Stat(label:"Balance",value:money(a["balance"].value))],route:Route(screen:.account,id:a["id"].text)) })])
+                Section(title:"Broker mirror",rows:[Row(id:"mirror",title:b["enabled"].flag ? "Demo orders enabled" : "Demo orders paused",subtitle:"\(number(b["coverage"]["mirrored"].value,digits:0)) assigned · queue \(number(b["queued"].value,digits:0))",action:b["enabled"].flag ? "mirror:off":"mirror:on")]),
+                Section(title:"Nine leverage tiers",rows:b["accounts"].items.map { a in Row(id:a["id"].text,title:a["name"].text,subtitle:"\(tier(a["leverage"])) · \(a["runs"].items.count)/\(number(a["slots"].value,digits:0)) slots",badge:a["killed"].flag ? "Kill switch" : "",stats:[Stat(label:"Equity",value:money(a["equity"].value)),Stat(label:"Balance",value:money(a["balance"].value))],route:Route(screen:.account,id:a["id"].text)) })])
         case .account:
             let a=data["status"]["accounts"].items.first { $0["id"].text == route.id } ?? .null
             out=Content(title:a["name"].text,subtitle:"\(tier(a["leverage"])) · Capital demo account",sections:[
@@ -254,7 +254,7 @@ enum Presentation {
                 Section(title:"Recent actual deals",rows:data["deals"].items.filter { $0["account_id"].text == route.id }.enumerated().map { i,d in Row(id:"d\(i)",title:"\(d["epic"].text) · \(d["side"].text)",subtitle:"\(d["status"].text) · \(date(d["close_time"].value ?? d["open_time"].value))",body:"P&L \(money(d["pnl"].value))") })])
         case .graveyard:
             let entries=data["entries"].items
-            out=Content(title:"Graveyard",subtitle:"Archived agents and platform generations · evidence is preserved",sections:[
+            out=Content(title:"Graveyard",sections:[
                 Section(title:"Platform history",rows:data["platform"].items.enumerated().map { i,m in Row(id:"platform\(i)",title:m["name"].text,subtitle:m["date"].text,body:m["description"].text) }),
                 Section(title:"\(entries.count) archived versions",rows:entries.map { e in Row(id:e["key"].text,title:e["name"].text,subtitle:"\(e["codeHash"].text) · \(e["runs"].items.count) forward records",body:e["runs"].items.first?["reason"].text ?? "",badge:e["category"].text.capitalized,route:Route(screen:.archive,id:e["key"].text)) })])
         case .archive:
@@ -267,32 +267,32 @@ enum Presentation {
             let s=data["status"],e=data["execution"],ticks=s["ticks"],storage=s["tickStorage"]
             out=Content(title:"Platform status",subtitle:s["stream"]["connected"].flag ? "Live Capital feed connected":"Feed reconnecting",sections:[
                 Section(title:"Execution",rows:[Row(id:"health",title:"\(number(s["demoRuns"].value,digits:0)) virtual records",stats:[Stat(label:"Memory",value:"\(number(s["memoryMb"].value,digits:0)) MB"),Stat(label:"CPU / core",value:"\(number(e["virtual"]["cpuCorePercent"].value,digits:0))%"),Stat(label:"Pending",value:number(e["virtual"]["pending"].value,digits:0))]),Row(id:"parity",title:"Demo execution",stats:[Stat(label:"HTTP p95",value:"\(number(e["network"]["requestP95Ms"].value,digits:0)) ms"),Stat(label:"Missing closes",value:number(e["parity"]["unpricedCloses"].value,digits:0))])]),
-                Section(title:"Model and storage",rows:[Row(id:"model",title:s["forecaster"]["reachable"].flag ? "TimesFM reachable":data["heavyResourcesPaused"].flag ? "TimesFM paused by user":"TimesFM offline",body:"Forecast-based agents wait while the model is unavailable. Trading protections and recording continue."),Row(id:"ticks",title:"\(number(ticks["acknowledged"].value,digits:0)) quotes archived",subtitle:"\(number(ticks["lostTicks"].value,digits:0)) dropped received quotes · one compressed archive",stats:[Stat(label:"Project",value:"\(number(storage["totalBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"2y stress",value:"\(number(storage["stressTwoYearBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"Budget",value:"100 GB")])]),
-                Section(title:"Research evidence",rows:[Row(id:"evidence",title:"\(number(data["evidence"]["strategyVariants"].value,digits:0)) strategy variants",body:"Latency copies are correlated; a high rank is not proof of skill.",stats:[Stat(label:"Quote-supported",value:number(data["evidence"]["measuredTrades"].value,digits:0)),Stat(label:"Stored trades",value:number(data["evidence"]["storedTrades"].value,digits:0))])]),
+                Section(title:"Model and storage",rows:[Row(id:"model",title:s["forecaster"]["reachable"].flag ? "TimesFM reachable":data["heavyResourcesPaused"].flag ? "TimesFM paused by user":"TimesFM offline",body:""),Row(id:"ticks",title:"\(number(ticks["acknowledged"].value,digits:0)) quotes archived",subtitle:"\(number(ticks["lostTicks"].value,digits:0)) dropped received quotes · one compressed archive",stats:[Stat(label:"Project",value:"\(number(storage["totalBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"2y stress",value:"\(number(storage["stressTwoYearBytes"].value.map{$0/1e9},digits:1)) GB"),Stat(label:"Budget",value:"100 GB")])]),
+                Section(title:"Research evidence",rows:[Row(id:"evidence",title:"\(number(data["evidence"]["strategyVariants"].value,digits:0)) strategy variants",body:"",stats:[Stat(label:"Quote-supported",value:number(data["evidence"]["measuredTrades"].value,digits:0)),Stat(label:"Stored trades",value:number(data["evidence"]["storedTrades"].value,digits:0))])]),
                 Section(title:"Recent events",rows:data["events"].items.prefix(30).enumerated().map { i,v in Row(id:"event\(i)",title:v["source"].text,subtitle:date(v["time"].value),body:v["message"].text,badge:v["level"].text) })])
         case .scenarios:
-            out=Content(title:"Execution comparisons",subtitle:"Paired strategy copies under frozen latency assumptions. They are excluded from independent verdicts and Capital promotion.",sections:[Section(title:"Virtual cohorts",rows:data["scenarios"].items.sorted{$0["name"].text<$1["name"].text}.map { s in Row(id:s["name"].text,title:s["name"].text,subtitle:"\(number(s["count"].value,digits:0)) virtual records",route:Route(screen:.rankings,stage:"virtual",scenario:s["name"].text)) })])
+            out=Content(title:"Execution comparisons",sections:[Section(title:"Virtual cohorts",rows:data["scenarios"].items.sorted{$0["name"].text<$1["name"].text}.map { s in Row(id:s["name"].text,title:s["name"].text,subtitle:"\(number(s["count"].value,digits:0)) virtual records",route:Route(screen:.rankings,stage:"virtual",scenario:s["name"].text)) })])
         case .journal, .document:
             out=Content(title:data["title"].text.isEmpty ? "Journal":data["title"].text,sections:markdown(data["markdown"].text))
         case .research:
             var sections=[Section(title:"Research topics",rows:data["topics"].items.map { t in Row(id:t["slug"].text,title:t["title"].text,route:Route(screen:.document,id:t["slug"].text)) })]
             sections += markdown(data["markdown"].text)
             sections.append(Section(title:"Source library",rows:data["sources"].items.map { s in Row(id:s["id"].text,title:s["title"].text,subtitle:"\(s["topic"].text) · \(s["id"].text)",body:s["summary"].text,route:s["url"].text.isEmpty ? nil:Route(screen:.external,id:s["url"].text)) }))
-            out=Content(title:"Research",subtitle:"Mechanisms, evidence and original sources",sections:sections)
+            out=Content(title:"Research",sections:sections)
         case .source:
             let v=data["versions"].items.first { $0["code_hash"].text == route.version } ?? data["versions"].items.first ?? .null
             let lines=v["source"].text.components(separatedBy:"\n")
             out=Content(title:"Source",subtitle:"\(data["name"].text) · \(v["code_hash"].text)",sections:[Section(title:"Preserved strategy code",rows:stride(from:0,to:lines.count,by:12).map { i in Row(id:"code\(i)",title:"Lines \(i+1)–\(min(i+12,lines.count))",body:lines[i..<min(i+12,lines.count)].joined(separator:"\n"),code:true) })])
         case .more:
-            out=Content(title:"Explore",subtitle:"Trader · demo trading agent platform",sections:[Section(title:"Platform",rows:[
-                Row(id:"status",title:"Status",subtitle:"Feed, execution, model and storage",route:Route(screen:.status)),
-                Row(id:"scenarios",title:"Execution comparisons",subtitle:"Compare frozen latency assumptions",route:Route(screen:.scenarios)),
-                Row(id:"graveyard",title:"Graveyard",subtitle:"Archived versions and platform history",route:Route(screen:.graveyard)),
-                Row(id:"journal",title:"Journal",subtitle:"Maintenance and strategy decisions",route:Route(screen:.journal)),
-                Row(id:"research",title:"Research",subtitle:"Ideas, evidence and source library",route:Route(screen:.research)),
-                Row(id:"connection",title:"Connection",subtitle:"This phone’s secure connection",route:Route(screen:.connection))])])
+            out=Content(title:"Explore",sections:[Section(title:"",rows:[
+                Row(id:"status",title:"Status",route:Route(screen:.status)),
+                Row(id:"scenarios",title:"Execution comparisons",route:Route(screen:.scenarios)),
+                Row(id:"graveyard",title:"Graveyard",route:Route(screen:.graveyard)),
+                Row(id:"journal",title:"Journal",route:Route(screen:.journal)),
+                Row(id:"research",title:"Research",route:Route(screen:.research)),
+                Row(id:"connection",title:"Connection",route:Route(screen:.connection))])])
         case .connection:
-            out=Content(title:"Connection",subtitle:"Trader connects securely to your existing platform",sections:[Section(title:"Device",rows:[Row(id:"pair",title:"Pair or update connection",body:"A dedicated device key is stored in this iPhone’s Keychain. Trading account passwords stay on the server.",action:"pair"),Row(id:"refresh",title:"Refresh saved data",action:"refresh")])])
+            out=Content(title:"Connection",sections:[Section(title:"Device",rows:[Row(id:"pair",title:"Pair or update connection",action:"pair"),Row(id:"refresh",title:"Refresh saved data",action:"refresh")])])
         case .external:
             out=Content(title:"Source",sections:[])
         }

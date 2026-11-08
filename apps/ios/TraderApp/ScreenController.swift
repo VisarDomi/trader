@@ -22,7 +22,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     var route:Data {(try? JSONEncoder().encode(place)) ?? Data()}
     init(route:Route,state:ScreenState=ScreenState(),prepared:Content?=nil) {
         place=route;self.state=state
-        statusText=state.notice ?? ""
+        statusText=(state.notice?.hasPrefix("Offline") == true) ? "Offline":(state.notice?.hasPrefix("Pair ") == true) ? "Connection required":state.notice ?? ""
         content=prepared ?? Content(title:route.title.isEmpty ? route.screen.rawValue.capitalized:route.title,sections:[])
         super.init(style:.insetGrouped)
         title=content.title
@@ -125,7 +125,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
                 else {self.apply(result)}
             } catch {
                 guard !Task.isCancelled,let self else{return}
-                let message=error is TraderError && (error as? TraderError) == .pairing ? "Pair this iPhone in Explore → Connection." : "Offline · showing this phone’s saved records."
+                let message=error is TraderError && (error as? TraderError) == .pairing ? "Connection required" : "Offline"
                 AppDiagnostics.save(route:self.place,content:self.content,phase:"offline")
                 self.refreshControl?.endRefreshing()
                 if self.tableView.isDragging || self.tableView.isDecelerating {self.deferredStatus=message}
@@ -145,7 +145,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private func updateHeader() {
         guard isViewLoaded else{return}
         descriptionLabel.text=content.subtitle
-        notice.text=statusText.isEmpty ? (content.refreshed>0 ? "Updated \(Presentation.date(content.refreshed)) · pull to refresh" : place.cacheKey.isEmpty ? "":"Loading your platform…") : statusText
+        notice.text=statusText.isEmpty ? "":statusText
         descriptionLabel.isHidden=content.subtitle.isEmpty;notice.isHidden=(notice.text ?? "").isEmpty
         layoutHeader()
         if content.sections.isEmpty && content.refreshed>0 {
@@ -153,6 +153,11 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         } else {tableView.backgroundView=nil}
     }
     private func layoutHeader() {
+        if descriptionLabel.isHidden && notice.isHidden && stages==nil {
+            if tableView.tableHeaderView != nil {tableView.tableHeaderView=nil}
+            return
+        }
+        if tableView.tableHeaderView==nil {tableView.tableHeaderView=header}
         let width=tableView.bounds.width
         guard width>0 else{return}
         let size=header.systemLayoutSizeFitting(CGSize(width:width,height:UIView.layoutFittingCompressedSize.height),withHorizontalFittingPriority:.required,verticalFittingPriority:.fittingSizeLevel)
@@ -207,13 +212,13 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         });present(alert,animated:true)
     }
     private func pair() {
-        let alert=UIAlertController(title:"Connect to Trader",message:"Use your dedicated device key. Account passwords are never needed here.",preferredStyle:.alert)
+        let alert=UIAlertController(title:"Connect to Trader",message:nil,preferredStyle:.alert)
         alert.addTextField{$0.placeholder="https://trader.veron3.space";$0.text="https://trader.veron3.space";$0.keyboardType = .URL;$0.autocapitalizationType = .none}
         alert.addTextField{$0.placeholder="Device key";$0.isSecureTextEntry=true;$0.autocapitalizationType = .none;$0.autocorrectionType = .no}
         alert.addAction(UIAlertAction(title:"Cancel",style:.cancel))
         alert.addAction(UIAlertAction(title:"Connect",style:.default){[weak self,weak alert] _ in
             let server=alert?.textFields?.first?.text ?? "",token=alert?.textFields?.last?.text ?? ""
-            Task{@MainActor in do{try await TraderStore.shared.pair(server:server,token:token);self?.statusText="Device connection saved securely."}catch{self?.statusText="Use an HTTPS server and a valid device key."};self?.updateHeader()}
+            Task{@MainActor in do{try await TraderStore.shared.pair(server:server,token:token);self?.statusText="Connected"}catch{self?.statusText="Use an HTTPS server and a valid device key."};self?.updateHeader()}
         });present(alert,animated:true)
     }
     private func currentAnchor()->ScrollAnchor? {
