@@ -240,3 +240,11 @@ historical ticks. Results and the dashboard expose source counts, coverage, gene
 The one permanent quote copy is losslessly compressed PostgreSQL blocks. A small acknowledged server
 spool supports transfer and restart recovery; no synthetic tape or second raw tick database is retained.
 See [TICKS.md](../TICKS.md) for the capture contract, limitations and 100 GB project budget.
+
+## Explain the strategy in the app
+
+When adding/changing a strategy, also review its sidecar adapter in `src/strategy/evidence.ts` and
+source pin in `src/strategy/versions.json`. Show the relevant lead-up, bands/levels and numeric
+headroom to each entry filter. Alternatives must be combined as alternatives, and controls must not
+be given a fictitious directional edge. See `src/strategy/README.md`. No explanation belongs in a
+per-tick hot loop; standard entry requests retain bounded derived context without changing agent source.

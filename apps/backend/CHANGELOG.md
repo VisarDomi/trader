@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add source-pinned strategy explanations across all 46 current families: pre-entry paths, indicator/
+  forecast bands, range boundaries, session/calendar rules and numeric headroom to rejection. Capture
+  compressed standard-run entry context and link it to fills; retain source hashes and financial behavior.
+  Historical reconstructions use only closed candles and remain distinct from retained decision inputs.
+
 - Add a separate bounded, read-only tick-history inspector for native and web trade charts, costs,
   decisions and drawdown. Preserve capture gaps and unknown legacy costs. Expose stable trade
   indices without changing engine recovery, source hashes, stored fills or strategy behavior.

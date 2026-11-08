@@ -5,6 +5,8 @@ struct GraphMarker:Codable,Sendable,Hashable {var t:Double;var value:Double?;var
 struct GraphCandle:Codable,Sendable,Hashable {var t:Double;var open:Double;var high:Double;var low:Double;var close:Double}
 struct GraphGap:Codable,Sendable,Hashable {var from:Double;var through:Double}
 struct GraphBar:Codable,Sendable,Hashable {var name:String;var value:Double;var total:Bool = false}
+struct GraphGuide:Codable,Sendable,Hashable {var label:String;var value:Double}
+struct GraphMeter:Codable,Sendable,Hashable {var value:Double;var limit:Double;var above:Bool;var price:Bool? = nil}
 struct Graph:Codable,Sendable,Hashable {
     var kind="line"
     var series:[GraphSeries]=[]
@@ -17,6 +19,8 @@ struct Graph:Codable,Sendable,Hashable {
     var height:Double=220
     var from:Double? = nil
     var through:Double? = nil
+    var guides:[GraphGuide]? = nil
+    var meter:GraphMeter? = nil
 }
 
 extension Presentation {
@@ -69,6 +73,7 @@ extension Presentation {
             decisions.append(Row(id:key,title:label+" · "+number(s[price].value,digits:["EURUSD","GBPUSD","AUDUSD"].contains(s["epic"].text) ? 5:2),subtitle:inspectionDate(s[time].value),body:reason))
         }
         sections.append(Section(title:"Decisions",rows:decisions))
+        if !j["strategy"].isNull {sections += strategySections(j["strategy"])}
         let gaps=tradeGraph(j).gaps,from=j["window"]["from"].value,through=j["window"]["through"].value
         if !j["pnl"].items.isEmpty {
             sections.append(Section(title:"During the trade",rows:[

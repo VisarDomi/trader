@@ -2,6 +2,7 @@
  import type{Inspection}from'$lib/server/inspection';
  import TimeChart from './TimeChart.svelte';
  import ValueBars from './ValueBars.svelte';
+ import StrategyContext from './StrategyContext.svelte';
  import{usd,num,utc,sign}from'$lib/format';
  let {inspection:d}:{inspection:Inspection}=$props();
  const s=$derived(d.subject),c=$derived(d.costs),risk=$derived(d.risk);
@@ -13,6 +14,7 @@
  <TimeChart series={[{name:'Bid',points:d.price.bid},{name:'Ask',points:d.price.ask}]} markers={marks} candles={d.price.candles} gaps={d.coverage.gaps} from={d.window.from} through={d.window.through} unit="Price" precision={pricePrecision} height={280}/>
  <div class="trade-metrics"><div><small>Net P&L</small><strong class={sign(c.net)}>{usd(c.net)}</strong></div><div><small>{risk.fullTrade?'Max price drawdown':'Observed price drawdown'}</small><strong class="down">{risk.maxDrawdown===null?'—':`${risk.fullTrade?'':'≥'}${usd(risk.maxDrawdown)}`}{#if risk.fullTrade&&risk.drawdownFraction!==null}<span> · {num(risk.drawdownFraction*100)}%</span>{/if}</strong></div><div><small>Spread cost</small><strong>{usd(c.spread)}</strong></div><div><small>Funding</small><strong>{usd(c.funding)}</strong></div></div>
  <div class="decisions"><div><small>Why open</small><p>{s.entryReason??'Not recorded'}</p></div><div><small>Why close</small><p>{s.exitTime?(s.exitReason??'Not recorded'):'Still open'}</p></div></div>
+ {#if d.strategy}<StrategyContext context={d.strategy}/>{/if}
  <div class="inspection-grid">
   <div><h3>Executable-price P&L</h3><TimeChart series={[{name:'P&L',points:d.pnl}]} gaps={d.coverage.gaps} from={d.window.from} through={d.window.through} unit="USD · before funding" height={170}/></div>
   <div><h3>{risk.fullTrade?'Price drawdown':'Observed drawdown'}</h3><TimeChart series={[{name:'Drawdown',points:d.drawdown}]} gaps={d.coverage.gaps} from={d.window.from} through={d.window.through} unit="USD · peak to trough" height={170}/></div>
