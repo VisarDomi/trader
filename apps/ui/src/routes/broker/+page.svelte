@@ -27,18 +27,7 @@
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Broker mirror</h1>
-		<p class="lede">
-			Demo runs are copied onto Capital.com <strong>demo</strong> accounts as real demo orders at
-			{status?.scale ?? 0.2}× the paper size, to measure how real fills differ from the paper fills the leaderboard uses.
-			Every account whose name starts with <strong>"{status?.prefix || '—'}"</strong> is used: it is topped up to $100,000,
-			switched to hedging mode (many runs per instrument, each its own deal) and holds up to
-			{status?.slotsPerAccount ?? 50} runs. Each account has one leverage (set in <code>agents/roster.json</code> and applied by
-			the arena) and holds only runs of that leverage, so a demo deal is opened at the same leverage as its paper run; see
-			<a href="/leverage">Leverage</a>. Capital.com allows {status?.maxAccountsPerLogin ?? 10} demo accounts per login;
-			accounts with other names are never touched. Safety: a run opening 12+ times in an hour is excluded, at most
-			{status?.maxOpensPerHour ?? 600} opens per hour in total, and an account whose equity falls below 50% of its
-			allocation is switched off.
-		</p>
+
 	</header>
 
 	{#if data.error}<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>{/if}

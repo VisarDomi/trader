@@ -1,0 +1,19 @@
+[Unit]
+Description=Trader read-only trade inspection (archive and fill evidence)
+After=network.target pc-server-trader-arena.service
+
+[Service]
+Type=simple
+Slice=trader.slice
+Nice=10
+CPUQuota=200%
+MemoryMax=1G
+WorkingDirectory=%h/Documents/work/trading/trader/apps/backend
+Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+Environment=INSPECTION_PORT=4140
+ExecStart=%h/.bun/bin/bun run %h/.local/share/hetzner-pc/mirror/home/erdal/trader-arena/app/src/inspection/main.ts
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

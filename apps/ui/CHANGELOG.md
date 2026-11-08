@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Put results, charts and trades first; move methodology, extended filters and source/logs behind
+  details. Add per-trade bid/ask, open/close markers, executable P&L, drawdown, spread, cost bars
+  and recorded reasons. Native iPhone adds inline trade charts and a dedicated inspection screen;
+  Capital cash and virtual risk remain separate, with incomplete history explicitly labeled.
+
 - Recover leaderboard pages automatically after backend/deployment timeouts. Refresh visible tabs at
   30-second intervals, retry failures after five seconds, and serialize requests. Supporting endpoint
   failures no longer erase successful rows; a bounded ten-minute last-success summary is clearly

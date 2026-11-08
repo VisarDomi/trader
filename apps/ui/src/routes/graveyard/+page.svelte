@@ -34,8 +34,8 @@
 <div class="stack">
   <header class="stack" style="gap:6px">
     <h1>Graveyard</h1>
-    <p class="lede">Browse decommissioned agents and archived versions, with their source, trades and results.</p>
-    <p class="muted">Retirement reasons distinguish strategy decisions, code updates and platform changes.</p>
+
+
   </header>
   {#if data.error}<div class="card" role="alert">{data.error}</div>{/if}
   <div class="row">
@@ -45,7 +45,7 @@
     {#if comparisons}<StatTile label="Comparison copies" value={comparisons.toLocaleString()} hint="Excluded from strategy results" />{/if}
   </div>
 
-  <section class="card">
+  <details class="card"><summary>Platform history</summary>
     <div class="row heading"><h2>Platform history</h2><a href="/journal">Full journal →</a></div>
     <ol class="timeline">
       {#each PLATFORM_HISTORY as milestone}
@@ -53,7 +53,7 @@
       {/each}
     </ol>
     <p class="muted small history-note">The original v1 database was removed on October 7. Its deleted trade history cannot be shown here; the surviving records below are preserved.</p>
-  </section>
+  </details>
 
   <div class="row filters">
     <input type="search" aria-label="Search graveyard" placeholder="Search agent, instrument or reason" bind:value={query} />

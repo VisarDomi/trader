@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { arena } from '$lib/server/arena';
+import { inspection } from '$lib/server/inspection';
 import { nativeResponse } from '$lib/server/native-contract';
 import { doc, topics, sources } from '$lib/server/research';
 import { PLATFORM_HISTORY } from '$lib/platform-history';
@@ -24,13 +25,15 @@ const handler:RequestHandler=({request,params})=>nativeResponse(request,params.r
         const a=await arena.agent(q.get('id')!);
         return {...a,runs:a.runs.filter(r=>!r.id.includes(':delay='))};
       }
+      case 'inspection': return inspection.trade(q.get('id')!,q.get('trade')!,q.get('stage')??'virtual');
       case 'run': {
         const r=await arena.run(q.get('id')!,500);
         const points=r.equityCurve,stride=Math.max(1,Math.ceil(points.length/500));
-        const [agent,broker,actual]=await Promise.all([arena.agent(r.agentId),arena.broker(),
-          q.get('stage')==='capital'?arena.leaderboard('demo',true,'demo','standard'):Promise.resolve([])]);
+        const stage=q.get('stage')??'virtual';
+        const [agent,broker,actual,inspections]=await Promise.all([arena.agent(r.agentId),arena.broker(),
+          stage==='capital'?arena.leaderboard('demo',true,'demo','standard'):Promise.resolve([]),inspection.preview(r.id,stage).catch(()=>[])]);
         const comparison=agent.runs.filter(b=>b.kind==='backtest' && b.status!=='retired' && b.epic===r.epic && b.leverage===r.leverage && b.codeHash===r.codeHash).sort((a,b)=>b.updatedAt-a.updatedAt)[0]??null;
-        return {...r,capitalDemo:actual.find(row=>row.runId===r.id)??null,backtestComparison:comparison,
+        return {...r,inspections,capitalDemo:actual.find(row=>row.runId===r.id)??null,backtestComparison:comparison,
           brokerExcluded:broker.status?.excluded.includes(r.id)??false,
           equityCurve:points.filter((_,i)=>i%stride===0 || i===points.length-1)};
       }

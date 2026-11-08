@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[2]
 PRIVATE=ROOT/'apps/ios/Private'
 PAIRING=PRIVATE/'primary-phone.json'
 UI=Path.home()/'.local/share/hetzner-pc/mirror/home/erdal/trader-ui'
-RESOURCES=['leaderboard','agents','agent','run','broker','status','graveyard','journal','research','mirror','exclude']
+RESOURCES=['leaderboard','agents','agent','run','inspection','broker','status','graveyard','journal','research','mirror','exclude']
 SITE='trader.veron3.space'
 
 def private_write(path,data):

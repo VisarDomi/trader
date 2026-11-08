@@ -36,7 +36,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         tableView.keyboardDismissMode = .onDrag
         tableView.accessibilityIdentifier="screen.\(place.screen.rawValue)"
         refreshControl=UIRefreshControl();refreshControl?.addTarget(self,action:#selector(pullRefresh),for:.valueChanged)
-        if ![.more,.connection].contains(place.screen) {
+        if ![.more,.connection,.trade,.run].contains(place.screen) {
             search.searchResultsUpdater=self;search.obscuresBackgroundDuringPresentation=false
             search.searchBar.placeholder="Search \(content.title.lowercased())";search.searchBar.text=state.query
             navigationItem.searchController=search;navigationItem.hidesSearchBarWhenScrolling=state.query.isEmpty
@@ -62,7 +62,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(false,animated:false)
         navigationController?.navigationBar.prefersLargeTitles=true
-        navigationItem.largeTitleDisplayMode = .automatic
+        navigationItem.largeTitleDisplayMode = [.trade,.run].contains(place.screen) ? .never:.automatic
     }
     override func viewDidAppear(_ animated:Bool) {
         super.viewDidAppear(animated);visible=true

@@ -16,6 +16,9 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 - All data comes from the arena API, server-side through `$lib/server/arena.ts`. The browser never
   talks to the arena or to Capital.com. Mutations (broker mirror on/off, exclude a run) are form
   actions that send `ARENA_TOKEN`.
+- Trade inspection reads use `$lib/server/inspection.ts` → loopback `trader-inspector:4140`,
+  a separate bounded, read-only archive worker. Native and web share its stable trade keys, costs
+  and coverage; missing quotes never become an exact intratrade risk claim.
 - API types come from `@trader/shared` (`packages/shared/src/types.ts`); change them together with
   `apps/backend/src/arena/api.ts`.
 - The leaderboard refreshes visible tabs every 30 seconds and retries failed loads after five seconds,

@@ -62,17 +62,8 @@
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Leverage</h1>
-		<p class="lede">
-			Every demo run trades at the leverage of one Capital.com demo account, from 1:1 to 1:200, and is mirrored on that account.
-			Leverage is a ceiling: margin is the position size divided by the leverage, and a position is closed when equity falls
-			below half its margin. At 1:1 there is no overnight fee, except on natural gas. Crypto and
-			shares go no higher than 1:20 (marked * on the leaderboard).
-		</p>
-		<p class="secondary small narrow">
-			Most agents risk about 1% of equity against a stop, so they use only the leverage the stop needs, rarely more than 1:10.
-			For them a 1:200 account behaves like a 1:20 one. Each account holds the agents whose sizing suits it, ordered by how much
-			leverage they used in backtests. The ladder below uses the leverage on purpose.
-		</p>
+
+
 	</header>
 
 	{#if data.error}<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>{/if}

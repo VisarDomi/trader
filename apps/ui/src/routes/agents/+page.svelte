@@ -28,10 +28,7 @@
 <div class="stack">
 	<header class="stack" style="gap: 6px">
 		<h1>Agents</h1>
-		<p class="lede">
-			Each agent is one file in <code>apps/backend/agents/</code>. Variants are separate agents with different parameters.
-			To add one, follow <code>apps/backend/agents/GUIDE.md</code>.
-		</p>
+
 	</header>
 	{#if data.error}<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>{/if}
 	<input type="search" placeholder="Search agents" bind:value={query} style="max-width: 320px" />
@@ -75,7 +72,7 @@
 <style>
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
 		gap: 12px;
 	}
 	.desc {

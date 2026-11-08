@@ -1,203 +1,42 @@
 <script lang="ts">
-	import EquityChart from '$lib/components/EquityChart.svelte';
-	import StatTile from '$lib/components/StatTile.svelte';
-	import AgentEvidence from '$lib/components/AgentEvidence.svelte';
-	import { ago, duration, num, pct, pctPlain, price, sign, usd, utc } from '$lib/format';
+ import{page}from'$app/state';
+ import{replaceState}from'$app/navigation';
+ import{usd,pct,pctPlain,num,utc,sign,duration}from'$lib/format';
+ import TimeChart from'$lib/components/TimeChart.svelte';
+ import ValueBars from'$lib/components/ValueBars.svelte';
+ import TradeInspector from'$lib/components/TradeInspector.svelte';
+ import AgentEvidence from'$lib/components/AgentEvidence.svelte';
+ import LiveRefresh from'$lib/components/LiveRefresh.svelte';
+ import type{Inspection}from'$lib/server/inspection';
+ let{data}=$props();
+ const run=$derived(data.run),actual=$derived(data.stage==='capital'),m=$derived(actual?data.capital?.metrics:run.metrics);
+ let choice=$state<string|null>(null),loaded=$state<Inspection|null>(null),loading=$state(false),failure=$state('');
+ const key=$derived(choice??data.selected??data.inspections[0]?.subject.key??(run.position?'open':''));
+ const selected=$derived.by(()=>{const cached=data.inspections.find(i=>i.subject.key===key)??null;const fetched=loaded?.subject.runId===run.id&&loaded.subject.stage===data.stage&&loaded.subject.key===key?loaded:null;return fetched&&(!cached||fetched.asOf>cached.asOf)?fetched:cached});
 
-	let { data } = $props();
-	const run = $derived(data.run);
-	const m = $derived(run.metrics);
-	const trades = $derived([...run.trades].reverse());
-	const tape = $derived(run.extra?.data as import('@trader/shared').ReplayDataInfo | undefined);
-	const retirement = $derived(run.extra?.retirement as {at:number;reason:string} | undefined);
-	let showAllTrades = $state(false);
+ const curve=$derived(run.equityCurve.map(p=>({t:p.t,value:p.equity})));
+ const dd=$derived.by(()=>{let peak=run.capital;return curve.map(p=>{peak=Math.max(peak,p.value);return{t:p.t,value:peak>0?(p.value/peak-1)*100:0}})});
+ const trades=$derived([...run.trades].reverse()),deals=$derived([...run.deals].reverse());
+ const options=$derived.by(()=>{
+  const rows=actual?deals.filter(d=>d.status!=='failed').map(d=>({key:String(d.id),label:`${utc(d.open_time)} · ${d.side} · ${usd(d.pnl)}`})):trades.filter(t=>t.index!==undefined).map(t=>({key:String(t.index),label:`${utc(t.entryTime)} · ${t.side} · ${usd(t.pnl)}`}));
+  const keys=new Set(rows.map(r=>r.key));for(const i of data.inspections)if(!keys.has(i.subject.key)){rows.push({key:i.subject.key,label:`${utc(i.subject.entryTime)} · ${i.subject.side} · ${usd(i.subject.pnl)}`});keys.add(i.subject.key)}return rows;
+ });
+
+ $effect(()=>{const id=run.id,stage=data.stage,target=key;if(!target||selected)return;let cancelled=false;const controller=new AbortController();loading=true;failure='';void fetch('/api/inspection?'+new URLSearchParams({id,stage,trade:target}),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error('Trade detail unavailable');return r.json()as Promise<Inspection>}).then(d=>{if(!cancelled)loaded=d}).catch(e=>{if(!cancelled&&e.name!=='AbortError')failure='Trade chart unavailable. Retry after reconnecting.'}).finally(()=>{if(!cancelled)loading=false});return()=>{cancelled=true;controller.abort()};});
+ function choose(value:string){choice=value;const u=new URL(page.url);u.searchParams.set('trade',value);replaceState(u,page.state)}
 </script>
-
+<svelte:head><title>{data.agentName} · {run.epic} · Trader</title></svelte:head>
+<LiveRefresh recovering={!!failure}/>
 <div class="stack">
-	<header class="stack" style="gap: 4px">
-		<div class="muted"><a href={run.status === 'retired' ? '/graveyard' : `/?view=${run.kind}`}>{run.status === 'retired' ? 'Graveyard' : 'Leaderboard'}</a> / <a href="/agents/{run.agentId}">{data.agentName}</a></div>
-		<h1>
-			{data.agentName} · {run.epic} <span class="badge">{run.kind}</span>
-			{#if run.leverage !== null}<span class="badge" title="Leverage of the demo account this run trades on">1:{run.leverage}</span>{/if}
-			<span class="badge">{run.status}</span>
-		</h1>
-		<div class="secondary" style="font-size: 13px">
-			{#if run.kind === 'demo'}
-				Live since {utc(run.startedAt)} · updated {ago(run.updatedAt)} · code {run.codeHash}
-			{:else}
-				Window {run.windowId} · ran {ago(run.updatedAt)} · code {run.codeHash}
-				{#if run.extra}· {num(Number(run.extra.agentUsPerBar), 0)} µs per bar{/if}
-			{/if}
-		</div>
-	</header>
-	{#if retirement}<p class="card secondary">Retired {utc(retirement.at)} · {retirement.reason}</p>{/if}
-
-  {#if tape}
-    <section class="card stack">
-      <h2>Tick replay data</h2>
-      <p><span class="badge">{tape.recordedTicks && tape.syntheticTicks ? 'mixed recorded / synthetic' : tape.recordedTicks ? 'recorded ticks' : tape.syntheticTicks ? 'synthetic ticks' : 'no tick data'}</span></p>
-      <p>{tape.recordedTicks.toLocaleString()} recorded quotes in {tape.recordedMinutes.toLocaleString()} minutes · {tape.syntheticTicks.toLocaleString()} generated quotes in {tape.syntheticMinutes.toLocaleString()} minutes</p>
-      <p class="muted">Synthetic paths fit the minute candles; their intraminute order and spread are assumptions, not recovered history. Recorded minutes replay the captured feed without filling missing updates.</p>
-      <p class="secondary">{tape.partialRecordedMinutes} partially captured minutes · {tape.rejectedTicks} unusable or out-of-order quotes · generator {tape.generator}, seed {tape.seed}, {tape.ticksPerMinute} ticks per synthetic minute</p>
-      <p class="muted">{tape.execution}</p>
-    </section>
-  {/if}
-	<div class="row">
-		<StatTile label="Equity" value={usd(run.equity, 0)} />
-		<StatTile label="Return" value={pct(m?.totalReturn)} tone={sign(m?.totalReturn)} />
-		{#if run.kind === 'backtest'}<StatTile label="Annual return" value={pct(m?.annualReturn)} tone={sign(m?.annualReturn)} />{/if}
-		<StatTile label="Max drawdown" value={pctPlain(m?.maxDrawdown)} />
-		<StatTile label="Sharpe" value={num(m?.sharpe)} />
-		<StatTile label="Closed trades" value={String(m?.trades ?? 0)} />
-		<StatTile label="Win rate" value={m?.trades ? pctPlain(m.winRate, 0) : '—'} />
-		<StatTile label="Profit factor" value={m?.trades ? num(m.profitFactor) : '—'} />
-		<StatTile label="t-stat" value={m && m.trades > 1 ? num(m.tStat, 1) : '—'} hint="Trade P&L mean / stdev × √n. Unadjusted for selecting among many related trials." />
-		<StatTile label="Funding paid" value={usd(m?.funding)} tone={sign(m?.funding)} />
-	</div>
-	{#if run.evidence}<AgentEvidence evidence={run.evidence} />{/if}
-
-	<section class="card">
-		<h2>Equity ({run.kind === 'demo' ? 'hourly' : 'daily'}, $10,000 start)</h2>
-		<EquityChart data={run.equityCurve} baseline={run.capital} />
-	</section>
-
-	{#if run.position}
-		<section class="card">
-			<h2>Open position</h2>
-			<div class="row secondary">
-				<span class="badge">{run.position.side}</span>
-				<span>{run.position.size} @ {price(run.position.entryPrice)}</span>
-				<span>since {utc(run.position.entryTime)}</span>
-				<span>stop {price(run.position.stopLoss)}</span>
-				<span>target {price(run.position.takeProfit)}</span>
-				{#if run.position.trailingStop}<span>trailing {price(run.position.trailingStop)}</span>{/if}
-			</div>
-		</section>
-	{/if}
-
-	{#if m && m.monthly.length > 1}
-		<section class="card">
-			<h2>Monthly returns · profitable {m.profitableMonths} of {m.totalMonths}</h2>
-			<div class="months">
-				{#each m.monthly as mo}
-					<div class="month" title="{mo.month}: {pct(mo.ret, 2)}">
-						<div class="mlabel muted">{mo.month.slice(2)}</div>
-						<div class="num {sign(mo.ret)}">{pct(mo.ret)}</div>
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	<section class="card">
-		<h2>Trades ({run.trades.length}{run.trades.length >= 2000 ? ', latest 2000' : ''})</h2>
-		<div class="table-wrap" style="max-height: 520px">
-			<table class="data">
-				<thead>
-					<tr>
-						<th>Side</th><th>Entry</th><th class="num">Entry px</th><th>Exit</th><th class="num">Exit px</th><th class="num">Size</th>
-						<th class="num">P&L</th><th class="num">Funding</th><th>Held</th><th>Exit reason</th><th>Entry reason</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each showAllTrades ? trades : trades.slice(0, 200) as t}
-						<tr>
-							<td><span class="badge">{t.side}</span></td>
-							<td class="muted">{utc(t.entryTime)}</td>
-							<td class="num">{price(t.entryPrice)}</td>
-							<td class="muted">{utc(t.exitTime)}</td>
-							<td class="num">{price(t.exitPrice)}</td>
-							<td class="num">{t.size}</td>
-							<td class="num {sign(t.pnl)}">{usd(t.pnl)}</td>
-							<td class="num muted">{usd(t.funding)}</td>
-							<td class="muted">{duration(t.exitTime - t.entryTime)}</td>
-							<td>{t.exitReason.replaceAll('_', ' ')}</td>
-							<td class="muted">{t.entryReason ?? ''}</td>
-						</tr>
-					{:else}
-						<tr><td colspan="11" class="muted">No trades yet.</td></tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-		{#if trades.length > 200 && !showAllTrades}
-			<button class="btn" style="margin-top: 8px" onclick={() => (showAllTrades = true)}>Show all {trades.length}</button>
-		{/if}
-	</section>
-
-	{#if run.deals.length > 0}
-		<section class="card">
-			<h2>Broker deals (real demo orders mirrored from this run)</h2>
-			<table class="data">
-				<thead>
-					<tr><th>Opened</th><th>Account</th><th>Side</th><th class="num">Size</th><th class="num">Broker open</th><th class="num">Paper open</th><th class="num">Broker close</th><th class="num">Paper close</th><th class="num">P&L</th><th>Status</th><th>Note</th></tr>
-				</thead>
-				<tbody>
-					{#each run.deals as d}
-						<tr>
-							<td class="muted">{utc(d.open_time)}</td>
-							<td>{d.account}</td>
-							<td>{d.side}</td>
-							<td class="num">{d.size}</td>
-							<td class="num">{price(d.open_price)}</td>
-							<td class="num muted">{price(d.paper_open_price)}</td>
-							<td class="num">{price(d.close_price)}</td>
-							<td class="num muted">{price(d.paper_close_price)}</td>
-							<td class="num {sign(d.pnl)}">{usd(d.pnl)}</td>
-							<td>{d.status}</td>
-							<td class="muted">{d.note ?? ''}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</section>
-	{/if}
-
-	<section class="card">
-		<h2>Log</h2>
-		{#if run.logs.length === 0}
-			<p class="muted">Empty.</p>
-		{:else}
-			<pre class="log">{#each [...run.logs].reverse() as l}{utc(l.time)}  {l.message}
-{/each}</pre>
-		{/if}
-	</section>
-
-	{#if run.state && Object.keys(run.state as object).length > 0}
-		<section class="card">
-			<h2>Agent state</h2>
-			<pre class="log">{JSON.stringify(run.state, null, 2)}</pre>
-		</section>
-	{/if}
-
-	<section class="card">
-		<h2>Parameters</h2>
-		<pre class="log">{JSON.stringify(run.params, null, 2)}</pre>
-	</section>
+ <header class="page-heading"><div><a class="muted breadcrumb" href="/agents/{run.agentId}">{data.agentName}</a><h1>{run.epic} <span class="badge">{run.leverage?`1:${run.leverage}`:'—'}</span><span class="badge">{run.evidence?.admission==='user-experiment'?'Experiment':run.status}</span></h1></div><div class="pill-group">{#if run.kind==='backtest'}<span class="stage-name">Backtest · {run.windowId}</span>{:else}<a href="?stage=virtual" class:active={!actual}>Virtual</a><a href="?stage=capital" class:active={actual}>Capital demo</a>{/if}</div></header>
+ <div class="metrics-strip">{#each [{label:actual?'Realized cash':'Equity',value:usd(actual?data.capital?.equity:run.equity)},{label:'Return',value:pct(m?.totalReturn)},{label:actual?'Closed-cash DD':'Max drawdown',value:pctPlain(m?.maxDrawdown)},{label:'Closed trades',value:m?String(m.trades):'—'}]as stat}<div><small>{stat.label}</small><strong>{stat.value}</strong></div>{/each}</div>
+ {#if run.extra?.retirement}<p class="status-line">Retired · {String((run.extra.retirement as {reason:string}).reason)}</p>{/if}
+ {#if !actual}<section class="card"><div class="section-heading"><h2>Equity</h2><span class="muted small">{run.kind==='backtest'?'Daily':'Hourly'} snapshots · {utc(run.startedAt)} → {utc(run.updatedAt)}</span></div><TimeChart series={[{name:'Equity',points:curve}]} height={220}/><details><summary>Snapshot drawdown</summary><TimeChart series={[{name:'Drawdown',points:dd}]} unit="%" height={140}/></details></section>{/if}
+ <div class="section-heading"><h2>Trades</h2><select aria-label="Inspect trade" value={key} onchange={e=>choose(e.currentTarget.value)}>{#if !actual&&run.position}<option value="open">Open position</option>{/if}{#each options as option}<option value={option.key}>{option.label}</option>{/each}</select></div>
+ {#if selected}<TradeInspector inspection={selected}/>{:else if loading}<p class="status-line">Loading trade history…</p>{:else if failure}<p class="status-line" role="status">{failure}</p>{:else}<p class="muted">No completed trades.</p>{/if}
+ <details class="card" open={false}><summary>{actual?'Broker':'Strategy'} trade table · {actual?deals.length:trades.length}</summary><div class="table-wrap"><table class="data"><thead><tr><th>Opened</th><th>Closed</th><th>Side</th><th class="num">Size</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">P&L</th><th>Decision</th></tr></thead><tbody>{#if actual}{#each deals as d}<tr><td><button class="text-button" onclick={()=>choose(String(d.id))}>{utc(d.open_time)}</button></td><td>{utc(d.close_time)}</td><td>{d.side}</td><td class="num">{num(d.size,3)}</td><td class="num">{num(d.open_price)}</td><td class="num">{num(d.close_price)}</td><td class="num {sign(d.pnl)}">{usd(d.pnl)}</td><td>{d.note??'—'}</td></tr>{/each}{:else}{#each trades as t}<tr><td><button class="text-button" onclick={()=>t.index!==undefined&&choose(String(t.index))}>{utc(t.entryTime)}</button></td><td>{utc(t.exitTime)}</td><td>{t.side}</td><td class="num">{num(t.size,3)}</td><td class="num">{num(t.entryPrice)}</td><td class="num">{num(t.exitPrice)}</td><td class="num {sign(t.pnl)}">{usd(t.pnl)}</td><td>{t.entryReason??'Not recorded'}<small>{t.exitNote??t.exitReason}</small></td></tr>{/each}{/if}</tbody></table></div></details>
+ {#if m?.monthly.length}<section class="card"><h2>Monthly return</h2><ValueBars items={m.monthly.map(p=>({label:p.month,value:p.ret*100}))}/></section>{/if}
+ <details class="card"><summary>Run statistics & cost coverage</summary>{#if actual&&data.capital?.evidence}<AgentEvidence evidence={data.capital.evidence}/>{:else if run.evidence}<AgentEvidence evidence={run.evidence}/>{/if}<div class="table-wrap"><table class="data"><tbody>{#each [{label:'Sharpe',value:num(m?.sharpe)},{label:'Win rate',value:m?.trades?pctPlain(m.winRate):'—'},{label:'Profit factor',value:num(m?.profitFactor)},{label:'Trade t',value:num(m?.tStat)},{label:'Funding',value:usd(m?.funding)},{label:'Source',value:run.codeHash}]as stat}<tr><th>{stat.label}</th><td>{stat.value}</td></tr>{/each}</tbody></table></div></details>
+ <details class="card"><summary>Parameters & logs</summary><pre>{JSON.stringify(run.params,null,2)}</pre><pre>{run.logs.map(l=>`${utc(l.time)}  ${l.message}`).join('\n')}</pre></details>
 </div>
-
-<style>
-	.months {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-		gap: 6px;
-	}
-	.month {
-		border: 1px solid var(--grid);
-		border-radius: 6px;
-		padding: 4px 8px;
-		font-size: 12px;
-	}
-	.month .num {
-		text-align: left;
-	}
-	.mlabel {
-		font-size: 11px;
-	}
-	pre.log {
-		max-height: 320px;
-		overflow: auto;
-		white-space: pre-wrap;
-		color: var(--ink-2);
-	}
-</style>
+<style>.page-heading,.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.page-heading h1{display:flex;align-items:center;gap:8px}.breadcrumb{font-size:13px;text-decoration:none}.section-heading h2{margin:0}.section-heading select{max-width:100%}.stage-name{padding:5px 12px}.small{font-size:11px}.status-line{padding:12px;border-left:2px solid var(--warning);color:var(--ink-2)}summary{cursor:pointer;font-size:13px}details .table-wrap,details pre{margin-top:14px}pre{max-height:300px;overflow:auto;white-space:pre-wrap;font-size:11px}.data small{display:block;color:var(--ink-muted)}.text-button{all:unset;text-decoration:underline;cursor:pointer}.metrics-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:16px 0;border-block:1px solid var(--grid)}.metrics-strip small{display:block;color:var(--ink-muted);font-size:11px}.metrics-strip strong{font-size:24px;font-variant-numeric:tabular-nums;font-weight:600}@media(max-width:600px){.metrics-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metrics-strip strong{font-size:22px}.page-heading{align-items:flex-start}}</style>

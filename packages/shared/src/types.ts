@@ -261,6 +261,8 @@ export interface GraveyardEntry {
 }
 
 export interface Trade {
+	/** Stable SQLite trade sequence for inspection links; absent in older cached responses. */
+	index?: number;
 	side: Side;
 	size: number;
 	entryTime: number;

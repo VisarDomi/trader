@@ -18,7 +18,7 @@ subprocess.run(['/usr/bin/python3',str(tools/'renewal/scripts/configure-refresh.
 deliver=['/usr/bin/python3',str(tools/'renewal/scripts/deliver.py')]
 flags=['--repo','trader','--app','trader','--bundle',{BUNDLE!r}]
 subprocess.run(deliver+['begin']+flags,check=True)
-subprocess.run(['sudo','-n','launchctl','asuser',str(os.getuid()),'sudo','-n','-H','-u',os.environ['USER'],'/usr/bin/caffeinate','-i','/usr/bin/python3',{MAC!r}+'/scripts/build.py'],check=True)
+subprocess.run(['sudo','-n','launchctl','asuser',str(os.getuid()),'sudo','-n','-H','-u',os.environ['USER'],'/usr/bin/python3',{MAC!r}+'/scripts/build.py'],check=True)
 app=pathlib.Path({MAC!r})/'build/Release-iphoneos/Trader.app'
 info=plistlib.loads((app/'Info.plist').read_bytes())
 settings=json.loads((tools/'ios-tools.local.json').read_text())

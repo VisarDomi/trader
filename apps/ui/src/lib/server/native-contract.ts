@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-export const NATIVE_RESOURCE = ['leaderboard', 'agents', 'agent', 'run', 'broker', 'status', 'graveyard', 'journal', 'research'] as const;
+export const NATIVE_RESOURCE = ['leaderboard', 'agents', 'agent', 'run', 'inspection', 'broker', 'status', 'graveyard', 'journal', 'research'] as const;
 const MUTATIONS = ['mirror', 'exclude'];
 const headers = {'Content-Type':'application/json','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
 export interface NativeContext {
@@ -20,8 +20,9 @@ export async function nativeResponse(request:Request,resource:string,context:Nat
   const params=new URL(request.url).searchParams;
   if (request.method==='GET') {
     if (!NATIVE_RESOURCE.includes(resource as typeof NATIVE_RESOURCE[number])) return json({error:'Unknown resource'},404);
-    if (['agent','run'].includes(resource) && (!params.get('id') || params.get('id')!.length>512 || /[\x00-\x1f]/.test(params.get('id')!)))
+    if (['agent','run','inspection'].includes(resource) && (!params.get('id') || params.get('id')!.length>512 || /[\x00-\x1f]/.test(params.get('id')!)))
       return json({error:'Invalid record'},400);
+    if(resource==='inspection'&&(!/^(?:open|\d{1,9})$/.test(params.get('trade')??'')||!['capital','virtual','backtest'].includes(params.get('stage')??'virtual')))return json({error:'Invalid trade'},400);
     if (resource==='leaderboard' && !['capital','virtual','backtest'].includes(params.get('stage')??'capital')) return json({error:'Invalid stage'},400);
     if (resource==='leaderboard' && params.has('scenario') && (params.get('scenario')!.length>80 || /[\x00-\x1f]/.test(params.get('scenario')!))) return json({error:'Invalid scenario'},400);
     try {return json(await context.read(resource,params));}

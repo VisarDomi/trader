@@ -1,89 +1,81 @@
 #!/usr/bin/env python3
-"""Run on the Mac after installing Trader in one booted iPhone simulator. Never invokes a demo mutation."""
+"""Guarded fixture QA for the native trade inspector. No phone, credentials or broker mutations.
+
+Run via mac-workload simulator --visible --device UUID --timeout 600 -- ...
+--fixture accepts a private {runId,responses} derived-response fixture (never raw ticks).
+"""
 import argparse,json,subprocess,time,urllib.parse,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--device',required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--device',required=True);p.add_argument('--fixture',required=True);a=p.parse_args()
 OUT=Path('/tmp/trader-native-qa');OUT.mkdir(exist_ok=True)
-APPLE_TOOL=str(Path.home()/'Developer/ios-tools/native/scripts/apple-tool')
+ROOT=Path(__file__).resolve().parents[1];TOOLS=Path.home()/'Developer/ios-tools/native/scripts'
+APPLE=str(TOOLS/'apple-tool');BUNDLE='com.visar.Trader.qa'
+subprocess.run([str(TOOLS/'mac-workload'),'assert-simulator','--device',a.device],check=True)
+fixture=json.loads(Path(a.fixture).read_text());run=fixture['runId']
+def command(*args,**kw):return subprocess.run([APPLE,'simctl',*args],check=True,**kw)
 def hook(path,**params):
- url='http://127.0.0.1:8765/'+path+('?' + urllib.parse.urlencode(params) if params else '')
- with urllib.request.urlopen(url,timeout=10) as r:return json.load(r)
+    with urllib.request.urlopen('http://127.0.0.1:8765/'+path+('?' + urllib.parse.urlencode(params) if params else ''),timeout=10) as r:return json.load(r)
 def wait(screen,rows=1):
- for _ in range(40):
-  s=hook('state').get('trader',{})
-  if s.get('screen')==screen and s.get('rows',0)>=rows and (s.get('refreshed',0)>0 or screen=='more'):return s
-  time.sleep(.5)
- raise RuntimeError('Screen did not settle: '+screen+' '+str(s))
+    for _ in range(50):
+        try:
+            s=hook('state').get('trader',{})
+            if s.get('screen')==screen and s.get('rows',0)>=rows:return s
+        except Exception:pass
+        time.sleep(.3)
+    raise RuntimeError('Screen did not settle: '+screen)
 def shot(name):
- subprocess.run([APPLE_TOOL,'simctl','io',a.device,'screenshot',str(OUT/(name+'.png'))],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
- (OUT/(name+'.json')).write_text(json.dumps(hook('layout')))
+    command('io',a.device,'screenshot',str(OUT/(name+'.png')),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    (OUT/(name+'.json')).write_text(json.dumps(hook('layout')))
 def orient(value):
- hook('action',name='orientation',value=value)
- for _ in range(30):
-  time.sleep(.3);s=hook('state')['trader']
-  if (s['width']>s['height'])==(value=='landscape'):return s
- raise RuntimeError('Orientation did not settle: '+str(s))
-
-for _ in range(60):
- try:hook('state');break
- except Exception:time.sleep(.5)
-else:raise RuntimeError('Simulator test hooks did not start')
-hook('action',name='tab',index=0);time.sleep(.5)
-for _ in range(10):
- if hook('state')['trader']['screen']=='rankings':break
- hook('back');time.sleep(.3)
-orient('portrait');wait('rankings',400);hook('action',name='top');time.sleep(.3);shot('rankings-portrait')
-state=orient('landscape');shot('rankings-landscape');print('Rankings landscape geometry',state['width'],state['height'],flush=True)
-orient('portrait')
-container=Path(subprocess.check_output([APPLE_TOOL,'simctl','get_app_container',a.device,'com.visar.Trader.paid','data'],text=True).strip())
-responses=json.loads((container/'Library/Application Support/Trader/responses.json').read_text())
-runs=responses['leaderboard?stage=capital']['value']
-run=next((r for r in runs if r.get('slug')=='visar-night-trading'),runs[0])
-hook('action',name='open',screen='run',id=run['runId'],stage='capital');wait('run',5);shot('run-portrait')
-orient('landscape');shot('run-landscape');orient('portrait')
-hook('action',name='open',screen='rankings',stage='virtual');wait('rankings',400)
-for _ in range(40):
- responses=json.loads((container/'Library/Application Support/Trader/responses.json').read_text())
- virtual=responses.get('leaderboard?stage=virtual',{}).get('value',[])
- supported=[r for r in virtual if r.get('evidence',{}).get('benchmark',{}).get('status')=='matched' and r.get('evidence',{}).get('costs',{}).get('measuredTrades',0)>0]
- if supported:break
- time.sleep(.5)
-else:raise RuntimeError('Virtual evidence did not reach the native cache')
-run=supported[0]
-hook('action',name='open',screen='run',id=run['runId'],stage='virtual');wait('run',10)
-seen=''
-for i in range(14):
- layout=json.dumps(hook('layout'));seen+=layout
- if 'Common-date comparison' in layout:shot('benchmark-portrait')
- if 'Quote-supported subset' in layout:shot('costs-portrait')
- if 'Fixed-trade double-spread scenario' in seen:break
- hook('scroll',y=500);time.sleep(.3)
-assert 'Common-date comparison' in seen and 'Quote-supported subset' in seen and 'Fixed-trade double-spread scenario' in seen
-orient('landscape');shot('costs-landscape');orient('portrait')
-hook('action',name='tab',index=1);wait('agents',50);shot('agents-portrait')
-hook('action',name='tab',index=2);wait('accounts',10);shot('accounts-portrait')
-orient('landscape');shot('accounts-landscape');orient('portrait')
-hook('action',name='tab',index=3);time.sleep(.4)
-for _ in range(12):
- if hook('state')['trader']['screen']=='more':break
- hook('back');time.sleep(.3)
-wait('more',5)
-for screen in ['status','scenarios','graveyard','journal','research']:
- hook('action',name='open',screen=screen);s=wait(screen,4);shot(screen+'-portrait');print(screen,s['rows'],'rows',flush=True)
- if screen in ['graveyard','journal']:
-  orient('landscape');shot(screen+'-landscape');orient('portrait')
- hook('back');time.sleep(.3)
-hook('action',name='open',screen='graveyard');wait('graveyard',30)
-responses=json.loads((container/'Library/Application Support/Trader/responses.json').read_text())
-entry=responses['graveyard']['value']['entries'][0]
-hook('action',name='open',screen='archive',id=entry['key']);wait('archive',1);shot('archive-portrait')
-hook('action',name='open',screen='source',id=entry['agentId'],version=entry['codeHash']);wait('source',1)
-assert entry['codeHash'] in json.dumps(hook('layout'))
-shot('source-portrait')
-hook('action',name='offline',value='true');time.sleep(.2);hook('action',name='refresh');time.sleep(.6)
-assert hook('state')['trader']['rows']>0
-shot('offline-source')
-hook('action',name='offline',value='false')
-hook('scroll',y=420);time.sleep(.6)
-(OUT/'before-restore.json').write_text(json.dumps(hook('state')))
-print('Native screens, both interface orientations, exact archived source and offline content verified.',flush=True)
+    hook('action',name='orientation',value=value)
+    for _ in range(40):
+        time.sleep(.2);s=hook('state')['trader']
+        if (s['width']>s['height'])==(value=='landscape'):return s
+    raise RuntimeError('Orientation did not settle')
+def layout():return hook('layout')['layout']
+def scan(prefix,terms):
+    seen=''
+    for i in range(18):
+        hook('scroll',y=i*500);time.sleep(.18);part=json.dumps(layout());seen+=part
+        if i in [0,2,4,6]:shot(prefix+'-'+str(i))
+    for term in terms:assert term in seen,'Missing visible content: '+term
+    hook('action',name='top');time.sleep(.2)
+def same(before,after):
+    def keys(items):return [(x['kind'],tuple(x['frame']),x.get('text'),x.get('shown')) for x in items]
+    return keys(before)==keys(after)
+installed=False
+try:
+    command('install',a.device,str(ROOT/'build/Release-iphonesimulator/Trader.app'),timeout=240);installed=True
+    container=Path(subprocess.check_output([APPLE,'simctl','get_app_container',a.device,BUNDLE,'data'],text=True).strip())
+    target=container/'Library/Application Support/Trader';target.mkdir(parents=True,exist_ok=True)
+    (target/'responses.json').write_text(json.dumps(fixture['responses']))
+    # Deliberately unpaired: all UI checks read this bounded fixture, with no live network dependency.
+    command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL)
+    wait('rankings',100);hook('action',name='offline',value='true');orient('portrait');shot('rankings-portrait')
+    hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',8)
+    scan('run', ['Recorded ticks','bearish day','scheduled exit'])
+    hook('action',name='open',screen='trade',id=run,stage='virtual',version='1');wait('trade',12)
+    orient('portrait');shot('trade-portrait')
+    scan('trade', ['Open','Close','bearish day','scheduled exit','Executable-price P','Signal to net','Spread','Drawdown'])
+    orient('landscape');shot('trade-landscape');orient('portrait')
+    hook('action',name='open',screen='trade',id=run,stage='virtual',version='0');wait('trade',12)
+    shot('partial-portrait');scan('partial',['Partial tick coverage','Tick gap','Spread attribution unavailable'])
+    # Offline refresh preserves saved chart data.
+    hook('action',name='refresh');time.sleep(.4);assert hook('state')['trader']['rows']>=12
+    # Persist a scrolled trade, then verify cold and warm first-frame restoration.
+    hook('scroll',y=420);time.sleep(.4);before=layout()
+    command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
+    command('terminate',a.device,BUNDLE,stdout=subprocess.DEVNULL)
+    command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);wait('trade',12);time.sleep(8)
+    samples=hook('timeline')['timeline'];assert samples and samples[0]['sinceFirstFrame']==0
+    assert same(before,samples[0]['layout']),'Cold first-frame layout changed'
+    assert all(same(before,s['layout']) for s in samples),'Cold restore later changed'
+    before=layout();command('launch',a.device,'com.apple.Preferences',stdout=subprocess.DEVNULL);time.sleep(1)
+    command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL);time.sleep(1)
+    assert same(before,layout()),'Warm return changed'
+    shot('restored-partial')
+    print('PASS: fixture run + both trades, price/cost/risk/reasons, gaps, portrait/landscape, offline, exact cold/warm restore.',flush=True)
+finally:
+    if installed:
+        subprocess.run([APPLE,'simctl','terminate',a.device,BUNDLE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        command('uninstall',a.device,BUNDLE)

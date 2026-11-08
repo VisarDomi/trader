@@ -60,6 +60,7 @@ conversation. Then read only what your task needs:
  PostgreSQL "trader": candles + one compressed tick archive
  trader-forecaster: GPU :4130   pc-server-trader-arena: Bun :4120
  trader-lab.timer: 03:30        pc-server-trader-ui: SvelteKit :10003
+ trader-inspector: read-only archive/chart worker :4140
  trader-tick-archive.timer: one minute
        ▲
        └── shared gateway/tunnel ← Hetzner Caddy + Authelia ← public browser

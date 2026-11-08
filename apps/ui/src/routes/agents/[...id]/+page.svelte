@@ -2,6 +2,7 @@
 	import type { RunSummary } from '@trader/shared';
 	import { day, num, pct, pctPlain, sign, utc } from '$lib/format';
 	import { page } from '$app/state';
+    import ValueBars from '$lib/components/ValueBars.svelte';
 	import { goto } from '$app/navigation';
 
 	let { data } = $props();
@@ -9,15 +10,16 @@
 
 	const byEpic = $derived.by(() => {
 		const rows = new Map<string, { demo?: RunSummary; retired: RunSummary[]; backtest?: RunSummary }>();
-		for (const epic of agent.instruments) rows.set(epic, { retired: [] });
+
 		for (const r of agent.runs) {
-			const row = rows.get(r.epic) ?? { retired: [] };
+			const key=`${r.epic} · ${r.leverage===null?'legacy':'1:'+r.leverage}`;
+            const row = rows.get(key) ?? { retired: [] };
 			if (r.kind === 'backtest') {
 				if (r.status !== 'retired' && r.codeHash === agent.codeHash && (!row.backtest || r.updatedAt > row.backtest.updatedAt)) row.backtest = r;
 			}
 			else if (r.status === 'retired') row.retired.push(r);
 			else row.demo = r;
-			rows.set(r.epic, row);
+			rows.set(key, row);
 		}
 		return [...rows.entries()];
 	});
@@ -39,14 +41,15 @@
 		</div>
 	</header>
 
+    <section class="card"><h2>Virtual return by market</h2><ValueBars height={460} items={agent.runs.filter(r=>r.kind==='demo'&&r.status!=='retired'&&r.metrics).map(r=>({label:`${r.epic} · 1:${r.leverage}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.id)}`}))}/></section>
 	<section class="card">
-		<h2>Demo vs backtest by instrument</h2>
+		<h2>Virtual / backtest results</h2>
 		<div class="table-wrap" style="max-height: none">
 			<table class="data">
 				<thead>
 					<tr>
 						<th>Instrument</th>
-						<th class="num">Demo days</th><th class="num">Demo trades</th><th class="num">Demo return</th><th class="num">Demo Sharpe</th>
+						<th class="num">Virtual days</th><th class="num">Virtual trades</th><th class="num">Virtual return</th><th class="num">Virtual Sharpe</th>
 						<th class="num">BT trades</th><th class="num">BT annual</th><th class="num">BT max DD</th><th class="num">BT Sharpe</th><th class="num">BT months +</th>
 					</tr>
 				</thead>
@@ -86,12 +89,11 @@
 		</div>
 	</section>
 
-	<section class="card">
-		<h2>Parameters</h2>
+	<details class="card"><summary>Parameters</summary>
 		<pre>{JSON.stringify(agent.params, null, 2)}</pre>
-	</section>
+	</details>
 
-	<section class="card" id="source">
+	<details class="card" id="source" open={page.url.hash==='#source'}><summary>Source</summary>
 		<div class="row" style="justify-content: space-between">
 			<h2>Source</h2>
 			{#if agent.versions.length > 1}
@@ -101,7 +103,7 @@
 			{/if}
 		</div>
 		<pre class="source">{shownVersion?.source ?? ''}</pre>
-	</section>
+	</details>
 </div>
 
 <style>
