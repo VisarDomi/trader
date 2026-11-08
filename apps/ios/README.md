@@ -97,6 +97,20 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
+## Delivery — November 8, 2026
+
+- Native trade charts/inspector delivered through durable job `20261108T100131Z-e357947495`,
+  source commit `2314d79`, input hash `d959f4df4632319b`. Signed paid app installed in place on the
+  first attempt and approved for renewal. The queue did not launch or drive the phone UI.
+- Ten Swift domain tests and simulator/device builds pass. Native price, cost, decision and
+  partial-history screens visually checked in portrait/landscape with bounded derived fixtures.
+  Exact cold restoration from the first sampled frame through eight seconds and warm return pass;
+  fixed saved-screen offline loading and persisted the connection notice. QA bundle uninstalled,
+  shared guest/owned GUI shut down, temporary fixture removed; no new panic/GPU reset reported.
+- Public authenticated run data includes inline inspections; anonymous native access remains 401.
+  Native run pages preserve per-strategy demo exclusion, same-code backtest links and agent identity.
+  Chart capture gaps, read limits and unrecorded costs/fill prices remain explicit.
+
 ## Delivery — October 29, 2026
 
 - Signed ARM64 and unsigned simulator builds pass; six Swift domain tests pass. Source `55c99bbd1d99b77a`.

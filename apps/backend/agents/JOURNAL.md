@@ -3,6 +3,53 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-08 (Sun, user-requested) — native trade inspection and content-first results
+
+- Native iPhone is the primary client. Replaced number-only recent trades with inline bid/ask charts,
+  open/close markers and recorded entry/exit reasons; tap through to executable-price P&L, intratrade
+  price drawdown, adverse/favorable excursion, quoted spread, a signal-to-net cost waterfall, sizing,
+  coverage checks and order timing. Capital cash remains distinct from virtual equity/risk. A known
+  broker close time remains marked even when its execution price was not recorded.
+- A separate, read-only inspector reads the existing canonical compressed tick archive and bounded
+  transfer spool; no Capital calls, writable DB connection, new raw archive or trading-thread scan.
+  At most seven days / 250,000 quotes / 1,600 chunks per read; rendered series preserve extrema and
+  paired bid/ask, response cache capped at twelve entries / 16 MiB. Work serializes under trader.slice,
+  worker quota two cores / 1 GiB inside the aggregate six-core / 15 GiB cap. Initial two-trade reads
+  peaked around 22 MB. Enabled systemd restart/startup and committed deploy integration persist over reboot.
+- Verified both original night trades against stored fills. November 3: 12,285 valid recorded quotes,
+  complete coverage, $7,626.70 net, $172.68 spread, signed decision-to-fill timing cost $86.34,
+  zero funding, $3,079.46 maximum price drawdown and 16.08% maximum relative drawdown. October 16:
+  4,017 quotes plus fallback minute candles; first hours and a reconnect interval lack ticks. Its
+  observed $2,906 drawdown is a lower bound; paid spread remains unknown. No tick order, fee, reason
+  or broker fill price was invented. Funding is a terminal recorded amount, not a fabricated path.
+- PWA pass deployed: results/bar comparisons and trade charts lead; extended filters, methodology,
+  source and logs are behind details. Compact navigation, monthly/market charts and trade tables fit
+  phone portrait/landscape. Checked 390×844, 844×390 and desktop, light/dark; no page-width overflow.
+  Web chart axes use UTC consistently. Native charts use the phone's local dates/times.
+- Backend deploy b580701 preserved every active/historical run identity, all 66 source hashes and
+  all 442 exact Capital assignments. Original night source/special admission intact; no agent source,
+  roster, fill, P&L, retirement or history changed. Post-deploy review: 4,599 active virtual records
+  (553 standard, 4,046 correlated comparisons); control 144 / early 401 / keep 8 / leader 0 / retire 0;
+  monkey sanity 0/36. Stream/model healthy, broker queue zero, no load errors, watchdog zero alerts.
+- Storage snapshot 13.37 GB; measured two-year estimate 33.2 GB, four-times-rate stress 72.7 GB /100 GB.
+  One compressed archive, recurring timer and advancing acknowledgements. TimesFM remains enabled;
+  video/nightly lab holds retained. No addition/backtest batch or account-setting operation performed.
+- Validation: backend typecheck, 155 tests across default/native preflights; dedicated inspection tests
+  cover executable-side drawdown, gaps, rejected quotes, extrema, stable indices and Arena-only deal
+  selection. Four native API authorization/validation tests and Svelte diagnostics/build pass. Public
+  authenticated inspection succeeds; anonymous access remains 401; other web routes retain Authelia.
+- Native simulator checking found an existing cache/refresh race on newly opened saved screens offline;
+  fixed cached-first loading before refresh. Ten Swift domain tests and unsigned final build pass.
+  Native screenshots verified price/decision/cost screens, both orientations and the older trade
+  with partial capture. Exact cold first-frame through eight-second restoration and warm return
+  pass after persisting the connection notice. QA used an isolated bundle and private derived
+  fixtures, never real credentials or demo mutations; guest/GUI closed and QA app uninstalled.
+  Signed paid build installed in place on the primary iPhone on the first delivery attempt, job
+  `20261108T100131Z-e357947495`, source commit 2314d79. Exact frozen inputs approved for renewal;
+  no uninstall, product-app launch or phone UI automation. Public native data verified separately.
+  Final health/counts unchanged, archive acknowledged through 44,498,848 with zero received-tick
+  losses. No physical user action or desktop notification needed. Unrelated working-tree edits preserved.
+
 ## 2026-11-05 (Thu) — virtual day 28.7; first mature demotions
 
 - Health after review/deploy: 66 loaded variants, 4,599 active virtual records = 553 standard + 4,046
@@ -897,6 +944,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+User request 2026-11-08: native-first trade inspection and content-first PWA; no new strategy,
+retirement or parameter tuning. Tick/cost/decision evidence improved without resetting any record.
+Normal admission gates and the held nightly lab remain unchanged.
 
 Visit 2026-11-05: first mature actions verified: macd-trend/ema200 and ema50 BTCUSD at 1:100 archived
 for losing virtual trade evidence; other family runs continue. Six losing Capital runs demoted to fresh
