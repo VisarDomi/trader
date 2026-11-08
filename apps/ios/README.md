@@ -9,6 +9,8 @@ iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 - Inline trade charts and a native inspector: bid/ask, open/close, recorded decisions, executable
   P&L, price drawdown, quoted spread, cost waterfall and order timing. Capture gaps stay visible;
   unknown legacy costs stay unknown. Charts support horizontal scrubbing and both orientations.
+- Strategy context: prior sessions, indicator/band/range/forecast charts, actual filter values,
+  exact cutoffs and headroom gauges; retained inputs distinguished from historical reconstruction.
 - Agent parameters/source, exact archived versions, run equity curves, trades and broker deals.
 - Nine Arena accounts, explicit demo mirror/exclusion confirmations, execution comparisons.
 - Platform status, resource hold, tick/storage health, Graveyard, journal and research.
@@ -74,9 +76,9 @@ Pairing/signing data, app products, raw test captures and live-device records mu
 
 ```sh
 bun test apps/ui/src/lib/server/native-contract.test.ts
-ssh mac 'cd ~/Developer/trader/apps/ios && swift test --scratch-path build/LogicTests'
-ssh mac 'python3 ~/Developer/trader/apps/ios/scripts/check-simulator.py --device <booted-simulator-id>'
-/home/visar/Documents/work/ios-tools/native/scripts/restore-check com.visar.Trader.paid
+# Run native compilation/domain checks through mac-workload in the logged-in GUI session.
+# In a guarded session on the explicit shared guest, with a private derived-response fixture:
+python3 scripts/check-simulator.py --device UUID --fixture /tmp/trader-fixture.json --strategy
 ```
 
 The simulator uses the isolated `com.visar.Trader.qa` bundle and x86_64-only compilation.
@@ -96,6 +98,21 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 `Library/Application Support/Trader/`; `diagnostic.json` identifies the launched source and loaded
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
+
+## Delivery — November 8, 2026 · strategy context
+
+- Native setup charts and threshold gauges installed in place through job
+  `20261108T112706Z-7fa16ca4ba`, source `b64db55`, input hash `e441595469a833f4`.
+  First delivery attempt succeeded; exact inputs approved for renewal. Phone UI was not launched.
+- All 46 current strategy families / 66 variants have reviewed source-pinned adapters. Night trading
+  shows the previous NY path, qualifying limits and overnight reference; other families show their
+  relevant signals. Future standard entries retain bounded compressed context; old reconstructions,
+  missing state/forecasts and unsupported source versions remain explicit.
+- Eleven committed domain tests, simulator/device builds and native context/gauge visuals pass.
+  Portrait/landscape and offline views checked. Fixed automatic-row text rounding; exact cold first
+  frame through eight seconds and warm restoration pass with the larger strategy screens.
+- Queue flagged unchanged NativeKit modules recompiling (178 seconds); delivery remained valid.
+  Simulator/owned GUI shut down, QA app uninstalled and temporary fixture removed.
 
 ## Delivery — November 8, 2026
 
