@@ -51,7 +51,9 @@ try:
     container=Path(subprocess.check_output([APPLE,'simctl','get_app_container',a.device,BUNDLE,'data'],text=True).strip())
     target=container/'Library/Application Support/Trader';target.mkdir(parents=True,exist_ok=True)
     (target/'responses.json').write_text(json.dumps(fixture['responses']))
-    # Deliberately unpaired: all UI checks read this bounded fixture, with no live network dependency.
+    (target/'simulator-credential.json').write_text(json.dumps({'serverURL':'https://trader.invalid','token':'fixture-only-offline-credential-000000000000'}))
+    (target/'simulator-credential.json').chmod(0o600)
+    # All UI checks read this bounded fixture. The invalid test-only connection has no live credentials.
     command('launch',a.device,BUNDLE,stdout=subprocess.DEVNULL)
     wait('rankings',100);hook('action',name='offline',value='true');orient('portrait');shot('rankings-portrait')
     hook('action',name='open',screen='run',id=run,stage='virtual');wait('run',8)
