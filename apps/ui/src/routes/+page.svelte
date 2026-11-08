@@ -266,7 +266,7 @@
 
   {#if !data.error||data.savedAt}
     <div class="result-charts">
-      <section class="card"><h2>Return · shown records</h2><ValueBars items={sortedRuns.slice(0,8).filter(r=>r.metrics).map(r=>({label:`${r.name} · ${r.epic}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.runId)}${view==='demo'?'?stage=capital':''}`,note:`1:${r.leverage??'—'} · ${r.metrics!.trades} trades · ${day(r.metrics!.startTime)} → ${day(r.metrics!.endTime)}`}))}/></section>
+      <section class="card"><h2>Return</h2><ValueBars items={sortedRuns.slice(0,8).filter(r=>r.metrics).map(r=>({label:`${r.name} · ${r.epic}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.runId)}${view==='demo'?'?stage=capital':''}`,note:`1:${r.leverage??'—'} · ${r.metrics!.trades} trades · ${day(r.metrics!.startTime)} → ${day(r.metrics!.endTime)}`}))}/></section>
       <section class="card"><h2>{view==='demo'?'Closed-cash drawdown':'Max drawdown'}</h2><ValueBars items={sortedRuns.slice(0,8).filter(r=>r.metrics).map(r=>({label:`${r.name} · ${r.epic}`,value:-r.metrics!.maxDrawdown*100,href:`/runs/${encodeURIComponent(r.runId)}${view==='demo'?'?stage=capital':''}`}))}/></section>
     </div>
   {/if}

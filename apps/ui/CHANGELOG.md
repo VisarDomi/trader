@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Remove presentation clutter from native and web: methodology paragraphs, introduction cards,
+  repeated headings, positive verification badges and refresh instructions. Keep charts, facts,
+  numeric thresholds/deltas, recorded reasons and compact data-gap labels.
+
 - Add strategy-specific context charts and filter gauges to the native inspector and PWA: previous NY
   session/overnight reference for night trading, trend/crossovers, oscillators/bands, breakout ranges,
   calendar windows, volatility allocation and retained forecasts. Show observed value, exact rule and
