@@ -108,6 +108,14 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
             if debounce {try? await Task.sleep(for:.milliseconds(180))}
             guard !Task.isCancelled else{return}
             do {
+                // A newly pushed screen may already have a saved response even when its
+                // navigation controller was not part of startup restoration. Show it before
+                // a refresh can fail or cancel the viewDidLoad cache read.
+                if refresh,self?.content.sections.isEmpty == true {
+                    let cached=await TraderStore.shared.cachedContent(current,state:saved)
+                    guard !Task.isCancelled,let self,self.place==current else{return}
+                    if cached.refreshed>0 {self.apply(cached)}
+                }
                 let result=try await TraderStore.shared.content(current,state:saved,refresh:refresh)
                 guard !Task.isCancelled,let self,self.place==current else{return}
                 self.statusText=""

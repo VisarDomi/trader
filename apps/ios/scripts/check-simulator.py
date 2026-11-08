@@ -22,7 +22,9 @@ def wait(screen,rows=1):
             if s.get('screen')==screen and s.get('rows',0)>=rows:return s
         except Exception:pass
         time.sleep(.3)
-    raise RuntimeError('Screen did not settle: '+screen)
+    (OUT/'failed-state.json').write_text(json.dumps(hook('state')))
+    shot('failed-screen')
+    raise RuntimeError('Screen did not settle: '+screen+' '+str(s))
 def shot(name):
     command('io',a.device,'screenshot',str(OUT/(name+'.png')),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     (OUT/(name+'.json')).write_text(json.dumps(hook('layout')))
