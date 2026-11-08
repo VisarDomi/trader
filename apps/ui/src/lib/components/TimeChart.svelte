@@ -29,7 +29,7 @@
     {#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<line x1={x(m.t)} x2={x(m.t)} y1="0" y2="240" class="marker"/><circle cx={x(m.t)} cy={y(m.value)} r="4" class="fill"/>{/each}
     {#if hover!==null}<line x1={hover*1000} x2={hover*1000} y1="0" y2="240" class="crosshair"/>{/if}
    </svg>
-   <div class="marker-labels">{#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<span style:left={`${Math.min(94,Math.max(6,x(m.t)/10))}%`}>{m.label} {fmt(m.value)}</span>{/each}</div>
+   <div class="marker-labels">{#each markers.filter(m=>m.t>=start&&m.t<=end) as m}<span style:left={`clamp(46px, ${x(m.t)/10}%, calc(100% - 46px))`}>{m.label} {fmt(m.value)}</span>{/each}</div>
   </div>
   <div></div><div class="axis-x"><span>{time(start)}</span><span>{time((start+end)/2)}</span><span>{time(end)}</span></div>
  </div>
