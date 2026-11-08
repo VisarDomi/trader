@@ -3,6 +3,58 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-08 (Sun, user-requested) — strategy context, criteria and near misses
+
+- Added source-pinned explanation adapters for all 46 current families / 66 variants. Native is primary;
+  PWA shares the same data. Trade inspection now shows the price lead-up and relevant moving averages,
+  crosses, oscillators, bands, breakout/inside-bar ranges, session/calendar windows, volatility sizing
+  and retained forecast envelopes. Each numeric condition shows its exact operator, observed value,
+  cutoff, signed headroom and an allowed-region gauge. Clocks/directions use readable labels. Composite
+  alternatives are combined as OR conditions; random/passive controls are not assigned fictional signals.
+- Original night experiment: previous 09:30–16:00 New York path and 15-minute checkpoints, cash-open /
+  minimum bullish / maximum bearish closes; then the full 22:00 → 03:27 Tirana path and reference.
+  Move, efficiency, agreeing steps, conservative retrace, range, body/range, coverage, checkpoint,
+  direction, calendar, clock and reference-date criteria are visible. November 3's reconstructed
+  body/range is 61.909% vs a 60% minimum, only +1.909 pp headroom; the move magnitude is 0.996% vs
+  0.25%, efficiency 37.780% vs 15%, and reference bounce about 6.2 points. October 16 reconstructs a
+  qualifying bullish day. These explain the stored directions, not future profitability.
+- New standard entry requests retain a bounded derived context in gzip-compressed `decision_frames`,
+  linked to the exact virtual fill; pending-command recovery retains that link. At most 24 KiB before
+  compression, four panels / 72 sampled points per series / 16 conditions. Correlated comparisons do
+  not duplicate capture. Forecast surprise/envelope state is sampled before the agent overwrites it.
+  The observer does not change source, RNG, strategy state, orders or financial calculations; failures
+  cannot reject orders. No per-tick reconstruction or extra Capital/model request was added.
+- Historical context is explicitly reconstructed from closed canonical candles, existing arena feed
+  candles and daily seeds, with no bars after the known/approximated decision. Old recursive/persistent
+  state and unavailable forecasts stay labeled; no model is rerun to explain the past. Retained exact
+  frames take precedence; unsupported source versions fail closed to an unavailable explanation.
+  Fixed a discovered historical-data gap by reading the existing retained stream bars when the held
+  nightly ingest had not populated newer PG candles. Did not re-download or duplicate the tick tape.
+- Read-side work remains in the separate inspector under trader.slice: serialized requests, bounded
+  history (500 days / 1,200 bars per timeframe / 100,000 local minutes), six-second PG statement limit
+  with parallelism disabled, existing twelve-entry / 16 MiB chart cache. Warm night reads ~0.1–1 s;
+  sampled longer-lookback cold reads up to ~3.4 s. Inspector roughly 22 MB after reads. Compressed
+  derived decision evidence consumes the existing non-tick growth reserve; growth remains monitored.
+- Deployed ca1418c and boundary corrections 2bdac06. Verified all 4,994 forward IDs, all 66 hashes and
+  all 442 exact Capital assignments unchanged. No agents, parameters, tiers, roster or histories reset.
+  Final review: 4,599 virtual = 553 standard + 4,046 comparisons; control 144 / early 401 / keep 8 /
+  leader 0 / retire 0, monkey sanity 0/36. Stream/model healthy, queue zero, no load errors, watchdog
+  zero alerts. Tick archive continues; TimesFM stays enabled and the video/nightly holds remain intact.
+- Validation: backend typecheck and 163 tests across default/native preflights, including source pins
+  for every current variant, strict/inclusive boundaries, OR alternatives, prior forecast envelopes,
+  non-mutating adapters, observer error isolation, compressed frame persistence/reopen and NY DST.
+  Svelte check/build pass; native presentation/domain and simulator builds pass. Native session,
+  filter/gauge, portrait/landscape and offline screens visually checked. Cold checking caught a one-point
+  label-height redistribution despite the correct anchor/offset; fixed with explicit text sizing and
+  a rounding spacer. Exact first-frame through eight-second cold restoration and warm return pass.
+  QA app removed and shared simulator/owned GUI closed, with no new graphics failure reported.
+- Signed native delivery installed in place on the first attempt via durable ios-push job
+  `20261108T112706Z-7fa16ca4ba`, source b64db55, input hash e441595469a833f4. Approved exact
+  frozen inputs for renewal; product app was not launched or driven. The shared build cache reported
+  unchanged NativeKit modules recompiling (178-second build); this was a nonfatal build-cache warning,
+  not an app/installation failure. Temporary fixture and dev services removed; no physical user action
+  or desktop notification needed. Unrelated AGENTS/forecaster working-tree edits preserved.
+
 ## 2026-11-08 (Sun, user-requested) — native trade inspection and content-first results
 
 - Native iPhone is the primary client. Replaced number-only recent trades with inline bid/ask charts,
@@ -944,6 +996,10 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+User request 2026-11-08 (follow-up): strategy-context explanations and saved entry evidence added
+for all current families. No new agent, retirement or parameter tuning; existing run identities and
+admission/resource rules retained.
 
 User request 2026-11-08: native-first trade inspection and content-first PWA; no new strategy,
 retirement or parameter tuning. Tick/cost/decision evidence improved without resetting any record.
