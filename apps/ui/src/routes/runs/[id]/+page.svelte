@@ -11,7 +11,7 @@
  let{data}=$props();
  const run=$derived(data.run),actual=$derived(data.stage==='capital'),m=$derived(actual?data.capital?.metrics:run.metrics);
  let choice=$state<string|null>(null),loaded=$state<Inspection|null>(null),loading=$state(false),failure=$state('');
- const key=$derived(choice??data.selected??data.inspections[0]?.subject.key??(run.position?'open':''));
+ const key=$derived(choice??data.selected??data.inspections[0]?.subject.key??options[0]?.key??(run.position?'open':''));
  const selected=$derived.by(()=>{const cached=data.inspections.find(i=>i.subject.key===key)??null;const fetched=loaded?.subject.runId===run.id&&loaded.subject.stage===data.stage&&loaded.subject.key===key?loaded:null;return fetched&&(!cached||fetched.asOf>cached.asOf)?fetched:cached});
 
  const curve=$derived(run.equityCurve.map(p=>({t:p.t,value:p.equity})));
