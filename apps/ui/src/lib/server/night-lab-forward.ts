@@ -8,5 +8,5 @@ export async function nightLabForward(reader:Reader){
  const [virtual,actual]=await Promise.all([reader.leaderboard('demo',true,'','standard'),reader.leaderboard('demo',true,'demo','standard')]);
  const rows=virtual.filter(r=>!r.comparisonOnly&&member(r)),capital=new Map(actual.filter(member).map(r=>[r.agentId,r]));
  if(rows.length!==20)throw Error('Cohort is warming or incomplete');
- return {schema:2,at:Date.now(),rows:rows.map(r=>({agentId:r.agentId,epic:r.epic,leverage:r.leverage,status:r.status,startedAt:r.startedAt,totalReturn:r.metrics?.totalReturn??null,trades:r.metrics?.trades??0,mirrored:r.mirrored,capitalReturn:capital.get(r.agentId)?.metrics?.totalReturn??null,capitalTrades:capital.get(r.agentId)?.metrics?.trades??null}))};
+ return {schema:3,at:Date.now(),rows:rows.map(r=>({agentId:r.agentId,codeHash:r.codeHash,epic:r.epic,leverage:r.leverage,status:r.status,startedAt:r.startedAt,totalReturn:r.metrics?.totalReturn??null,trades:r.metrics?.trades??0,mirrored:r.mirrored,capitalReturn:capital.get(r.agentId)?.metrics?.totalReturn??null,capitalTrades:capital.get(r.agentId)?.metrics?.trades??null}))};
 }

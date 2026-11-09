@@ -182,7 +182,7 @@
         1
       ],
       "visar-night-v2-us500/full-steps": [
-        10
+        50
       ],
       "visar-night-v2-us100/central-reversal": [
         50
@@ -191,13 +191,13 @@
         100
       ],
       "visar-night-v2-us100/large-gap": [
-        50
+        100
       ],
       "visar-night-v2-us500/central-body": [
         50
       ],
       "visar-night-v2-us100/largest-gap": [
-        10
+        100
       ],
       "visar-night-v2-us500/central-steps": [
         10
@@ -206,7 +206,7 @@
         3
       ],
       "visar-night-v2-us100/central-body": [
-        5
+        10
       ]
     }
   },
@@ -371,99 +371,99 @@
       "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply."
     },
     "visar-night-v2-us500/frequent-core:US500@20": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=81. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=81, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/frequent-core:US100@20": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=67. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=67, 1 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/frequent-gap:US500@50": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=61. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=61, 5 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/frequent-gap:US100@20": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=54. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +100% or 08:27, with loss stop. Diverse finite-history role; N=54, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/frequent-reversal:US500@10": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=68. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=68, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/frequent-reversal:US100@10": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=50. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +50% or 08:27, with loss stop. Diverse finite-history role; N=50, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/frequent-reversal-gap:US500@50": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=51. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +50% or 08:27, with loss stop. Diverse finite-history role; N=51, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/frequent-small:US100@5": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=67. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=67, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/frequent-small:US500@1": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=81. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=81, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/frequent-gap-small:US100@1": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=54. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=54, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us500/full-steps:US500@10": {
-      "codeHash": "03ad8a5b06df",
+    "visar-night-v2-us500/full-steps:US500@50": {
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 5bp; inspected N=33. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=33, 2 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/central-reversal:US100@50": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=28. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +100% or 08:27, with loss stop. Diverse finite-history role; N=28, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/full-reversal:US500@100": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 0bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=22, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us100/large-gap:US100@50": {
-      "codeHash": "5ff415eb93d8",
+    "visar-night-v2-us100/large-gap:US100@100": {
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 15bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=22, 10 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/central-body:US500@50": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +100% or 08:27, with loss stop. Diverse finite-history role; N=22, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us100/largest-gap:US100@10": {
-      "codeHash": "5ff415eb93d8",
+    "visar-night-v2-us100/largest-gap:US100@100": {
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 30bp; inspected N=18. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +50% or 08:27, with loss stop. Diverse finite-history role; N=18, 2 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us500/central-steps:US500@10": {
-      "codeHash": "03ad8a5b06df",
+      "codeHash": "55524f991713",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=25. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=25, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/full-steps:US100@3": {
-      "codeHash": "5ff415eb93d8",
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 5bp; inspected N=25. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=25, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us100/central-body:US100@5": {
-      "codeHash": "5ff415eb93d8",
+    "visar-night-v2-us100/central-body:US100@10": {
+      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
-      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=24. Not validation; normal safety and subsequent demotion apply."
+      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=24, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     }
   }
 }

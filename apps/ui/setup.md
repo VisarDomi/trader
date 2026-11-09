@@ -42,14 +42,18 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 
 `/night-lab/` redirects to the standalone installable `/night-lab/index.html` report. It has its own
 manifest and service-worker scope and uses the ordinary Trader hosting/authentication; it needs no
-extra server. All5,184risk settings are expanded together with48equity charts: both NY windows,
-six day policies, four gap thresholds, nine leverage tiers and six loss targets. There is no gap
-selector or accordion. Each policy groups its four gap charts before its detailed tables. Baseline
+extra server. All20,736risk settings are expanded together with192equity charts: both NY windows,
+six day policies, four gap thresholds, nine leverage tiers, six loss targets and four profit exits.
+Exit choices are deadline-only or+20/+50/+100% of trade-entry capital, always with the loss stop
+and08:27Tirana deadline. Exit-mix bars show original1:200/50% risk; dimension summaries/curves use
+1:20/20%. Target-hit counts distinguish binding exits from historically unused thresholds. There is no gap
+selector or accordion. Each policy groups all four exit choices and their four gap charts before its detailed tables. Baseline
 trade paths show threshold membership without duplicating the same setup. CSV/JSON exports retain
 full precision. The historical
 study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
 current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
-The forward cache namespace hashes cohort ids/source hashes; a replaced cohort cannot reuse stale rows.
+Forward schema3 includes source hashes. Both client and worker require complete, unique exact
+source/instrument/tier membership; the cache namespace includes schema and cohort identity.
 Current selection and its finite-history constraints are in research/night-cohort-20261109.json.
 Reproduce with ops/lab/select-night-cohort.py before changing the frozen choice; new source-specific
 backtests are verified by ops/lab/verify-night-cohort.py against the raw study cells.
@@ -68,6 +72,11 @@ window control grids (two shards per instrument); `ops/lab/night_study_data.py` 
 signals, features, context and ledgers. `gap-replay.ts EPIC full|central` evaluates all four gap
 minimums and refuses results unless every zero-gap financial control exactly matches the full
 strategy replay. Run the Python preparation again after gap replays, then publish with the builder.
+Profit sweep: exit-replay.ts EPIC full|central and ops/lab/night_exit_data.py; results are in
+night-exit-study-20261109/. All5,184deadline controls must exactly match the prior study.
+exit-sensitivity.ts EPIC runs the selected source versions on three additional quote paths;
+the report shows full ranges, including unfavorable results. The page embeds only rendered fields
+at full precision; report.json/CSV retain full derived data, avoiding unnecessary phone RAM.
 Raw derived inputs stay in `apps/backend/data/night-session-study-20261109/`; existing full-window
 inputs remain in `night-breakdown-20261109/`. All heavy work belongs inside trader.slice.
 

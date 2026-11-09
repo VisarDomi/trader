@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add capital-profit close targets to the Visar cohort and a20,736-case full-engine study with5,184 exact deadline controls. Rebase SL/TP to fills; fix queued native protection synchronization; retain original and source-version histories.
+
 - Replace nineteen Visar experiments with source-pinned full/central-session, gap/frequency/risk variants. Preserve the original and archive superseded histories with explicit replacement reasons. Extend native/web strategy context to the exact window and gap boundary.
 
 - Add isolated Night Lab central-session/gap research, independent signal/ledger oracle and cached

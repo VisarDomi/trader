@@ -292,15 +292,15 @@
     "description": "Visar US100 overnight cohort: previous NY path, overnight pullback, variant-specific thresholds and loss limit; same 03:27/08:27 Albania clock."
   },
   "visar-night-v2-us500": {
-    "hash": "03ad8a5b06df",
+    "hash": "55524f991713",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500 night: full/central NY day, opposite-side overnight bid gap, then 03:27–08:27 Tirana with a per-trade loss limit."
+    "description": "US500 night: full/central day, overnight bid gap, then capital-profit target/loss budget or 08:27 Tirana."
   },
   "visar-night-v2-us100": {
-    "hash": "5ff415eb93d8",
+    "hash": "18439f2d4f1e",
     "timeframe": "1m",
     "extra": [],
-    "description": "US100 night: full/central NY day, opposite-side overnight bid gap, then 03:27–08:27 Tirana with a per-trade loss limit."
+    "description": "US100 night: full/central day, overnight bid gap, then capital-profit target/loss budget or 08:27 Tirana."
   }
 }

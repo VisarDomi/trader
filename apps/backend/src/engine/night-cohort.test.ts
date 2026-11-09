@@ -14,6 +14,7 @@ test('v2 replaces nineteen experiments, retains the original, and pins every adm
  const roster=loadRoster();expect(rosterProblems(roster,agents)).toEqual([]);
  const runs=planRuns(cohort,roster).runs;expect(runs).toHaveLength(19);
  expect(new Set(cohort.map(a=>a.params.minPullbackBp))).toEqual(new Set([0,5,15,30]));
+ expect(new Set(cohort.map(a=>a.params.profitPct))).toEqual(new Set([0,20,50,100]));
  for(const r of runs){expect(roster.demoAdmissions?.[`${r.agent.id}:${r.epic}@${r.leverage}`]?.codeHash).toBe(r.agent.codeHash)}
 });
 test('deployed entry callbacks enforce symmetric exact gap boundaries, clocks and one attempt',async()=>{

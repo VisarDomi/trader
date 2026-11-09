@@ -4,6 +4,50 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
 
+
+## 2026-11-09 (Mon, user-requested) — profit exits as a full dimension
+
+- Added deadline-only versus +20/+50/+100% of each trade's starting capital, with the same loss
+  protection and08:27Tirana deadline. Long targets trigger on executable bid and shorts on ask;
+  opening spread is already in the actual fill. Rebase to actual rounded units/fill; round outward.
+  Targets outside the broker's native distance range use an executable-P&L tick fallback instead
+  of sending impossible levels. These are ordinary price protections, not guaranteed cash returns.
+  Original visar-night-trading stays56ac3bdfe7c1 with its own history and deadline-only behavior.
+- Full-engine sweep:20,736cases (prior5,184×four closes), same2024-01–2026-09prices, calendars,
+  gap/day/window/risk definitions. Every one of5,184deadline-only controls matches the previous
+  complete financial metrics/trades, excluding expanded entry explanation text only. Independent
+  signal oracle, ledger balances and exit-reason totals reconcile. All study funding is zero as
+  these night holdings do not cross the financing cutoff. No captured tick copy or price rewrite.
+- Bounded replay uses four one-CPU workers inside trader.slice. All bars/clocks/equity/risk/fills
+  still run in the engine; known empty signal callbacks are disabled, and the engine avoids
+  allocating a context when no bar callback/observer exists. Atomic derived results can resume
+  after interruption. Raw study is in data/night-exit-study-20261109; no primary study uploads.
+- Re-selected nineteen variants with explicit exit roles, same positive-primary-return/<=40%DD
+  and sample limits, original tier capacity and ten>=18entries/year frequency roles. Exit mix:
+  eight deadline-only, five+20%, three+50%, three+100%. Several targets do not bind historically;
+  target-hit counts remain explicit rather than claiming independent new winning histories.
+  Two 1:1 endpoints and the source-pinned original are retained. All nineteen fresh source-specific
+  backtests/check-agent pass and exactly match the selected full-engine study trades/metrics.
+- Four synthetic quote-path checks per selected agent (seeds1/2/3at16quotes, seed1at64) are visible
+  as return ranges beside baseline results. US500 full-reversal spans−5.42%to+17.50%; US100
+  largest-gap spans+15.08%to+52.24%. These inspected simulations are not independent validation;
+  original-risk exit-mix charts also make extreme drawdowns conspicuous, alongside returns.
+- Capital API's native profitLevel contract checked at https://open-api.capital.com/ . Fixed a
+  pre-confirmation race: queued opens now use latest rebased SL/TP, and changes before a permanent
+  deal id are synchronized after confirmation. Regression verifies the actual request bodies.
+  Existing native protection and deadline/snapshot paths are retained; no account or leverage
+  settings are changed. Only Arena-owned demo accounts remain eligible; Visi is untouched.
+- Report expands all20,736cells/192equity plots with no reveal controls. Adds exit-mix bars,
+  close-reason counts, all-four-exit summaries and four target rows per leverage/loss setting.
+  Same-index fee-free1:1holds remain. Embedded display data omits unused fields without rounding;
+  its rendered result is tested equal to full export data. Full JSON and10,368-row CSV/asset remain.
+  Forward schema3 and worker/client source membership checks prevent an older same-id agent
+  version from lending its cash/P&L to the replacements, including offline or during publication.
+- Pre-deploy snapshots preserve all20assigned identities and prove the nineteen replaced versions
+  flat. Native decision/inspection data carries target prices and exit rules through the existing
+  app contract. No phone installation or user action is required. Deployment verification follows.
+
+
 ## 2026-11-09 (Mon, user-requested) — deploy gap/session cohort; show every dimension
 
 - User explicitly requested replacing the nineteen newly added experiments with backtest-selected,
@@ -1312,6 +1356,8 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 - Next: no retirements possible before early November; first new agents on Monday 2026-10-12.
 
 ## Idea log
+
+- Visar capital-profit exits — user-requested deadline/+20/+50/+100% close dimension, full20,736-case study and nineteen source-pinned demo updates; unused targets labeled by hit counts, not treated as new evidence (2026-11-09).
 
 - Visar night v2 — user-selected full/central-session and minimum bid-gap/risk cohort; ten higher-frequency roles, nineteen replacements plus unchanged original. Backtest-selected, not validated; old nineteen archived (2026-11-09).
 

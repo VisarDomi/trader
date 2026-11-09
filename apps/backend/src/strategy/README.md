@@ -31,5 +31,7 @@ Night context reconstructs the exact reviewed session feature formulas: 09:30–
 coverage and policy/calendar eligibility; then the prior 22:00 reference and 03:27 pullback in Tirana.
 The versioned v2 night families also support10:30–15:30 recognition (20steps/21points) and their
 0/5/15/30bp minimum opposite-side bid gap. Both reconstructed and recorded panels show the exact
-window, entry boundary and signed threshold headroom.
+window, entry boundary and signed threshold headroom. Profit-enabled versions additionally show
++20/+50/+100% trade-entry-capital targets and the unchanged loss/deadline exits; order protections
+are initial decision levels, while actual filled positions rebase to rounded size/fill.
 The inspector cache/serialization queue and trader.slice limits apply to on-demand reconstruction.

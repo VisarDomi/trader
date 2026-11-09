@@ -100,7 +100,7 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
         out.panels.push({title:'22:00 reference → 03:27 decision',unit:'Price',note:`${p.timeZone} · last closed bid prices, before execution spread. Minimum counter-move ${minimum}bp.`,series:[{name:'Overnight price',points:sampled(candles,candles.map(x=>x.close),tf,true)}],guides:[{label:'22:00 reference',value:s.reference},...(minimum>0?[{label:`${minimum}bp entry boundary`,value:s.reference*(1-dir*minimum/10000)}]:[])],markers:[{t:c.bar.time+tf,value:price,label:'SIGNAL'}],from:at,through:c.bar.time+tf});
       }else g('22:00 reference',NaN,'>',0,'Price');
     }
-    out.exitRule=`08:27 ${p.timeZone}; protective loss budget ${p.lossPct}% of entry capital. Opening/reference candles, coverage and policy-event filters must qualify.`;
+    out.exitRule=`${p.profitPct?`Profit target +${p.profitPct}% of this trade's entry capital, or `:''}08:27 ${p.timeZone}; protective loss budget ${p.lossPct}% of entry capital. Targets are rebased to actual fill/rounded size. Opening/reference candles, coverage and policy-event filters must qualify.`;
   }else if(['ema-cross','timesfm-trend'].includes(slug)){
     const a=ta.series.ema(p.fast),z=ta.series.ema(p.slow);panel('Price and trend averages',{Price:priceSeries(),[`EMA ${p.fast}`]:a,[`EMA ${p.slow}`]:z});
     if(slug==='ema-cross')cross('EMA crossover',a,z);else g('Fast vs slow EMA',last(a),dir>0?'>':'<=',last(z),'Price');
