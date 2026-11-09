@@ -66,6 +66,9 @@ final class SceneDelegate:UIResponder,UIWindowSceneDelegate {
             #if targetEnvironment(simulator)
             TestHooks.shared.back={ [weak tabs] in _=(tabs?.selectedViewController as? UINavigationController)?.popViewController(animated:false) }
             TestHooks.shared.forward={ [weak tabs] in (tabs?.selectedViewController as? LiveNavigationController)?.goForward(animated:false) }
+            TestHooks.shared.register("search"){[weak tabs] q in tabs?.current?.testSearch(q["query"] ?? "");return ["ok":true]}
+            TestHooks.shared.register("sort"){[weak tabs] q in tabs?.current?.testSort(Int(q["value"] ?? "0") ?? 0);return ["ok":true]}
+            TestHooks.shared.register("open-row"){[weak tabs] q in tabs?.current?.testOpenRow(Int(q["index"] ?? "0") ?? 0);return ["ok":true]}
             TestHooks.shared.register("tab"){[weak tabs] q in tabs?.choose(Int(q["index"] ?? "0") ?? 0);return ["ok":true]}
             TestHooks.shared.register("open"){[weak tabs] q in
                 guard let raw=q["screen"],let screen=Screen(rawValue:raw) else{return ["ok":false]}

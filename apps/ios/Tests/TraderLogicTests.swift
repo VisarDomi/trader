@@ -3,6 +3,17 @@ import Testing
 @testable import TraderLogic
 
 func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from:Data(text.utf8))}
+@Test func visarSearchKeepsTheTwentyMemberCohortAcrossStages() throws {
+    let ids=["visar-night-trading"]+(0..<9).map{"visar-night-lab/v\($0)"}+(0..<10).map{"visar-night-us100/v\($0)"}+["night-risk-twin"]
+    let data=JSON.array(ids.map{JSON.object(["runId":.string("demo:\($0):US500:x20:hash"),"agentId":.string($0),"name":.string("Visar night \($0)"),"epic":.string("US500")])})
+    for stage in ["capital","virtual","backtest"] {
+        let content=Presentation.make(Route(screen:.rankings,stage:stage),data:data,query:" VISAR ",sort:2)
+        #expect(content.sections[0].rows.count==20)
+        #expect(content.sections[0].title.contains("20 records"))
+        #expect(content.sections[0].rows.allSatisfy{$0.route?.stage==stage})
+    }
+    #expect(Presentation.matches(Row(id:"old",title:"Visar small-risk twin",route:Route(screen:.agent,id:"night-risk-twin")),query:"small-risk"))
+}
 @Test func rankingsKeepActualDemoEvidenceSeparate() throws {
     let data=try json("""
     [{"runId":"demo:fixture","name":"Fixture","epic":"US500","leverage":200,"metrics":{"totalReturn":0.12,"trades":3,"sharpe":1.2},"demoAdmission":{"reason":"user requested"}}]
