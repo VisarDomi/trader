@@ -5,6 +5,30 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon, user-requested) — uniform v3 night cohort: one base, one change per agent
+
+- Why: the user wants each of the ten agents per index on its own direction in the parameter space, uniform
+  names, and to see at a glance what each explores, the original included. The v2 agents each changed three
+  to five settings at once. The user also asked to leave out inert dimensions: at 1:20 a 50% loss limit never
+  triggered in the backtest (0 stops) and a +20% target once in 67 trades.
+- v3 per index: `base` (10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss
+  limit, 08:27, no target) plus one change each: `big-move` (day ≥0.5%), `strong-day` (net move ≥80% of
+  range), `steady-day` (≥62% of steps agree), `gap-5bp`, `gap-15bp`, `leverage-200`, and the controls
+  `always-long` and `random-direction`. The original `visar-night-trading` keeps its record (2 trades,
+  $19,696) as the US500 full-day 1:200 point; US100 gets the same settings (`full-day-200`). Cohort file
+  `research/night-cohort-v3-20261109.json`; v2 agents archived to `_retired/` with their histories.
+- Backtest 2024-01 – 2026-09 (matches the existing study cells exactly; big-move is new): US500 base +18.0%,
+  big-move +31.5%, strong-day +5.2%, steady-day +28.0%, gap-5bp +28.8%, gap-15bp −7.0%, leverage-200 −90.0%,
+  always long −6.9%, random −22.1%, original −99.98%. US100 base +125.1%, big-move +106.7%, strong-day +16.9%,
+  steady-day +96.2%, gap-5bp +117.2%, gap-15bp +63.4%, leverage-200 +322.4% (98.5% drawdown), full-day-200
+  −100%, always long +58.6%, random −17.3%. Selected on design, not on these results.
+- Deployed 9f4cf67: all 20 run and are on Capital demo; the original's record matches the pre-deploy
+  snapshot. 16 cohort runs now sit on 1:20, displacing flat legacy runs (adx-dmi, timesfm-band) to paper.
+  Night Lab cohort table shows coordinates with each change from the base in bold. Verdicts: control 148,
+  early 396, keep 8, leader 0; monkeys 0 of 36. Backend 180 and UI 22 tests pass.
+- Recommendation given: keep ten on demo as probes; run the full meaningful grid forward in paper by
+  replaying recorded ticks nightly rather than as thousands of arena runs (see the user summary).
+
 ## 2026-11-09 (Mon, user-requested) — direction controls for the night cohort
 
 - Why: the overnight assessment suggested comparing the night rule with always-long and random-direction
