@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- **Paper vs demo** (More → Paper vs demo) — every agent on a Capital demo account against its paper twin: share of paired trades that agree within one spread, mean gap, demo − paper in dollars at paper size, funding vs Capital's swaps, order timing and Capital's quote delay; per day, instrument, exit type, agent verdict (converged / watch / diverged) and the largest gaps. 7, 14 or 30 days.
+
 - **Night Lab paper grid** — `/night-lab/grid.json` serves the nightly paper grid (both indexes, without per-night ledgers; rejects partial or mismatched files) and Night Lab shows it as one table per index: day filter × window rows, gap × leverage columns, and in each cell the rule, always-long and coin returns on the same nights. ● marks settings that also run on Capital demo. Switch between all nights since 1 Oct, the pre-cohort holdout and strictly forward nights. Offline copy kept by the service worker.
 - **Night Lab cohort as coordinates** — uniform agent names (US500 · base, · big move, …, · original) and one column per dimension, with each agent's change from the base in bold, plus the dimension it explores.
 
