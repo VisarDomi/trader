@@ -43,8 +43,14 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   independent searches. Web snapshots and URL state preserve query, filters, sorting and page across
   detail/back/forward/reload and stage links. Native protects saved search from navigation dismissal,
   resets intentionally edited searches to the top and preserves anchors across notice/header changes.
-  Native domain and simulator compilation pass; focused scroll/cold-restoration QA continues before
-  paid delivery. No physical-phone UI automation is part of this work.
+  Twelve native domain checks and simulator compilation pass; focused 20-member search/sort,
+  detail/back/forward, focal scroll anchor, both orientations and offline cold/warm restoration pass.
+  Paid delivery is submitted after the verified source is committed. No physical-phone UI automation is part of this work.
+- Found/fixed a startup admission race during deployment: an uploaded backtest could satisfy its gate
+  after createRuns while warm-up was still in progress, and its API callback returned before readiness.
+  Startup now rechecks persisted eligible results when ready. A real offline-start regression injects
+  the upload during backfill and verifies a queued admission without reposting. No orders/network in
+  that regression. Source/record IDs are retained across the normal systemd reload.
 - Every heavy research/build job is isolated inside trader.slice on this PC, below aggregate 50%;
   Mac builds/guest use the shared guard, exact shared guest and isolated QA bundle. Existing holds
   and original histories are preserved. No extra tick recording copy or new quote subscription.

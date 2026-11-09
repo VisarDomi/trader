@@ -171,6 +171,9 @@ export class Arena {
     );
 
     this.ready = true;
+    // Backtests can arrive after createRuns while startup is still warming history.
+    // Their API callback cannot schedule a reload until readiness, so recheck persisted gates.
+    this.scheduleAdmissions();
     if (!this.liveMode) return;
     this.forecastAvailability.observe(this.forecasts.reachable,Date.now());
     this.stream = new QuoteStream(
