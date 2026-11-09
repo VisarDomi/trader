@@ -47,6 +47,18 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   Verdicts401early/8keep/0leader/144controls; monkeys0/36. All nineteen replaced virtual records
   were checked flat; the bounded broker deal read has no corresponding open deal. Holds, accounts,
   original account leverage, capture/archive and unrelated services remain unchanged.
+- Deployed c474ea3 and verified20/20source-pinned Capital assignments (10US500/10US100), with
+  no unrelated mirrored record displaced. Original run id/start/source, two trades, return and DD
+  are unchanged. All nineteen superseded agents have source, forward runs and backtests in the
+  live Graveyard, with explicit superseded-experiment reasons. Standard count remains553; total
+  virtual4645 includes4092correlated comparisons and stays under5000. Queue0, stream/model healthy,
+  no dropped ticks; normal RSS observed308–501MB after startup. Verdict counts remain unchanged.
+- Published HTML/report/worker match committed bytes; live PWA feed contains exactly19v2members
+  plus the original, all assigned. Cohort cache namespace is90d3609c0a7a. Desktop/phone rendering
+  checks confirm5184cells/48charts/zero reveal controls and no document overflow. Each policy's
+  four equity charts share axes and appear together above its risk tables. Backend174tests and
+  UI11tests pass, plus both Rust parity tests; UI diagnostics have zero errors/warnings. No user
+  action or phone installation is needed: the native app receives the new agents and graph panels.
 
 
 ## 2026-11-09 (Mon, user-requested) — rare event context, central session and gap sizes
