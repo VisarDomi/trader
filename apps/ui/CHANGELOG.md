@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Add the standalone installable Night Lab report with both instruments, 648 visible risk cells,
+  131 original-rule trade paths, the 20-agent forward cohort and a fee-free full-cash Nasdaq hold
+  proxy. Show purchase-budget assumptions, matched broker minimums and missing listings explicitly;
+  cache only bounded report assets and the last complete forward cohort for offline use.
+- Preserve cohort search, filters, sorting and page across back/forward/reload and stage links.
+  The `visar` alias finds the original and both new night families, keeping the older risk twin
+  separately searchable. Native search dismissal cannot erase the saved query during navigation.
+
 - Remove presentation clutter from native and web: methodology paragraphs, introduction cards,
   repeated headings, positive verification badges and refresh instructions. Keep charts, facts,
   numeric thresholds/deltas, recorded reasons and compact data-gap labels.

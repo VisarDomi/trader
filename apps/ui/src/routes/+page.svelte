@@ -2,7 +2,10 @@
 	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
 	import { assess, luckBands, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+  import { untrack } from 'svelte';
+  import type { Snapshot } from '@sveltejs/kit';
+  import {readLeaderboardState,leaderboardURL,matchesAgentQuery,type LeaderboardState} from '$lib/leaderboard-state';
 	import { ago, day, isControl, lev, levTitle, median, num, pct, pctPlain, sign, usd, utc } from '$lib/format';
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
   import LiveRefresh from '$lib/components/LiveRefresh.svelte';
@@ -14,21 +17,33 @@
 	type Group = 'run' | 'agent' | 'family';
 	const view = $derived((page.url.searchParams.get('view') as View) ?? 'virtual');
 
-	let group = $state<Group>(page.url.searchParams.get('group')==='family'?'family':page.url.searchParams.get('group')==='agent'?'agent':'run');
-	let epic = $state('');
-	let timeframe = $state('');
-	let leverage = $state(page.url.searchParams.get('leverage') ?? '');
-	let query = $state(page.url.searchParams.get('q')??'');
-	let evidenceFilter = $state('all');
+  const initial=readLeaderboardState(page.url);
+	let group = $state<Group>(initial.group);
+	let epic = $state(initial.epic);
+	let timeframe = $state(initial.timeframe);
+	let leverage = $state(initial.leverage);
+	let query = $state(initial.query);
+	let evidenceFilter = $state(initial.evidenceFilter);
 	const scenario = $derived(page.url.searchParams.get('scenario') || 'standard');
-	let pageNumber = $state(1);
+	let pageNumber = $state(initial.pageNumber);
 	const PAGE_SIZE = 100;
 	const scenarios = $derived([...new Set(['standard',...data.scenarios.map(s => s.name),...(scenario==='all'?[]:[scenario])])]);
 	const totalVirtual = $derived(data.scenarios.length?data.scenarios.reduce((n, s) => n + s.count, 0):null);
-	let hideControls = $state(true);
-	let sortKey = $state<string>('totalReturn');
-	let sortDesc = $state(true);
-	$effect(() => { void [epic, timeframe, leverage, query, scenario, view, evidenceFilter, group]; pageNumber = 1; });
+	let hideControls = $state(initial.hideControls);
+	let sortKey = $state<string>(initial.sortKey);
+	let sortDesc = $state(initial.sortDesc);
+  function savedState():LeaderboardState{return {group,epic,timeframe,leverage,query,evidenceFilter,pageNumber,hideControls,sortKey,sortDesc}}
+  function filterKey(s:LeaderboardState){return JSON.stringify([s.group,s.epic,s.timeframe,s.leverage,s.query,s.evidenceFilter,s.hideControls,view,scenario])}
+  let previousFilterKey=filterKey(initial);
+  export const snapshot:Snapshot<LeaderboardState>={capture:savedState,restore:s=>{
+    group=s.group;epic=s.epic;timeframe=s.timeframe;leverage=s.leverage;query=s.query;evidenceFilter=s.evidenceFilter;
+    pageNumber=s.pageNumber;hideControls=s.hideControls;sortKey=s.sortKey;sortDesc=s.sortDesc;previousFilterKey=filterKey(s);
+  }};
+  $effect(()=>{
+    const state=savedState(),key=filterKey(state);
+    if(key!==previousFilterKey){previousFilterKey=key;pageNumber=1;state.pageNumber=1}
+    untrack(()=>{const url=leaderboardURL(page.url,state);if(url.href!==page.url.href)replaceState(url,page.state)});
+  });
 
 	const rows = $derived(view === 'backtest' ? data.backtest : view === 'demo' ? data.capital : data.demo);
 	const epics = $derived([...new Set(rows.map(r => r.epic))].sort());
@@ -45,7 +60,7 @@
 		if (hideControls && isControl(r)) return false;
 		if (evidenceFilter==='paused'&&(!(r.dependency??r.evidence?.dependency)||(r.dependency??r.evidence?.dependency)?.state==='available'))return false;
 		if (evidenceFilter!=='all'&&evidenceFilter!=='paused'&&r.evidence?.admission!==evidenceFilter)return false;
-		if (query && !`${r.name} ${r.agentId}`.toLowerCase().includes(query.toLowerCase())) return false;
+		if (!matchesAgentQuery(r.agentId,r.name,query)) return false;
 		return true;
 	}
 

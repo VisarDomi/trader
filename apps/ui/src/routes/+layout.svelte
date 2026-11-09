@@ -3,7 +3,7 @@
  import{page}from'$app/state';
  let{data,children}=$props();
  const primary=[{href:'/',label:'Results'},{href:'/agents',label:'Agents'},{href:'/broker',label:'Accounts'}];
- const more=[{href:'/graveyard',label:'Graveyard'},{href:'/leverage',label:'Leverage'},{href:'/research',label:'Research'},{href:'/journal',label:'Journal'},{href:'/status',label:'System'}];
+ const more=[{href:'/night-lab/',label:'Night Lab'},{href:'/graveyard',label:'Graveyard'},{href:'/leverage',label:'Leverage'},{href:'/research',label:'Research'},{href:'/journal',label:'Journal'},{href:'/status',label:'System'}];
  const active=(href:string)=>href==='/'?page.url.pathname==='/'||page.url.pathname.startsWith('/runs'):page.url.pathname.startsWith(href);
 </script>
 <svelte:head><title>Trader</title><meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)"/><meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)"/></svelte:head>

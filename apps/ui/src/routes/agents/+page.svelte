@@ -1,15 +1,22 @@
 <script lang="ts">
 	import type { RunSummary } from '@trader/shared';
 	import { CONTROL_SLUGS, median, num, pct, sign } from '$lib/format';
+  import {page} from '$app/state';
+  import {replaceState} from '$app/navigation';
+  import {untrack} from 'svelte';
+  import type {Snapshot} from '@sveltejs/kit';
+  import {matchesAgentQuery} from '$lib/leaderboard-state';
 
 	let { data } = $props();
-	let query = $state('');
+	let query = $state(page.url.searchParams.get('q')??'');
+  export const snapshot:Snapshot<string>={capture:()=>query,restore:value=>query=value};
+  $effect(()=>{const q=query;untrack(()=>{const u=new URL(page.url);if(q)u.searchParams.set('q',q);else u.searchParams.delete('q');if(u.href!==page.url.href)replaceState(u,page.state)})});
 
 	const groups = $derived.by(() => {
 		const by = new Map<string, typeof data.agents>();
 		for (const a of data.agents.filter(a => a.active)) by.set(a.slug, [...(by.get(a.slug) ?? []), a]);
 		return [...by.entries()]
-			.filter(([slug, list]) => !query || `${slug} ${list[0]!.name} ${list[0]!.description}`.toLowerCase().includes(query.toLowerCase()))
+			.filter(([slug, list]) => matchesAgentQuery(slug,`${list[0]!.name} ${list[0]!.description}`,query))
 			.sort(([a], [b]) => a.localeCompare(b));
 	});
 

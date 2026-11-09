@@ -34,6 +34,21 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 - Colors and chart styling come from the tokens in `src/app.css` (light and dark); use those rather
   than new hex values.
 
+## Night Lab PWA
+
+`/night-lab/` redirects to the standalone installable `/night-lab/index.html` report. It has its own
+manifest and service-worker scope and uses the ordinary Trader hosting/authentication; it needs no
+extra server. All US500/US100 risk matrices and baseline trade paths are expanded. The historical
+study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
+current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
+
+Published assets are in `static/night-lab/`. Rebuild from the retained private study inputs with
+`python3 ops/lab/build-night-lab.py` at the repo root, inside trader.slice. Source template/worker
+are under `ops/lab/`; generated assets contain derived research and public market facts, never
+credentials, account identifiers or captured raw ticks. Current constituent purchase estimates
+are snapshots, not a reconstruction of historical index membership. Source URLs/as-of dates,
+whole-share assumptions, CFD coverage gaps and benchmark limitations remain in the report.
+
 ## Develop
 
 ```sh
