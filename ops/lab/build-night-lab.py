@@ -54,6 +54,6 @@ packed=base64.b64encode(gzip.compress(json.dumps(data,separators=(',',':')).enco
 template=(ROOT/'ops/lab/night-lab-template.html').read_text();(OUT/'index.html').write_text(template.replace('__DATA__',packed))
 (OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]))
 (OUT/'manifest.webmanifest').write_text(json.dumps({'id':'/night-lab/','name':'Visar Night Lab','short_name':'Night Lab','start_url':'/night-lab/index.html','scope':'/night-lab/','display':'standalone','background_color':'#101114','theme_color':'#101114','icons':[{'src':'./icon-192.png','sizes':'192x192','type':'image/png'},{'src':'./icon-512.png','sizes':'512x512','type':'image/png'}]},indent=2)+'\n')
-for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_bytes((P/name).read_bytes())
+for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_text((P/name).read_text())
 print('Published',len(cohort),'cohort members; 648 risk cells;',len(trades),'+',len(us100),'baseline trades')
 print('Nasdaq fee-free full-cash price proxy',round(benchmarks['US100']['returnPct'],3),'%; whole-share scenario',round(whole,2),'USD; broker USD matches',len(known),'/101')
