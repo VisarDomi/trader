@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Match Night Lab comparisons by instrument: US500 strategies versus US500 1:1 hold and
+  US100 strategies versus US100 1:1 hold. Update every excess value, curve and legend;
+  show both hold summaries equally and retain zero-funding assumptions.
+
 - Correct Night Lab Capital cash reads to use the arena’s actual-demo stage; pin exact cohort
   source/instrument/tier, retain archived members, and invalidate the earlier forward cache.
   A regression verifies distinct virtual and actual returns rather than accepting duplicated values.

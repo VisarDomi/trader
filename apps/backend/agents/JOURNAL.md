@@ -3,6 +3,18 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-09 (Mon, user-requested) — match Night Lab hold comparisons
+
+- User corrected the opportunity-cost comparison: US500 against US500 1:1 hold, US100 against
+  US100 1:1 hold. Changed all 648 risk-cell and 20 cohort excess calculations, each dashed chart
+  baseline, legends and labels. Both full-cash, zero-funding hold summaries are visible. The
+  Nasdaq constituent purchase-budget snapshot remains its own separate section.
+- Regenerated the published report from the same frozen inputs. Added a regression covering
+  every strategy's benchmark identity/arithmetic and the original US500 cross-index mismatch.
+  Presentation/research only; no agent parameters, backtests, forward records or account changes.
+  No arena restart or native build is required. The static study cache revision updates with the
+  report so installed PWAs receive the corrected comparisons.
+
 ## 2026-11-09 (Mon, user-requested) — twenty-member Visar cohort and Night Lab
 
 - User expanded the requested cohort from ten to twenty: ten US500 including unchanged original

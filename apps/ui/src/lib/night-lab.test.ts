@@ -10,6 +10,16 @@ test('published study has all twenty members and all 648 bounded risk settings',
  const sum=report.stocks.rows.filter((r:any)=>r.usdMatched).reduce((n:number,r:any)=>n+r.minimumNotional,0);expect(sum).toBeCloseTo(report.stocks.partialCFDFloor,8);
  expect(report.stocks.rows.filter((r:any)=>r.usdMatched).every((r:any)=>r.currency==='USD'&&r.lotSize===1)).toBe(true);
 });
+test('all strategies use the hold benchmark of their own instrument',()=>{
+ for(const inst of report.instruments){
+  const hold=report.benchmarks[inst.epic];
+  expect(hold.exposure).toBe(1);expect(hold.funding).toBe(0);
+  for(const r of inst.runs){expect(r.benchmarkEpic).toBe(inst.epic);expect(r.benchmarkExcessPp).toBeCloseTo(r.returnPct-hold.returnPct,10)}
+ }
+ for(const r of report.cohort){expect(r.benchmarkEpic).toBe(r.epic);expect(r.benchmarkExcessPp).toBeCloseTo(r.metrics.totalReturn*100-report.benchmarks[r.epic].returnPct,10)}
+ const original=report.cohort.find((r:any)=>r.id==='visar-night-trading');
+ expect(original.benchmarkExcessPp).not.toBeCloseTo(original.metrics.totalReturn*100-report.benchmarks.US100.returnPct,5);
+});
 test('offline worker preserves the last complete cohort, marks it saved, and ignores unrelated paths',async()=>{
  const listeners=new Map<string,Function>(),saved=new Map<string,Response>();
  let fail=false,incomplete=false;

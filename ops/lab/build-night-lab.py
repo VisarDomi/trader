@@ -17,7 +17,7 @@ instruments=[]
 for epic,prefix in [('US500',''),('US100','us100-')]:
     g=load(prefix+'grid-summary.json');runs=[];curves={}
     for r in g['runs']:
-        x={k:v for k,v in r.items() if k not in ['equity','rejectReasons','stoppedThenPositive']};x['nasdaqExcessPp']=r['returnPct']-benchmarks['US100']['returnPct'];runs.append(x)
+        x={k:v for k,v in r.items() if k not in ['equity','rejectReasons','stoppedThenPositive']};x['benchmarkEpic']=epic;x['benchmarkExcessPp']=r['returnPct']-benchmarks[epic]['returnPct'];runs.append(x)
         if r['profile'] in ['L1S50','L20S20','L50S5','L50S40','L100S10','L200S50']:curves[r['policy']+'/'+r['profile']]=r['equity']
     instruments.append({'epic':epic,'spec':g['spec'],'runs':runs,'curves':curves})
 stocks=load('stock-minimums.json');weight=sum(r['weight'] for r in stocks['rows']);known=[]
@@ -31,7 +31,7 @@ stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'whol
 cohort=[]
 files=list((ROOT/'apps/backend/data/backtests/2024-01_2026-09').glob('visar-night-lab__*'))+list((ROOT/'apps/backend/data/backtests/2024-01_2026-09').glob('visar-night-us100__*'))
 for r in [load('../night-audit-20261108/baseline-x200.json')]+[json.loads(f.read_text()) for f in files]:
-    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'nasdaqExcessPp':r['metrics']['totalReturn']*100-benchmarks['US100']['returnPct']})
+    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct']})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 trades=load('breakdown.json')['rows']
