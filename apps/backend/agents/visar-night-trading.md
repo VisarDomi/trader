@@ -227,3 +227,166 @@ Calendar references: [Fed](https://www.federalreserve.gov/monetarypolicy/fomccal
 [BOJ 2024](https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_2024/index.htm),
 [2025](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref240731a.pdf),
 [2026](https://www.boj.or.jp/en/mopo/mpmsche_minu/m_ref/mref250731a.pdf).
+
+## Breakdown of the 71 original trades — 2026-11-09
+
+User-requested decision support for defining a consistently bullish/bearish session. Same frozen
+source, January 2024–September 2026 tape and 71 primary tick-engine fills as the audit above.
+No deployed agent, parameter, admission or forward record changed. These are descriptive groups of original
+trades, not backtests of revised strategies. Returns below are arithmetic means of each original
+trade's P&L divided by its entry equity; they are not compounded portfolio returns.
+
+### Which daytime features separate outcomes?
+
+| Day feature | Trades | Wins | Mean account return/trade | Mean full-five-hour price move |
+|---|---:|---:|---:|---:|
+| All qualifying trades | 71 | 31 | −6.90% | −2.99 bp |
+| Largest adverse move <35% of session range | 22 | 12 | −0.12% | −0.73 bp |
+| Largest adverse move 35% to <50% | 29 | 13 | −4.05% | +0.69 bp |
+| Largest adverse move 50–75% | 20 | 6 | −18.47% | −10.82 bp |
+| Only 13–15 of 26 quarter-hours agree | 25 | 8 | −14.45% | −8.76 bp |
+| 16–18 quarter-hours agree | 42 | 20 | −3.38% | −0.03 bp |
+| 19–26 quarter-hours agree | 4 | 3 | +3.44% | +1.96 bp |
+| Path efficiency ≥60% | 3 | 2 | +3.80% | +2.11 bp |
+| Long | 45 | 22 | −5.83% | −3.15 bp |
+| Short | 26 | 9 | −8.74% | −2.72 bp |
+
+The price column uses the same entries and the tier-1 diagnostic's scheduled 08:27 exits, including
+bid/ask spread, without the tight 1:200 stop. All 71 entry times, prices and sides match the primary
+replay; none of the tier-1 trades stopped. One basis point is 0.01% of price. It separates directional
+price performance from the primary leverage/stop outcome; it is not an unlevered account return.
+
+The large-reversal group loses in each year: mean account returns −25.03% (N=7) in 2024, −8.54%
+(N=7) in 2025 and −22.40% (N=6) in January–September 2026. The <35% group averages +3.41% (N=9),
++1.82% (N=6), then −6.33% (N=7). Cleaner paths are a plausible next hypothesis, not an established
+profitable rule. Thirteen agreeing steps are only half the session; that proxy is looser than a
+strong everyday reading of "consistently bullish/bearish."
+
+### Frequency cost of tighter definitions
+
+Each row changes only the named filter and retains the other current conditions. Annual frequency
+is the retained fill count divided by the original 2.75-year window, not a prediction. The 50%
+reversal, 16-step and 80% body rows combine simple displayed bins after inspecting outcomes;
+all comparisons are exploratory and share the same observations.
+
+| Keep only | Trades | Trades/year | Mean return/trade | 2024 | 2025 | 2026 Jan–Sep |
+|---|---:|---:|---:|---:|---:|---:|
+| Current rule | 71 | 25.8 | −6.90% | −5.07% | −2.17% | −14.25% |
+| Adverse move <50% of range | 51 | 18.6 | −2.36% | +3.14% | +0.30% | −11.19% |
+| Adverse move ≤35% | 22 | 8.0 | −0.12% | +3.41% | +1.82% | −6.33% |
+| At least 16/26 steps agree | 46 | 16.7 | −2.79% | −2.41% | +0.69% | −7.81% |
+| Open-to-close body ≥80% of range | 18 | 6.5 | +1.99% | +5.83% | −3.28% | +4.47% |
+| Efficiency ≥60% | 3 | 1.1 | +3.80% | +3.80% | No trades | No trades |
+| Morning and afternoon both align | 61 | 22.2 | −6.84% | −4.34% | −4.13% | −13.59% |
+
+The 80% body row is a possible separate hypothesis, but N=18 is small and 2025 still loses.
+An ever-higher body threshold is not monotonically better: the three trades with body ≥90% average
+−2.95%. A larger net day move alone does not rescue this sample either: all three move-size groups
+(0.25–<0.5%, 0.5–<1%, ≥1%) have negative mean account returns. Eleven primary trades stopped; only
+two would have finished positive at 08:27. Removing stops is not supported by that observation.
+
+There is no validated replacement here. The strongest follow-up is a separately versioned,
+prospectively frozen test excluding large reversals, with smaller independently declared risk;
+it must accept fewer trades instead of relaxing filters to fill a 25–50/year quota. Do not silently
+apply a winning-looking subgroup to the original run. The 2025/2026 slices have already been seen
+and cannot serve as untouched validation for a newly selected threshold. Correlated features,
+multiple comparisons and small groups prevent treating these descriptive gaps as proven effects.
+
+### Per-trade inspection and retained artifacts
+
+Private derived artifacts are in `data/night-breakdown-20261109/`: `spec.json` records the simple
+group boundaries, `analyze.py` joins the independent oracle to both frozen ledgers, `breakdown.json`
+and `trades.csv` contain every trade, and `71-trades.html` is the self-contained interactive view.
+It provides feature-group outcomes and year counts, selectable candidate subsets, all 71 setups
+on an efficiency/reversal scatterplot, and each previous NY session's 15-minute close path with a
+minute-OHLC envelope, largest conservative adverse span, current threshold headroom, night pullback,
+entry/exit, stop/deadline reason and actual spread drag. The clean first setup (January 8, 2024;
+74.1% efficiency, 19 agreeing steps, only 13.5% reversal) still led to a −15.88% night trade on
+January 9: a directional day does not by itself establish the overnight continuation hypothesis.
+
+Validation checks all 71 unique date/side joins, complete bin partitions, recomputed checkpoint
+efficiencies and agreement of all plotted adverse spans with the independent oracle. Input SHA-256
+remains the audit's frozen hash. Work ran inside trader.slice with one CPU /1 GiB limits; ordinary
+heavy-service holds were not changed. No raw ticks were copied. The earlier agent source without
+body/range guards is not reproduced by filtering these current 71 trades with its three old path
+cutoffs; that current-trade intersection has just one fill and must not be confused with its old
+three-trade backtest.
+
+### Leverage × per-trade loss-limit decision grid
+
+The user clarified that "accuracy" means the win rate at each leverage and allowed **single-trade
+loss**, such as −20% or −40%, with no configured target beyond −50%. It does not mean portfolio
+peak-to-trough drawdown. The completed study replays all **324 combinations**: six day definitions,
+all nine platform leverage tiers (1, 2, 3, 5, 10, 20, 50, 100, 200), and loss targets 5%, 10%, 20%,
+30%, 40%, 50% of trade-start capital. Margin use is held at 90%. Every cell starts with fresh $10,000
+and runs the full engine over the same generated tick tape, including rounded position sizes,
+ordinary-stop rebasing, bid/ask spread, latency, deadline expiry and broker distance restrictions.
+It is not an extrapolation from the original ledger or a promotion search.
+
+Current day definition, percent of filled trades that win:
+
+| Leverage | −5% stop | −10% | −20% | −30% | −40% | −50% |
+|---|---:|---:|---:|---:|---:|---:|
+| 1:1 | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:2 | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:3 | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:5 | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:10 | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:20 | 43.7% | 46.5% | 46.5% | 46.5% | 46.5% | 46.5% |
+| 1:50 | 38.0% | 42.3% | 45.1% | 46.5% | 46.5% | 46.5% |
+| 1:100 | 19.7% | 38.0% | 42.3% | 43.7% | 45.1% | 46.5% |
+| 1:200 | 9.7%* | 19.7% | 38.0% | 42.3% | 42.3% | 43.7% |
+
+All cells have 71 fills except *1:200/5%: six wins from 62, with nine stop-distance rejections plus
+the original one expired entry. Every ledger reconciles independently to the engine's ending cash;
+eligible nights equal fills plus logged entry rejections for every cell. Three current-policy/50%
+controls at tiers 1, 20 and 200 exactly reproduce the prior audit's trades, ending cash and tick-level
+maximum drawdown. A lower fill count is not mistaken for better signal selection.
+
+All 54 current-definition combinations lose overall. At 1:50, widening the loss target from 5% to
+50% raises win rate from 38.03% to 46.48%, yet worsens total return from −52.95% to −68.60%.
+Win rate must be evaluated with payoff sizes, compounded return and worst actual loss. Original
+1:200/50% average percentage win/loss is +17.96%/−26.16%, implying roughly 59.3% wins for a positive
+arithmetic mean if those payoff sizes stayed fixed, above the observed 43.66%. That is a descriptive
+break-even calculation, not a forecast or a guarantee of positive compound growth.
+
+Tighter day definitions change the frequency/risk trade-off. With 50% loss targets:
+
+| Definition | Fills/year | 1:20 win rate | 1:20 total return / max DD | 1:200 total return / max DD |
+|---|---:|---:|---:|---:|
+| Current | 25.8 | 46.48% (71) | −33.86% /34.91% | −99.9779% /99.9812% |
+| Adverse reversal ≤50% | 18.6 | 52.94% (51) | −1.04% /18.90% | −96.85% /98.88% |
+| Adverse reversal ≤35% | 8.0 | 54.55% (22) | −3.89% /14.11% | −64.31% /84.38% |
+| At least 16 agreeing steps | 16.7 | 54.35% (46) | −0.36% /18.16% | −96.34% /97.35% |
+| Body ≥80% | 6.5 | 61.11% (18) | +9.85% /14.87% | −43.00% /80.68% |
+| Efficiency ≥60% | 1.1 | 66.67% (3) | +1.12% /3.36% | +8.63% /29.95% |
+
+The body ≥80% subset's positive arithmetic average at 1:200 still compounds to a 43% loss: sizing
+and volatility matter even after a cleaner-looking signal is selected. Its lower-exposure result
+is worth further study, with only 18 trades. The efficiency subset still has only three, all in 2024.
+None of the 324 cells provides new independent data or untouched validation. Do not select a live
+replacement by ranking this grid's returns.
+
+The interactive view now opens on the decision grid. Users can select the day definition, then a
+leverage/loss cell, or switch the matrix between win rate, total return, worst trade and portfolio
+drawdown. Details show actual N/eligible nights, frequency, win-rate Wilson interval, equity curve,
+mean return, win/loss sizes, break-even rate at those sizes, longest loss streak, spread drag,
+yearly outcomes and categorized broker rejections. The original day-group and all-71-path views
+remain available. Portfolio maximum drawdown is measured on ticks; the plotted curve is daily close.
+The loss target and pooled broker margin closeout are different calculations. Ordinary stops may
+overshoot; [Capital's execution explanation](https://help.capital.com/hc/en-us/articles/360016573100-Why-did-Stop-Loss-trigger-incorrectly)
+also states that they fill at the first available price. No guaranteed-stop fill or fee is assumed.
+
+Seven representative current-policy risk cells were additionally replayed under seeds 2 and 3 at
+16 ticks/minute and seed 1 at 64/minute (21 checks). The 1:200/50% controls retain 31/71 wins across
+all four paths; ending cash ranges $1.85–$2.36. The very tight 1:200/5% case varies from 61 to 63
+fills, 9.5–11.5% wins and −82.45% to −75.42% total return; it remains poor but exact historical
+fills are not established. Selected tested cells show these ranges. Intraminute path, historical
+spread and rule-snapshot limits matter especially for tight stops.
+
+Artifacts: `risk-grid.ts`, `grid-spec.json`, six `grid-<policy>.json` files, `grid-summary.py`,
+`grid-summary.json`, `risk-grid.csv`, `grid-sensitivity.ts` and its three result files, plus the
+updated standalone `71-trades.html` and builder. Two bounded replay jobs each used one CPU /2 GiB
+inside trader.slice; the bounded sensitivity job ran there as well. No production changes or
+arena restart. The original eight-profile pilot (`risk-study.ts`, `risk-results.json`) is retained
+as a diagnostic, superseded for the main comparison by this complete grid.
