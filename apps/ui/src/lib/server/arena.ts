@@ -56,6 +56,7 @@ export const arena = {
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
 	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
+	twins: (days: number) => call<any>(`/api/twins?days=${days}`),
 	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),
 	setExcluded: (runId: string, excluded: boolean) => post<BrokerStatus>('/api/broker/exclude', { runId, excluded }),
 };

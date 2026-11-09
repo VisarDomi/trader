@@ -159,13 +159,39 @@ agents that size with `marginPct` use the high leverage.
   rebalancing holders) need at least 5 trades per run instead of 20; they are judged by the slow-agent rule.
   Controls are not gated. Log rejected ideas too.
 
+## Paper–demo twins
+
+Every run that trades on a Capital.com demo account also runs as paper in our engine, from the same
+decisions (the demo deal is 0.2 × the paper size). Each closed demo deal is paired with its paper trade and
+compared per unit of notional; a pair **agrees** when the two returns differ by at most one typical spread.
+Pairs that keep agreeing are the evidence that paper results stand for demo results, which is what lets
+paper carry the agents that never get one of the 450 demo slots. A divergence is an engine or mirror bug
+until shown otherwise. The dashboard shows it under More → Paper vs demo (`/api/twins`); `bun run twins`
+prints the daily check. Agent verdicts over a window: converged (≥90% agree, mean gap within half a
+spread), diverged (<75% agree or mean gap beyond a spread), watch in between, too few under 5 pairs.
+
+Known sources of gaps (2026-11-09): Capital's demo quote stream arrives 6–13 s after each quote's
+timestamp (REST shows the price 5–7 s earlier), so Capital's own stops fire before ours; demo orders reach
+Capital ~1 s after the paper fill (16 s at the 95th percentile at top-of-hour bursts); paper funding has
+run above Capital's booked swaps. Since `2026-11-feed-time` paper fills use the first quote stamped at or
+after the moment the order reaches Capital, and minutes close only once their late quotes arrive.
+
 ## Each visit (runbook)
+
+Visits are daily (09:30 Tirana). Steps 2–3 every day; retirements, additions and the full journal entry as
+the steps below say. A quiet day with nothing to fix gets a one-line journal note only when the twin check
+or health changed.
 
 1. Read `../../../setup.md` (hard rules), this file, and the three newest entries of `JOURNAL.md`.
 2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*' 'pc-server-trader*'` and, if last night's
    backtests matter, `journalctl --user -u trader-lab -n 40`.
-3. **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
-   pending commands, missing close values, CPU, poll duration and memory. Contract probe: `bun run audit-capital`
+3. **Twins.** `bun run twins`. Every `CHECK` line gets a look: open the diverged agents on Paper vs demo,
+   compare the largest gaps' fills with the recorded quotes (the tick archive has both quote and arrival
+   times), and fix the engine or the mirror when the cause is ours. Record what you found, including
+   "unexplained", in the journal; never tune an agent to the demo results.
+   **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
+   pending commands, missing close values, CPU (`cpuParts` splits it by part: quotes, bars, persist, api …),
+   Capital's quote delay (`feed`), poll duration and memory. Contract probe: `bun run audit-capital`
    is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
     Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).
    Confirm `trader-tick-archive.timer` has a future trigger and that verified acknowledgements advance;
