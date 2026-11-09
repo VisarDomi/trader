@@ -5,6 +5,29 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon, user-requested) — direction controls for the night cohort
+
+- Why: the overnight assessment suggested comparing the night rule with always-long and random-direction
+  trades on the same eligible nights; the user asked to add both as control agents, two per index, replacing
+  two agents per index so the cohort stays at 20.
+- Added `visar-night-v2-control-us100` and `-us500`, each with `always-long` and `random-direction`. Their
+  source is the v2 reference with one change: on a night the rule would trade (same window, day filter, gap,
+  calendar and clocks), the side is long, or a fair coin from `ctx.random()` (reproducible per run). Settings
+  equal their partner `frequent-core` exactly (US100: 1:20, −20%, +20% or 08:27; US500: 1:20, −10%, 08:27).
+  Controls in `CONTROL_SLUGS` (never judged or retired) with user-requested demo admissions on 1:20.
+- Removed, by roster with replacement reasons (records kept in the Graveyard): US500 `full-reversal` (1:100)
+  and `full-steps` (1:50), US100 `largest-gap` (1:100) and `full-steps` (1:3), the overnight assessment's
+  lowest-weight roles (full-session or sparse/large-gap). Shortlisted families are untouched.
+- Backtest 2024-01 – 2026-09, same nights (equal trade counts confirm it): US100 rule +132% (67 trades),
+  always long +52%, random −55%; US500 rule +18% (81), always long −4%, random +1%. Random is one coin
+  sequence. The rule beat both controls on both indexes in history; the forward records will test it.
+- Night Lab report rebuilt (only the cohort changed; the 16 kept members are byte-identical) with a same-nights
+  comparison table; strategy explanations show the control's side against the rule's.
+- Deployed 4a6e029: 89 agents, 4,653 runs, no load errors. All 20 cohort runs assigned to Capital; the
+  original's record matches the pre-deploy snapshot (2 trades, $19,696). The controls took four 1:20 slots
+  from flat legacy `adx-dmi` runs (US500, US30, GOLD, SILVER), which continue on paper. Verdicts: control 148,
+  early 396, keep 8, leader 0; monkeys 0 of 36. Backend 181 and UI 22 tests pass.
+
 ## 2026-11-09 (Mon) — babysitter visit, virtual day 33
 
 - Ran at 15:45 UTC instead of 08:30: the scheduled run failed twice on its provider (unsupported model).
