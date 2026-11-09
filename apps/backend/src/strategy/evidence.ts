@@ -2,6 +2,7 @@ import type { AgentContext, Bar, OrderOptions, Side } from '../sdk/types';
 import { TIMEFRAME_MS } from '../sdk/types';
 import { localTime, TZ } from '../sdk/time';
 import { nightSessionFeatures, nightCalendarAllows,classifyNightSession } from '../../agents/visar-night-trading';
+import { nightSessionFeatures as windowFeatures, classifyNightSession as windowClassify } from '../../agents/visar-night-v2-us500/reference';
 import versions from './versions.json';
 
 export type Basis = 'recorded' | 'reconstructed' | 'unavailable';
@@ -78,22 +79,25 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
     const previous=a.at(-2)!,now=last(a),old=typeof z==='number'?z:z.at(-2)!,current=typeof z==='number'?z:last(z);
     g(label+' · now',dir*(now-current),'>',0,'points');g(label+' · previous',dir*(previous-old),'<=',0,'points');
   };
-  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'){
+  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'||slug.startsWith('visar-night-v2-')){
     out.title='Directional New York day → overnight pullback';
-    const day=s.session,f=day?.points?.length?nightSessionFeatures(day):null;
-    const specs:[string,number,Gate['op'],number,string][]=[['Directional move',f?.movePct??NaN,'>=',p.trendPct,'%'],['Path efficiency',(f?.efficiency??NaN)*100,'>=',p.minEfficiency*100,'%'],['Agreeing 15-minute steps',(f?.directionalShare??NaN)*100,'>=',p.minDirectionalShare*100,'%'],['Largest counter-move / range',(f?.retraceShare??NaN)*100,'<=',p.maxRetraceShare*100,'%'],['Session range',f?.rangePct??NaN,'<=',p.maxRangePct,'%'],['Net move / range',(f?.bodyShare??NaN)*100,'>=',p.minBodyShare*100,'%'],['Observed minutes',f?.minutes??NaN,'>=',Math.ceil(390*p.minCoverage),'minutes'],['15-minute checkpoints',f?.checkpoints??NaN,'=',27,'points']];
+    const startMinute=p.sessionStart??570,endMinute=p.sessionEnd??960,minutes=endMinute-startMinute;
+    const day=s.session,f=day?.points?.length?(slug.startsWith('visar-night-v2-')?windowFeatures(day,minutes):nightSessionFeatures(day)):null;
+    const specs:[string,number,Gate['op'],number,string][]=[['Directional move',f?.movePct??NaN,'>=',p.trendPct,'%'],['Path efficiency',(f?.efficiency??NaN)*100,'>=',p.minEfficiency*100,'%'],['Agreeing 15-minute steps',(f?.directionalShare??NaN)*100,'>=',p.minDirectionalShare*100,'%'],['Largest counter-move / range',(f?.retraceShare??NaN)*100,'<=',p.maxRetraceShare*100,'%'],['Session range',f?.rangePct??NaN,'<=',p.maxRangePct,'%'],['Net move / range',(f?.bodyShare??NaN)*100,'>=',p.minBodyShare*100,'%'],['Observed minutes',f?.minutes??NaN,'>=',Math.ceil(minutes*p.minCoverage),'minutes'],['15-minute checkpoints',f?.checkpoints??NaN,'=',minutes/15+1,'points']];
     for(const x of specs)g(...x);
     if(day?.date&&f){
-      const start=atLocal(day.date,TZ.NEW_YORK,570),points=day.points.map((value:number,i:number)=>({t:start+i*900000,value})),classified=classifyNightSession(f,p as any);
-      out.panels.push({title:`Previous New York session · ${classified>0?'bullish':classified<0?'bearish':'did not qualify'}`,unit:'Price',note:'09:30–16:00 New York · 15-minute decision checkpoints. Intraminute retraces use conservative high/low excursions.',series:[{name:'Session path',points}],guides:[{label:'Cash open',value:day.open},{label:'Minimum bullish close',value:day.open*(1+p.trendPct/100)},{label:'Maximum bearish close',value:day.open*(1-p.trendPct/100)}],markers:[],from:start,through:start+390*60000});
+      const start=atLocal(day.date,TZ.NEW_YORK,startMinute),points=day.points.map((value:number,i:number)=>({t:start+i*900000,value})),classified=slug.startsWith('visar-night-v2-')?windowClassify(f,p as any,minutes):classifyNightSession(f,p as any);
+      out.panels.push({title:`Previous New York session · ${classified>0?'bullish':classified<0?'bearish':'did not qualify'}`,unit:'Price',note:`${startMinute===630?'10:30–15:30; first hour and last half-hour ignored':'09:30–16:00'} New York · 15-minute decision checkpoints. Intraminute retraces use conservative high/low excursions.`,series:[{name:'Session path',points}],guides:[{label:'Recognition open',value:day.open},{label:'Minimum bullish close',value:day.open*(1+p.trendPct/100)},{label:'Maximum bearish close',value:day.open*(1-p.trendPct/100)}],markers:[],from:start,through:start+minutes*60000});
       const entry=localTime(c.time,p.timeZone),yesterday=new Date(Date.UTC(entry.year,entry.month-1,entry.day)-86400000).toISOString().slice(0,10);
       g('Session direction',classified,'=',dir,'');g('Calendar allows entry',nightCalendarAllows(yesterday,entry.date)?1:0,'=',1,'yes/no');
       g('Entry clock',entry.minuteOfDay,'=',207,'minute of day');
       g('Weekday entry',entry.weekday>=1&&entry.weekday<=5?1:0,'=',1,'yes/no');
       g('Reference belongs to previous day',s.referenceDate===yesterday?1:0,'=',1,'yes/no');
       if(s.reference>0){g(side==='long'?'Dip below 22:00 reference':'Bounce above 22:00 reference',price,side==='long'?'<':'>',s.reference,'Price');
+        const minimum=p.minPullbackBp??0;
+        if(slug.startsWith('visar-night-v2-'))g('Minimum opposite-side bid gap',dir*(s.reference-price)/s.reference*10000,'>=',minimum,'bp');
         const at=atLocal(yesterday,p.timeZone,1320),candles=b.filter(x=>x.time+tf>=at);
-        out.panels.push({title:'22:00 reference → 03:27 decision',unit:'Price',note:`${p.timeZone} · last closed bid prices, before execution spread.`,series:[{name:'Overnight price',points:sampled(candles,candles.map(x=>x.close),tf,true)}],guides:[{label:'22:00 reference',value:s.reference}],markers:[{t:c.bar.time+tf,value:price,label:'SIGNAL'}],from:at,through:c.bar.time+tf});
+        out.panels.push({title:'22:00 reference → 03:27 decision',unit:'Price',note:`${p.timeZone} · last closed bid prices, before execution spread. Minimum counter-move ${minimum}bp.`,series:[{name:'Overnight price',points:sampled(candles,candles.map(x=>x.close),tf,true)}],guides:[{label:'22:00 reference',value:s.reference},...(minimum>0?[{label:`${minimum}bp entry boundary`,value:s.reference*(1-dir*minimum/10000)}]:[])],markers:[{t:c.bar.time+tf,value:price,label:'SIGNAL'}],from:at,through:c.bar.time+tf});
       }else g('22:00 reference',NaN,'>',0,'Price');
     }
     out.exitRule=`08:27 ${p.timeZone}; protective loss budget ${p.lossPct}% of entry capital. Opening/reference candles, coverage and policy-event filters must qualify.`;

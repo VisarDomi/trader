@@ -29,4 +29,7 @@ recorded decision and is never relabeled as retained input. No new forecast is g
 Night context reconstructs the exact reviewed session feature formulas: 09:30–16:00 New York,
 15-minute checkpoints, move, efficiency, directional share, conservative retrace, range/body,
 coverage and policy/calendar eligibility; then the prior 22:00 reference and 03:27 pullback in Tirana.
+The versioned v2 night families also support10:30–15:30 recognition (20steps/21points) and their
+0/5/15/30bp minimum opposite-side bid gap. Both reconstructed and recorded panels show the exact
+window, entry boundary and signed threshold headroom.
 The inspector cache/serialization queue and trader.slice limits apply to on-demand reconstruction.

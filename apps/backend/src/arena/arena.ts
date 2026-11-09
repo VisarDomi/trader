@@ -35,7 +35,7 @@ import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import { loadAgents } from '../engine/loader.ts';
 import type { Roster } from '../engine/roster.ts';
-import { demoAdmissionFor, loadRoster, planRuns } from '../engine/roster.ts';
+import { demoAdmissionFor, loadRoster, planRuns, retiredBy } from '../engine/roster.ts';
 import { demoRunId } from '../engine/run-id.ts';
 import type { ClosedBar } from '../engine/market.ts';
 import { MarketEngine } from '../engine/market.ts';
@@ -401,14 +401,14 @@ export class Arena {
     for (const old of active) {
       if (this.tracked.has(old.id) || rosterRetired.has(old.id)) continue;
       const hash = agentHash.get(old.agent_id);
-      const why =
+      const why = (old.leverage===null?null:retiredBy(this.roster!,old.agent_id,old.epic,old.leverage)?.reason) ?? (
         hash === undefined
           ? 'agent no longer exists'
           : hash !== old.code_hash
             ? 'agent code changed'
             : old.leverage === null
               ? 'runs now trade at an account leverage; restarted per tier'
-              : 'its leverage tier is no longer planned (agents/roster.json)';
+              : 'its leverage tier is no longer planned (agents/roster.json)');
       this.db.retireRun(old.id, now, RUN_STATUS.STOPPED, why);
       this.db.event('info', 'arena', `retired ${old.id}: ${why}`);
     }

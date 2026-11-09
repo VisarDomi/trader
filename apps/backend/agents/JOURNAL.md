@@ -3,6 +3,52 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+
+## 2026-11-09 (Mon, user-requested) — deploy gap/session cohort; show every dimension
+
+- User explicitly requested replacing the nineteen newly added experiments with backtest-selected,
+  diverse session/gap/risk variants and more frequent entries. Original visar-night-trading stays
+  byte-for-byte 56ac3bdfe7c1 and keeps its forward record. This request authorizes selection on the
+  inspected grid; it does not make the selected history independent validation.
+- Reproducible selection in ops/lab/select-night-cohort.py and research/night-cohort-20261109.json:
+  nine US500 plus ten US100 roles, two NY windows, all four gap minimums, five day definitions,
+  seven leverage tiers across the new agents plus the original1:200, and5/10/20/50% loss targets.
+  Positive historical return and <=40% portfolio DD are required; N>=20 except the explicit 30bp
+  endpoint with18. Ten higher-frequency roles have18.2–29.5entries/year; the remaining dimensions
+  deliberately include slower6.5–12.0/year roles. Two 1:1 endpoints remain. Financially identical
+  nonbinding stops are deduplicated; prefer20% rather than inventing diversity from equal histories.
+  Each role balances risk-adjusted return with parameter distance within75% of its available best
+  quality score. Tier capacities constrain selection, so no unrelated incumbent needs displacement.
+- Added visar-night-v2-us500 (nine) and visar-night-v2-us100 (ten), each with source-pinned demo
+  admissions. Recognition uses570–960 or630–930 NY minutes and the corresponding20/26 step
+  denominator; bullish+lower/bearish+higher remains strict, then enforces the selected0/5/15/30bp
+  minimum. Reference, clocks, policy exclusions, original market/latency/fill/stop callbacks remain.
+  Fresh source-specific full-engine backtests exactly match all nineteen selected metric objects
+  and complete trade objects except the expanded human-readable entry reason. No filtered-ledger
+  shortcut. Backtests/check-agent passed inside trader.slice with two workers and bounded memory.
+- Superseded nineteen agents are moved unchanged into agents/_retired/. Roster reasons explicitly
+  identify replacement, not mature losing performance. Removed-source retirement now retains a
+  matching explicit roster reason rather than replacing it with generic missing-agent text.
+  Historical backtest, virtual and Capital records/source remain; no original trade is rewritten.
+  Typechecking excludes frozen archived source, whose original relative imports are preserved.
+- Native/web decision graphs now use the source-pinned session bounds,21/27 checkpoints,270/351
+  coverage and the agent-specific bid-gap boundary/headroom. Existing native rendering handles
+  these server panels; no app install is required. Sparse v2 roles with fewer than30 historical
+  fills receive180days to observe an entry; frequent roles retain60. Error/ruin/demotion unchanged.
+- Removed the report's gap selector after the user rejected hidden comparisons. All5,184risk cells
+  and48equity plots render together. Every day policy first groups all four gap charts, then shows
+  full/central leverage/loss tables for every gap. Both-instrument summaries show all day filters,
+  windows and gaps together. Baseline trade paths show each night's gap membership once, avoiding
+  four copies of the same setup. No tabs, accordions or selection required to reveal results.
+  Cohort rows expose session, policy, minimum gap and observed frequency. Offline forward caches
+  are keyed to exact cohort identity, so old20-row responses cannot masquerade as the replacements.
+- Pre-deploy: stream/model healthy,4600virtual (553standard),442Capital assignments, queue0,
+  no dropped ticks,13.9GB storage and33.6GB two-year projection/72.4GB stress under100GB.
+  Verdicts401early/8keep/0leader/144controls; monkeys0/36. All nineteen replaced virtual records
+  were checked flat; the bounded broker deal read has no corresponding open deal. Holds, accounts,
+  original account leverage, capture/archive and unrelated services remain unchanged.
+
+
 ## 2026-11-09 (Mon, user-requested) — rare event context, central session and gap sizes
 
 - Publication exposed that the shared publisher invoked dashboard builds outside trader.slice.
@@ -1254,6 +1300,8 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 - Next: no retirements possible before early November; first new agents on Monday 2026-10-12.
 
 ## Idea log
+
+- Visar night v2 — user-selected full/central-session and minimum bid-gap/risk cohort; ten higher-frequency roles, nineteen replacements plus unchanged original. Backtest-selected, not validated; old nineteen archived (2026-11-09).
 
 One line per idea: agent — mechanism — status (date).
 

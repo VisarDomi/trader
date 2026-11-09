@@ -18,6 +18,19 @@ import { ENGINE_VERSION } from '../engine/version.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
 import { backtestGate } from './pipeline.ts';
 
+test('removing an agent preserves its explicit roster replacement reason in the Graveyard record',()=>{
+ const db=new ArenaDB(':memory:'),now=Date.UTC(2026,10,9),id='demo:removed';
+ const arena=new Arena({db,dataClient:{} as CapitalClient,forecasterUrl:'',broker:null,live:false});
+ try{
+  db.createDemoRun({id,agentId:'removed',codeHash:'old',epic:'US500',leverage:1,capital:10000,params:{},now});
+  const restore=arena as unknown as {roster:ReturnType<typeof loadRoster>;createRuns(at:number):Set<string>};
+  restore.roster={accounts:{},leverage:{default:1,agents:{}},retired:{'removed:US500@1':{date:'2026-11-09',reason:'Superseded user experiment; preserve history.'}}};
+  restore.createRuns(now+1);
+  expect(db.run(id)?.retired).toBe(1);
+  expect(JSON.parse(db.run(id)!.extra!).retirement.reason).toBe('Superseded user experiment; preserve history.');
+ }finally{arena.stop();db.db.close()}
+});
+
 test('instrument dirtiness persists quote-only state once and preserves untouched instruments', () => {
   const now = Date.UTC(2026, 9, 26, 12, 1), clock = spyOn(Date, 'now').mockReturnValue(now);
   const db = new ArenaDB(':memory:');

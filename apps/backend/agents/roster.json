@@ -151,62 +151,62 @@
       "random-baseline/monkey-c": [
         200
       ],
-      "visar-night-lab/broad-1x": [
-        1
-      ],
-      "visar-night-lab/broad-5x": [
-        5
-      ],
-      "visar-night-lab/steps-3x": [
-        3
-      ],
-      "visar-night-lab/steps-10x": [
-        10
-      ],
-      "visar-night-lab/body-5x": [
-        5
-      ],
-      "visar-night-lab/body-20x": [
+      "visar-night-v2-us500/frequent-core": [
         20
       ],
-      "visar-night-lab/body-tight-100x": [
-        100
+      "visar-night-v2-us100/frequent-core": [
+        20
       ],
-      "visar-night-lab/retrace-100x": [
-        100
-      ],
-      "visar-night-lab/clean-50x": [
+      "visar-night-v2-us500/frequent-gap": [
         50
       ],
-      "visar-night-us100/baseline-1x": [
-        1
+      "visar-night-v2-us100/frequent-gap": [
+        20
       ],
-      "visar-night-us100/broad-5x": [
-        5
-      ],
-      "visar-night-us100/body-5x": [
-        5
-      ],
-      "visar-night-us100/steps-1x": [
-        1
-      ],
-      "visar-night-us100/steps-3x": [
-        3
-      ],
-      "visar-night-us100/steps-10x": [
+      "visar-night-v2-us500/frequent-reversal": [
         10
       ],
-      "visar-night-us100/steps-20x": [
-        20
+      "visar-night-v2-us100/frequent-reversal": [
+        10
       ],
-      "visar-night-us100/steps-tight-20x": [
-        20
-      ],
-      "visar-night-us100/steps-tight-50x": [
+      "visar-night-v2-us500/frequent-reversal-gap": [
         50
       ],
-      "visar-night-us100/steps-tight-100x": [
+      "visar-night-v2-us100/frequent-small": [
+        5
+      ],
+      "visar-night-v2-us500/frequent-small": [
+        1
+      ],
+      "visar-night-v2-us100/frequent-gap-small": [
+        1
+      ],
+      "visar-night-v2-us500/full-steps": [
+        10
+      ],
+      "visar-night-v2-us100/central-reversal": [
+        50
+      ],
+      "visar-night-v2-us500/full-reversal": [
         100
+      ],
+      "visar-night-v2-us100/large-gap": [
+        50
+      ],
+      "visar-night-v2-us500/central-body": [
+        50
+      ],
+      "visar-night-v2-us100/largest-gap": [
+        10
+      ],
+      "visar-night-v2-us500/central-steps": [
+        10
+      ],
+      "visar-night-v2-us100/full-steps": [
+        3
+      ],
+      "visar-night-v2-us100/central-body": [
+        5
       ]
     }
   },
@@ -286,6 +286,82 @@
     "timesfm-trend:GBPUSD@20": {
       "date": "2026-11-09",
       "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.56, N=16, return=-3.96%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "visar-night-lab/body-tight-100x:US500@100": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/steps-10x:US500@10": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/broad-5x:US500@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/body-5x:US500@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/body-20x:US500@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/clean-50x:US500@50": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/retrace-100x:US500@100": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/steps-3x:US500@3": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-lab/broad-1x:US500@1": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/broad-5x:US100@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/baseline-1x:US100@1": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-20x:US100@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-tight-100x:US100@100": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/body-5x:US100@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-3x:US100@3": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-10x:US100@10": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-tight-50x:US100@50": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-tight-20x:US100@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-us100/steps-1x:US100@1": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
     }
   },
   "demoAdmissions": {
@@ -294,100 +370,100 @@
       "date": "2026-10-15",
       "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply."
     },
-    "visar-night-lab/broad-1x:US500@1": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us500/frequent-core:US500@20": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=81. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/broad-5x:US500@5": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us100/frequent-core:US100@20": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=67. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/steps-3x:US500@3": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us500/frequent-gap:US500@50": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=61. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/steps-10x:US500@10": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us100/frequent-gap:US100@20": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=54. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/body-5x:US500@5": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us500/frequent-reversal:US500@10": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=68. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/body-20x:US500@20": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us100/frequent-reversal:US100@10": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=50. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/body-tight-100x:US500@100": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us500/frequent-reversal-gap:US500@50": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=51. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/retrace-100x:US500@100": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us100/frequent-small:US100@5": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=67. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-lab/clean-50x:US500@50": {
-      "codeHash": "b50b682fde5b",
+    "visar-night-v2-us500/frequent-small:US500@1": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=81. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/baseline-1x:US100@1": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/frequent-gap-small:US100@1": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=54. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/broad-5x:US100@5": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us500/full-steps:US500@10": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 5bp; inspected N=33. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/body-5x:US100@5": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/central-reversal:US100@50": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=28. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-1x:US100@1": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us500/full-reversal:US500@100": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 0bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-3x:US100@3": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/large-gap:US100@50": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 15bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-10x:US100@10": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us500/central-body:US500@50": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=22. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-20x:US100@20": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/largest-gap:US100@10": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 30bp; inspected N=18. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-tight-20x:US100@20": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us500/central-steps:US500@10": {
+      "codeHash": "03ad8a5b06df",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 5bp; inspected N=25. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-tight-50x:US100@50": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/full-steps:US100@3": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. full NY window; minimum counter-move 5bp; inspected N=25. Not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-us100/steps-tight-100x:US100@100": {
-      "codeHash": "8f1a2d30b2c0",
+    "visar-night-v2-us100/central-body:US100@5": {
+      "codeHash": "5ff415eb93d8",
       "date": "2026-11-09",
-      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+      "reason": "Explicit user request to replace the nineteen experiments with diverse, backtest-selected session/gap/risk variants and more frequent roles. central NY window; minimum counter-move 0bp; inspected N=24. Not validation; normal safety and subsequent demotion apply."
     }
   }
 }
