@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Add full09:30–16:00 versus central10:30–15:30 NY recognition and minimum counter-moves of
+  0/5/15/30bp. Show all gap summaries together, paired risk grids/curves, per-year evidence and
+  ignored-edge trade paths; keep all5,184research settings in exports. Live cohort remains frozen.
+- Annotate rare major policy/tariff/geopolitical/market dates with sources and honest timing.
+  Keep retrospective/date-only labels separate from verified entry-time knowledge. Persist the
+  selected gap in the URL and restore its report offline with one canonical cached asset.
+
 - Match Night Lab comparisons by instrument: US500 strategies versus US500 1:1 hold and
   US100 strategies versus US100 1:1 hold. Update every excess value, curve and legend;
   show both hold summaries equally and retain zero-funding assumptions.

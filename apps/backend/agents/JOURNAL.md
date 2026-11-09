@@ -3,6 +3,57 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-09 (Mon, user-requested) — rare event context, central session and gap sizes
+
+- Confirmed the frozen original has always implemented the user's direction rule: bullish prior NY
+  session plus a 03:27 bid below the 22:00 reference buys; bearish plus a bid above sells. Equal or
+  same-side prices skip. Existing twenty agents accept any positive bid counter-move. Bid signal
+  distance and executable fill distance/cost are now separate fields in the report.
+- Added research-only 10:30–15:30 NY recognition alongside full 09:30–16:00. Only the recognition
+  window changes:300 minutes/20 intervals/21 points/270 minimum observations versus390/26/27/351.
+  Minimum agreement remains a fraction:baseline 10/20 or 13/26; stricter 16/26 requires 13/20.
+  All path features exclude the first hour and last half-hour in the central version. The 22:00
+  reference, 03:27/08:27 Albania clocks, policy-date guards and original execution/stop callbacks
+  remain fixed. A source-normalization regression proves the isolated research reference differs
+  from the frozen original only in these two window constants and SDK import path.
+- Added prespecified minimum positive gaps 0/5/15/30bp (0/0.05/0.15/0.30%). Full Cartesian study is
+  2 instruments×2 recognition windows×6 day policies×4 gap minimums×9 tiers×6 loss targets=5,184.
+  Threshold 0 preserves strict inequality; it does not allow equality. Research results never
+  upload to primary history or change the live cohort. All current source/admission hashes stay.
+- Independent Python/ZoneInfo oracle reproduces old full-session opportunities 72 US500/60US100,
+  and all new trade dates/sides. Central baseline opportunities 83/67 produce 81/67 fills: missing
+  execution minutes expire normally. All ledgers reconcile. At fixed 1:20/20% loss and any gap,
+  central US500 returns+17.9979%(81trades) and US100+125.1114%(67), versus full −33.8575%/−49.4033%.
+  These inspected historical dimensions are not fresh validation; no winner is automatically deployed.
+- To bound the enlarged replay, cached signals contain only prior-session features,22:00 reference
+  and the signal bid. The engine still executes original order/fill/stop logic on complete candidate
+  UTC days and while positions exist. Flat idle minutes retain their last generated quote. Every
+  one of 1,296 zero-gap control trade lists AND complete financial metrics exactly matches the prior
+  unthinned/full-strategy replay, across both windows/assets/policies/tiers/stops. No filtered-return
+  compounding shortcut or raw tick copy. Four one-CPU workers stayed inside trader.slice; per-worker
+  memory limits≤1.5 GiB and aggregate limits preserved. Eighteen additional central quote-path checks
+  (seeds 2/3, density 64) preserve the broad result; baseline 1:20/20% return ranges 17.86–18.67% US500,
+  125.11–127.35% US100. Financial source remains the original 56ac3bdfe7c1.
+- Curated major context is 54 of 706observed NY sessions (7.65%): scheduled FOMC/BOJ decision dates,
+  broad tariff regime changes, election day, major Iran/Israel/US war episodes and exceptional
+  VIX/DeepSeek repricing dates. No routine CPI/jobs/earnings/speaker/daily tariff commentary. Sources
+  and selection criteria are committed in research/night-lab-events.json. Source timestamps are
+  checked against entry when verified; date-only/retrospective context remains unknown, not falsely
+  ex-ante. Weekend shocks attach once to the first observed NY session. A 15% calendar-density guard
+  prevents silently turning most days into major days. No new news-based trading filter is applied.
+- Full-session baseline trade tags are 2/71 US500 and 2/60 US100; central baseline has none on this
+  curated list. Policy decision dates were already skipped and many shock days fail price-path guards.
+  Unlisted is explicitly not a verified quiet day. Trade paths shade ignored edges, show20vs26step
+  denominators and actual entry/exit/spread/signal/fill gaps. Every gap summary is side by side at
+  fixed 1:20/20%, with a persistent selector for detailed paired risk grids, charts, years and trades.
+  Each comparison still uses its own instrument's fee-free1:1hold. The live twenty stay visibly full
+  session/any positive gap. No arena restart or native update is needed for these research changes.
+- Offline static cache keys now strip the gap query so bookmarked parameters survive offline reload
+  without duplicating the report per threshold. Tests cover the query/offline path, all 5,184matched
+  cases, all trade gap directions/thresholds, window boundaries, event timing and financial controls.
+  Responsive runtime checks cover all four gap states and 1,296 visible detail cells per selected state.
+  Paid app, roster, tick capture/archive, resource holds and the original two-trade record are intact.
+
 ## 2026-11-09 (Mon, user-requested) — match Night Lab hold comparisons
 
 - User corrected the opportunity-cost comparison: US500 against US500 1:1 hold, US100 against

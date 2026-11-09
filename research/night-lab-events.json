@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-11-09",
+  "coverage": "Curated major context for the frozen 2024-01\u20132026-09 study; not a comprehensive live news feed",
+  "selection": "Central-bank decision days plus binding broad tariff changes, presidential election day, first major regional/US war escalation and ceasefire episodes. Selected independently of trade P&L. No routine CPI/jobs/earnings/speeches or daily tariff commentary. Exceptional market-wide volatility dislocations and one-off systemic AI repricing episodes are included as retrospective context, not causal or predictive labels.",
+  "maxTaggedSessionShare": 0.15,
+  "timing": "Date-only entries are retrospective context, not proof the announcement was known at entry. Verified report timestamps are checked against entry; weekend shocks attach to the first observed NY session. FOMC/BOJ exclusions remain strategy rules, not new news-derived filters.",
+  "events": [
+    {
+      "id": "iran-attack-2024",
+      "date": "2024-04-13",
+      "category": "geopolitics",
+      "label": "Iran attacks Israel",
+      "attach": "next-session",
+      "timing": "Weekend shock \u2192 first NY session",
+      "sources": [
+        {
+          "title": "White House statement, 13 Apr 2024",
+          "url": "https://bidenwhitehouse.archives.gov/briefing-room/statements-releases/2024/04/13/statement-from-president-joe-biden-on-irans-attacks-against-the-state-of-israel/"
+        }
+      ]
+    },
+    {
+      "id": "us-election-2024",
+      "date": "2024-11-05",
+      "category": "election",
+      "label": "US presidential election",
+      "attach": "same-session",
+      "timing": "Scheduled election day; result not assumed",
+      "scheduled": true,
+      "sources": [
+        {
+          "title": "FEC 2024 federal election results",
+          "url": "https://www.fec.gov/updates/election-day-is-tuesday-november-5/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-border-2025",
+      "date": "2025-02-01",
+      "category": "tariff",
+      "label": "Canada/Mexico/China tariff shock",
+      "attach": "next-session",
+      "timing": "Weekend announcement \u2192 first NY session",
+      "sources": [
+        {
+          "title": "White House tariff fact sheet, 1 Feb 2025",
+          "url": "https://www.whitehouse.gov/fact-sheets/2025/02/fact-sheet-president-donald-j-trump-imposes-tariffs-on-imports-from-canada-mexico-and-china/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-pause-2025",
+      "date": "2025-02-03",
+      "category": "tariff",
+      "label": "Mexico tariff pause",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "White House: Progress on the Situation at Our Southern Border",
+          "url": "https://www.whitehouse.gov/presidential-actions/2025/02/progress-on-the-situation-at-our-southern-border/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-global-2025",
+      "date": "2025-04-02",
+      "category": "tariff",
+      "label": "Global reciprocal tariff announcement",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "White House reciprocal tariff order, 2 Apr 2025",
+          "url": "https://www.whitehouse.gov/presidential-actions/2025/04/regulating-imports-with-a-reciprocal-tariff-to-rectify-trade-practices-that-contribute-to-large-and-persistent-annual-united-states-goods-trade-deficits/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-global-pause-2025",
+      "date": "2025-04-09",
+      "category": "tariff",
+      "label": "90-day tariff pause / China escalation",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "White House reciprocal tariff modification, 9 Apr 2025",
+          "url": "https://www.whitehouse.gov/presidential-actions/2025/04/modifying-reciprocal-tariff-rates-to-reflect-trading-partner-retaliation-and-alignment/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-geneva-2025",
+      "date": "2025-05-12",
+      "category": "tariff",
+      "label": "US\u2013China Geneva tariff truce",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "US\u2013China joint statement, 12 May 2025",
+          "url": "https://www.whitehouse.gov/briefings-statements/2025/05/joint-statement-on-u-s-china-economic-and-trade-meeting-in-geneva/"
+        }
+      ]
+    },
+    {
+      "id": "israel-iran-2025",
+      "date": "2025-06-12",
+      "category": "geopolitics",
+      "label": "Israel\u2013Iran strikes begin overnight",
+      "attach": "same-session",
+      "timing": "After NY close; AP report before entry",
+      "reportedAt": "2025-06-13T00:13:46Z",
+      "sources": [
+        {
+          "title": "AP initial report, 13 Jun 2025 00:13 UTC",
+          "url": "https://apnews.com/article/00234a06e5128a8aceb406b140297299"
+        }
+      ]
+    },
+    {
+      "id": "tariff-new-rates-2025",
+      "date": "2025-07-31",
+      "category": "tariff",
+      "label": "New reciprocal tariff schedule",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "White House tariff rate fact sheet, 31 Jul 2025",
+          "url": "https://www.whitehouse.gov/fact-sheets/2025/07/fact-sheet-president-donald-j-trump-further-modifies-the-reciprocal-tariff-rates/"
+        }
+      ]
+    },
+    {
+      "id": "tariff-ruling-2026",
+      "date": "2026-02-20",
+      "category": "tariff",
+      "label": "IEEPA tariff ruling / replacement surcharge",
+      "attach": "same-session",
+      "timing": "Decision/announcement date; exact intraday order unverified",
+      "sources": [
+        {
+          "title": "Supreme Court opinion, 20 Feb 2026",
+          "url": "https://www.supremecourt.gov/opinions/25pdf/24-1287_new_3135.pdf"
+        },
+        {
+          "title": "White House temporary import surcharge, 20 Feb 2026",
+          "url": "https://www.whitehouse.gov/presidential-actions/2026/02/imposing-a-temporary-import-surcharge-to-address-fundamental-international-payments-problems/"
+        }
+      ]
+    },
+    {
+      "id": "iran-war-2026",
+      "date": "2026-02-28",
+      "category": "geopolitics",
+      "label": "US\u2013Israel Iran campaign begins",
+      "attach": "next-session",
+      "timing": "Weekend shock \u2192 first NY session; retrospective source",
+      "sources": [
+        {
+          "title": "US Defense Department operation fact sheet",
+          "url": "https://media.defense.gov/2026/Mar/29/2003904283/-1/-1/1/OPERATION-EPIC-FURY-FACT-SHEET-THE-FIRST-29-DAYS.PDF"
+        }
+      ]
+    },
+    {
+      "id": "iran-ceasefire-2026",
+      "date": "2026-04-07",
+      "category": "geopolitics",
+      "label": "Two-week US\u2013Iran ceasefire announced",
+      "attach": "same-session",
+      "timing": "Announcement date; intraday time unverified",
+      "sources": [
+        {
+          "title": "Presidential statement, 7 Apr 2026 (archived transcript)",
+          "url": "https://www.presidency.ucsb.edu/documents/statement-united-states-military-operations-iran-0"
+        }
+      ]
+    },
+    {
+      "id": "vix-dislocation-2024",
+      "date": "2024-08-05",
+      "category": "market-shock",
+      "label": "VIX / carry-trade market dislocation",
+      "attach": "same-session",
+      "timing": "Market-wide dislocation; retrospective research source",
+      "sources": [
+        {
+          "title": "SEC research: Demystify the Surge in VIX",
+          "url": "https://www.sec.gov/files/dera-vix-working-paper-2504.pdf"
+        },
+        {
+          "title": "Cboe volatility decomposition research",
+          "url": "https://cdn.cboe.com/resources/vix/VIX-Decomposition-2025-08-01.pdf"
+        }
+      ]
+    },
+    {
+      "id": "deepseek-repricing-2025",
+      "date": "2025-01-27",
+      "category": "market-shock",
+      "label": "DeepSeek-related AI stock repricing",
+      "attach": "same-session",
+      "timing": "Contemporaneous market repricing; exact release time unverified",
+      "sources": [
+        {
+          "title": "Reuters report, 27 Jan 2025 (Kitco syndication)",
+          "url": "https://www.kitco.com/news/off-the-wire/2025-01-27/nasdaq-sp-500-drop-chinas-deepseek-ai-model-hits-tech-shares"
+        }
+      ]
+    }
+  ]
+}

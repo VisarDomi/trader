@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add isolated Night Lab central-session/gap research, independent signal/ledger oracle and cached
+  signal execution. Require exact financial equivalence for all1,296zero-gap controls before
+  accepting new thresholds. Original agents, admissions and runtime financial behavior are unchanged.
+
 - Recheck persisted backtest admissions after startup warm-up so uploads arriving before readiness
   cannot strand eligible runs until a later manual upload. Cover the startup/upload race directly.
 

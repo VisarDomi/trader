@@ -2,7 +2,7 @@ import{expect,test}from'bun:test';
 import{readFileSync}from'node:fs';
 import{runInNewContext}from'node:vm';
 const report=JSON.parse(readFileSync(new URL('../../static/night-lab/report.json',import.meta.url),'utf8'));
-test('published study has all twenty members and all 648 bounded risk settings',()=>{
+test('expanded study retains the twenty-member cohort and original 648 bounded risk settings',()=>{
  expect(report.cohort).toHaveLength(20);expect(report.cohort.filter((r:any)=>r.epic==='US500')).toHaveLength(10);expect(report.cohort.filter((r:any)=>r.epic==='US100')).toHaveLength(10);
  for(const inst of report.instruments){expect(inst.runs).toHaveLength(324);expect(new Set(inst.runs.map((r:any)=>r.policy+'/'+r.profile)).size).toBe(324);expect(inst.runs.every((r:any)=>r.lossPct>0&&r.lossPct<=50)).toBe(true)}
  const b=report.benchmarks.US100;expect(b.exposure).toBe(1);expect(b.funding).toBe(0);expect(b.returnPct).toBeCloseTo((b.exitBid/b.entryAsk-1)*100,10);
@@ -20,15 +20,51 @@ test('all strategies use the hold benchmark of their own instrument',()=>{
  const original=report.cohort.find((r:any)=>r.id==='visar-night-trading');
  expect(original.benchmarkExcessPp).not.toBeCloseTo(original.metrics.totalReturn*100-report.benchmarks.US100.returnPct,5);
 });
+test('session and minimum-gap dimensions retain the original controls and expose all 5184 cases',()=>{
+ expect(report.caseCount).toBe(5184);expect(report.gapThresholds).toEqual([0,5,15,30]);let count=0;
+ for(const inst of report.instruments){
+  expect(inst.central.runs).toHaveLength(324);
+  const rows=[...inst.runs.map((r:any)=>({...r,sessionWindow:'full',minimumGapBp:0})),...inst.central.runs.map((r:any)=>({...r,sessionWindow:'central',minimumGapBp:0}))];
+  for(const window of ['full','central']){const s=inst.gapStudy.sessions[window];expect(s.audit.allControlsExact).toBe(true);expect(s.audit.exactControls).toBe(324);expect(s.runs).toHaveLength(972);rows.push(...s.runs)}
+  expect(new Set(rows.map((r:any)=>[r.sessionWindow,r.minimumGapBp,r.policy,r.profile].join('|'))).size).toBe(2592);
+  for(const r of rows){expect(r.benchmarkEpic).toBe(inst.epic);expect(r.benchmarkExcessPp).toBeCloseTo(r.returnPct-report.benchmarks[inst.epic].returnPct,10)}count+=rows.length;
+ }
+ expect(count).toBe(5184);expect(report.trades.US500).toHaveLength(71);expect(report.trades.US100).toHaveLength(60);
+});
+test('trade context has strict opposite-side bid gaps, honest event timing and the correct recognition window',()=>{
+ const clock=(t:number)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(t));
+ for(const inst of report.instruments){
+  for(const window of ['full','central']){
+   const sets=[report.trades[inst.epic+(window==='central'?'-central':'')],...Object.values(inst.gapStudy.sessions[window].trades)]as any[][];
+   for(const rows of sets)for(const t of rows){
+    const gap=(t.side==='long'?t.reference-t.signalBid:t.signalBid-t.reference)/t.reference*10000;
+    expect(gap).toBeGreaterThan(0);expect(gap).toBeGreaterThanOrEqual(t.minimumGapBp);expect(t.pullbackBp).toBeCloseTo(gap,8);
+    expect(t.recognitionPoints).toHaveLength(window==='central'?21:27);expect(t.intervals).toBe(window==='central'?20:26);
+    expect(clock(t.recognitionFrom)).toBe(window==='central'?'10:30':'09:30');expect(clock(t.recognitionThrough)).toBe(window==='central'?'15:30':'16:00');
+    for(const e of t.events){const source=report.events.events.find((x:any)=>x.id===e.id);expect(source.sessionDate).toBe(t.session);expect(source.policyGuard??false).toBe(false);if(source.reportedAt)expect(e.knownAtEntry).toBe(Date.parse(source.reportedAt)<=t.entryTime)}
+   }
+  }
+ }
+ expect(report.events.taggedSessionShare).toBeLessThanOrEqual(.15);expect(report.events.taggedSessionShare).toBeGreaterThan(0);
+});
 test('offline worker preserves the last complete cohort, marks it saved, and ignores unrelated paths',async()=>{
  const listeners=new Map<string,Function>(),saved=new Map<string,Response>();
  let fail=false,incomplete=false;
  const cache={match:async(r:Request)=>saved.get(r.url)?.clone(),put:async(r:Request,v:Response)=>saved.set(r.url,v.clone())};
- const scope={URL,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({schema:2,at:123,rows:Array.from({length:incomplete?19:20},()=>({}))})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
+ const scope={URL,Request,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({schema:2,at:123,rows:Array.from({length:incomplete?19:20},()=>({}))})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
  runInNewContext(readFileSync(new URL('../../../../ops/lab/night-lab-sw.js',import.meta.url),'utf8'),scope);
  async function request(path:string,method='GET'){let response:Promise<Response>|undefined;listeners.get('fetch')!({request:new Request('https://trader.invalid'+path,{method}),respondWith:(r:Promise<Response>)=>response=r});return response?await(await response).json():null}
  expect(await request('/api/native/v1/leaderboard')).toBeNull();expect(await request('/night-lab/forward.json','POST')).toBeNull();
  expect((await request('/night-lab/forward.json')).rows).toHaveLength(20);
  incomplete=true;expect((await request('/night-lab/forward.json')).offline).toBe(true);
  fail=true;const old=await request('/night-lab/forward.json');expect(old.rows).toHaveLength(20);expect(old.at).toBe(123);expect(old.offline).toBe(true);expect(saved.size).toBe(1);
+});
+test('a bookmarked minimum-gap URL restores the same offline report without growing the static cache',async()=>{
+ const listeners=new Map<string,Function>(),saved=new Map<string,Response>();let offline=false;
+ saved.set('https://trader.invalid/night-lab/index.html',new Response('cached study'));
+ const cache={match:async(r:Request)=>saved.get(r.url)?.clone(),put:async(r:Request,v:Response)=>saved.set(r.url,v.clone())};
+ const scope={URL,Request,Response,caches:{open:async()=>cache},fetch:async(r:Request)=>{if(offline)throw Error('Offline');const response=new Response('latest study');Object.defineProperty(response,'url',{value:r.url});return response},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(n:string,fn:Function)=>listeners.set(n,fn)}};
+ runInNewContext(readFileSync(new URL('../../../../ops/lab/night-lab-sw.js',import.meta.url),'utf8'),scope);
+ async function get(gap:number){let response:Promise<Response>|undefined;listeners.get('fetch')!({request:new Request('https://trader.invalid/night-lab/index.html?gap='+gap),respondWith:(r:Promise<Response>)=>response=r});return (await response!).text()}
+ expect(await get(5)).toBe('latest study');offline=true;expect(await get(30)).toBe('latest study');expect(saved.size).toBe(1);
 });
