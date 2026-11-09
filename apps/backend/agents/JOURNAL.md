@@ -5,6 +5,20 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon, user-requested) — nightly lab resumed after 19 days
+
+- Why it stopped: `heavy-resources-stop` on 2026-10-21 10:54 UTC wrote the hold file listing the video
+  pipeline, TimesFM and both lab units. `heavy-resources-start` was never run. On 2026-11-01 TimesFM was
+  resumed alone (removed from the list), but the lab units carried `ConditionPathExists=!` on the hold file,
+  so they waited for the file itself to disappear, which it never does while the video pipeline is held.
+  Last lab run 2026-10-21; arena trading, tick capture and the archive were unaffected.
+- Fix (db1f855): `ops/lab/lab-control.py` (`check` / `resume`, same pattern as `forecaster-control.py`);
+  `trader-lab.service` uses it as `ExecCondition`, the timer's file condition is gone. Ran the scoped resume
+  at the user's request; the hold now lists only `video-pipeline.service`, which stays paused (not ours).
+  A future `heavy-resources-stop` rewrites the full list and pauses the lab again.
+- The timer is `Persistent=true`, so the missed run started at 18:26 inside `trader.slice`: 19 days of
+  candles to ingest, then history push, tick flush, storage, forecasts, backtests.
+
 ## 2026-11-09 (Mon, user-requested) — uniform v3 night cohort: one base, one change per agent
 
 - Why: the user wants each of the ten agents per index on its own direction in the parameter space, uniform

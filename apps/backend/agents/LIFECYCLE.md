@@ -183,6 +183,8 @@ agents that size with `marginPct` use the high leverage.
    until the user runs `heavy-resources-start`. Never clear the hold or restart these jobs autonomously.
    A model-only resume removes the forecaster from the marker's services list; remaining lab holds
    still defer additions/backtests. Check the relevant service entry rather than only file existence.
+   The user resumed the nightly lab alone on November 9 (`ops/lab/lab-control.py resume`); the video
+   pipeline stays held and is not ours. `lab-control.py check` exits 0 when the lab may run.
    Fix what is broken and within scope (services, agent bugs, platform bugs; follow
    `../WORKFLOW.md`). If only the user can fix it (a demo account deleted or unfundable, credentials
    changed), notify them (step 8) and record it.

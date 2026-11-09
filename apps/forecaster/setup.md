@@ -42,3 +42,4 @@ The enabled service checks its membership in the persistent hold's `services` li
 The scoped resume removes only `trader-forecaster.service` from that list. A later global
 `heavy-resources-stop` writes a fresh complete list and takes precedence again. Legacy or malformed
 hold files fail closed. The global start command retains its existing all-workloads behavior.
+The nightly lab has the same scoped resume: `python3 ops/lab/lab-control.py resume`.
