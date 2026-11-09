@@ -476,6 +476,7 @@ export class AgentRun {
     if (this.status !== RUN_STATUS.RUNNING) return;
     this.currentBar = bar;
     this.barsSeen++;
+    if (!this.agent.onBar && !this.beforeEntryContext) return;
     const ctx = this.makeContext(bar);
     if(this.beforeEntryContext){try{this.entryBefore=this.beforeEntryContext(this.state);}catch{this.entryBefore=undefined;}}
     const started = performance.now();

@@ -7,14 +7,22 @@ test('all session/gap/risk combinations are rendered together without a reveal c
  const cell=template.slice(template.indexOf('function cell('),template.indexOf('\n__STUDY_SCRIPT__'));
  const view=readFileSync(new URL('../../../../ops/lab/night-lab-study-view.js',import.meta.url),'utf8');
  const scope:any={D:report,esc:String,pct:(v:any)=>String(v),tone:()=>'',f:String,money:String,time:String,stat:()=>''};
- runInNewContext(cell+'\n'+view+'\nthis.rendered=studyOverview()+D.instruments.map(instrumentView).join(\'\');',scope,{timeout:10000});
- expect((scope.rendered.match(/class="cell"/g)||[])).toHaveLength(5184);
+ runInNewContext(cell+'\n'+view+'\nthis.rendered=exitFocus()+studyOverview()+D.instruments.map(instrumentView).join(\'\');',scope,{timeout:10000});
+ expect((scope.rendered.match(/class="cell"/g)||[])).toHaveLength(20736);
  expect((scope.rendered.match(/class="gap-panel"/g)||[])).toHaveLength(48);
- expect((scope.rendered.match(/id="curve-/g)||[])).toHaveLength(48);
+ expect((scope.rendered.match(/id="curve-/g)||[])).toHaveLength(192);
  expect(scope.rendered).not.toMatch(/<select|<details|\shidden[\s>]/);
  for(const gap of [0,5,15,30])expect((scope.rendered.match(new RegExp('data-gap="'+gap+'"','g'))||[])).toHaveLength(12);
+ for(const target of [0,20,50,100])expect((scope.rendered.match(new RegExp('data-profit="'+target+'"','g'))||[])).toHaveLength(12);
+ const html=readFileSync(new URL('../../static/night-lab/index.html',import.meta.url),'utf8');
+ const packed=html.split('id="data">')[1]!.split('</script>')[0]!;
+ const embedded=JSON.parse(Buffer.from(Bun.gunzipSync(Buffer.from(packed,'base64'))).toString());
+ const compact:any={...scope,D:embedded};
+ runInNewContext(cell+'\n'+view+'\nthis.rendered=exitFocus()+studyOverview()+D.instruments.map(instrumentView).join(\'\');',compact,{timeout:10000});
+ expect(compact.rendered).toBe(scope.rendered);
  expect(report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'))).toHaveLength(19);
  expect(new Set(report.cohort.map((r:any)=>r.minimumGapBp))).toEqual(new Set([0,5,15,30]));
+ expect(new Set(report.cohort.map((r:any)=>r.profitPct))).toEqual(new Set([0,20,50,100]));
  const replacements=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'));
  expect(replacements.filter((r:any)=>r.role.startsWith('frequent-')&&r.metrics.trades/report.years>=18)).toHaveLength(10);
  expect(replacements.every((r:any)=>r.metrics.totalReturn>0&&r.metrics.maxDrawdown<=.4&&r.metrics.trades>=18)).toBe(true);
@@ -37,8 +45,8 @@ test('all strategies use the hold benchmark of their own instrument',()=>{
  const original=report.cohort.find((r:any)=>r.id==='visar-night-trading');
  expect(original.benchmarkExcessPp).not.toBeCloseTo(original.metrics.totalReturn*100-report.benchmarks.US100.returnPct,5);
 });
-test('session and minimum-gap dimensions retain the original controls and expose all 5184 cases',()=>{
- expect(report.caseCount).toBe(5184);expect(report.gapThresholds).toEqual([0,5,15,30]);let count=0;
+test('session and minimum-gap dimensions retain the original 5184 deadline controls',()=>{
+ expect(report.caseCount).toBe(20736);expect(report.gapThresholds).toEqual([0,5,15,30]);let count=0;
  for(const inst of report.instruments){
   expect(inst.central.runs).toHaveLength(324);
   const rows=[...inst.runs.map((r:any)=>({...r,sessionWindow:'full',minimumGapBp:0})),...inst.central.runs.map((r:any)=>({...r,sessionWindow:'central',minimumGapBp:0}))];
@@ -47,6 +55,17 @@ test('session and minimum-gap dimensions retain the original controls and expose
   for(const r of rows){expect(r.benchmarkEpic).toBe(inst.epic);expect(r.benchmarkExcessPp).toBeCloseTo(r.returnPct-report.benchmarks[inst.epic].returnPct,10)}count+=rows.length;
  }
  expect(count).toBe(5184);expect(report.trades.US500).toHaveLength(71);expect(report.trades.US100).toHaveLength(60);
+});
+test('all capital-profit cases retain their own hold benchmark and reconcile every close reason',()=>{
+ expect(report.takeProfitTargets).toEqual([0,20,50,100]);let count=5184;
+ for(const inst of report.instruments){
+  expect(inst.exitStudy.audit.deadlineControls).toBe(2592);expect(inst.exitStudy.audit.allDeadlineControlsExact).toBe(true);
+  expect(inst.exitStudy.runs).toHaveLength(7776);
+  expect(new Set(inst.exitStudy.runs.map((r:any)=>[r.sessionWindow,r.minimumGapBp,r.profitPct,r.policy,r.profile].join('|'))).size).toBe(7776);
+  for(const r of inst.exitStudy.runs){expect(r.benchmarkEpic).toBe(inst.epic);expect(r.benchmarkExcessPp).toBeCloseTo(r.returnPct-report.benchmarks[inst.epic].returnPct,10);expect(r.targetHits+r.stops+r.deadlineExits+r.otherExits).toBe(r.n);expect(r.funding).toBe(0)}
+  count+=inst.exitStudy.runs.length;
+ }
+ expect(count).toBe(20736);
 });
 test('trade context has strict opposite-side bid gaps, honest event timing and the correct recognition window',()=>{
  const clock=(t:number)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(t));
@@ -66,14 +85,15 @@ test('trade context has strict opposite-side bid gaps, honest event timing and t
 });
 test('offline worker preserves the last complete cohort, marks it saved, and ignores unrelated paths',async()=>{
  const listeners=new Map<string,Function>(),saved=new Map<string,Response>();
- let fail=false,incomplete=false;
+ const wire=report.cohort.map((r:any)=>({agentId:r.id,codeHash:r.codeHash,epic:r.epic,leverage:r.leverage}));
+ let fail=false,incomplete=false,wrongVersion=false;
  const cache={match:async(r:Request)=>saved.get(r.url)?.clone(),put:async(r:Request,v:Response)=>saved.set(r.url,v.clone())};
- const scope={URL,Request,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({schema:2,at:123,rows:Array.from({length:incomplete?19:20},()=>({}))})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
- runInNewContext(readFileSync(new URL('../../../../ops/lab/night-lab-sw.js',import.meta.url),'utf8'),scope);
+ const scope={URL,Request,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({schema:3,at:123,rows:wire.slice(0,incomplete?19:20).map((r:any)=>wrongVersion?{...r,codeHash:'old'}:r)})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
+ runInNewContext(readFileSync(new URL('../../static/night-lab/sw.js',import.meta.url),'utf8'),scope);
  async function request(path:string,method='GET'){let response:Promise<Response>|undefined;listeners.get('fetch')!({request:new Request('https://trader.invalid'+path,{method}),respondWith:(r:Promise<Response>)=>response=r});return response?await(await response).json():null}
  expect(await request('/api/native/v1/leaderboard')).toBeNull();expect(await request('/night-lab/forward.json','POST')).toBeNull();
  expect((await request('/night-lab/forward.json')).rows).toHaveLength(20);
- incomplete=true;expect((await request('/night-lab/forward.json')).offline).toBe(true);
+ incomplete=true;expect((await request('/night-lab/forward.json')).offline).toBe(true);incomplete=false;wrongVersion=true;expect((await request('/night-lab/forward.json')).offline).toBe(true);
  fail=true;const old=await request('/night-lab/forward.json');expect(old.rows).toHaveLength(20);expect(old.at).toBe(123);expect(old.offline).toBe(true);expect(saved.size).toBe(1);
 });
 test('a bookmarked minimum-gap URL restores the same offline report without growing the static cache',async()=>{
@@ -81,7 +101,7 @@ test('a bookmarked minimum-gap URL restores the same offline report without grow
  saved.set('https://trader.invalid/night-lab/index.html',new Response('cached study'));
  const cache={match:async(r:Request)=>saved.get(r.url)?.clone(),put:async(r:Request,v:Response)=>saved.set(r.url,v.clone())};
  const scope={URL,Request,Response,caches:{open:async()=>cache},fetch:async(r:Request)=>{if(offline)throw Error('Offline');const response=new Response('latest study');Object.defineProperty(response,'url',{value:r.url});return response},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(n:string,fn:Function)=>listeners.set(n,fn)}};
- runInNewContext(readFileSync(new URL('../../../../ops/lab/night-lab-sw.js',import.meta.url),'utf8'),scope);
+ runInNewContext(readFileSync(new URL('../../static/night-lab/sw.js',import.meta.url),'utf8'),scope);
  async function get(gap:number){let response:Promise<Response>|undefined;listeners.get('fetch')!({request:new Request('https://trader.invalid/night-lab/index.html?gap='+gap),respondWith:(r:Promise<Response>)=>response=r});return (await response!).text()}
  expect(await get(5)).toBe('latest study');offline=true;expect(await get(30)).toBe('latest study');expect(saved.size).toBe(1);
 });

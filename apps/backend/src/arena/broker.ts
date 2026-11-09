@@ -907,14 +907,16 @@ export class BrokerMirror {
     });
     let submitted = false;
     try {
+      // onFill may have rebased protections before this queued open is sent.
+      const protection = { stopLoss:candidate.entry.stopLoss, takeProfit:candidate.entry.takeProfit, trailingStop:candidate.entry.trailingStop };
       const ref = await this.client.post<{ dealReference: string }>(
         '/api/v1/positions',
         {
           epic: inst.epic,
           direction: e.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL,
           size,
-          ...(e.trailingStop ? { trailingStop: true, stopDistance: e.trailingStop } : e.stopLoss === null ? {} : { stopLevel: e.stopLoss }),
-          ...(e.takeProfit === null ? {} : { profitLevel: e.takeProfit }),
+          ...(protection.trailingStop ? { trailingStop: true, stopDistance: protection.trailingStop } : protection.stopLoss === null ? {} : { stopLevel: protection.stopLoss }),
+          ...(protection.takeProfit === null ? {} : { profitLevel: protection.takeProfit }),
         },
         {
           sent: () => {
@@ -979,6 +981,11 @@ export class BrokerMirror {
         open_price: conf.level ?? null,
         confirmed_time: Date.now(),
       });
+      // Stop events arriving before a permanent deal id cannot be applied yet.
+      // Synchronize the current levels once confirmation makes that possible.
+      const latest=this.candidates().find(c=>c.runId===e.runId&&c.side===e.side&&c.entry?.time===e.time)?.entry;
+      if(latest&&(latest.stopLoss!==protection.stopLoss||latest.takeProfit!==protection.takeProfit||latest.trailingStop!==protection.trailingStop))
+        await this.putStops(dealId,latest.stopLoss,latest.takeProfit,latest.trailingStop);
       this.db.event(
         'info',
         'broker',

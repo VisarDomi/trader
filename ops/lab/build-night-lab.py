@@ -3,6 +3,7 @@
 import array,base64,datetime as dt,gzip,hashlib,json,math,pathlib,zoneinfo
 ROOT=pathlib.Path(__file__).resolve().parents[2];P=ROOT/'apps/backend/data/night-breakdown-20261109';OUT=ROOT/'apps/ui/static/night-lab';OUT.mkdir(parents=True,exist_ok=True)
 STUDY=ROOT/'apps/backend/data/night-session-study-20261109'
+EXITS=ROOT/'apps/backend/data/night-exit-study-20261109'
 NY=zoneinfo.ZoneInfo('America/New_York');AL=zoneinfo.ZoneInfo('Europe/Tirane');UTC=dt.timezone.utc
 def load(name):return json.loads((P/name).read_text())
 def hold(epic):
@@ -37,7 +38,16 @@ for chosen in selection['agents']:
     r=json.loads(file.read_text());assert r['codeHash']==chosen['codeHash']
     inputs.append((r,chosen))
 for r,chosen in inputs:
-    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']}})
+    hits=sum(t['exitReason']=='take_profit' or (t.get('exitNote')or'').startswith('capital take profit +') for t in r['trades'])
+    path_range=None
+    if chosen['role']!='original':
+        checks=[r]
+        for seed,density in [(2,16),(3,16),(1,64)]:
+            raw=json.loads((EXITS/f"{r['epic']}-s{seed}-n{density}.json").read_text())
+            check=next(x for x in raw['runs'] if x['agentId']==r['agentId']);assert check['codeHash']==r['codeHash'] and check['errors']==0
+            checks.append(check)
+        path_range={'paths':4,'minReturnPct':min(x['metrics']['totalReturn']*100 for x in checks),'maxReturnPct':max(x['metrics']['totalReturn']*100 for x in checks),'minWinPct':min(x['metrics']['winRate']*100 for x in checks),'maxWinPct':max(x['metrics']['winRate']*100 for x in checks),'maxDrawdownPct':max(x['metrics']['maxDrawdown']*100 for x in checks)}
+    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':path_range,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']}})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 study_events=json.loads((STUDY/'event-calendar.json').read_text());trade_sets={}
@@ -66,14 +76,43 @@ for inst in instruments:
             for t in group['trades'][gap]:t['minimumGapBp']=int(gap)
     for window,rows in summary['trades'].items():
         for t in rows:t['minimumGapBp']=0
-data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'caseCount':5184,'selection':{k:selection[k] for k in ['date','method','tierUse']}}
+    exits=json.loads((EXITS/f'{epic}-summary.json').read_text())
+    controls={(r['sessionWindow'],r['minimumGapBp'],r['policy'],r['profile']):r for r in exits['runs'] if r['profitPct']==0}
+    for window,rows in [('full',inst['runs']),('central',inst['central']['runs'])]+[(w,inst['gapStudy']['sessions'][w]['runs']) for w in ['full','central']]:
+        for r in rows:
+            c=controls[(window,r.get('minimumGapBp',0),r['policy'],r['profile'])]
+            assert abs(c['returnPct']-r['returnPct'])<1e-9
+            for k in ['profitPct','targetHits','deadlineExits','otherExits']:r[k]=c[k]
+    positive=[dict(r,benchmarkEpic=epic,benchmarkExcessPp=r['returnPct']-benchmarks[epic]['returnPct']) for r in exits['runs'] if r['profitPct']>0]
+    inst['exitStudy']={'runs':positive,'curves':exits['curves'],'audit':exits['audit']}
+data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'takeProfitTargets':[0,20,50,100],'caseCount':20736,'selection':{k:selection[k] for k in ['date','method','tierUse']}}
 assert len(instruments)==2 and all(len(x['runs'])==324 for x in instruments)
 (OUT/'report.json').write_text(json.dumps(data,separators=(',',':')))
-packed=base64.b64encode(gzip.compress(json.dumps(data,separators=(',',':')).encode(),mtime=0)).decode()
+# The page embeds only fields it renders, at full numerical precision. Complete
+# audit/export data stays in report.json; unused trade/curve copies do not occupy phone RAM.
+view=json.loads(json.dumps(data))
+keys={'policy','profile','leverage','lossPct','profitPct','minimumGapBp','sessionWindow','n','eligible','tradesPerYear','wins','winPct','returnPct','maxDrawdownPct','worstTradePct','stops','rejected','targetHits','deadlineExits','otherExits','years','avgWinPct','avgLossPct','meanPct','meanSpreadPct','breakEvenWinPct','longestLossStreak'}
+def display_rows(rows):
+    out=[]
+    for r in rows:
+        x={k:v for k,v in r.items() if k in keys}
+        if r['profile']!='L20S20':
+            for k in ['avgWinPct','avgLossPct','meanPct','meanSpreadPct','breakEvenWinPct','longestLossStreak','years']:x.pop(k,None)
+        out.append(x)
+    return out
+for inst in view['instruments']:
+    inst['runs']=display_rows(inst['runs']);inst['central']['runs']=display_rows(inst['central']['runs'])
+    for part in [inst,inst['central']]:part['curves']={k:v for k,v in part['curves'].items() if k.endswith('/L20S20')}
+    for group in inst['gapStudy']['sessions'].values():
+        group['runs']=display_rows(group['runs']);group['trades']={}
+        group['curves']={g:{k:v for k,v in curves.items() if k.endswith('/L20S20')} for g,curves in group['curves'].items()}
+    inst['exitStudy']['runs']=display_rows(inst['exitStudy']['runs'])
+packed=base64.b64encode(gzip.compress(json.dumps(view,separators=(',',':')).encode(),mtime=0)).decode()
 template=(ROOT/'ops/lab/night-lab-template.html').read_text().replace('__STUDY_SCRIPT__',(ROOT/'ops/lab/night-lab-study-view.js').read_text());(OUT/'index.html').write_text(template.replace('__DATA__',packed))
-(OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]).replace('__COHORT_VERSION__',hashlib.sha256(json.dumps([(r['id'],r['codeHash']) for r in cohort]).encode()).hexdigest()[:12]))
+(OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]).replace('__COHORT_VERSION__',hashlib.sha256(json.dumps([(r['id'],r['codeHash']) for r in cohort]).encode()).hexdigest()[:12]).replace('/*__COHORT_MEMBERS__*/[]',json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort])))
 (OUT/'manifest.webmanifest').write_text(json.dumps({'id':'/night-lab/','name':'Visar Night Lab','short_name':'Night Lab','start_url':'/night-lab/index.html','scope':'/night-lab/','display':'standalone','background_color':'#101114','theme_color':'#101114','icons':[{'src':'./icon-192.png','sizes':'192x192','type':'image/png'},{'src':'./icon-512.png','sizes':'512x512','type':'image/png'}]},indent=2)+'\n')
 for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_text((P/name).read_text())
 for epic in ['US500','US100']:(OUT/f'{epic.lower()}-gap-risk-grid.csv').write_text((STUDY/f'{epic}-gap-risk-grid.csv').read_text())
-print('Published',len(cohort),'cohort members; 5184 risk cells; full and central sessions; 0/5/15/30bp gaps')
+for epic in ['US500','US100']:(OUT/f'{epic.lower()}-exit-risk-grid.csv').write_text((EXITS/f'{epic.lower()}-exit-risk-grid.csv').read_text())
+print('Published',len(cohort),'cohort members;20736 risk cells;0/20/50/100% profit targets; embedded display bytes',len(packed))
 print('Nasdaq fee-free full-cash price proxy',round(benchmarks['US100']['returnPct'],3),'%; whole-share scenario',round(whole,2),'USD; broker USD matches',len(known),'/101')

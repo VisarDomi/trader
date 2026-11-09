@@ -86,6 +86,32 @@ async function settled(mirror: BrokerMirror): Promise<void> {
   await Bun.sleep(30);
 }
 
+test('queued broker opens use rebased profit protection and resync changes that preceded confirmation',async()=>{
+ const db=new ArenaDB(':memory:'),now=Date.now(),posts:any[]=[],puts:any[]=[];
+ db.setSetting(BROKER_SETTINGS.ENABLED,true);db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS,{[RUN]:ACCOUNT});
+ db.setSetting(BROKER_SETTINGS.ACCOUNTS,{[ACCOUNT]:{name:NAME,allocation:100000,hedging:true,leverage:1,killed:false}});
+ const entry={size:500,price:1.12,time:now,stopLoss:1.10,takeProfit:1.20,trailingStop:null};
+ const candidate:MirrorCandidate={runId:RUN,epic:EPIC,tier:1,score:0,side:LONG,entry};
+ const client={logins:1,selectAccount:async()=>{},historyTransactions:async()=>({transactions:[],complete:true}),
+  get:async(path:string)=>{
+   if(path==='/api/v1/accounts')return{accounts:[{accountId:ACCOUNT,accountName:NAME,balance:{balance:100000,deposit:100000,profitLoss:0}}]};
+   if(path==='/api/v1/accounts/preferences')return{hedgingMode:true,leverages:{}};
+   if(path.startsWith('/api/v1/confirms/'))return{dealStatus:'ACCEPTED',epic:EPIC,direction:'BUY',size:100,dealId:'ours',level:1.12};
+   if(path==='/api/v1/positions/ours')return{position:{dealId:'ours',direction:'BUY',size:100,createdDateUTC:new Date(now).toISOString().replace('Z','')},market:{epic:EPIC}};
+   return{positions:[]};
+  },post:async(_path:string,body:any)=>{posts.push(body);entry.takeProfit=1.23;entry.stopLoss=1.09;return{dealReference:'new'}},
+  put:async(path:string,body:any)=>{puts.push({path,body})}
+ } as unknown as CapitalClient;
+ const mirror=new BrokerMirror(client,db,{prefix:'Arena',accountTiers:{[NAME]:1}});mirror.setCandidateSource(()=>[candidate]);
+ try{
+  await mirror.start();await settled(mirror);
+  if(!posts.length)mirror.onRunEvent({type:'open',runId:RUN,side:LONG,size:500,price:1.12,time:now,stopLoss:1.11,takeProfit:1.19});
+  for(let i=0;i<200&&!puts.length;i++)await Bun.sleep(10);
+  expect(posts[0]).toMatchObject({stopLevel:1.10,profitLevel:1.20,size:100});
+  expect(puts).toContainEqual({path:'/api/v1/positions/ours',body:{trailingStop:false,stopLevel:1.09,profitLevel:1.23}});
+ }finally{mirror.stop();db.db.close()}
+});
+
 test('an explicit demo experiment takes a full account slot while an ordinary unproven run waits', async () => {
   const incumbents = Array.from({ length: 50 }, (_, i): MirrorCandidate => ({
     runId: `demo:incumbent-${i}:${EPIC}:x1:hash`, epic: EPIC, tier: 1, score: 0, side: null, entry: null,

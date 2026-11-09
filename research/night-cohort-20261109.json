@@ -1,10 +1,17 @@
 {
   "date": "2026-11-09",
+  "revision": 3,
+  "profitTargets": [
+    0,
+    20,
+    50,
+    100
+  ],
   "window": [
     "2024-01-01",
     "2026-09-30"
   ],
-  "method": "Nineteen performance/diversity/frequency roles fixed from the expanded finite study. Positive total return, <=40% portfolio drawdown, >=20 fills (18 only for the 30bp endpoint). Two small-size roles retain a 1:1 endpoint; the full-session reversal has a >=1:100 risk endpoint. Prefer 20% among identical nonbinding stops. Keep >=75% of each role’s best log-return/(0.05+DD)+0.5*log-return, then balance 55% relative quality/45% minimum parameter distance. Ten higher-frequency roles are deliberate. Capacity counts are frozen from the pre-change review; no unrelated incumbent is displaced. All history has been inspected; this is not validation.",
+  "method": "Nineteen performance/diversity/frequency/exit roles on inspected finite history. Exit choices are deadline-only or +20/+50/+100% of entry capital with the same loss stop/deadline. Positive return, <=40% portfolio DD, >=20 fills (18 only at30bp). Two 1:1 endpoints and a full-session >=1:100 endpoint. Prefer deadline-only for financially identical allowed exit choices, then20% for identical loss limits. Prescribed nonbinding profit endpoints stay explicit through target-hit counts. Keep >=75% of role-best log-return/(0.05+DD)+0.5*log-return, then55% relative quality/45% minimum parameter distance including exit. Ten >=18/year roles. Frozen tier budget; no unrelated incumbent displaced. Not independent validation.",
   "tierBudget": {
     "1": 3,
     "2": 0,
@@ -19,11 +26,11 @@
   "tierUse": {
     "1": 2,
     "3": 1,
-    "5": 2,
-    "10": 5,
+    "5": 1,
+    "10": 4,
     "20": 3,
     "50": 5,
-    "100": 1
+    "100": 3
   },
   "priorCohort": [
     {
@@ -3707,6 +3714,3825 @@
       "benchmarkExcessPp": -80.9172689886534
     }
   ],
+  "previousCohort": [
+    {
+      "id": "visar-night-trading",
+      "epic": "US500",
+      "leverage": 200,
+      "lossPct": 50,
+      "params": {
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 50
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 2.21,
+        "totalReturn": -0.999779,
+        "annualReturn": -0.95339,
+        "maxDrawdown": 0.999812,
+        "sharpe": -1.2393,
+        "sortino": -1.5001,
+        "calmar": -0.9536,
+        "trades": 71,
+        "longTrades": 45,
+        "shortTrades": 26,
+        "winRate": 0.4366,
+        "profitFactor": 0.3682,
+        "avgTradePnl": -140.814,
+        "avgWin": 187.942,
+        "avgLoss": -395.5999,
+        "bestTrade": 851.4,
+        "worstTrade": -2885.68,
+        "tStat": -1.9861,
+        "avgBarsHeld": 269.89,
+        "exposure": 0.0196,
+        "funding": 0,
+        "profitableMonths": 11,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.459499
+          },
+          {
+            "month": "2024-02",
+            "ret": 0.157521
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.079296
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.50096
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.018075
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.35441
+          },
+          {
+            "month": "2024-07",
+            "ret": -0.319649
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.192237
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.232109
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.16689
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.188477
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.367724
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.251978
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.175475
+          },
+          {
+            "month": "2025-05",
+            "ret": -0.689781
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.663334
+          },
+          {
+            "month": "2025-07",
+            "ret": -0.180559
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.294631
+          },
+          {
+            "month": "2025-09",
+            "ret": -0.137288
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.135487
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.659394
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.118225
+          },
+          {
+            "month": "2026-01",
+            "ret": 0.152207
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.154565
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.875904
+          },
+          {
+            "month": "2026-04",
+            "ret": -0.542212
+          },
+          {
+            "month": "2026-05",
+            "ret": -0.113229
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.018331
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.792055
+          },
+          {
+            "month": "2026-08",
+            "ret": -0.229851
+          },
+          {
+            "month": "2026-09",
+            "ret": -0.143411
+          }
+        ]
+      },
+      "codeHash": "56ac3bdfe7c1",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -160.97854949990165,
+      "sessionWindow": "full",
+      "minimumGapBp": 0,
+      "policy": "current",
+      "role": "original"
+    },
+    {
+      "id": "visar-night-v2-us500/frequent-core",
+      "epic": "US500",
+      "leverage": 20,
+      "lossPct": 10,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 10
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 11834.69,
+        "totalReturn": 0.183469,
+        "annualReturn": 0.06326,
+        "maxDrawdown": 0.209607,
+        "sharpe": 0.4498,
+        "sortino": 0.7428,
+        "calmar": 0.3018,
+        "trades": 81,
+        "longTrades": 40,
+        "shortTrades": 41,
+        "winRate": 0.5679,
+        "profitFactor": 1.2412,
+        "avgTradePnl": 22.6505,
+        "avgWin": 205.2746,
+        "avgLoss": -217.3699,
+        "bestTrade": 1354.752,
+        "worstTrade": -1034.11,
+        "tStat": 0.6686,
+        "avgBarsHeld": 287.59,
+        "exposure": 0.0238,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.054523
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.034141
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.010624
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.052126
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.045959
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.033624
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.038401
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.016131
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.03664
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.014029
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.014147
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.051058
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.001492
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.065517
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.046269
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.000616
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.015464
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.101759
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.038644
+          },
+          {
+            "month": "2025-09",
+            "ret": -0.026455
+          },
+          {
+            "month": "2025-10",
+            "ret": -0.017054
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.097787
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.009718
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.029053
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.055223
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.00773
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.033264
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.065319
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.065584
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0.020908
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -42.65374949990165,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "current",
+      "role": "frequent-core"
+    },
+    {
+      "id": "visar-night-v2-us100/frequent-core",
+      "epic": "US100",
+      "leverage": 20,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 22511.14,
+        "totalReturn": 1.251114,
+        "annualReturn": 0.343764,
+        "maxDrawdown": 0.256391,
+        "sharpe": 1.3697,
+        "sortino": 3.1107,
+        "calmar": 1.3408,
+        "trades": 67,
+        "longTrades": 35,
+        "shortTrades": 32,
+        "winRate": 0.6269,
+        "profitFactor": 2.3579,
+        "avgTradePnl": 186.7334,
+        "avgWin": 517.2485,
+        "avgLoss": -368.5318,
+        "bestTrade": 2624.8386,
+        "worstTrade": -1220.472,
+        "tStat": 2.2625,
+        "avgBarsHeld": 299.99,
+        "exposure": 0.0202,
+        "funding": 0,
+        "profitableMonths": 17,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.024552
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.058464
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.013945
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.082705
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.020647
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.020902
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.034827
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.031829
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.044835
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.065188
+          },
+          {
+            "month": "2024-11",
+            "ret": -0.000174
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.000718
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.172486
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.062827
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.028063
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.042901
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.003823
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.108128
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.052404
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000829
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.077853
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.337067
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.030597
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.047084
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.019033
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.001649
+          },
+          {
+            "month": "2026-04",
+            "ret": -0.038699
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.058798
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.1919
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.061716
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.213208
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": 43.60573101134659,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "current",
+      "role": "frequent-core"
+    },
+    {
+      "id": "visar-night-v2-us500/frequent-gap",
+      "epic": "US500",
+      "leverage": 50,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 17988.08,
+        "totalReturn": 0.798808,
+        "annualReturn": 0.238371,
+        "maxDrawdown": 0.292298,
+        "sharpe": 0.7373,
+        "sortino": 1.3826,
+        "calmar": 0.8155,
+        "trades": 61,
+        "longTrades": 29,
+        "shortTrades": 32,
+        "winRate": 0.5902,
+        "profitFactor": 1.4677,
+        "avgTradePnl": 130.9522,
+        "avgWin": 696.2726,
+        "avgLoss": -683.1093,
+        "bestTrade": 4220.496,
+        "worstTrade": -2536.413,
+        "tStat": 1.0156,
+        "avgBarsHeld": 287.31,
+        "exposure": 0.0179,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.039694
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.026567
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.033769
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.117843
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.06384
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.096168
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.070102
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.090481
+          },
+          {
+            "month": "2024-10",
+            "ret": 0
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.051662
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.129892
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.023489
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.168643
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.117365
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.001538
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.075204
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.212754
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.098188
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.004128
+          },
+          {
+            "month": "2025-10",
+            "ret": -0.044314
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.310175
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.04678
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.072656
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.238812
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.019401
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.024693
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.166879
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.158719
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": 18.880150500098345,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "current",
+      "role": "frequent-gap"
+    },
+    {
+      "id": "visar-night-v2-us100/frequent-gap",
+      "epic": "US100",
+      "leverage": 20,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 21716.44,
+        "totalReturn": 1.171644,
+        "annualReturn": 0.326292,
+        "maxDrawdown": 0.202147,
+        "sharpe": 1.4478,
+        "sortino": 3.435,
+        "calmar": 1.6141,
+        "trades": 54,
+        "longTrades": 24,
+        "shortTrades": 30,
+        "winRate": 0.6852,
+        "profitFactor": 2.6396,
+        "avgTradePnl": 216.9711,
+        "avgWin": 509.7884,
+        "avgLoss": -420.3371,
+        "bestTrade": 2652.2776,
+        "worstTrade": -1329.1125,
+        "tStat": 2.3563,
+        "avgBarsHeld": 299.98,
+        "exposure": 0.0163,
+        "funding": 0,
+        "profitableMonths": 16,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": 0
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.013944
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.08271
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.020648
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.020901
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.030194
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.03183
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.044834
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.011588
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.000718
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.100523
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.062825
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.028063
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.024249
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.108116
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.052404
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000829
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.077849
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.372533
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.021645
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.047085
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.019033
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.001649
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.058801
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.191899
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.061715
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.074692
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": 35.658731011346575,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "current",
+      "role": "frequent-gap"
+    },
+    {
+      "id": "visar-night-v2-us500/frequent-reversal",
+      "epic": "US500",
+      "leverage": 10,
+      "lossPct": 5,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.5,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 5
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10886.26,
+        "totalReturn": 0.088626,
+        "annualReturn": 0.031405,
+        "maxDrawdown": 0.109763,
+        "sharpe": 0.4227,
+        "sortino": 0.7083,
+        "calmar": 0.2861,
+        "trades": 68,
+        "longTrades": 31,
+        "shortTrades": 37,
+        "winRate": 0.5588,
+        "profitFactor": 1.2719,
+        "avgTradePnl": 13.0332,
+        "avgWin": 109.1143,
+        "avgLoss": -108.6696,
+        "bestTrade": 676.872,
+        "worstTrade": -509.74,
+        "tStat": 0.6698,
+        "avgBarsHeld": 287.21,
+        "exposure": 0.02,
+        "funding": 0,
+        "profitableMonths": 15,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.027508
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.017071
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.005313
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.026181
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.022784
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.003944
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.019181
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.007979
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.018399
+          },
+          {
+            "month": "2024-10",
+            "ret": 0.001081
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.007902
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.015808
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.000729
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.021679
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.014119
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.000308
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.007622
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.06013
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.01921
+          },
+          {
+            "month": "2025-09",
+            "ret": -0.011617
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.007227
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.052351
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.011936
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.01453
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.022181
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.003861
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.01675
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.029281
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.018728
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0.01045
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -52.13804949990165,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "reversal50",
+      "role": "frequent-reversal"
+    },
+    {
+      "id": "visar-night-v2-us100/frequent-reversal",
+      "epic": "US100",
+      "leverage": 10,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.5,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 14258.46,
+        "totalReturn": 0.425846,
+        "annualReturn": 0.137901,
+        "maxDrawdown": 0.117062,
+        "sharpe": 1.3551,
+        "sortino": 3.0444,
+        "calmar": 1.178,
+        "trades": 50,
+        "longTrades": 25,
+        "shortTrades": 25,
+        "winRate": 0.64,
+        "profitFactor": 2.4503,
+        "avgTradePnl": 85.1691,
+        "avgWin": 224.8352,
+        "avgLoss": -163.1261,
+        "bestTrade": 832.034,
+        "worstTrade": -411.1455,
+        "tStat": 2.3142,
+        "avgBarsHeld": 299.98,
+        "exposure": 0.0151,
+        "funding": 0,
+        "profitableMonths": 17,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.012276
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.029228
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.006973
+          },
+          {
+            "month": "2024-04",
+            "ret": 0.004138
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.010323
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.01045
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.021072
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.015914
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.022413
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.024554
+          },
+          {
+            "month": "2024-11",
+            "ret": -0.000087
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.004542
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.061238
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.03115
+          },
+          {
+            "month": "2025-04",
+            "ret": 0
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.021448
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.001783
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.05448
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.025783
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000415
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.010816
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.07004
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.015148
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.023538
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.006554
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.000781
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.029552
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.090661
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.030857
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.10418
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -38.92106898865341,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "reversal50",
+      "role": "frequent-reversal"
+    },
+    {
+      "id": "visar-night-v2-us500/frequent-reversal-gap",
+      "epic": "US500",
+      "leverage": 50,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.5,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 17195.2,
+        "totalReturn": 0.71952,
+        "annualReturn": 0.218209,
+        "maxDrawdown": 0.322923,
+        "sharpe": 0.7047,
+        "sortino": 1.3618,
+        "calmar": 0.6757,
+        "trades": 51,
+        "longTrades": 23,
+        "shortTrades": 28,
+        "winRate": 0.5686,
+        "profitFactor": 1.5553,
+        "avgTradePnl": 141.0823,
+        "avgWin": 694.8963,
+        "avgLoss": -588.9453,
+        "bestTrade": 3897.936,
+        "worstTrade": -2342.493,
+        "tStat": 1.0475,
+        "avgBarsHeld": 286.9,
+        "exposure": 0.015,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.039694
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.026567
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.033769
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.117843
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.096167
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.070104
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.090477
+          },
+          {
+            "month": "2024-10",
+            "ret": 0
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.055843
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.079052
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.023492
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.110234
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.070412
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.001538
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.075198
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.270126
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.098189
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.004128
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.036146
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.310183
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.046781
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.072657
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.206053
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.019403
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.024701
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.149367
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.092004
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": 10.95135050009835,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "reversal50",
+      "role": "frequent-reversal-gap"
+    },
+    {
+      "id": "visar-night-v2-us100/frequent-small",
+      "epic": "US100",
+      "leverage": 5,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 12413.98,
+        "totalReturn": 0.241398,
+        "annualReturn": 0.081925,
+        "maxDrawdown": 0.06967,
+        "sharpe": 1.3696,
+        "sortino": 3.1103,
+        "calmar": 1.1759,
+        "trades": 67,
+        "longTrades": 35,
+        "shortTrades": 32,
+        "winRate": 0.6269,
+        "profitFactor": 2.2708,
+        "avgTradePnl": 36.0295,
+        "avgWin": 102.7048,
+        "avgLoss": -75.9851,
+        "bestTrade": 482.6878,
+        "worstTrade": -184.92,
+        "tStat": 2.3389,
+        "avgBarsHeld": 299.99,
+        "exposure": 0.0202,
+        "funding": 0,
+        "profitableMonths": 17,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.006138
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.014613
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.003486
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.020818
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.005162
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.005223
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.008772
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.007958
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.011206
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.016533
+          },
+          {
+            "month": "2024-11",
+            "ret": -0.000044
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.000189
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.041423
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.01551
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.007015
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.010722
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.000862
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.027181
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.01302
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000207
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.019238
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.079745
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.007536
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.011766
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.005133
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.000379
+          },
+          {
+            "month": "2026-04",
+            "ret": -0.009675
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.014808
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.045867
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.015421
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.051484
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -57.36586898865341,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "current",
+      "role": "frequent-small"
+    },
+    {
+      "id": "visar-night-v2-us500/frequent-small",
+      "epic": "US500",
+      "leverage": 1,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10100.64,
+        "totalReturn": 0.010064,
+        "annualReturn": 0.003653,
+        "maxDrawdown": 0.011415,
+        "sharpe": 0.4424,
+        "sortino": 0.7261,
+        "calmar": 0.32,
+        "trades": 81,
+        "longTrades": 40,
+        "shortTrades": 41,
+        "winRate": 0.5679,
+        "profitFactor": 1.266,
+        "avgTradePnl": 1.2424,
+        "avgWin": 10.4125,
+        "avgLoss": -10.8096,
+        "bestTrade": 67.536,
+        "worstTrade": -51.745,
+        "tStat": 0.728,
+        "avgBarsHeld": 288.57,
+        "exposure": 0.0239,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.002769
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.001707
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.00053
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.002621
+          },
+          {
+            "month": "2024-05",
+            "ret": -0.002251
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.001666
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.001908
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.00079
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.001838
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.0007
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.000699
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.002521
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.00007
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.0032
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.002284
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.00003
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.000747
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.005014
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.001907
+          },
+          {
+            "month": "2025-09",
+            "ret": -0.001319
+          },
+          {
+            "month": "2025-10",
+            "ret": -0.000827
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.005359
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.000471
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.001443
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.002769
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.000384
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.001677
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.003204
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.003329
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0.001044
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -59.99424949990165,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "current",
+      "role": "frequent-small"
+    },
+    {
+      "id": "visar-night-v2-us100/frequent-gap-small",
+      "epic": "US100",
+      "leverage": 1,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10423.15,
+        "totalReturn": 0.042315,
+        "annualReturn": 0.015206,
+        "maxDrawdown": 0.010858,
+        "sharpe": 1.4478,
+        "sortino": 3.4345,
+        "calmar": 1.4004,
+        "trades": 54,
+        "longTrades": 24,
+        "shortTrades": 30,
+        "winRate": 0.6852,
+        "profitFactor": 2.6489,
+        "avgTradePnl": 7.836,
+        "avgWin": 18.3722,
+        "avgLoss": -15.0956,
+        "bestTrade": 88.282,
+        "worstTrade": -35.072,
+        "tStat": 2.5037,
+        "avgBarsHeld": 299.98,
+        "exposure": 0.0163,
+        "funding": 0,
+        "profitableMonths": 16,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": 0
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.000696
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.00417
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.001032
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.001043
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.00153
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.00159
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.002238
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.000579
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.000039
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.004908
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.003087
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.001403
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.001212
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.005434
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.002595
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000042
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.003827
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.017006
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.001043
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.002351
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.001044
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.000073
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.002966
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.009054
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.003078
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.003726
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -77.27416898865341,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "current",
+      "role": "frequent-gap-small"
+    },
+    {
+      "id": "visar-night-v2-us500/full-steps",
+      "epic": "US500",
+      "leverage": 10,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 570,
+        "sessionEnd": 960,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.6153846153846154,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10283.11,
+        "totalReturn": 0.028311,
+        "annualReturn": 0.010218,
+        "maxDrawdown": 0.091877,
+        "sharpe": 0.226,
+        "sortino": 0.3383,
+        "calmar": 0.1112,
+        "trades": 33,
+        "longTrades": 21,
+        "shortTrades": 12,
+        "winRate": 0.5758,
+        "profitFactor": 1.1664,
+        "avgTradePnl": 8.5792,
+        "avgWin": 104.4278,
+        "avgLoss": -121.5011,
+        "bestTrade": 445.221,
+        "worstTrade": -364.32,
+        "tStat": 0.3297,
+        "avgBarsHeld": 288.55,
+        "exposure": 0.0097,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.007938
+          },
+          {
+            "month": "2024-02",
+            "ret": 0.007872
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.003964
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.026825
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.023826
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.000762
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.011588
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.00942
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.019726
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.012254
+          },
+          {
+            "month": "2025-04",
+            "ret": 0
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.011879
+          },
+          {
+            "month": "2025-06",
+            "ret": 0.010428
+          },
+          {
+            "month": "2025-07",
+            "ret": -0.009029
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.001676
+          },
+          {
+            "month": "2025-09",
+            "ret": 0
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.00683
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.044386
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.009355
+          },
+          {
+            "month": "2026-01",
+            "ret": 0.007618
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.002075
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.038367
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.037761
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.006802
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.023286
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -58.16954949990165,
+      "sessionWindow": "full",
+      "minimumGapBp": 5,
+      "policy": "steps16",
+      "role": "full-steps"
+    },
+    {
+      "id": "visar-night-v2-us100/central-reversal",
+      "epic": "US100",
+      "leverage": 50,
+      "lossPct": 10,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.35,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 10
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 48314.69,
+        "totalReturn": 3.831469,
+        "annualReturn": 0.774608,
+        "maxDrawdown": 0.279089,
+        "sharpe": 1.5126,
+        "sortino": 4.8786,
+        "calmar": 2.7755,
+        "trades": 28,
+        "longTrades": 16,
+        "shortTrades": 12,
+        "winRate": 0.6786,
+        "profitFactor": 5.497,
+        "avgTradePnl": 1368.3819,
+        "avgWin": 2464.9896,
+        "avgLoss": -946.6786,
+        "bestTrade": 9921.578,
+        "worstTrade": -2017.6171,
+        "tStat": 2.6189,
+        "avgBarsHeld": 284.07,
+        "exposure": 0.008,
+        "funding": 0,
+        "profitableMonths": 13,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.061385
+          },
+          {
+            "month": "2024-02",
+            "ret": -0.100933
+          },
+          {
+            "month": "2024-03",
+            "ret": 0
+          },
+          {
+            "month": "2024-04",
+            "ret": 0.020689
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.052254
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.105374
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.001115
+          },
+          {
+            "month": "2024-11",
+            "ret": -0.000435
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.007364
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.138198
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.128852
+          },
+          {
+            "month": "2025-04",
+            "ret": 0
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.055393
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.272403
+          },
+          {
+            "month": "2025-08",
+            "ret": 0
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.002072
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.250201
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.123999
+          },
+          {
+            "month": "2026-01",
+            "ret": 0
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.084803
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.100061
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.225752
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.506675
+          },
+          {
+            "month": "2026-07",
+            "ret": 0
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.569146
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": 301.6412310113466,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "reversal35",
+      "role": "central-reversal"
+    },
+    {
+      "id": "visar-night-v2-us500/full-reversal",
+      "epic": "US500",
+      "leverage": 100,
+      "lossPct": 10,
+      "params": {
+        "sessionStart": 570,
+        "sessionEnd": 960,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.35,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 10
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 11585.3,
+        "totalReturn": 0.15853,
+        "annualReturn": 0.055046,
+        "maxDrawdown": 0.317334,
+        "sharpe": 0.3077,
+        "sortino": 0.6137,
+        "calmar": 0.1735,
+        "trades": 22,
+        "longTrades": 13,
+        "shortTrades": 9,
+        "winRate": 0.5455,
+        "profitFactor": 1.152,
+        "avgTradePnl": 72.0592,
+        "avgWin": 1001.1283,
+        "avgLoss": -1042.8237,
+        "bestTrade": 4036.626,
+        "worstTrade": -1466.675,
+        "tStat": 0.2582,
+        "avgBarsHeld": 226.36,
+        "exposure": 0.0051,
+        "funding": 0,
+        "profitableMonths": 10,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.188913
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.103432
+          },
+          {
+            "month": "2024-04",
+            "ret": 0
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.092459
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.039451
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.249275
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": 0.010827
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.094238
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0
+          },
+          {
+            "month": "2025-04",
+            "ret": 0
+          },
+          {
+            "month": "2025-05",
+            "ret": -0.101253
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": 0
+          },
+          {
+            "month": "2025-08",
+            "ret": 0
+          },
+          {
+            "month": "2025-09",
+            "ret": -0.113437
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.443982
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.098905
+          },
+          {
+            "month": "2026-01",
+            "ret": 0.076206
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.054326
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.098773
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.110055
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.068045
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.10226
+          },
+          {
+            "month": "2026-08",
+            "ret": -0.100228
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -45.14764949990165,
+      "sessionWindow": "full",
+      "minimumGapBp": 0,
+      "policy": "reversal35",
+      "role": "full-reversal"
+    },
+    {
+      "id": "visar-night-v2-us100/large-gap",
+      "epic": "US100",
+      "leverage": 50,
+      "lossPct": 5,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 15,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.6153846153846154,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 5
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 20055.97,
+        "totalReturn": 1.005597,
+        "annualReturn": 0.288427,
+        "maxDrawdown": 0.293445,
+        "sharpe": 0.815,
+        "sortino": 3.0117,
+        "calmar": 0.9829,
+        "trades": 22,
+        "longTrades": 8,
+        "shortTrades": 14,
+        "winRate": 0.4545,
+        "profitFactor": 2.1659,
+        "avgTradePnl": 457.0894,
+        "avgWin": 1868.1289,
+        "avgLoss": -718.7768,
+        "bestTrade": 6058.2926,
+        "worstTrade": -1007.7036,
+        "tStat": 1.1811,
+        "avgBarsHeld": 186.95,
+        "exposure": 0.0041,
+        "funding": 0,
+        "profitableMonths": 8,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": 0
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.034864
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.098283
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.051619
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.105371
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": -0.050395
+          },
+          {
+            "month": "2024-10",
+            "ret": 0
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.107209
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": -0.053103
+          },
+          {
+            "month": "2025-04",
+            "ret": -0.055575
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": 0
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.022252
+          },
+          {
+            "month": "2025-09",
+            "ret": 0
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 1.064415
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.050201
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.050322
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.017229
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.101163
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.133395
+          },
+          {
+            "month": "2026-06",
+            "ret": -0.050165
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.051738
+          },
+          {
+            "month": "2026-08",
+            "ret": 0.186738
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": 19.054031011346595,
+      "sessionWindow": "central",
+      "minimumGapBp": 15,
+      "policy": "steps16",
+      "role": "large-gap"
+    },
+    {
+      "id": "visar-night-v2-us500/central-body",
+      "epic": "US500",
+      "leverage": 50,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.8,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 11631.31,
+        "totalReturn": 0.163131,
+        "annualReturn": 0.05657,
+        "maxDrawdown": 0.309857,
+        "sharpe": 0.3767,
+        "sortino": 0.7612,
+        "calmar": 0.1826,
+        "trades": 22,
+        "longTrades": 8,
+        "shortTrades": 14,
+        "winRate": 0.5,
+        "profitFactor": 1.3344,
+        "avgTradePnl": 74.1505,
+        "avgWin": 591.8315,
+        "avgLoss": -443.5305,
+        "bestTrade": 2153.511,
+        "worstTrade": -821.04,
+        "tStat": 0.5034,
+        "avgBarsHeld": 291.41,
+        "exposure": 0.0066,
+        "funding": 0,
+        "profitableMonths": 9,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.039694
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.026567
+          },
+          {
+            "month": "2024-04",
+            "ret": 0
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.056458
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.070106
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": 0
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.047118
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.001575
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.12126
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": -0.0752
+          },
+          {
+            "month": "2025-07",
+            "ret": -0.045154
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.013156
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.004128
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.22198
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.046777
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.072656
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.070392
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.024892
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.063408
+          },
+          {
+            "month": "2026-07",
+            "ret": 0
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -44.68754949990165,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "body80",
+      "role": "central-body"
+    },
+    {
+      "id": "visar-night-v2-us100/largest-gap",
+      "epic": "US100",
+      "leverage": 10,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 30,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10804.63,
+        "totalReturn": 0.080463,
+        "annualReturn": 0.028582,
+        "maxDrawdown": 0.077456,
+        "sharpe": 0.6427,
+        "sortino": 1.0537,
+        "calmar": 0.369,
+        "trades": 18,
+        "longTrades": 6,
+        "shortTrades": 12,
+        "winRate": 0.6667,
+        "profitFactor": 1.8823,
+        "avgTradePnl": 44.7019,
+        "avgWin": 143.0533,
+        "avgLoss": -152.0008,
+        "bestTrade": 379.6375,
+        "worstTrade": -351.3365,
+        "tStat": 1.065,
+        "avgBarsHeld": 300,
+        "exposure": 0.0054,
+        "funding": 0,
+        "profitableMonths": 9,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": 0
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": 0
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.035134
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.015215
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.015912
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.000223
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.021437
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.005698
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.014029
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": 0.013568
+          },
+          {
+            "month": "2025-08",
+            "ret": 0
+          },
+          {
+            "month": "2025-09",
+            "ret": 0
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.015678
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.020332
+          },
+          {
+            "month": "2026-01",
+            "ret": 0
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.013896
+          },
+          {
+            "month": "2026-03",
+            "ret": 0.006263
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": -0.01328
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.060064
+          },
+          {
+            "month": "2026-07",
+            "ret": 0
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -73.45936898865341,
+      "sessionWindow": "central",
+      "minimumGapBp": 30,
+      "policy": "current",
+      "role": "largest-gap"
+    },
+    {
+      "id": "visar-night-v2-us500/central-steps",
+      "epic": "US500",
+      "leverage": 10,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.6153846153846154,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 11656.49,
+        "totalReturn": 0.165649,
+        "annualReturn": 0.057402,
+        "maxDrawdown": 0.081881,
+        "sharpe": 1.0339,
+        "sortino": 3.8915,
+        "calmar": 0.701,
+        "trades": 25,
+        "longTrades": 9,
+        "shortTrades": 16,
+        "winRate": 0.64,
+        "profitFactor": 3.3962,
+        "avgTradePnl": 66.2597,
+        "avgWin": 146.7376,
+        "avgLoss": -76.8121,
+        "bestTrade": 748.44,
+        "worstTrade": -169.4,
+        "tStat": 1.7152,
+        "avgBarsHeld": 291.32,
+        "exposure": 0.0075,
+        "funding": 0,
+        "profitableMonths": 10,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.007938
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": 0
+          },
+          {
+            "month": "2024-04",
+            "ret": 0
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.019187
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": 0
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": 0
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.015806
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.015656
+          },
+          {
+            "month": "2025-04",
+            "ret": -0.000694
+          },
+          {
+            "month": "2025-05",
+            "ret": 0.000308
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": 0
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.00431
+          },
+          {
+            "month": "2025-09",
+            "ret": 0.000826
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.007228
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.115277
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.009352
+          },
+          {
+            "month": "2026-01",
+            "ret": -0.014524
+          },
+          {
+            "month": "2026-02",
+            "ret": 0
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.003859
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.017023
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.012911
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.011765
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "03ad8a5b06df",
+      "benchmarkEpic": "US500",
+      "benchmarkExcessPp": -44.43574949990165,
+      "sessionWindow": "central",
+      "minimumGapBp": 5,
+      "policy": "steps16",
+      "role": "central-steps"
+    },
+    {
+      "id": "visar-night-v2-us100/full-steps",
+      "epic": "US100",
+      "leverage": 3,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 570,
+        "sessionEnd": 960,
+        "minPullbackBp": 5,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.6153846153846154,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.6,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10311.31,
+        "totalReturn": 0.031131,
+        "annualReturn": 0.011226,
+        "maxDrawdown": 0.027099,
+        "sharpe": 0.5178,
+        "sortino": 1.0246,
+        "calmar": 0.4142,
+        "trades": 25,
+        "longTrades": 14,
+        "shortTrades": 11,
+        "winRate": 0.56,
+        "profitFactor": 1.6306,
+        "avgTradePnl": 12.4523,
+        "avgWin": 57.499,
+        "avgLoss": -44.8799,
+        "bestTrade": 201.7576,
+        "worstTrade": -105.2845,
+        "tStat": 0.8442,
+        "avgBarsHeld": 300,
+        "exposure": 0.0075,
+        "funding": 0,
+        "profitableMonths": 10,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": 0
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.000705
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.010535
+          },
+          {
+            "month": "2024-05",
+            "ret": 0.003935
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.003135
+          },
+          {
+            "month": "2024-07",
+            "ret": -0.003004
+          },
+          {
+            "month": "2024-08",
+            "ret": 0
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.001672
+          },
+          {
+            "month": "2024-11",
+            "ret": 0
+          },
+          {
+            "month": "2024-12",
+            "ret": -0.001245
+          },
+          {
+            "month": "2025-01",
+            "ret": 0
+          },
+          {
+            "month": "2025-02",
+            "ret": -0.00732
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.000944
+          },
+          {
+            "month": "2025-04",
+            "ret": 0.004208
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": -0.004069
+          },
+          {
+            "month": "2025-08",
+            "ret": 0
+          },
+          {
+            "month": "2025-09",
+            "ret": 0
+          },
+          {
+            "month": "2025-10",
+            "ret": 0.002813
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.020183
+          },
+          {
+            "month": "2025-12",
+            "ret": 0.002973
+          },
+          {
+            "month": "2026-01",
+            "ret": 0
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.003506
+          },
+          {
+            "month": "2026-03",
+            "ret": 0.017778
+          },
+          {
+            "month": "2026-04",
+            "ret": -0.003796
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.014058
+          },
+          {
+            "month": "2026-06",
+            "ret": 0
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.009885
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -78.39256898865341,
+      "sessionWindow": "full",
+      "minimumGapBp": 5,
+      "policy": "steps16",
+      "role": "full-steps"
+    },
+    {
+      "id": "visar-night-v2-us100/central-body",
+      "epic": "US100",
+      "leverage": 5,
+      "lossPct": 20,
+      "params": {
+        "sessionStart": 630,
+        "sessionEnd": 930,
+        "minPullbackBp": 0,
+        "timeZone": "Europe/Tirane",
+        "trendPct": 0.25,
+        "minEfficiency": 0.15,
+        "minDirectionalShare": 0.5,
+        "maxRetraceShare": 0.75,
+        "maxRangePct": 2,
+        "minBodyShare": 0.8,
+        "minCoverage": 0.9,
+        "marginPct": 90,
+        "lossPct": 20
+      },
+      "metrics": {
+        "startTime": 1704150060000,
+        "endTime": 1790812800000,
+        "days": 1003.04,
+        "initialCapital": 10000,
+        "finalEquity": 10439.2,
+        "totalReturn": 0.04392,
+        "annualReturn": 0.015775,
+        "maxDrawdown": 0.051361,
+        "sharpe": 0.5163,
+        "sortino": 0.9525,
+        "calmar": 0.3071,
+        "trades": 24,
+        "longTrades": 11,
+        "shortTrades": 13,
+        "winRate": 0.5833,
+        "profitFactor": 1.6235,
+        "avgTradePnl": 18.3002,
+        "avgWin": 81.6893,
+        "avgLoss": -70.4445,
+        "bestTrade": 334.7051,
+        "worstTrade": -173.99,
+        "tStat": 0.8362,
+        "avgBarsHeld": 300,
+        "exposure": 0.0072,
+        "funding": 0,
+        "profitableMonths": 10,
+        "totalMonths": 33,
+        "monthly": [
+          {
+            "month": "2024-01",
+            "ret": -0.006138
+          },
+          {
+            "month": "2024-02",
+            "ret": 0
+          },
+          {
+            "month": "2024-03",
+            "ret": -0.003485
+          },
+          {
+            "month": "2024-04",
+            "ret": -0.017568
+          },
+          {
+            "month": "2024-05",
+            "ret": 0
+          },
+          {
+            "month": "2024-06",
+            "ret": 0.005225
+          },
+          {
+            "month": "2024-07",
+            "ret": 0.011673
+          },
+          {
+            "month": "2024-08",
+            "ret": -0.007955
+          },
+          {
+            "month": "2024-09",
+            "ret": 0
+          },
+          {
+            "month": "2024-10",
+            "ret": -0.002786
+          },
+          {
+            "month": "2024-11",
+            "ret": -0.000044
+          },
+          {
+            "month": "2024-12",
+            "ret": 0.00227
+          },
+          {
+            "month": "2025-01",
+            "ret": 0.010718
+          },
+          {
+            "month": "2025-02",
+            "ret": 0
+          },
+          {
+            "month": "2025-03",
+            "ret": 0.002981
+          },
+          {
+            "month": "2025-04",
+            "ret": 0
+          },
+          {
+            "month": "2025-05",
+            "ret": 0
+          },
+          {
+            "month": "2025-06",
+            "ret": 0
+          },
+          {
+            "month": "2025-07",
+            "ret": 0
+          },
+          {
+            "month": "2025-08",
+            "ret": 0.000152
+          },
+          {
+            "month": "2025-09",
+            "ret": 0
+          },
+          {
+            "month": "2025-10",
+            "ret": 0
+          },
+          {
+            "month": "2025-11",
+            "ret": 0.033649
+          },
+          {
+            "month": "2025-12",
+            "ret": -0.007534
+          },
+          {
+            "month": "2026-01",
+            "ret": 0
+          },
+          {
+            "month": "2026-02",
+            "ret": 0.008476
+          },
+          {
+            "month": "2026-03",
+            "ret": -0.003499
+          },
+          {
+            "month": "2026-04",
+            "ret": 0
+          },
+          {
+            "month": "2026-05",
+            "ret": 0.008147
+          },
+          {
+            "month": "2026-06",
+            "ret": 0.025586
+          },
+          {
+            "month": "2026-07",
+            "ret": -0.015422
+          },
+          {
+            "month": "2026-08",
+            "ret": 0
+          },
+          {
+            "month": "2026-09",
+            "ret": 0
+          }
+        ]
+      },
+      "codeHash": "5ff415eb93d8",
+      "benchmarkEpic": "US100",
+      "benchmarkExcessPp": -77.11366898865342,
+      "sessionWindow": "central",
+      "minimumGapBp": 0,
+      "policy": "body80",
+      "role": "central-body"
+    }
+  ],
   "agents": [
     {
       "policy": "current",
@@ -3775,10 +7601,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -42.65374949990165,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 80,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.7330902094941113,
       "epic": "US500",
       "role": "frequent-core",
@@ -3788,9 +7617,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 10
+        "lossPct": 10,
+        "profitPct": 0
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "current",
@@ -3812,17 +7642,17 @@
       "unfilled": 0,
       "rejectionLogTruncated": false,
       "tradesPerYear": 24.374252988047807,
-      "returnPct": 125.1114,
+      "returnPct": 132.1489,
       "maxDrawdownPct": 25.6391,
-      "finalEquity": 22511.14,
-      "meanPct": 1.3194554234385865,
-      "avgWinPct": 3.813533573042285,
-      "avgLossPct": -2.8705958678956263,
+      "finalEquity": 23214.89,
+      "meanPct": 1.3741836248326436,
+      "avgWinPct": 3.9008387988291218,
+      "avgLossPct": -2.8705970674814405,
       "worstTradePct": -7.02654467920514,
-      "bestTradePct": 17.290499705746996,
-      "breakEvenWinPct": 42.946443411377544,
+      "bestTradePct": 20.957303080058804,
+      "breakEvenWinPct": 42.392738027148944,
       "longestLossStreak": 8,
-      "meanSpreadPct": 0.14343159294529173,
+      "meanSpreadPct": 0.14343159156712337,
       "years": {
         "2024": {
           "n": 21,
@@ -3833,14 +7663,14 @@
         "2025": {
           "n": 26,
           "wins": 21,
-          "returnPct": 117.03008916798127,
-          "meanPct": 3.1325821815775168
+          "returnPct": 123.81521623765637,
+          "meanPct": 3.273616408926115
         },
         "2026": {
           "n": 20,
           "wins": 14,
-          "returnPct": 33.87773892936221,
-          "meanPct": 1.5789999031454645
+          "returnPct": 33.87757494473866,
+          "meanPct": 1.5789948822623776
         }
       },
       "eventStats": [
@@ -3848,7 +7678,7 @@
           "label": "No listed major context",
           "n": 67,
           "wins": 42,
-          "meanPct": 1.3194554234385865,
+          "meanPct": 1.3741836248326436,
           "dateOnly": 0
         },
         {
@@ -3859,22 +7689,26 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": 43.60573101134659,
       "sessionWindow": "central",
       "minimumGapBp": 0,
-      "quality": 3.054044977699642,
+      "profitPct": 20,
+      "targetHits": 1,
+      "deadlineExits": 66,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 3.1699083421589633,
       "epic": "US100",
       "role": "frequent-core",
-      "roleBestQuality": 3.054044977699642,
+      "roleBestQuality": 3.1699083421589633,
       "id": "visar-night-v2-us100/frequent-core",
       "params": {
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 20
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "current",
@@ -3896,35 +7730,35 @@
       "unfilled": 2,
       "rejectionLogTruncated": false,
       "tradesPerYear": 22.19148406374502,
-      "returnPct": 79.8808,
-      "maxDrawdownPct": 29.2298,
-      "finalEquity": 17988.08,
-      "meanPct": 1.2738718528861082,
-      "avgWinPct": 5.819863074535995,
-      "avgLossPct": -5.2723555062897285,
-      "worstTradePct": -19.955172685628025,
-      "bestTradePct": 33.94715499567386,
-      "breakEvenWinPct": 47.5320195673357,
+      "returnPct": 97.6631,
+      "maxDrawdownPct": 29.2283,
+      "finalEquity": 19766.31,
+      "meanPct": 1.4238960191133816,
+      "avgWinPct": 6.0740151040616235,
+      "avgLossPct": -5.272275463212087,
+      "worstTradePct": -19.95323844251551,
+      "bestTradePct": 20.273760210689513,
+      "breakEvenWinPct": 46.46695263048345,
       "longestLossStreak": 4,
-      "meanSpreadPct": 0.4159514911439612,
+      "meanSpreadPct": 0.4159538397584517,
       "years": {
         "2024": {
           "n": 17,
           "wins": 7,
-          "returnPct": -25.474330000000023,
-          "meanPct": -1.5707852067873773
+          "returnPct": -17.157559999999993,
+          "meanPct": -0.8611889211605864
         },
         "2025": {
           "n": 26,
           "wins": 19,
-          "returnPct": 113.00060771006825,
-          "meanPct": 3.427146323232307
+          "returnPct": 87.8182245718498,
+          "meanPct": 2.816675639394538
         },
         "2026": {
           "n": 18,
           "wins": 10,
-          "returnPct": 13.317798089241805,
-          "meanPct": 0.8502070631887789
+          "returnPct": 27.038373142271,
+          "meanPct": 1.5702390111882363
         }
       },
       "eventStats": [
@@ -3932,7 +7766,7 @@
           "label": "No listed major context",
           "n": 61,
           "wins": 36,
-          "meanPct": 1.2738718528861082,
+          "meanPct": 1.4238960191133816,
           "dateOnly": 0
         },
         {
@@ -3943,22 +7777,26 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": 18.880150500098345,
-      "quality": 2.008805038328772,
+      "minimumGapBp": 5,
+      "profitPct": 20,
+      "targetHits": 5,
+      "deadlineExits": 55,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 2.3314294052145024,
       "epic": "US500",
       "role": "frequent-gap",
-      "roleBestQuality": 2.008805038328772,
+      "roleBestQuality": 2.3314294052145024,
       "id": "visar-night-v2-us500/frequent-gap",
       "params": {
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 20
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "current",
@@ -4027,10 +7865,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": 35.658731011346575,
+      "minimumGapBp": 5,
+      "profitPct": 100,
+      "targetHits": 0,
+      "deadlineExits": 54,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 3.463267568309258,
       "epic": "US100",
       "role": "frequent-gap",
@@ -4040,9 +7881,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 100
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "reversal50",
@@ -4111,10 +7953,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -52.13804949990165,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 67,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.5739726725361025,
       "epic": "US500",
       "role": "frequent-reversal",
@@ -4125,9 +7970,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 5
+        "lossPct": 5,
+        "profitPct": 0
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "reversal50",
@@ -4196,10 +8042,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -38.92106898865341,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 50,
+      "targetHits": 0,
+      "deadlineExits": 50,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 2.3009375193831674,
       "epic": "US100",
       "role": "frequent-reversal",
@@ -4210,9 +8059,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 50
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "reversal50",
@@ -4281,10 +8131,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": 10.95135050009835,
+      "minimumGapBp": 5,
+      "profitPct": 50,
+      "targetHits": 0,
+      "deadlineExits": 50,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 1.7245268858044192,
       "epic": "US500",
       "role": "frequent-reversal-gap",
@@ -4295,9 +8148,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 50
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "current",
@@ -4366,10 +8220,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -57.36586898865341,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 67,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 1.9150729042326717,
       "epic": "US100",
       "role": "frequent-small",
@@ -4379,9 +8236,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 0
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "current",
@@ -4450,10 +8308,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -59.99424949990165,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 81,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.168056512693135,
       "epic": "US500",
       "role": "frequent-small",
@@ -4463,9 +8324,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 0
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "current",
@@ -4534,10 +8396,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -77.27416898865341,
+      "minimumGapBp": 5,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 54,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.7017205050969123,
       "epic": "US100",
       "role": "frequent-gap-small",
@@ -4547,16 +8412,17 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 0
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "steps16",
-      "profile": "L10S20",
-      "leverage": 10,
-      "lossPct": 20,
-      "exposure": 9,
+      "profile": "L50S30",
+      "leverage": 50,
+      "lossPct": 30,
+      "exposure": 45,
       "status": "completed",
       "n": 33,
       "eligible": 34,
@@ -4571,35 +8437,35 @@
       "unfilled": 1,
       "rejectionLogTruncated": false,
       "tradesPerYear": 12.005229083665338,
-      "returnPct": 2.8310999999999997,
-      "maxDrawdownPct": 9.1877,
-      "finalEquity": 10283.11,
-      "meanPct": 0.09521652848120153,
-      "avgWinPct": 1.0464176853236131,
-      "avgLossPct": -1.1956993272335001,
-      "worstTradePct": -3.476778437255277,
-      "bestTradePct": 4.438588416010107,
-      "breakEvenWinPct": 53.32903325459434,
+      "returnPct": 17.130100000000002,
+      "maxDrawdownPct": 39.8091,
+      "finalEquity": 11713.01,
+      "meanPct": 0.7773585600026217,
+      "avgWinPct": 5.756445287939646,
+      "avgLossPct": -5.979973427911911,
+      "worstTradePct": -17.38395805599609,
+      "bestTradePct": 20.16063169512063,
+      "breakEvenWinPct": 50.952284275911026,
       "longestLossStreak": 2,
-      "meanSpreadPct": 0.08278006753388034,
+      "meanSpreadPct": 0.4140263701789524,
       "years": {
         "2024": {
           "n": 9,
           "wins": 4,
-          "returnPct": -1.9959700000000136,
-          "meanPct": -0.21408139644078394
+          "returnPct": -1.352640000000005,
+          "meanPct": 0.2695654901750162
         },
         "2025": {
           "n": 14,
           "wins": 9,
-          "returnPct": 5.8926862497389765,
-          "meanPct": 0.41908271140578957
+          "returnPct": 27.486777142338003,
+          "meanPct": 1.9437615590482817
         },
         "2026": {
           "n": 10,
           "wins": 6,
-          "returnPct": -0.913459453782095,
-          "meanPct": -0.07982799518343481
+          "returnPct": -6.863891050373272,
+          "meanPct": -0.3985918758164573
         }
       },
       "eventStats": [
@@ -4607,34 +8473,38 @@
           "label": "No listed major context",
           "n": 31,
           "wins": 18,
-          "meanPct": 0.18133439189221826,
+          "meanPct": 1.2273238766698344,
           "dateOnly": 0
         },
         {
           "label": "Listed major context",
           "n": 2,
           "wins": 1,
-          "meanPct": -1.2396103543895578,
+          "meanPct": -6.197103848339177,
           "dateOnly": 1
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "full",
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -58.16954949990165,
-      "quality": 0.2107324422598834,
+      "minimumGapBp": 5,
+      "profitPct": 20,
+      "targetHits": 2,
+      "deadlineExits": 31,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 0.4319213569919557,
       "epic": "US500",
       "role": "full-steps",
-      "roleBestQuality": 0.2107324422598834,
+      "roleBestQuality": 0.4319213569919557,
       "id": "visar-night-v2-us500/full-steps",
       "params": {
         "minDirectionalShare": 0.6153846153846154,
         "sessionStart": 570,
         "sessionEnd": 960,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 30,
+        "profitPct": 20
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "reversal35",
@@ -4703,10 +8573,13 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": 301.6412310113466,
       "sessionWindow": "central",
       "minimumGapBp": 0,
+      "profitPct": 100,
+      "targetHits": 0,
+      "deadlineExits": 24,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 5.573972159182858,
       "epic": "US100",
       "role": "central-reversal",
@@ -4717,9 +8590,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 10
+        "lossPct": 10,
+        "profitPct": 100
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "reversal35",
@@ -4727,6 +8601,7 @@
       "leverage": 100,
       "lossPct": 10,
       "exposure": 90,
+      "status": "completed",
       "n": 22,
       "eligible": 23,
       "wins": 12,
@@ -4737,9 +8612,8 @@
       ],
       "stops": 9,
       "rejected": 1,
-      "rejectionCounts": {
-        "Entry expired before a fill": 1
-      },
+      "unfilled": 1,
+      "rejectionLogTruncated": false,
       "tradesPerYear": 8.003486055776891,
       "returnPct": 15.853,
       "maxDrawdownPct": 31.7334,
@@ -4772,10 +8646,29 @@
           "meanPct": 0.10529786614881953
         }
       },
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -45.14764949990165,
+      "eventStats": [
+        {
+          "label": "No listed major context",
+          "n": 21,
+          "wins": 12,
+          "meanPct": 1.929278745849749,
+          "dateOnly": 0
+        },
+        {
+          "label": "Listed major context",
+          "n": 1,
+          "wins": 0,
+          "meanPct": -9.877296833759623,
+          "dateOnly": 1
+        }
+      ],
       "sessionWindow": "full",
       "minimumGapBp": 0,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 13,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.47417042573531787,
       "epic": "US500",
       "role": "full-reversal",
@@ -4786,67 +8679,68 @@
         "sessionStart": 570,
         "sessionEnd": 960,
         "minPullbackBp": 0,
-        "lossPct": 10
+        "lossPct": 10,
+        "profitPct": 0
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "steps16",
-      "profile": "L50S5",
-      "leverage": 50,
-      "lossPct": 5,
-      "exposure": 45,
+      "profile": "L100S10",
+      "leverage": 100,
+      "lossPct": 10,
+      "exposure": 90,
       "status": "completed",
       "n": 22,
       "eligible": 22,
-      "wins": 10,
-      "winPct": 45.45454545454545,
+      "wins": 12,
+      "winPct": 54.54545454545454,
       "winInterval": [
-        26.920294180813308,
-        65.34020467926504
+        34.659795320734936,
+        73.07970581918669
       ],
-      "stops": 11,
+      "stops": 9,
       "rejected": 0,
       "unfilled": 0,
       "rejectionLogTruncated": false,
       "tradesPerYear": 8.003486055776891,
-      "returnPct": 100.5597,
-      "maxDrawdownPct": 29.3445,
-      "finalEquity": 20055.97,
-      "meanPct": 3.954582753000959,
-      "avgWinPct": 14.710546384334352,
-      "avgLossPct": -5.008720273110202,
-      "worstTradePct": -5.557463166123885,
-      "bestTradePct": 43.22656741770544,
-      "breakEvenWinPct": 25.400134599930855,
+      "returnPct": 159.7858,
+      "maxDrawdownPct": 30.031000000000002,
+      "finalEquity": 25978.58,
+      "meanPct": 5.462196018459561,
+      "avgWinPct": 18.33250783832819,
+      "avgLossPct": -9.982178165382795,
+      "worstTradePct": -11.114844442728998,
+      "bestTradePct": 21.38413136368148,
+      "breakEvenWinPct": 35.25441943475732,
       "longestLossStreak": 3,
-      "meanSpreadPct": 0.36018496821704765,
+      "meanSpreadPct": 0.7203750465156952,
       "years": {
         "2024": {
           "n": 6,
           "wins": 2,
-          "returnPct": -3.934280999999995,
-          "meanPct": -0.48487418515663333
+          "returnPct": -9.940283999999998,
+          "meanPct": -1.032385549293424
         },
         "2025": {
           "n": 8,
-          "wins": 5,
-          "returnPct": 98.46616981027334,
-          "meanPct": 10.222788893391616
+          "wins": 6,
+          "returnPct": 146.68055915255155,
+          "meanPct": 12.872034625113535
         },
         "2026": {
           "n": 8,
-          "wins": 3,
-          "returnPct": 5.193443464695147,
-          "meanPct": 1.0159693162284957
+          "wins": 4,
+          "returnPct": 16.93643545636614,
+          "meanPct": 2.923293587620324
         }
       },
       "eventStats": [
         {
           "label": "No listed major context",
           "n": 22,
-          "wins": 10,
-          "meanPct": 3.954582753000959,
+          "wins": 12,
+          "meanPct": 5.462196018459561,
           "dateOnly": 0
         },
         {
@@ -4857,23 +8751,27 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 15,
       "sessionWindow": "central",
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": 19.054031011346595,
-      "quality": 2.374326698597453,
+      "minimumGapBp": 15,
+      "profitPct": 20,
+      "targetHits": 10,
+      "deadlineExits": 3,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 3.202607708124413,
       "epic": "US100",
       "role": "large-gap",
-      "roleBestQuality": 2.374326698597453,
+      "roleBestQuality": 3.202607708124413,
       "id": "visar-night-v2-us100/large-gap",
       "params": {
         "minDirectionalShare": 0.6153846153846154,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 15,
-        "lossPct": 5
+        "lossPct": 10,
+        "profitPct": 20
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "body80",
@@ -4942,10 +8840,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -44.68754949990165,
+      "minimumGapBp": 5,
+      "profitPct": 100,
+      "targetHits": 0,
+      "deadlineExits": 22,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.49548985681672086,
       "epic": "US500",
       "role": "central-body",
@@ -4956,67 +8857,68 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 100
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "current",
-      "profile": "L10S20",
-      "leverage": 10,
-      "lossPct": 20,
-      "exposure": 9,
+      "profile": "L100S5",
+      "leverage": 100,
+      "lossPct": 5,
+      "exposure": 90,
       "status": "completed",
       "n": 18,
       "eligible": 18,
-      "wins": 12,
-      "winPct": 66.66666666666666,
+      "wins": 4,
+      "winPct": 22.22222222222222,
       "winInterval": [
-        43.7494672959451,
-        83.7212252491663
+        9.000928108601695,
+        45.21458431621262
       ],
-      "stops": 0,
+      "stops": 14,
       "rejected": 0,
       "unfilled": 0,
       "rejectionLogTruncated": false,
       "tradesPerYear": 6.548306772908366,
-      "returnPct": 8.0463,
-      "maxDrawdownPct": 7.7456,
-      "finalEquity": 10804.63,
-      "meanPct": 0.4456494982185056,
-      "avgWinPct": 1.4236169664379783,
-      "avgLossPct": -1.5102854382204398,
-      "worstTradePct": -3.5133650000000003,
-      "bestTradePct": 3.724701792557409,
-      "breakEvenWinPct": 51.4770169526575,
-      "longestLossStreak": 2,
-      "meanSpreadPct": 0.0712197795795844,
+      "returnPct": 49.451699999999995,
+      "maxDrawdownPct": 37.634,
+      "finalEquity": 14945.17,
+      "meanPct": 3.6206466257312906,
+      "avgWinPct": 34.93599212564954,
+      "avgLossPct": -5.326594945673923,
+      "worstTradePct": -6.263869511641326,
+      "bestTradePct": 52.40457555488726,
+      "breakEvenWinPct": 13.229639059800322,
+      "longestLossStreak": 6,
+      "meanSpreadPct": 0.7122914446159537,
       "years": {
         "2024": {
           "n": 5,
           "wins": 1,
-          "returnPct": -3.6256009999999894,
-          "meanPct": -0.7186827195139305
+          "returnPct": 23.340913000000008,
+          "meanPct": 6.359220105602426
         },
         "2025": {
           "n": 6,
-          "wins": 5,
-          "returnPct": 5.055203508973372,
-          "meanPct": 0.8346398450230136
+          "wins": 2,
+          "returnPct": 13.628981325928734,
+          "meanPct": 2.743267542643615
         },
         "2026": {
           "n": 7,
-          "wins": 6,
-          "returnPct": 6.716320092262884,
-          "meanPct": 0.9438950707663817
+          "wins": 1,
+          "returnPct": 6.636196298046282,
+          "meanPct": 2.416561925612773
         }
       },
       "eventStats": [
         {
           "label": "No listed major context",
           "n": 18,
-          "wins": 12,
-          "meanPct": 0.4456494982185056,
+          "wins": 4,
+          "meanPct": 3.6206466257312906,
           "dateOnly": 0
         },
         {
@@ -5027,22 +8929,26 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 30,
       "sessionWindow": "central",
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -73.45936898865341,
-      "quality": 0.6458820359755169,
+      "minimumGapBp": 30,
+      "profitPct": 50,
+      "targetHits": 2,
+      "deadlineExits": 2,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 1.1433490636495172,
       "epic": "US100",
       "role": "largest-gap",
-      "roleBestQuality": 0.6458820359755169,
+      "roleBestQuality": 1.1433490636495172,
       "id": "visar-night-v2-us100/largest-gap",
       "params": {
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 30,
-        "lossPct": 20
+        "lossPct": 5,
+        "profitPct": 50
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "steps16",
@@ -5111,10 +9017,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "central",
-      "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -44.43574949990165,
+      "minimumGapBp": 5,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 25,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 1.2388838596639025,
       "epic": "US500",
       "role": "central-steps",
@@ -5125,9 +9034,10 @@
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 0
       },
-      "codeHash": "03ad8a5b06df"
+      "codeHash": "55524f991713"
     },
     {
       "policy": "steps16",
@@ -5196,10 +9106,13 @@
           "dateOnly": 0
         }
       ],
-      "minimumGapBp": 5,
       "sessionWindow": "full",
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -78.39256898865341,
+      "minimumGapBp": 5,
+      "profitPct": 0,
+      "targetHits": 0,
+      "deadlineExits": 25,
+      "otherExits": 0,
+      "funding": 0,
       "quality": 0.41295012243215257,
       "epic": "US100",
       "role": "full-steps",
@@ -5210,16 +9123,17 @@
         "sessionStart": 570,
         "sessionEnd": 960,
         "minPullbackBp": 5,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 0
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     },
     {
       "policy": "body80",
-      "profile": "L5S20",
-      "leverage": 5,
+      "profile": "L10S20",
+      "leverage": 10,
       "lossPct": 20,
-      "exposure": 4.5,
+      "exposure": 9,
       "status": "completed",
       "n": 24,
       "eligible": 24,
@@ -5234,35 +9148,35 @@
       "unfilled": 0,
       "rejectionLogTruncated": false,
       "tradesPerYear": 8.731075697211155,
-      "returnPct": 4.392,
-      "maxDrawdownPct": 5.1361,
-      "finalEquity": 10439.2,
-      "meanPct": 0.18463556976539242,
-      "avgWinPct": 0.8118669501055927,
-      "avgLossPct": -0.693488362710888,
-      "worstTradePct": -1.7567684200990548,
-      "bestTradePct": 3.3649026159542648,
-      "breakEvenWinPct": 46.06808484392892,
+      "returnPct": 8.6938,
+      "maxDrawdownPct": 9.9638,
+      "finalEquity": 10869.38,
+      "meanPct": 0.369333364412579,
+      "avgWinPct": 1.6239579883181856,
+      "avgLossPct": -1.3871411090552703,
+      "worstTradePct": -3.5135626606878865,
+      "bestTradePct": 6.7306897671283545,
+      "breakEvenWinPct": 46.06760070650801,
       "longestLossStreak": 3,
-      "meanSpreadPct": 0.036571134309340905,
+      "meanSpreadPct": 0.07315106953793826,
       "years": {
         "2024": {
           "n": 11,
           "wins": 5,
-          "returnPct": -1.8926600000000238,
-          "meanPct": -0.1710940802820188
+          "returnPct": -3.8063069999999866,
+          "meanPct": -0.34226230762687887
         },
         "2025": {
           "n": 7,
           "wins": 5,
-          "returnPct": 4.010433877832198,
-          "meanPct": 0.571473229235563
+          "returnPct": 8.041216382034545,
+          "meanPct": 1.1432018775531751
         },
         "2026": {
           "n": 6,
           "wins": 4,
-          "returnPct": 2.3031477176966852,
-          "meanPct": 0.38549599213711405
+          "returnPct": 4.58481898132681,
+          "meanPct": 0.7710788311542232
         }
       },
       "eventStats": [
@@ -5270,7 +9184,7 @@
           "label": "No listed major context",
           "n": 24,
           "wins": 14,
-          "meanPct": 0.18463556976539242,
+          "meanPct": 0.369333364412579,
           "dateOnly": 0
         },
         {
@@ -5281,23 +9195,27 @@
           "dateOnly": 0
         }
       ],
-      "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -77.11366898865342,
       "sessionWindow": "central",
       "minimumGapBp": 0,
-      "quality": 0.4455485928062373,
+      "profitPct": 20,
+      "targetHits": 0,
+      "deadlineExits": 24,
+      "otherExits": 0,
+      "funding": 0,
+      "quality": 0.598790564338317,
       "epic": "US100",
       "role": "central-body",
-      "roleBestQuality": 0.4455485928062373,
+      "roleBestQuality": 0.598790564338317,
       "id": "visar-night-v2-us100/central-body",
       "params": {
         "minBodyShare": 0.8,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
-        "lossPct": 20
+        "lossPct": 20,
+        "profitPct": 20
       },
-      "codeHash": "5ff415eb93d8"
+      "codeHash": "18439f2d4f1e"
     }
   ]
 }
