@@ -38,7 +38,8 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 
 `/night-lab/` redirects to the standalone installable `/night-lab/index.html` report. It has its own
 manifest and service-worker scope and uses the ordinary Trader hosting/authentication; it needs no
-extra server. All US500/US100 risk matrices and baseline trade paths are expanded. The historical
+extra server. Both full/central-session risk matrices and trade paths are expanded for the selected gap. All
+0/5/15/30bp gap summaries remain visible together; CSV/JSON exports contain all5,184settings. The historical
 study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
 current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
 Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
@@ -50,6 +51,20 @@ are under `ops/lab/`; generated assets contain derived research and public marke
 credentials, account identifiers or captured raw ticks. Current constituent purchase estimates
 are snapshots, not a reconstruction of historical index membership. Source URLs/as-of dates,
 whole-share assumptions, CFD coverage gaps and benchmark limitations remain in the report.
+
+Research source: `apps/backend/src/lab/night-study/`. `replay.ts EPIC SHARD` produces the central
+window control grids (two shards per instrument); `ops/lab/night_study_data.py` independently joins
+signals, features, context and ledgers. `gap-replay.ts EPIC full|central` evaluates all four gap
+minimums and refuses results unless every zero-gap financial control exactly matches the full
+strategy replay. Run the Python preparation again after gap replays, then publish with the builder.
+Raw derived inputs stay in `apps/backend/data/night-session-study-20261109/`; existing full-window
+inputs remain in `night-breakdown-20261109/`. All heavy work belongs inside trader.slice.
+
+Major-event context lives in `research/night-lab-events.json`, with scheduled policy dates from the
+SDK calendar. It is curated historical context, not a live/exhaustive news feed or trading filter.
+Unknown timing stays unknown; source links and rarity counts are visible. Calendar updates must not
+be chosen by trade P&L or mark every routine release as major. The generator caps flagged-session
+share at15% and retains source/execution timing distinctions.
 
 ## Develop
 

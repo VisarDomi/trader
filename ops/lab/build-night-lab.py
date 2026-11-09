@@ -2,6 +2,7 @@
 """Publish bounded derived night-study results; never copy ticks, credentials or account data."""
 import array,base64,datetime as dt,gzip,hashlib,json,math,pathlib,zoneinfo
 ROOT=pathlib.Path(__file__).resolve().parents[2];P=ROOT/'apps/backend/data/night-breakdown-20261109';OUT=ROOT/'apps/ui/static/night-lab';OUT.mkdir(parents=True,exist_ok=True)
+STUDY=ROOT/'apps/backend/data/night-session-study-20261109'
 NY=zoneinfo.ZoneInfo('America/New_York');AL=zoneinfo.ZoneInfo('Europe/Tirane');UTC=dt.timezone.utc
 def load(name):return json.loads((P/name).read_text())
 def hold(epic):
@@ -34,26 +35,40 @@ for r in [load('../night-audit-20261108/baseline-x200.json')]+[json.loads(f.read
     cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct']})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
-trades=load('breakdown.json')['rows']
-# Nasdaq original-rule paths are research observations, not new live original records.
-opps={r['date']:r for r in load('us100-opportunities.json')};a=arrays['US100'];wanted={r['session'] for r in opps.values()};paths={}
-for i in range(0,len(a),7):
-    t,o,h,l,c,sp,v=a[i:i+7];ny=dt.datetime.fromtimestamp(t/1000,UTC).astimezone(NY);date=ny.date().isoformat();m=ny.hour*60+ny.minute
-    if date not in wanted or not 570<=m<960:continue
-    if m==570:paths[date]=[[int(t),o]]
-    if (m+1-570)%15==0:paths[date].append([int(t+60000),c])
-us100=[];balance=10000
-for i,r in enumerate(load('us100-stored.json')['trades']):
-    date=dt.datetime.fromtimestamp(r['entryTime']/1000,UTC).astimezone(AL).date().isoformat();op=opps[date];f=op['features'];points=paths[op['session']];start=points[0][1]
-    us100.append({'id':i+1,'date':date,'session':op['session'],'side':r['side'],'returnPct':r['pnl']/balance*100,'entryPrice':r['entryPrice'],'exitPrice':r['exitPrice'],'stop':r['exitReason']=='stop_loss','entryTime':r['entryTime'],'exitTime':r['exitTime'],'size':r['size'],'pnl':r['pnl'],'entryEquity':balance,'spreadCostPct':r['execution']['spreadCost']/balance*100,'funding':r['funding'],'movePct':f['move'],'efficiency':f['eff'],'agreementSteps':round(f['agree']*26),'retracement':f['retrace'],'body':f['body'],'rangePct':f['range'],'pullbackBp':abs(op['bid']-op['reference'])/op['reference']*10000,'checkpoints':[[t,round((v/start-1)*100,5)] for t,v in points]});balance+=r['pnl']
-keep=['id','date','session','side','returnPct','entryPrice','exitPrice','stop','movePct','efficiency','agreementSteps','retracement','body','rangePct','pullbackBp','checkpoints','entryTime','exitTime','size','pnl','entryEquity','spreadCostPct','funding']
-data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':{'US500':[{k:r[k] for k in keep} for r in trades],'US100':us100}}
+study_events=json.loads((STUDY/'event-calendar.json').read_text());trade_sets={}
+def package_runs(rows,epic):
+    rs=[];cs={}
+    for r in rows:
+        x={k:v for k,v in r.items() if k not in ['equity','rejectReasons','stoppedThenPositive']};x['benchmarkEpic']=epic;x['benchmarkExcessPp']=r['returnPct']-benchmarks[epic]['returnPct'];rs.append(x)
+        if r['profile'] in ['L1S50','L20S20','L50S5','L50S40','L100S10','L200S50']:
+            gap=str(r.get('minimumGapBp',0));cs.setdefault(gap,{})[r['policy']+'/'+r['profile']]=r['equity']
+    return rs,cs
+for inst in instruments:
+    epic=inst['epic'];summary=json.loads((STUDY/f'{epic}-summary.json').read_text());gaps=json.loads((STUDY/f'{epic}-gap-summary.json').read_text())
+    trade_sets[epic]=summary['trades']['full'];trade_sets[epic+'-central']=summary['trades']['central']
+    cr,cc=package_runs(summary['runs'],epic)
+    inst['central']={'spec':summary['spec'],'runs':cr,'curves':cc['0'],'trades':summary['trades']['central']}
+    checks=[]
+    for seed,density in [(1,16),(2,16),(3,16),(1,64)]:
+        path=STUDY/(f'{epic}-current.json' if (seed,density)==(1,16) else f'{epic}-sensitivity-{seed}-{density}.json');value=json.loads(path.read_text());rs=value['runs'] if isinstance(value,dict) else value
+        r=next(r for r in rs if r['leverage']==20 and r['params']['lossPct']==20);checks.append({'seed':seed,'ticksPerMinute':density,'n':len(r['trades']),'winPct':r['metrics']['winRate']*100,'returnPct':r['metrics']['totalReturn']*100})
+    inst['centralQuoteChecks']=checks
+    inst['classificationChanges']=summary['classificationChanges'];inst['fullEventStats']=summary['fullEventStats'];inst['gapStudy']={'minimumGapBp':gaps['minimumGapBp'],'sessions':{}}
+    for window,group in gaps['sessions'].items():
+        positive=[r for r in group['runs'] if r['minimumGapBp']>0];gr,gc=package_runs(positive,epic)
+        inst['gapStudy']['sessions'][window]={'runs':gr,'curves':gc,'trades':{k:v for k,v in group['trades'].items() if k!='0'},'audit':group['audit']}
+        for gap in ['5','15','30']:
+            for t in group['trades'][gap]:t['minimumGapBp']=int(gap)
+    for window,rows in summary['trades'].items():
+        for t in rows:t['minimumGapBp']=0
+data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'caseCount':5184}
 assert len(instruments)==2 and all(len(x['runs'])==324 for x in instruments)
 (OUT/'report.json').write_text(json.dumps(data,separators=(',',':')))
 packed=base64.b64encode(gzip.compress(json.dumps(data,separators=(',',':')).encode(),mtime=0)).decode()
-template=(ROOT/'ops/lab/night-lab-template.html').read_text();(OUT/'index.html').write_text(template.replace('__DATA__',packed))
+template=(ROOT/'ops/lab/night-lab-template.html').read_text().replace('__STUDY_SCRIPT__',(ROOT/'ops/lab/night-lab-study-view.js').read_text());(OUT/'index.html').write_text(template.replace('__DATA__',packed))
 (OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]))
 (OUT/'manifest.webmanifest').write_text(json.dumps({'id':'/night-lab/','name':'Visar Night Lab','short_name':'Night Lab','start_url':'/night-lab/index.html','scope':'/night-lab/','display':'standalone','background_color':'#101114','theme_color':'#101114','icons':[{'src':'./icon-192.png','sizes':'192x192','type':'image/png'},{'src':'./icon-512.png','sizes':'512x512','type':'image/png'}]},indent=2)+'\n')
 for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_text((P/name).read_text())
-print('Published',len(cohort),'cohort members; 648 risk cells;',len(trades),'+',len(us100),'baseline trades')
+for epic in ['US500','US100']:(OUT/f'{epic.lower()}-gap-risk-grid.csv').write_text((STUDY/f'{epic}-gap-risk-grid.csv').read_text())
+print('Published',len(cohort),'cohort members; 5184 risk cells; full and central sessions; 0/5/15/30bp gaps')
 print('Nasdaq fee-free full-cash price proxy',round(benchmarks['US100']['returnPct'],3),'%; whole-share scenario',round(whole,2),'USD; broker USD matches',len(known),'/101')
