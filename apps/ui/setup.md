@@ -41,6 +41,8 @@ manifest and service-worker scope and uses the ordinary Trader hosting/authentic
 extra server. All US500/US100 risk matrices and baseline trade paths are expanded. The historical
 study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
 current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
+Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
+US500 against US500, US100 against US100, on the same dates and with zero overnight funding.
 
 Published assets are in `static/night-lab/`. Rebuild from the retained private study inputs with
 `python3 ops/lab/build-night-lab.py` at the repo root, inside trader.slice. Source template/worker
