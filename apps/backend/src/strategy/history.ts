@@ -6,6 +6,7 @@ import { TIMEFRAME_MS,type Bar,type Timeframe,type Side } from '../sdk/types';
 import type { Subject } from '../inspection/model';
 import { explain,supportedVersions,type Inputs,type StrategyContext } from './evidence';
 import { classifyNightSession,nightSessionFeatures } from '../../agents/visar-night-trading';
+import { classifyNightSession as windowClassify,nightSessionFeatures as windowFeatures } from '../../agents/visar-night-v2-us500/reference';
 
 /** Aggregated closed candles only; the live callback's exact inputs are never asserted by a reconstruction. */
 export async function historicalBars(epic:string,tf:Timeframe,through:number,arena?:Database):Promise<Bar[]>{
@@ -41,16 +42,17 @@ const view=(bars:Bar[])=>({bars,ta:makeIndicators(new IndicatorCache(bars))});
 
 export function reconstructedState(slug:string,b:readonly Bar[],at:number,p:Record<string,any>):Record<string,any>{
   const state:Record<string,any>={};
-  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'){
+  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'||slug.startsWith('visar-night-v2-')){
+    const start=p.sessionStart??570,end=p.sessionEnd??960,minutes=end-start;
     let day:any=null;
     for(const bar of b){
       const ny=localTime(bar.time,TZ.NEW_YORK),local=localTime(bar.time+60000,p.timeZone);
-      if(ny.minuteOfDay===570&&ny.weekday>=1&&ny.weekday<=5)day={date:ny.date,localDate:local.date,open:bar.open,high:bar.open,low:bar.open,maxDrawdown:0,maxRebound:0,minutes:0,points:[bar.open],direction:0};
-      if(day&&ny.date===day.date&&ny.minuteOfDay>=570&&ny.minuteOfDay<960){
+      if(ny.minuteOfDay===start&&ny.weekday>=1&&ny.weekday<=5)day={date:ny.date,localDate:local.date,open:bar.open,high:bar.open,low:bar.open,maxDrawdown:0,maxRebound:0,minutes:0,points:[bar.open],direction:0};
+      if(day&&ny.date===day.date&&ny.minuteOfDay>=start&&ny.minuteOfDay<end){
         day.minutes++;day.high=Math.max(day.high,bar.high);day.low=Math.min(day.low,bar.low);
         day.maxDrawdown=Math.max(day.maxDrawdown,day.high-bar.low);day.maxRebound=Math.max(day.maxRebound,bar.high-day.low);
-        if((ny.minuteOfDay+1-570)%15===0)day.points.push(bar.close);
-        if(ny.minuteOfDay+1===960)day.direction=classifyNightSession(nightSessionFeatures(day),p as any);
+        if((ny.minuteOfDay+1-start)%15===0)day.points.push(bar.close);
+        if(ny.minuteOfDay+1===end)day.direction=slug.startsWith('visar-night-v2-')?windowClassify(windowFeatures(day,minutes),p as any,minutes):classifyNightSession(nightSessionFeatures(day),p as any);
       }
       if(local.minuteOfDay===1320){state.reference=bar.close;state.referenceDate=local.date;}
     }

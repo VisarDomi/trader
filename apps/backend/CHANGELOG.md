@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace nineteen Visar experiments with source-pinned full/central-session, gap/frequency/risk variants. Preserve the original and archive superseded histories with explicit replacement reasons. Extend native/web strategy context to the exact window and gap boundary.
+
 - Add isolated Night Lab central-session/gap research, independent signal/ledger oracle and cached
   signal execution. Require exact financial equivalence for all1,296zero-gap controls before
   accepting new thresholds. Original agents, admissions and runtime financial behavior are unchanged.

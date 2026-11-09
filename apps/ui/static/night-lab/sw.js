@@ -1,4 +1,4 @@
-const STUDY='night-lab-study-7f679234ff5f',LIVE='night-lab-forward-v2';
+const STUDY='night-lab-study-fbf75e742f0a',LIVE='night-lab-forward-90d3609c0a7a';
 const FILES=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./report.json','./us500-gap-risk-grid.csv','./us100-gap-risk-grid.csv','./trades.csv','./risk-grid.csv','./us100-risk-grid.csv'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{await (await caches.open(STUDY)).addAll(FILES);await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if((key.startsWith('night-lab-study-')&&key!==STUDY)||(key.startsWith('night-lab-forward-')&&key!==LIVE))await caches.delete(key);await self.clients.claim()})()));

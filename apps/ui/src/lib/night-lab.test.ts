@@ -2,6 +2,23 @@ import{expect,test}from'bun:test';
 import{readFileSync}from'node:fs';
 import{runInNewContext}from'node:vm';
 const report=JSON.parse(readFileSync(new URL('../../static/night-lab/report.json',import.meta.url),'utf8'));
+test('all session/gap/risk combinations are rendered together without a reveal control',()=>{
+ const template=readFileSync(new URL('../../../../ops/lab/night-lab-template.html',import.meta.url),'utf8');
+ const cell=template.slice(template.indexOf('function cell('),template.indexOf('\n__STUDY_SCRIPT__'));
+ const view=readFileSync(new URL('../../../../ops/lab/night-lab-study-view.js',import.meta.url),'utf8');
+ const scope:any={D:report,esc:String,pct:(v:any)=>String(v),tone:()=>'',f:String,money:String,time:String,stat:()=>''};
+ runInNewContext(cell+'\n'+view+'\nthis.rendered=studyOverview()+D.instruments.map(instrumentView).join(\'\');',scope,{timeout:10000});
+ expect((scope.rendered.match(/class="cell"/g)||[])).toHaveLength(5184);
+ expect((scope.rendered.match(/class="gap-panel"/g)||[])).toHaveLength(48);
+ expect((scope.rendered.match(/id="curve-/g)||[])).toHaveLength(48);
+ expect(scope.rendered).not.toMatch(/<select|<details|\shidden[\s>]/);
+ for(const gap of [0,5,15,30])expect((scope.rendered.match(new RegExp('data-gap="'+gap+'"','g'))||[])).toHaveLength(12);
+ expect(report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'))).toHaveLength(19);
+ expect(new Set(report.cohort.map((r:any)=>r.minimumGapBp))).toEqual(new Set([0,5,15,30]));
+ const replacements=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'));
+ expect(replacements.filter((r:any)=>r.role.startsWith('frequent-')&&r.metrics.trades/report.years>=18)).toHaveLength(10);
+ expect(replacements.every((r:any)=>r.metrics.totalReturn>0&&r.metrics.maxDrawdown<=.4&&r.metrics.trades>=18)).toBe(true);
+});
 test('expanded study retains the twenty-member cohort and original 648 bounded risk settings',()=>{
  expect(report.cohort).toHaveLength(20);expect(report.cohort.filter((r:any)=>r.epic==='US500')).toHaveLength(10);expect(report.cohort.filter((r:any)=>r.epic==='US100')).toHaveLength(10);
  for(const inst of report.instruments){expect(inst.runs).toHaveLength(324);expect(new Set(inst.runs.map((r:any)=>r.policy+'/'+r.profile)).size).toBe(324);expect(inst.runs.every((r:any)=>r.lossPct>0&&r.lossPct<=50)).toBe(true)}

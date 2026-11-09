@@ -29,10 +29,15 @@ for r in stocks['rows']:
     if r['usdMatched']:known.append(r)
 whole=sum(r['holdingsPrice'] for r in stocks['rows']);binding=max(stocks['rows'],key=lambda r:r['holdingsPrice']/r['normalizedWeight']);weighted=binding['holdingsPrice']/binding['normalizedWeight']
 stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'wholeShareRoundedCash':sum(math.ceil(weighted*r['normalizedWeight']/r['holdingsPrice']-1e-10)*r['holdingsPrice'] for r in stocks['rows']),'bindingTicker':binding['ticker'],'matched':len(known),'partialCFDFloor':sum(r['minimumNotional'] for r in known),'partialWeightedCFDFloor':max(r['minimumNotional']/r['normalizedWeight'] for r in known),'missing':[r['ticker'] for r in stocks['rows'] if not r['usdMatched']]})
+selection=json.loads((ROOT/'research/night-cohort-20261109.json').read_text())
 cohort=[]
-files=list((ROOT/'apps/backend/data/backtests/2024-01_2026-09').glob('visar-night-lab__*'))+list((ROOT/'apps/backend/data/backtests/2024-01_2026-09').glob('visar-night-us100__*'))
-for r in [load('../night-audit-20261108/baseline-x200.json')]+[json.loads(f.read_text()) for f in files]:
-    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct']})
+inputs=[(load('../night-audit-20261108/baseline-x200.json'),{'sessionWindow':'full','minimumGapBp':0,'policy':'current','role':'original'})]
+for chosen in selection['agents']:
+    file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
+    r=json.loads(file.read_text());assert r['codeHash']==chosen['codeHash']
+    inputs.append((r,chosen))
+for r,chosen in inputs:
+    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']}})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 study_events=json.loads((STUDY/'event-calendar.json').read_text());trade_sets={}
@@ -61,12 +66,12 @@ for inst in instruments:
             for t in group['trades'][gap]:t['minimumGapBp']=int(gap)
     for window,rows in summary['trades'].items():
         for t in rows:t['minimumGapBp']=0
-data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'caseCount':5184}
+data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'caseCount':5184,'selection':{k:selection[k] for k in ['date','method','tierUse']}}
 assert len(instruments)==2 and all(len(x['runs'])==324 for x in instruments)
 (OUT/'report.json').write_text(json.dumps(data,separators=(',',':')))
 packed=base64.b64encode(gzip.compress(json.dumps(data,separators=(',',':')).encode(),mtime=0)).decode()
 template=(ROOT/'ops/lab/night-lab-template.html').read_text().replace('__STUDY_SCRIPT__',(ROOT/'ops/lab/night-lab-study-view.js').read_text());(OUT/'index.html').write_text(template.replace('__DATA__',packed))
-(OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]))
+(OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]).replace('__COHORT_VERSION__',hashlib.sha256(json.dumps([(r['id'],r['codeHash']) for r in cohort]).encode()).hexdigest()[:12]))
 (OUT/'manifest.webmanifest').write_text(json.dumps({'id':'/night-lab/','name':'Visar Night Lab','short_name':'Night Lab','start_url':'/night-lab/index.html','scope':'/night-lab/','display':'standalone','background_color':'#101114','theme_color':'#101114','icons':[{'src':'./icon-192.png','sizes':'192x192','type':'image/png'},{'src':'./icon-512.png','sizes':'512x512','type':'image/png'}]},indent=2)+'\n')
 for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_text((P/name).read_text())
 for epic in ['US500','US100']:(OUT/f'{epic.lower()}-gap-risk-grid.csv').write_text((STUDY/f'{epic}-gap-risk-grid.csv').read_text())

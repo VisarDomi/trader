@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Expand every Night Lab dimension without a selector: all5,184risk cases,48equity plots and the new source-specific forward cohort with window/filter/gap columns. Key offline cash snapshots to cohort identity.
+
 - Keep manual and automatic UI builds inside the configured lab's `trader.slice` resource budget.
 - Add full09:30–16:00 versus central10:30–15:30 NY recognition and minimum counter-moves of
   0/5/15/30bp. Show all gap summaries together, paired risk grids/curves, per-year evidence and

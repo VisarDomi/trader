@@ -12,9 +12,9 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
  expect(agents.find(a=>a.id==='visar-night-trading')?.codeHash).toBe('56ac3bdfe7c1');
  for(const p of plans){expect(Number(p.agent.params.lossPct)).toBeGreaterThan(0);expect(Number(p.agent.params.lossPct)).toBeLessThanOrEqual(50);expect(roster.demoAdmissions?.[`${p.agent.id}:${p.epic}@${p.leverage}`]?.codeHash).toBe(p.agent.codeHash)}
  const root=import.meta.dir+'/../../agents/';const original=readFileSync(root+'visar-night-trading.ts','utf8');
- expect(readFileSync(root+'visar-night-lab/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'")).toBe(original);
- expect(readFileSync(root+'visar-night-us100/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
- expect(Object.keys(roster.retired).some(k=>k.startsWith('visar-night-'))).toBe(false);
+ expect(readFileSync(root+'_retired/visar-night-lab-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'")).toBe(original);
+ expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
+ expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(19);
 });
 test('sparse experiments have enough observation time while errors and ordinary silence still retire',()=>{
  const now=Date.UTC(2027,2,1),row={agentId:'visar-night-lab/clean-50x',slug:'visar-night-lab',status:'active',startedAt:now-90*86400000,metrics:{trades:0,tStat:0}} as LeaderboardRow;
@@ -23,4 +23,6 @@ test('sparse experiments have enough observation time while errors and ordinary 
  expect(assess({...row,status:'error'},new Map(),now).verdict).toBe(VERDICT.RETIRE);
  expect(assess({...row,startedAt:now-366*86400000},new Map(),now).verdict).toBe(VERDICT.RETIRE);
  expect(silentDaysFor('visar-night-lab/body-20x')).toBe(180);
+ expect(silentDaysFor('visar-night-v2-us100/largest-gap')).toBe(180);
+ expect(silentDaysFor('visar-night-v2-us100/frequent-core')).toBe(60);
 });

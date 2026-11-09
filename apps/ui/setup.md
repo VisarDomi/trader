@@ -42,10 +42,17 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 
 `/night-lab/` redirects to the standalone installable `/night-lab/index.html` report. It has its own
 manifest and service-worker scope and uses the ordinary Trader hosting/authentication; it needs no
-extra server. Both full/central-session risk matrices and trade paths are expanded for the selected gap. All
-0/5/15/30bp gap summaries remain visible together; CSV/JSON exports contain all5,184settings. The historical
+extra server. All5,184risk settings are expanded together with48equity charts: both NY windows,
+six day policies, four gap thresholds, nine leverage tiers and six loss targets. There is no gap
+selector or accordion. Each policy groups its four gap charts before its detailed tables. Baseline
+trade paths show threshold membership without duplicating the same setup. CSV/JSON exports retain
+full precision. The historical
 study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
 current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
+The forward cache namespace hashes cohort ids/source hashes; a replaced cohort cannot reuse stale rows.
+Current selection and its finite-history constraints are in research/night-cohort-20261109.json.
+Reproduce with ops/lab/select-night-cohort.py before changing the frozen choice; new source-specific
+backtests are verified by ops/lab/verify-night-cohort.py against the raw study cells.
 Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
 US500 against US500, US100 against US100, on the same dates and with zero overnight funding.
 

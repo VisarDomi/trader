@@ -21,5 +21,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src/**/*.ts", "agents/**/*.ts"]
+  "include": ["src/**/*.ts", "agents/**/*.ts"],
+  "exclude": ["agents/_retired/**"]
 }
