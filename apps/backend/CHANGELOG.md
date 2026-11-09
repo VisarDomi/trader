@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recheck persisted backtest admissions after startup warm-up so uploads arriving before readiness
+  cannot strand eligible runs until a later manual upload. Cover the startup/upload race directly.
+
 - Add the user-requested 20-member Visar night cohort: preserve the original US500 source and
   forward record, add nine US500 and ten US100 variants with source-pinned demo exceptions,
   and replace 19 weak eligible flat standard runs while keeping their histories. Retain strategy
