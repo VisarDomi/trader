@@ -196,7 +196,7 @@ test('a decided paper order reaches Capital at the decision; its later paper fil
     await mirror.start();
     await settled(mirror);
     mirror.onRunEvent({ type: 'order', kind: 'open', runId: RUN, time: now, side: LONG, size: 500, price: 1.1201, stopLoss: null, takeProfit: null });
-    await settled(mirror);
+    await orderDone(db);
     expect(counts().posts).toBe(1);
     const sent = db.dealsForRun(RUN)[0]!;
     expect(sent).toMatchObject({ decision_time: now, virtual_fill_time: null, paper_open_price: 1.1201 });
@@ -242,3 +242,56 @@ test('a decided close reaches Capital at the decision, before the paper close fi
     expect(db.dealsForRun(RUN)[0]?.note).toBe('paper signal decided');
   } finally { mirror.stop(); db.db.close(); }
 });
+
+test('the minute sync keeps a decided demo deal while its paper order is still on its way', async () => {
+  const now = Date.now();
+  const candidate: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: 0, side: null, entry: null, pendingOpen: { side: LONG, at: now } };
+  const { db, mirror, counts } = fixture([candidate], { [RUN]: ACCOUNT });
+  try {
+    db.insertDeal({ account: NAME, account_id: ACCOUNT, run_id: RUN, epic: EPIC, side: LONG, size: 100, paper_size: 500, deal_id: 'ours',
+      status: DEAL_STATUS.OPEN, open_time: now, open_price: 1.12, paper_open_price: 1.12, close_time: null, close_price: null,
+      paper_close_price: null, pnl: null, note: null });
+    db.updateDeal(db.dealsForRun(RUN)[0]!.id, { decision_time: now });
+    await mirror.start(); // runs a cycle, including the paper sync
+    await settled(mirror);
+    (mirror as unknown as { syncWithPaper(): void }).syncWithPaper();
+    await settled(mirror);
+    expect(counts().deletes).toBe(0);
+    expect(db.openDeals()).toHaveLength(1);
+    // Without the pending order the run is flat and the deal is closed.
+    candidate.pendingOpen = null;
+    (mirror as unknown as { syncWithPaper(): void }).syncWithPaper();
+    for (let i = 0; i < 100 && db.openDeals().length; i++) await Bun.sleep(10);
+    expect(counts().deletes).toBe(1);
+    await settled(mirror);
+  } finally { mirror.stop(); db.db.close(); }
+});
+
+test('a paper fill whose decided deal was already closed opens a new demo deal', async () => {
+  const now = Date.now();
+  const candidate: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: 0, side: LONG,
+    entry: { size: 500, price: 1.12, time: now + 9_000, stopLoss: null, takeProfit: null } };
+  const { db, mirror, counts } = fixture([candidate], { [RUN]: ACCOUNT });
+  try {
+    await mirror.start();
+    await settled(mirror);
+    db.insertDeal({ account: NAME, account_id: ACCOUNT, run_id: RUN, epic: EPIC, side: LONG, size: 100, paper_size: 500, deal_id: 'old',
+      status: DEAL_STATUS.CLOSED, open_time: now, open_price: 1.12, paper_open_price: 1.12, close_time: now + 1000, close_price: 1.12,
+      paper_close_price: null, pnl: 0, note: 'closed at broker (stop/TP or manual)' });
+    db.updateDeal(db.dealsForRun(RUN)[0]!.id, { decision_time: now });
+    mirror.onRunEvent({ type: 'open', runId: RUN, side: LONG, size: 500, price: 1.12, time: now + 9_000, decisionTime: now, stopLoss: null, takeProfit: null });
+    await orderDone(db, 2);
+    expect(counts().posts).toBe(1);
+    expect(db.dealsForRun(RUN)).toHaveLength(2);
+  } finally { mirror.stop(); db.db.close(); }
+});
+
+/** The newest deal's order job has finished: confirmed, or left unconfirmed (the fixture has no position lookup). */
+async function orderDone(db: ArenaDB, deals = 1): Promise<void> {
+  for (let i = 0; i < 300; i++) {
+    const all = db.dealsForRun(RUN), d = all.at(-1);
+    if (all.length >= deals && d && (d.deal_id || d.note || d.status !== DEAL_STATUS.OPEN)) break;
+    await Bun.sleep(10);
+  }
+  await Bun.sleep(30);
+}

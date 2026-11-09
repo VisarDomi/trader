@@ -40,7 +40,13 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   the mirror's single session switching between nine accounts at top-of-hour bursts. Decision-time orders
   remove the wait for the paper fill, not this queue; it is the next gap to close.
 - Visits are now daily at 09:30 with `bun run twins` first (LIFECYCLE "Paper–demo twins").
-- Deployed 8fedc5f 21:27; 85 agents, 4,644 runs, no load errors.
+- Deployed 8fedc5f 21:27; 85 agents, 4,644 runs, no load errors. First decision-time demo orders: Capital
+  accepted them 0.5–20 s after the decision while the paper fills came 12–31 s after it (Capital's stream
+  was ~9 s late again); entry prices within 0–3.4 bp. Bug: the minute sync closed 3 of the 6 demo deals as
+  "paper position is flat" while their paper orders were still on the way (timesfm-drift OIL_CRUDE ×2,
+  AUDUSD). Fixed: a pending paper open of the same side keeps its decided deal, and a paper fill whose
+  decided deal was closed in between opens a new one. Those three paper positions stay without a demo twin
+  until they close.
 - Next: first twin numbers under the new engine (agreement should rise if the feed delay was the main gap);
   funding gap; the 167 diverged agents by exit type; the run cap (5,000) once production CPU parts are known.
 
