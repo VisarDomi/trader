@@ -3,6 +3,54 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-09 (Mon, user-requested) — twenty-member Visar cohort and Night Lab
+
+- User expanded the requested cohort from ten to twenty: ten US500 including unchanged original
+  56ac3bdfe7c1, plus ten US100. Implemented nine variants in visar-night-lab (b50b682fde5b) and ten
+  in visar-night-us100 (8f1a2d30b2c0), each with one instrument/tier and an exact-source special demo
+  admission. These are correlated, selected-on-history experiments, not validated leaders.
+- US500 contrasts broad/step/body/retracement/rare-clean definitions across tiers 1,3,5,10,20,50,100
+  and 10/20/40% loss targets, alongside the original tier200/50%. US100's independent oracle finds
+  60 current-rule opportunities and all 60 fills/sides match. Its 324-cell replay shows positive
+  cells only for the 16-step policy; its cohort concentrates seven risk variants there, with three
+  low-exposure original/broad/body reference definitions. Do not copy US500's strongest classifier
+  blindly across instruments. Published source-specific backtests exactly match all selected grid
+  trades/metrics. All check-agent determinism/runtime checks pass (rare US500 clean rule has no
+  trades in the recent 120-day check, as expected from three in the full window).
+- Replacement roster targets 19 weak eligible forward runs, ranked by closed-trade t with N≥10 and
+  a negative forward return, checked flat in virtual and actual Capital execution. No ordinary
+  retirement verdict was due at the initial visit (401 early/8 keep/144 controls, no leaders; monkeys
+  0/36). Reasons explicitly record user-directed capacity replacement while immature, not a normal
+  statistically mature failure. Controls and original Visar run are protected; source/history remain
+  in the Graveyard. Deployment/live counts are recorded after final verification below.
+- Extended only named sparse-cohort no-trade windows: five body/retracement variants get 180 days,
+  annual clean-50x gets 365; runtime and shared review use the same policy. The ordinary 60-day
+  silence rule would otherwise invalidate an intentionally rare frequency endpoint before a useful
+  observation. Error/ruin, performance maturity/demotion and source-specific re-entry rules remain.
+- Added a standalone Night Lab PWA: both full 324-cell grids, 131 baseline NY-session trade paths,
+  all twenty cohort members, equity comparisons, explicit risk/return/payoff/frequency/cost evidence,
+  and a full-cash fee-free Nasdaq price-hold opportunity-cost benchmark. Same-window Nasdaq proxy
+  returns +81.5057%, versus US500 +61.0%; this is distinct from the win rate needed for zero P&L.
+  It omits dividends/direct-stock rebalancing costs, not a historical reconstruction of today's stocks.
+- Purchase budget uses official Invesco QQQ equity holdings dated November 5: 101 securities, with
+  fund cash/futures excluded and weights normalized. One-whole-share scenario is $27,685.80; the
+  weighted whole-share scale floor is $425,133.40, set by MPWR, before rounding. Those assume a
+  one-share minimum, not an unidentified cash broker's fractional rules. Read-only paced Capital
+  market metadata matches 96 USD contracts; known minimum notional totals $2,391.87, an incomplete
+  lower bound. SNDK/HONA/AXON/CRWV are unmatched and FER is a EUR listing. No invented full-basket
+  minimum or claim of stock ownership through CFDs. No account selection, orders or settings used.
+- Native/PWA search alias visar selects the twenty-member cohort, retaining the older risk twin's
+  independent searches. Web snapshots and URL state preserve query, filters, sorting and page across
+  detail/back/forward/reload and stage links. Native protects saved search from navigation dismissal,
+  resets intentionally edited searches to the top and preserves anchors across notice/header changes.
+  Native domain and simulator compilation pass; focused scroll/cold-restoration QA continues before
+  paid delivery. No physical-phone UI automation is part of this work.
+- Every heavy research/build job is isolated inside trader.slice on this PC, below aggregate 50%;
+  Mac builds/guest use the shared guard, exact shared guest and isolated QA bundle. Existing holds
+  and original histories are preserved. No extra tick recording copy or new quote subscription.
+  PWA assets plus a bounded last-complete twenty-row forward response survive offline/reboot; no
+  temporary server/agent session is required. Five web contract/cache/state tests pass.
+
 ## 2026-11-09 (Mon, user-requested) — inspect all 71 night setups
 
 - Joined every original night trade to the independent prior-session oracle, overnight reference and
@@ -1106,6 +1154,12 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 ## Idea log
 
 One line per idea: agent — mechanism — status (date).
+
+- visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
+  cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
+  Selected on inspected history; explicit low-exposure classifier references and sparse endpoints,
+  not nineteen independent discoveries. Original remains unchanged; old risk twin remains separate.
+
 
 User request 2026-11-08 (follow-up): strategy-context explanations and saved entry evidence added
 for all current families. No new agent, retirement or parameter tuning; existing run identities and

@@ -32,3 +32,13 @@ export const LIFECYCLE = {
   /** Days between new-agent additions. */
   ADD_AGENTS_EVERY_DAYS: 7,
 } as const;
+
+const SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(['visar-night-lab/body-5x','visar-night-lab/body-20x','visar-night-lab/body-tight-100x','visar-night-lab/retrace-100x','visar-night-us100/body-5x']);
+
+// Frozen sparse experiments must be allowed to reach their declared entry cadence.
+// Error/ruin and mature losing-evidence rules still apply immediately as before.
+export function silentDaysFor(agentId:string):number {
+  if(agentId==='visar-night-lab/clean-50x')return 365;
+  if(SPARSE_NIGHT_IDS.has(agentId))return 180;
+  return LIFECYCLE.SILENT_DAYS;
+}

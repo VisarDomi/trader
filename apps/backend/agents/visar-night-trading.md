@@ -390,3 +390,50 @@ updated standalone `71-trades.html` and builder. Two bounded replay jobs each us
 inside trader.slice; the bounded sensitivity job ran there as well. No production changes or
 arena restart. The original eight-profile pilot (`risk-study.ts`, `risk-results.json`) is retained
 as a diagnostic, superseded for the main comparison by this complete grid.
+
+## Forward cohort requested 2026-11-09
+
+The user explicitly requested ten US500 and ten US100 agents after the exploratory report, replacing
+weak current runs. The original source and record stay unchanged. The nineteen new variants have
+exact-source demo exceptions; all retain normal error/ruin and evidence-driven demotion. The stock
+hold opportunity cost is a separate full-cash Nasdaq index-price proxy, zero funding, with entry/exit
+spread, over the common January 2024–September 2026 window (+81.5057%). It omits dividends and direct
+stock rebalance costs. Current stock-minimum estimates are snapshots, not a historical constituent
+backtest. All inspected candidate returns remain below this passive benchmark in that window.
+
+| Agent | Instrument | Tier | Trade loss target | BT N | BT return | BT max DD |
+|---|---|---:|---:|---:|---:|---:|
+| visar-night-trading | US500 | 1:200 | 50% | 71 | -99.98% | 99.98% |
+| visar-night-lab/body-tight-100x | US500 | 1:100 | 10% | 18 | +18.77% | 40.23% |
+| visar-night-lab/steps-10x | US500 | 1:10 | 10% | 46 | +0.21% | 9.42% |
+| visar-night-lab/broad-5x | US500 | 1:5 | 20% | 51 | +0.07% | 4.97% |
+| visar-night-lab/body-5x | US500 | 1:5 | 20% | 18 | +2.52% | 3.90% |
+| visar-night-lab/body-20x | US500 | 1:20 | 20% | 18 | +9.85% | 14.87% |
+| visar-night-lab/clean-50x | US500 | 1:50 | 40% | 3 | +2.69% | 8.24% |
+| visar-night-lab/retrace-100x | US500 | 1:100 | 10% | 22 | +15.85% | 31.73% |
+| visar-night-lab/steps-3x | US500 | 1:3 | 20% | 46 | +0.14% | 2.90% |
+| visar-night-lab/broad-1x | US500 | 1:1 | 40% | 51 | +0.03% | 1.00% |
+| visar-night-us100/broad-5x | US100 | 1:5 | 20% | 40 | -2.09% | 6.02% |
+| visar-night-us100/baseline-1x | US100 | 1:1 | 40% | 60 | -2.96% | 3.06% |
+| visar-night-us100/steps-20x | US100 | 1:20 | 20% | 35 | +9.11% | 24.86% |
+| visar-night-us100/steps-tight-100x | US100 | 1:100 | 10% | 35 | +26.12% | 71.22% |
+| visar-night-us100/body-5x | US100 | 1:5 | 20% | 19 | -7.33% | 8.83% |
+| visar-night-us100/steps-3x | US100 | 1:3 | 20% | 35 | +1.73% | 4.13% |
+| visar-night-us100/steps-10x | US100 | 1:10 | 10% | 35 | +5.29% | 13.21% |
+| visar-night-us100/steps-tight-50x | US100 | 1:50 | 5% | 35 | +26.45% | 45.74% |
+| visar-night-us100/steps-tight-20x | US100 | 1:20 | 5% | 35 | +4.06% | 26.26% |
+| visar-night-us100/steps-1x | US100 | 1:1 | 20% | 35 | +0.59% | 1.39% |
+
+All 19 source-specific backtests exactly reproduce their selected diagnostic trades and metrics.
+US100 has 60 independent-oracle current-rule opportunities/fills (23/18/19 by year), with no extra
+dates or side mismatches. Only step-consistency settings are positive in its grid; seven US100
+variants explore that policy’s risk dimensions, with three lower-exposure classifier references.
+The rare US500 clean endpoint has only three historical trades and an approximately annual cadence;
+its zero-trade timeout is 365 days, five sparse body/retracement endpoints use 180, others retain60.
+These are explicit observation windows, not immunity to losses/errors. No configuration target
+exceeds50% of trade-start capital; actual ordinary-stop fills may exceed their targets.
+
+The dedicated installable report is `/night-lab/index.html` on Trader: both complete risk grids,
+all baseline session paths, stock-budget coverage and bounded current cohort results. Build source
+is `ops/lab/build-night-lab.py`; derived published snapshots contain no credentials, account IDs
+or raw captured ticks. The native client remains the main trading client.

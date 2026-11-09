@@ -1,4 +1,4 @@
-import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
+import { CONTROL_SLUGS, LIFECYCLE,silentDaysFor } from '../engine/policy.ts';
 import { explain,beforeEntryState } from '../strategy/evidence.ts';
 import { VirtualVenue, VirtualGateway, DEFAULT_EXECUTION_MS, VIRTUAL_MODEL, type CapitalMarket } from '../engine/venue.ts';
 import {
@@ -720,8 +720,8 @@ export class Arena {
           ? 'virtual account busted'
           : t.run.status === RUN_STATUS.ERROR
             ? 'agent errors'
-            : trades.length === 0 && !t.run.position && days >= LIFECYCLE.SILENT_DAYS
-              ? 'no trades in 60 days'
+            : trades.length === 0 && !t.run.position && days >= silentDaysFor(t.agent.id)
+              ? `no trades in ${silentDaysFor(t.agent.id)} days`
               : mature && tradeT(trades) <= LIFECYCLE.RETIRE_TSTAT
                 ? 'losing virtual trade evidence'
                 : null;

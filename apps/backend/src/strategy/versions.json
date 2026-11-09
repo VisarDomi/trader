@@ -9,7 +9,7 @@
     "hash": "b44145334bbc",
     "timeframe": "1h",
     "extra": [],
-    "description": "Control: bets as much as 1:200 allows (or just enough to reach $20,000) on ±0.25% moves until the account doubles or is ruined."
+    "description": "Control: bets as much as 1:200 allows (or just enough to reach $20,000) on \u00b10.25% moves until the account doubles or is ruined."
   },
   "bollinger-fade": {
     "hash": "32e7f7ea2eda",
@@ -27,7 +27,7 @@
     "hash": "de306341fd0a",
     "timeframe": "1d",
     "extra": [],
-    "description": "Control: holds half the account leverage as a constant multiple of equity (1×, 2.5×, 10×), rebalanced like a leveraged ETF."
+    "description": "Control: holds half the account leverage as a constant multiple of equity (1\u00d7, 2.5\u00d7, 10\u00d7), rebalanced like a leveraged ETF."
   },
   "crypto-sunday-asia": {
     "hash": "b18ac4ad918d",
@@ -101,7 +101,7 @@
     "hash": "924b3fcda1b2",
     "timeframe": "1d",
     "extra": [],
-    "description": "Long the index at 1×, 2× or 3× equity while it closes above its 200-day average, in cash below."
+    "description": "Long the index at 1\u00d7, 2\u00d7 or 3\u00d7 equity while it closes above its 200-day average, in cash below."
   },
   "macd-trend": {
     "hash": "9d7934f14b6f",
@@ -127,7 +127,7 @@
     "hash": "8362c8e6f3c2",
     "timeframe": "1m",
     "extra": [],
-    "description": "Frozen night signals and deadline, with 0.5% planned capital loss and about 1.8× initial exposure at tier 1:3. Separate normal-gate research; no special demo admission."
+    "description": "Frozen night signals and deadline, with 0.5% planned capital loss and about 1.8\u00d7 initial exposure at tier 1:3. Separate normal-gate research; no special demo admission."
   },
   "noise-area-momentum": {
     "hash": "3547598324bb",
@@ -235,7 +235,7 @@
     "hash": "1c4de411a2b9",
     "timeframe": "1d",
     "extra": [],
-    "description": "Long or short each market by the sign of its 12-month return, sized to 15% annual volatility (up to 3×), rebalanced monthly."
+    "description": "Long or short each market by the sign of its 12-month return, sized to 15% annual volatility (up to 3\u00d7), rebalanced monthly."
   },
   "tsmom": {
     "hash": "f7e169e857d7",
@@ -253,7 +253,7 @@
     "hash": "56ac3bdfe7c1",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200."
+    "description": "US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25\u201350 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200."
   },
   "vol-managed-hold": {
     "hash": "7e43195f79f7",
@@ -265,18 +265,30 @@
     "hash": "fc3bd99f3b25",
     "timeframe": "1d",
     "extra": [],
-    "description": "Long US indices sized to a 15% annual volatility from the last month of returns (0-2× equity), rebalanced monthly."
+    "description": "Long US indices sized to a 15% annual volatility from the last month of returns (0-2\u00d7 equity), rebalanced monthly."
   },
   "volatility-breakout": {
     "hash": "c6cec84136d3",
     "timeframe": "15m",
     "extra": [],
-    "description": "Enters when price moves k × yesterday's range away from today's open; flat by the daily close."
+    "description": "Enters when price moves k \u00d7 yesterday's range away from today's open; flat by the daily close."
   },
   "zscore-fade": {
     "hash": "213fddf40be0",
     "timeframe": "1h",
     "extra": [],
     "description": "Fades price when it stretches more than ~2 standard deviations from its rolling mean."
+  },
+  "visar-night-lab": {
+    "hash": "b50b682fde5b",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "Visar night cohort: previous NY path, overnight pullback, variant-specific thresholds, leverage and per-trade loss limit; same 03:27/08:27 Albania clock."
+  },
+  "visar-night-us100": {
+    "hash": "8f1a2d30b2c0",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "Visar US100 overnight cohort: previous NY path, overnight pullback, variant-specific thresholds and loss limit; same 03:27/08:27 Albania clock."
   }
 }

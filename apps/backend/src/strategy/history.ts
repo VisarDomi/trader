@@ -41,7 +41,7 @@ const view=(bars:Bar[])=>({bars,ta:makeIndicators(new IndicatorCache(bars))});
 
 export function reconstructedState(slug:string,b:readonly Bar[],at:number,p:Record<string,any>):Record<string,any>{
   const state:Record<string,any>={};
-  if(slug==='visar-night-trading'||slug==='night-risk-twin'){
+  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'){
     let day:any=null;
     for(const bar of b){
       const ny=localTime(bar.time,TZ.NEW_YORK),local=localTime(bar.time+60000,p.timeZone);

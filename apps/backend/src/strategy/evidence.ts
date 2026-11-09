@@ -78,7 +78,7 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
     const previous=a.at(-2)!,now=last(a),old=typeof z==='number'?z:z.at(-2)!,current=typeof z==='number'?z:last(z);
     g(label+' · now',dir*(now-current),'>',0,'points');g(label+' · previous',dir*(previous-old),'<=',0,'points');
   };
-  if(slug==='visar-night-trading'||slug==='night-risk-twin'){
+  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'){
     out.title='Directional New York day → overnight pullback';
     const day=s.session,f=day?.points?.length?nightSessionFeatures(day):null;
     const specs:[string,number,Gate['op'],number,string][]=[['Directional move',f?.movePct??NaN,'>=',p.trendPct,'%'],['Path efficiency',(f?.efficiency??NaN)*100,'>=',p.minEfficiency*100,'%'],['Agreeing 15-minute steps',(f?.directionalShare??NaN)*100,'>=',p.minDirectionalShare*100,'%'],['Largest counter-move / range',(f?.retraceShare??NaN)*100,'<=',p.maxRetraceShare*100,'%'],['Session range',f?.rangePct??NaN,'<=',p.maxRangePct,'%'],['Net move / range',(f?.bodyShare??NaN)*100,'>=',p.minBodyShare*100,'%'],['Observed minutes',f?.minutes??NaN,'>=',Math.ceil(390*p.minCoverage),'minutes'],['15-minute checkpoints',f?.checkpoints??NaN,'=',27,'points']];

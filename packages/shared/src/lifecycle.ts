@@ -9,7 +9,7 @@ import type { LeaderboardRow } from './types.ts';
  * buy and hold, and the leverage ladder (one signal at every leverage, to show what leverage does).
  */
 export { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE } from '../../../apps/backend/src/engine/policy.ts';
-import { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE } from '../../../apps/backend/src/engine/policy.ts';
+import { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE,silentDaysFor } from '../../../apps/backend/src/engine/policy.ts';
 
 export const VERDICT = {
 	CONTROL: 'control',
@@ -63,7 +63,7 @@ export function assess(row: LeaderboardRow, bands: LuckBands, now = Date.now()):
 	const days = Math.max(0,now - (row.observation?.since ?? row.startedAt) - (row.observation?.pausedMs??0)) / DAY_MS;
 	const trades = row.observation?.trades ?? row.metrics?.trades ?? 0;
 	const t = row.observation?.tStat ?? row.metrics?.tStat ?? 0;
-	if (trades === 0 && !row.evidence?.openPosition && days >= LIFECYCLE.SILENT_DAYS) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
+	if (trades === 0 && !row.evidence?.openPosition && days >= silentDaysFor(row.agentId)) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
 
 	const judged =
 		(trades >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) || (days >= LIFECYCLE.SLOW_MIN_DAYS && trades >= LIFECYCLE.SLOW_MIN_TRADES);

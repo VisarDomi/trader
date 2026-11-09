@@ -13,60 +13,381 @@
   "leverage": {
     "default": 20,
     "agents": {
-      "tsmom": [1],
-      "overnight-drift": [1],
-      "lrs-sma200/x1": [1],
-      "swing-reversal": [2],
-      "supertrend/20x5": [2],
-      "volatility-breakout/k08": [2],
-      "timesfm-swing": [2],
-      "ibs-dip": [2],
-      "noise-area-momentum/base": [2],
-      "zscore-fade": [3],
-      "donchian-breakout": [3],
-      "keltner-trend": [3],
-      "vol-target": [3],
-      "lrs-sma200/x2": [3],
-      "volatility-breakout/k05": [5],
-      "supertrend/10x3": [5],
-      "inside-bar": [5],
-      "ema-cross/20-50": [5],
-      "noise-area-momentum/voltarget": [5],
-      "lrs-sma200/x3": [5],
-      "tsmom-12m": [5],
-      "skew-monkey": [5],
-      "ema-cross/9-21": [10],
-      "timesfm-vol-breakout": [10],
-      "rsi2-reversion": [10],
-      "timesfm-band": [20],
-      "adx-dmi": [20],
-      "timesfm-trend": [20],
-      "timesfm-drift/h16": [20],
-      "timesfm-drift/h4": [50],
-      "timesfm-drift/h8": [50],
-      "hma-slope": [50],
-      "orb-ny/30min": [50],
-      "random-baseline/monkey-a": [50],
-      "macd-trend": [100],
-      "squeeze-breakout": [100],
-      "orb-ny/15min": [100],
-      "random-baseline/monkey-b": [100],
-      "stoch-range": [200],
-      "london-breakout": [200],
-      "mtf-pullback": [200],
-      "bollinger-fade": [200],
-      "visar-night-trading": [200],
-      "night-risk-twin": [3],
-      "quote-breakout": [3],
-      "random-baseline/monkey-c": [200]
+      "tsmom": [
+        1
+      ],
+      "overnight-drift": [
+        1
+      ],
+      "lrs-sma200/x1": [
+        1
+      ],
+      "swing-reversal": [
+        2
+      ],
+      "supertrend/20x5": [
+        2
+      ],
+      "volatility-breakout/k08": [
+        2
+      ],
+      "timesfm-swing": [
+        2
+      ],
+      "ibs-dip": [
+        2
+      ],
+      "noise-area-momentum/base": [
+        2
+      ],
+      "zscore-fade": [
+        3
+      ],
+      "donchian-breakout": [
+        3
+      ],
+      "keltner-trend": [
+        3
+      ],
+      "vol-target": [
+        3
+      ],
+      "lrs-sma200/x2": [
+        3
+      ],
+      "volatility-breakout/k05": [
+        5
+      ],
+      "supertrend/10x3": [
+        5
+      ],
+      "inside-bar": [
+        5
+      ],
+      "ema-cross/20-50": [
+        5
+      ],
+      "noise-area-momentum/voltarget": [
+        5
+      ],
+      "lrs-sma200/x3": [
+        5
+      ],
+      "tsmom-12m": [
+        5
+      ],
+      "skew-monkey": [
+        5
+      ],
+      "ema-cross/9-21": [
+        10
+      ],
+      "timesfm-vol-breakout": [
+        10
+      ],
+      "rsi2-reversion": [
+        10
+      ],
+      "timesfm-band": [
+        20
+      ],
+      "adx-dmi": [
+        20
+      ],
+      "timesfm-trend": [
+        20
+      ],
+      "timesfm-drift/h16": [
+        20
+      ],
+      "timesfm-drift/h4": [
+        50
+      ],
+      "timesfm-drift/h8": [
+        50
+      ],
+      "hma-slope": [
+        50
+      ],
+      "orb-ny/30min": [
+        50
+      ],
+      "random-baseline/monkey-a": [
+        50
+      ],
+      "macd-trend": [
+        100
+      ],
+      "squeeze-breakout": [
+        100
+      ],
+      "orb-ny/15min": [
+        100
+      ],
+      "random-baseline/monkey-b": [
+        100
+      ],
+      "stoch-range": [
+        200
+      ],
+      "london-breakout": [
+        200
+      ],
+      "mtf-pullback": [
+        200
+      ],
+      "bollinger-fade": [
+        200
+      ],
+      "visar-night-trading": [
+        200
+      ],
+      "night-risk-twin": [
+        3
+      ],
+      "quote-breakout": [
+        3
+      ],
+      "random-baseline/monkey-c": [
+        200
+      ],
+      "visar-night-lab/broad-1x": [
+        1
+      ],
+      "visar-night-lab/broad-5x": [
+        5
+      ],
+      "visar-night-lab/steps-3x": [
+        3
+      ],
+      "visar-night-lab/steps-10x": [
+        10
+      ],
+      "visar-night-lab/body-5x": [
+        5
+      ],
+      "visar-night-lab/body-20x": [
+        20
+      ],
+      "visar-night-lab/body-tight-100x": [
+        100
+      ],
+      "visar-night-lab/retrace-100x": [
+        100
+      ],
+      "visar-night-lab/clean-50x": [
+        50
+      ],
+      "visar-night-us100/baseline-1x": [
+        1
+      ],
+      "visar-night-us100/broad-5x": [
+        5
+      ],
+      "visar-night-us100/body-5x": [
+        5
+      ],
+      "visar-night-us100/steps-1x": [
+        1
+      ],
+      "visar-night-us100/steps-3x": [
+        3
+      ],
+      "visar-night-us100/steps-10x": [
+        10
+      ],
+      "visar-night-us100/steps-20x": [
+        20
+      ],
+      "visar-night-us100/steps-tight-20x": [
+        20
+      ],
+      "visar-night-us100/steps-tight-50x": [
+        50
+      ],
+      "visar-night-us100/steps-tight-100x": [
+        100
+      ]
     }
   },
-  "retired": {},
+  "retired": {
+    "volatility-breakout/k08:BTCUSD@2": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.92, N=13, return=-6.01%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "mtf-pullback:US100@200": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.85, N=11, return=-7.99%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "volatility-breakout/k05:ETHUSD@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.75, N=22, return=-8.30%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "inside-bar:US30@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.73, N=11, return=-7.83%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "volatility-breakout/k05:BTCUSD@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.58, N=23, return=-7.98%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-trend:ETHUSD@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.35, N=15, return=-6.20%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-drift/h16:US100@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-2.25, N=13, return=-6.23%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "mtf-pullback:GBPUSD@200": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.99, N=18, return=-9.18%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "supertrend/10x3:BTCUSD@5": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.99, N=23, return=-5.71%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "rsi2-reversion/both:EURUSD@10": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.93, N=28, return=-4.82%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-drift/h4:SILVER@50": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.91, N=23, return=-4.32%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-band:ETHUSD@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.81, N=31, return=-3.92%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "hma-slope:BTCUSD@50": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.80, N=36, return=-9.42%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "volatility-breakout/k08:ETHUSD@2": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.78, N=10, return=-3.58%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "rsi2-reversion/both:ETHUSD@10": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.66, N=39, return=-4.44%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-trend:US500@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.61, N=10, return=-2.83%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-trend:AUDUSD@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.61, N=12, return=-3.79%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "overnight-drift:US100@1": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.59, N=18, return=-5.99%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    },
+    "timesfm-trend:GBPUSD@20": {
+      "date": "2026-11-09",
+      "reason": "User-requested capacity replacement for 19 new Visar night experiments; weak eligible flat forward run (t=-1.56, N=16, return=-3.96%). Early under ordinary maturity rules, not a mature failure verdict. History retained."
+    }
+  },
   "demoAdmissions": {
     "visar-night-trading:US500@200": {
       "codeHash": "56ac3bdfe7c1",
       "date": "2026-10-15",
       "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply."
+    },
+    "visar-night-lab/broad-1x:US500@1": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/broad-5x:US500@5": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/steps-3x:US500@3": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/steps-10x:US500@10": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/body-5x:US500@5": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/body-20x:US500@20": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/body-tight-100x:US500@100": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/retrace-100x:US500@100": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-lab/clean-50x:US500@50": {
+      "codeHash": "b50b682fde5b",
+      "date": "2026-11-09",
+      "reason": "Explicit user request: nine diverse Visar night experiments alongside the frozen original, covering day-path strictness, frequency, leverage and loss targets. Selected on inspected history, not validated winners. Normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/baseline-1x:US100@1": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/broad-5x:US100@5": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/body-5x:US100@5": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-1x:US100@1": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-3x:US100@3": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-10x:US100@10": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-20x:US100@20": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-tight-20x:US100@20": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-tight-50x:US100@50": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
+    },
+    "visar-night-us100/steps-tight-100x:US100@100": {
+      "codeHash": "8f1a2d30b2c0",
+      "date": "2026-11-09",
+      "reason": "Explicit user request for ten US100 and ten US500 forward demo experiments. US100 step-consistency/risk ladder plus low-exposure reference definitions, selected on inspected history. Not validated winners; normal safety and subsequent demotion remain in force."
     }
   }
 }
