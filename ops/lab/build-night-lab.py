@@ -35,6 +35,8 @@ stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'whol
 selection=json.loads((ROOT/'research/night-cohort-v3-20261109.json').read_text())
 cohort=[]
 inputs=[]
+GRID_DAY={'Standard':'standard','Move ≥0.5%':'big-move','Body ≥80% of range':'strong-day','≥62% of steps agree':'steady-day'}
+GRID_SIDE={'previous day':'rule','always long':'long','random':'random'}
 for chosen in selection['members']:
     if chosen['role']=='original':r=load('../night-audit-20261108/baseline-x200.json')
     else:
@@ -46,6 +48,9 @@ for r,chosen in inputs:
     hits=sum(t['exitReason']=='take_profit' or (t.get('exitNote')or'').startswith('capital take profit +') for t in r['trades'])
     meta={k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role','name','dimension','explores','coordinates','comparesWith']}
     if chosen['role']=='control':meta.update({k:chosen[k] for k in ['partner','direction']})
+    c=chosen['coordinates']  # the same setting in the nightly paper grid (src/lab/night-study/forward-grid.ts)
+    meta['gridCell']=f"{c['window']}/{GRID_DAY[c['day']]}/gap-{c['gapBp']}bp/x{c['leverage']}/{GRID_SIDE[c['side']]}"
+    assert c['lossPct']==50 and c['window'] in ('central','full') and c['gapBp'] in (0,5,15,30) and c['leverage'] in (20,200)
     cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':None,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**meta})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')

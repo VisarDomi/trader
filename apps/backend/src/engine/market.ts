@@ -24,6 +24,26 @@ import { RiskBatch, RISK_OUTPUT_WIDTH } from './risk-native.ts';
 
 export const TICK_HISTORY_LIMIT = 512;
 
+/** The engine's quote acceptance rule: sane prices, neither stale nor from the future, in order after the previous accepted quote. */
+export function acceptsTick(q: Tick, previous: Tick | null): boolean {
+  return (
+    Number.isFinite(q.time) && Number.isFinite(q.receivedAt) && Number.isFinite(q.bid) && Number.isFinite(q.ask) &&
+    q.bid > 0 &&
+    q.ask >= q.bid &&
+    q.time <= q.receivedAt + 1000 &&
+    q.receivedAt - q.time <= QUOTE_MAX_AGE_MS &&
+    !(
+      previous &&
+      (q.time < previous.time ||
+        q.receivedAt < previous.receivedAt ||
+        (q.journalId === previous.journalId &&
+          q.sequence !== undefined &&
+          previous.sequence !== undefined &&
+          q.sequence <= previous.sequence))
+    )
+  );
+}
+
 export interface ClosedBar {
   series: BarSeries;
   bar: Bar;
@@ -47,6 +67,10 @@ export class MarketEngine {
   private lastTick: Tick | null = null;
   private completedCandles: Candle[] = [];
   rejectedTicks = 0;
+  /** The last quote the engine accepted (replay tools apply the same rule ahead of delivery). */
+  get lastAcceptedTick(): Tick | null {
+    return this.lastTick;
+  }
   private readonly risk: RiskBatch;
 
   constructor(
@@ -154,21 +178,7 @@ export class MarketEngine {
 
   /** Tick path for live and backtest. No future OHLC is visible to a callback. */
   stepTick(q: Tick): ClosedBar[] | null {
-    const previous = this.lastTick;
-    if (
-      !Number.isFinite(q.time) || !Number.isFinite(q.receivedAt) || !Number.isFinite(q.bid) || !Number.isFinite(q.ask) ||
-      q.bid <= 0 ||
-      q.ask < q.bid ||
-      q.time > q.receivedAt + 1000 ||
-      q.receivedAt - q.time > QUOTE_MAX_AGE_MS ||
-      (previous &&
-        (q.time < previous.time ||
-          q.receivedAt < previous.receivedAt ||
-          (q.journalId === previous.journalId &&
-            q.sequence !== undefined &&
-            previous.sequence !== undefined &&
-            q.sequence <= previous.sequence)))
-    ) {
+    if (!acceptsTick(q, this.lastTick)) {
       this.rejectedTicks++;
       return null;
     }
@@ -252,21 +262,7 @@ export class MarketEngine {
     this.completedThrough = completedThrough;
     let previous: Tick | null = null;
     const valid = ticks.filter((q) => {
-      if (
-        ![q.time, q.receivedAt, q.bid, q.ask].every(Number.isFinite) ||
-        q.bid <= 0 ||
-        q.ask < q.bid ||
-        q.time > q.receivedAt + 1000 ||
-        q.receivedAt - q.time > QUOTE_MAX_AGE_MS ||
-        (previous &&
-          (q.time < previous.time ||
-            q.receivedAt < previous.receivedAt ||
-            (q.journalId === previous.journalId &&
-              q.sequence !== undefined &&
-              previous.sequence !== undefined &&
-              q.sequence <= previous.sequence)))
-      )
-        return false;
+      if (!acceptsTick(q, previous)) return false;
       previous = q;
       return true;
     });

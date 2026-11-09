@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add the Visar night paper grid (`bun run night-grid`, last step of the nightly lab): every meaningful setting — NY window × 7 day filters × 4 overnight gaps × 1:20/1:200 × rule/always-long/coin — 336 per index, replayed through the full engine on recorded quotes from 2026-10-01, split into before and after the cohort was fixed (2026-11-10). Backtests can now deliver only each idle minute's open/high/low/close quotes (`idleOhlcOnly`); a full replay since October matched it exactly for all 672 settings and every candle, at 4–8× less time. The engine's quote acceptance rule is now one exported function (`acceptsTick`), unchanged.
+
 - Resume the nightly lab on its own: the lab units now check `ops/lab/lab-control.py` (blocked only while the heavy-resource hold lists a lab unit) instead of waiting for the hold file to disappear, which had kept the lab stopped since 2026-10-21 after only TimesFM was resumed. `lab-control.py resume` removes the lab from the hold and starts the timer; a new `heavy-resources-stop` still pauses it.
 
 - Restructure the Visar night cohort as v3: ten agents per index, each one base (10:30–15:30 NY day, standard day filter, any gap, 1:20, 50% loss limit, 08:27) plus a single change — day size, day shape, overnight gap, leverage 1:200, or side (always-long and random-direction controls). The original agent keeps its record as the US500 full-day 1:200 point; US100 gets the same settings. Inert exits (profit targets, loss limits that never trigger at 1:20) are dropped. v2 agents archived with their histories.
