@@ -105,3 +105,36 @@ test('existing comparison state survives a database reopen after its standard ru
     }
   }finally{arena?.stop();db.db.close();rmSync(directory,{recursive:true,force:true});}
 });
+
+test('a flat bar agent is not re-saved for every quote; it is saved with the 10-minute pass and carries the latest quote', () => {
+  let now = Date.UTC(2026, 10, 9, 12, 1);
+  const clock = spyOn(Date, 'now').mockImplementation(() => now);
+  const db = new ArenaDB(':memory:');
+  const arena = new Arena({ db, dataClient: {} as CapitalClient, forecasterUrl: '', broker: null, live: false });
+  try {
+    const epic = 'US500';
+    const def = defineAgent({ name: 'flat', description: 'flat', params: {}, instruments: [epic], timeframe: '1h', warmup: 0, onBar() {} });
+    const agent: LoadedAgent = { id: 'flat', slug: 'flat', variant: null, file: '', codeHash: 'fixture', source: '', params: {}, def };
+    const engine = new MarketEngine({ ...getInstrument(epic) });
+    const run = engine.addRun({ runId: 'flat', agent, leverage: 1, capital: 10000, checkStopsOnCandles: false });
+    db.createDemoRun({ id: 'flat', agentId: 'flat', codeHash: agent.codeHash, epic, leverage: 1, capital: 10000, params: {}, now });
+    arena.engines.set(epic, engine);
+    arena.tracked.set('flat', { startedAt: now, run, agent, epic, leverage: 1, persistedTrades: 0, dirty: true });
+    const quote = (t: number, bid: number): Tick => ({ time: t, receivedAt: t, bid, ask: bid + 1, source: TICK_SOURCE.RECORDED });
+    const onQuote = (q: Tick) => (arena as unknown as { onQuote(epic: string, q: Tick): void }).onQuote(epic, q);
+    onQuote(quote(now, 100)); // the first quote sets its start time
+    arena.persistAll(true);
+    expect(run.quoteIdle).toBe(true);
+    const save = spyOn(db, 'saveRunState');
+    now += 1000;
+    onQuote(quote(now, 105));
+    arena.persistAll(false);
+    expect(save).toHaveBeenCalledTimes(0);
+    now += 10 * 60_000; // the 10-minute metrics pass saves it, with the quote it skipped
+    onQuote(quote(now, 107));
+    arena.persistAll(false);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(db.run('flat')!.snapshot!).lastTick.bid).toBe(107);
+    save.mockRestore();
+  } finally { arena.stop(); db.db.close(); clock.mockRestore(); }
+});

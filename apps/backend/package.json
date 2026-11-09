@@ -16,6 +16,7 @@
     "calibrate-night": "bun run src/lab/calibrate-night.ts",
     "arena": "bun run src/arena/main.ts",
     "review": "bun run src/lab/review.ts",
+    "twins": "bun run src/lab/twins.ts",
     "watchdog": "bun run src/lab/watchdog.ts",
     "audit-capital": "bun run src/lab/audit-capital.ts",
     "audit-costs": "bun run src/lab/audit-costs.ts",

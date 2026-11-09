@@ -22,6 +22,7 @@ import {ENGINE_VERSION} from '../engine/version.ts';
 import { graveyard } from './graveyard.ts';
 import { AgentEvidenceService } from './evidence.ts';
 import { costFingerprint, ingestCosts } from './cost-ingest.ts';
+import { twinReport, TWIN_DEFAULT_DAYS, TWIN_MAX_DAYS } from './twins.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -189,6 +190,12 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
 
   add(METHOD_GET, '/api/broker', () => json({ status: arena.broker?.status() ?? null, deals: db.deals(300) }));
 
+  add(METHOD_GET, '/api/twins', (_req, _p, url) => {
+    const days = Number(url.searchParams.get('days') ?? TWIN_DEFAULT_DAYS);
+    if (!Number.isFinite(days) || days <= 0 || days > TWIN_MAX_DAYS) return json({ error: `days must be in (0, ${TWIN_MAX_DAYS}]` }, 400);
+    return json({ ...twinReport(db, days), feed: arena.feedStatus() });
+  });
+
   add(
     METHOD_POST,
     '/api/broker/mirror',
@@ -260,7 +267,11 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
         const params: Record<string, string> = {};
         r.keys.forEach((k, i) => (params[k] = decodeURIComponent(m[i + 1]!)));
         try {
-          return await r.handler(req, params, url);
+          // The synchronous part of a handler is its CPU cost; awaited I/O is not counted.
+          const started = performance.now();
+          const pending = r.handler(req, params, url);
+          arena.cpu?.add('api', performance.now() - started);
+          return await pending;
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : String(err) }, 500);
         }

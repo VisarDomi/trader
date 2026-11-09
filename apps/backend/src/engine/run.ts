@@ -89,6 +89,28 @@ export type RunEvent =
       takeProfit: number | null;
     }
   | { type: 'close'; runId: string; trade: Trade }
+  /**
+   * An order decided now and sent to the paper venue (it fills after the execution delay, at the first quote
+   * stamped at or after its due time). A broker mirror sends its real order at this moment, not at the fill.
+   */
+  | {
+      type: 'order';
+      kind: 'open' | 'close';
+      runId: string;
+      /** Decision time (receive clock). */
+      time: number;
+      side: Side;
+      /** Open: the order size and the executable price when it was decided. */
+      size?: number;
+      price?: number;
+      stopLoss?: number | null;
+      takeProfit?: number | null;
+      trailingStop?: number | null;
+      validUntil?: number;
+      closeAt?: number;
+      barCloseTime?: number;
+      reason?: string;
+    }
   | {
       type: 'stops';
       trailingStop?: number | null;
@@ -240,6 +262,11 @@ export class AgentRun {
   get pendingOrders(): number {
     return this.pending.length;
   }
+  /** The open order on its way to the venue, if any (side and decision time). */
+  get pendingOpen(): { side: Side; at: number } | null {
+    const p = this.pending.find(c => c.kind === 'open');
+    return p && p.kind === 'open' ? { side: p.side, at: p.at } : null;
+  }
   private now(): number {
     return this.replayTime ?? this.execution?.now?.() ?? Date.now();
   }
@@ -385,6 +412,28 @@ export class AgentRun {
     this.flushPending();
     this.checkTickProtections(this.tick, risk, riskOffset);
     if (dispatchAgent) this.dispatchTick();
+  }
+
+  /**
+   * A quote changes nothing for a flat run without pending orders or a tick callback except which quote
+   * it holds, so the engine skips it and hands it the latest accepted quote when it is next observed
+   * (adoptQuote). A run is never idle before its first quote (that quote sets its start time).
+   */
+  get quoteIdle(): boolean {
+    return this.position === null && this.pending.length === 0 && this.startTime !== 0 && this.agent.onTick === undefined;
+  }
+
+  /**
+   * Catch up on quotes skipped while idle: the quote onTick would have left behind. The engine accepted it
+   * at arrival under the same freshness rule, so only this run's own ordering is re-checked.
+   */
+  adoptQuote(q: Tick | null): void {
+    if (!q || q === this.tick) return;
+    if (this.quote && q.time < this.quote.time) return;
+    if (q.journalId !== undefined && q.journalId === this.tick?.journalId && q.sequence !== undefined && this.tick?.sequence !== undefined && q.sequence <= this.tick.sequence) return;
+    this.riskChanged?.();
+    this.quote = q;
+    this.tick = q;
   }
 
   /** Recover the unpersisted journal tail with an historical clock. Broker events are suppressed by the arena until ready. */
@@ -599,6 +648,13 @@ export class AgentRun {
     if (this.quote) command.decisionMid = (this.quote.bid + this.quote.ask) / 2;
     this.pending.push(command);
     if(command.kind==='open')this.observeEntry(command.side,command.opts,command.at);
+    if (command.kind === 'open' && this.quote) {
+      const o = command.opts;
+      this.emit({ type: 'order', kind: 'open', runId: this.runId, time: command.at, side: command.side, size: o.size,
+        price: command.side === SIDE_LONG ? this.quote.ask : this.quote.bid, stopLoss: o.stopLoss ?? null, takeProfit: o.takeProfit ?? null,
+        trailingStop: o.trailingStop ?? null, validUntil: o.validUntil, closeAt: o.closeAt, barCloseTime: command.barCloseTime });
+    } else if (command.kind === 'close' && this.position)
+      this.emit({ type: 'order', kind: 'close', runId: this.runId, time: command.at, side: this.position.side, reason: command.exitReason });
   }
 
   private observeEntry(side:Side,options:OrderOptions,at:number):void {
@@ -606,10 +662,15 @@ export class AgentRun {
     try {this.onEntryDecision(this.makeContext(this.currentBar),side,options,at,this.entryBefore);}catch {/* Observation must never affect trading. */}
   }
 
+  /**
+   * An order reaches Capital at its due time (receive clock) and fills at the price Capital had then, so
+   * it executes on the first quote stamped at or after that time. Capital's stream delivers quotes seconds
+   * after their timestamps; filling on the quote in hand at the due time would use a stale price.
+   */
   private flushPending(): void {
     if (!this.pending.length || !this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
     this.riskChanged?.();
-    while (this.pending[0] && this.pending[0].due <= this.now()) {
+    while (this.pending[0] && this.pending[0].due <= this.quote.time) {
       const command = this.pending.shift()!;
       if (command.kind === 'open' && this.now() - command.at > Math.max(120_000, this.execution.latencyMs + QUOTE_MAX_AGE_MS)) {
         this.reject('open expired before a fresh executable quote');

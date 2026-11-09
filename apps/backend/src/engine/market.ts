@@ -23,6 +23,14 @@ import { QUOTE_MAX_AGE_MS } from './venue.ts';
 import { RiskBatch, RISK_OUTPUT_WIDTH } from './risk-native.ts';
 
 export const TICK_HISTORY_LIMIT = 512;
+/**
+ * Capital's demo stream delivers each quote seconds after its own timestamp (2026-11-09: 6–13 s; REST
+ * shows the same price 5–7 s earlier). Bars are built by quote time, so the clock closes a quiet minute
+ * only after this many times the observed delay: quotes still in flight belong to the minute they were
+ * stamped in. Replays of quotes without a delay (generated ticks) keep a zero grace.
+ */
+export const FEED_GRACE_FACTOR = 1.5;
+const FEED_DELAY_ALPHA = 0.05;
 
 /** The engine's quote acceptance rule: sane prices, neither stale nor from the future, in order after the previous accepted quote. */
 export function acceptsTick(q: Tick, previous: Tick | null): boolean {
@@ -66,7 +74,20 @@ export class MarketEngine {
   private completedThrough = 0;
   private lastTick: Tick | null = null;
   private completedCandles: Candle[] = [];
+  private feedDelay: number | null = null;
   rejectedTicks = 0;
+  /** Smoothed delay between a quote's timestamp and its arrival. */
+  get feedDelayMs(): number {
+    return this.feedDelay ?? 0;
+  }
+  /** How long after a minute ends (by the receive clock) the clock may close it. */
+  get clockGraceMs(): number {
+    return Math.min(QUOTE_MAX_AGE_MS, Math.ceil(this.feedDelayMs * FEED_GRACE_FACTOR));
+  }
+  private observeDelay(q: Tick): void {
+    const d = Math.max(0, q.receivedAt - q.time);
+    this.feedDelay = this.feedDelay === null ? d : this.feedDelay + FEED_DELAY_ALPHA * (d - this.feedDelay);
+  }
   /** The last quote the engine accepted (replay tools apply the same rule ahead of delivery). */
   get lastAcceptedTick(): Tick | null {
     return this.lastTick;
@@ -77,6 +98,8 @@ export class MarketEngine {
     readonly instrument: Instrument,
     private readonly forecasts: ForecastProvider | null = null,
     useNativeRisk = true,
+    /** Skip flat, idle runs on each quote (see AgentRun.quoteIdle); false replays every quote to every run. */
+    readonly skipIdleQuotes = true,
   ) { this.risk = new RiskBatch(useNativeRisk); }
 
   getSeries(tf: Timeframe): BarSeries {
@@ -165,6 +188,7 @@ export class MarketEngine {
   dispatchBar({ series, bar }: ClosedBar, filter: (run: AgentRun) => boolean = () => true): void {
     for (const run of this.runsOn(series.timeframe)) {
       if (!filter(run)) continue;
+      run.adoptQuote(this.lastTick);
       const spec = run.agent.forecast;
       run.forecast = spec && this.forecasts ? this.forecasts.get(series, spec, bar) : null;
       run.onBar(bar);
@@ -190,6 +214,7 @@ export class MarketEngine {
         if (bar) closed.push({ series, bar });
       }
     this.lastTick = q;
+    this.observeDelay(q);
     this.ticks.push(q);
     if (this.ticks.length > 2 * TICK_HISTORY_LIMIT) this.ticks.splice(0, this.ticks.length - TICK_HISTORY_LIMIT);
     if (bucket >= this.completedThrough) {
@@ -213,8 +238,18 @@ export class MarketEngine {
       }
     }
     const risk = this.risk.evaluate(this.runs, q);
-    for (let i = 0; i < this.runs.length; i++) this.runs[i]!.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
+    const runs = this.runs, skip = this.skipIdleQuotes;
+    for (let i = 0; i < runs.length; i++) {
+      const run = runs[i]!;
+      if (skip && run.quoteIdle) continue;
+      run.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
+    }
     return closed;
+  }
+
+  /** Hand every idle run the latest quote before it is observed from outside (metrics, snapshots, the end of a replay). */
+  adoptLatestQuote(): void {
+    for (const r of this.runs) r.adoptQuote(this.lastTick);
   }
 
   dispatchTick(q: Tick): void {
@@ -229,11 +264,15 @@ export class MarketEngine {
     return true;
   }
 
-  /** Clock closes observed bars only; it never invents an executable quote. */
+  /**
+   * Clock closes observed bars only; it never invents an executable quote. A minute closes on the first
+   * quote stamped in a later minute, or by the clock once the feed grace has passed without one.
+   */
   stepClock(time: number): ClosedBar[] {
-    const closed = this.tickMinute && this.tickMinute.time + MINUTE_MS <= time ? this.closeTickMinute() : [];
+    const through = time - this.clockGraceMs;
+    const closed = this.tickMinute && this.tickMinute.time + MINUTE_MS <= through ? this.closeTickMinute() : [];
     for (const series of this.series.values()) {
-      const bar = series.flushThrough(time);
+      const bar = series.flushThrough(through);
       if (bar) closed.push({ series, bar });
     }
     for (const r of this.runs) r.onClock(time);
@@ -268,6 +307,7 @@ export class MarketEngine {
     });
     this.ticks.push(...valid.slice(-TICK_HISTORY_LIMIT));
     this.lastTick = this.ticks.at(-1) ?? null;
+    for (const q of valid.slice(-TICK_HISTORY_LIMIT)) this.observeDelay(q);
     for (const q of valid) {
       if (q.time < completedThrough) continue;
       const bucket = Math.floor(q.time / MINUTE_MS) * MINUTE_MS;
