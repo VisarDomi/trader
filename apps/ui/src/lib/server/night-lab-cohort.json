@@ -6,117 +6,117 @@
     "leverage": 200
   },
   {
-    "id": "visar-night-v2-us500/frequent-core",
-    "codeHash": "55524f991713",
+    "id": "visar-night-v3-us500/base",
+    "codeHash": "8354a30c0e07",
     "epic": "US500",
     "leverage": 20
   },
   {
-    "id": "visar-night-v2-us100/frequent-core",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 20
-  },
-  {
-    "id": "visar-night-v2-us500/frequent-gap",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 50
-  },
-  {
-    "id": "visar-night-v2-us100/frequent-gap",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 20
-  },
-  {
-    "id": "visar-night-v2-us500/frequent-reversal",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 10
-  },
-  {
-    "id": "visar-night-v2-us100/frequent-reversal",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 10
-  },
-  {
-    "id": "visar-night-v2-us500/frequent-reversal-gap",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 50
-  },
-  {
-    "id": "visar-night-v2-us100/frequent-small",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 5
-  },
-  {
-    "id": "visar-night-v2-us500/frequent-small",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 1
-  },
-  {
-    "id": "visar-night-v2-us100/frequent-gap-small",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 1
-  },
-  {
-    "id": "visar-night-v2-us100/central-reversal",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 50
-  },
-  {
-    "id": "visar-night-v2-us100/large-gap",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 100
-  },
-  {
-    "id": "visar-night-v2-us500/central-body",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 50
-  },
-  {
-    "id": "visar-night-v2-us500/central-steps",
-    "codeHash": "55524f991713",
-    "epic": "US500",
-    "leverage": 10
-  },
-  {
-    "id": "visar-night-v2-us100/central-body",
-    "codeHash": "18439f2d4f1e",
-    "epic": "US100",
-    "leverage": 10
-  },
-  {
-    "id": "visar-night-v2-control-us100/always-long",
-    "codeHash": "fa1a309a3f82",
-    "epic": "US100",
-    "leverage": 20
-  },
-  {
-    "id": "visar-night-v2-control-us100/random-direction",
-    "codeHash": "fa1a309a3f82",
-    "epic": "US100",
-    "leverage": 20
-  },
-  {
-    "id": "visar-night-v2-control-us500/always-long",
-    "codeHash": "8f05956f10ac",
+    "id": "visar-night-v3-control-us500/always-long",
+    "codeHash": "1b545896d222",
     "epic": "US500",
     "leverage": 20
   },
   {
-    "id": "visar-night-v2-control-us500/random-direction",
-    "codeHash": "8f05956f10ac",
+    "id": "visar-night-v3-control-us500/random-direction",
+    "codeHash": "1b545896d222",
     "epic": "US500",
     "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/big-move",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/strong-day",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/steady-day",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/gap-5bp",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/gap-15bp",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us500/leverage-200",
+    "codeHash": "8354a30c0e07",
+    "epic": "US500",
+    "leverage": 200
+  },
+  {
+    "id": "visar-night-v3-us100/base",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-control-us100/always-long",
+    "codeHash": "2e666eb542a7",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-control-us100/random-direction",
+    "codeHash": "2e666eb542a7",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/big-move",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/strong-day",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/steady-day",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/gap-5bp",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/gap-15bp",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 20
+  },
+  {
+    "id": "visar-night-v3-us100/leverage-200",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 200
+  },
+  {
+    "id": "visar-night-v3-us100/full-day-200",
+    "codeHash": "6d175db7dd11",
+    "epic": "US100",
+    "leverage": 200
   }
 ]

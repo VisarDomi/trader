@@ -33,10 +33,15 @@ After its first demotion the exception no longer grants re-entry. Changed source
 of the exception. `visar-night-trading:US500@200` is the first such admission, requested on 2026-10-15.
 
 Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
-`martingale-monkey`, `bold-play`, and the night cohort's direction controls `visar-night-v2-control-us100` /
-`-us500`) are never judged or retired. The direction controls trade exactly their `frequent-core` partner's
-eligible nights with identical settings, always long or with a random side, and hold user-requested demo
-admissions so the comparison also runs on Capital. The ruin controls `bold-play` and
+`martingale-monkey`, `bold-play`, and the night cohort's direction controls `visar-night-v3-control-us100` /
+`-us500`, plus the archived v2 ones) are never judged or retired. The direction controls trade exactly their
+`base` agent's eligible nights with identical settings, always long or with a random side, and hold
+user-requested demo admissions so the comparison also runs on Capital.
+
+The night cohort (v3, 2026-11-09, `research/night-cohort-v3-20261109.json`) is ten agents per index, each the
+base plus one change: day size, day shape, overnight gap, leverage, or side (controls). The original
+`visar-night-trading` keeps its record as the US500 full-day 1:200 point; US100 has the same settings. Exits
+that never trigger at 1:20 are not explored; leverage only at 1:200, where the 50% loss limit binds. The ruin controls `bold-play` and
 `martingale-monkey` are automatically paper-only by slug, including future code versions. There is no
 live-money stage.
 
@@ -75,7 +80,8 @@ Paused dependencies cannot earn new Capital promotion. See [evidence](../EVIDENC
 
 The explicit November 9 Visar cohort includes sparse day definitions. Their no-trade timeout is
 180 days for the five named body/retracement variants and 365 for `visar-night-lab/clean-50x`,
-whose inspected cadence is about one trade/year. `silentDaysFor` in `engine/policy.ts` is shared by
+whose inspected cadence is about one trade/year. The v3 directions with about one entry a month
+(`big-move`, `strong-day`, `steady-day`, `gap-15bp`) also get 180 days. `silentDaysFor` in `engine/policy.ts` is shared by
 the runtime and review/UI; other runs retain 60 days. This extends only the opportunity to observe
 a rare entry. Error/ruin exits, maturity, losing-evidence demotion and source-specific admission
 rules are unchanged. The short normal timeout would otherwise eliminate a deliberate frequency

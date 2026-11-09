@@ -11,7 +11,7 @@ import {tickMinutes,replayData} from '../tick-tape';
 import {replayWindow} from '../replay-coverage';
 import {STANDARD_WINDOW,type BacktestResult} from '../backtest-core';
 import {cachedSignalDefinition,GAPS,type Signal} from './gap-replay';
-import reference from '../../../agents/visar-night-v2-us500/reference';
+import reference from '../../../agents/visar-night-v3-us500/reference';
 export const PROFITS=[0,20,50,100] as const;
 const ROOT=join(import.meta.dir,'../../..'),OLD=join(ROOT,'data/night-session-study-20261109'),OUT=join(ROOT,'data/night-exit-study-20261109');
 const financialTrades=(rows:unknown[])=>rows.map(t=>Object.fromEntries(Object.entries(t as object).filter(([k])=>k!=='entryReason')));
@@ -20,7 +20,7 @@ async function main(){
  const epic=Bun.argv[2]!,window=Bun.argv[3]!,only=Bun.argv[4];
  if(!['US500','US100'].includes(epic)||!['full','central'].includes(window))throw Error('Use exit-replay.ts US500|US100 full|central [policy]');
  const base=(await loadAgents()).agents.find(a=>a.id==='visar-night-trading')!;if(base.codeHash!=='56ac3bdfe7c1')throw Error('Original source changed');
- const source=readFileSync(join(ROOT,'agents/visar-night-v2-us500/reference.ts'),'utf8'),referenceHash=createHash('sha256').update(source).digest('hex');
+ const source=readFileSync(join(ROOT,'agents/visar-night-v3-us500/reference.ts'),'utf8'),referenceHash=createHash('sha256').update(source).digest('hex');
  const oracle=await Bun.file(join(OLD,`${epic}-signals.json`)).json(),spec=await Bun.file(join(OLD,`${epic}-spec.json`)).json();
  mkdirSync(OUT,{recursive:true});
  await Bun.write(join(OUT,`${epic}-${window}-spec.json`),JSON.stringify({...spec,sessionWindow:window,minimumGapBp:GAPS,profitPct:PROFITS,referenceHash,signalInputSHA:oracle.inputSHA},null,2));
