@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resume the nightly lab on its own: the lab units now check `ops/lab/lab-control.py` (blocked only while the heavy-resource hold lists a lab unit) instead of waiting for the hold file to disappear, which had kept the lab stopped since 2026-10-21 after only TimesFM was resumed. `lab-control.py resume` removes the lab from the hold and starts the timer; a new `heavy-resources-stop` still pauses it.
+
 - Restructure the Visar night cohort as v3: ten agents per index, each one base (10:30–15:30 NY day, standard day filter, any gap, 1:20, 50% loss limit, 08:27) plus a single change — day size, day shape, overnight gap, leverage 1:200, or side (always-long and random-direction controls). The original agent keeps its record as the US500 full-day 1:200 point; US100 gets the same settings. Inert exits (profit targets, loss limits that never trigger at 1:20) are dropped. v2 agents archived with their histories.
 
 - Add direction controls to the Visar night cohort: always-long and random-direction agents per index that trade exactly the `frequent-core` agent's eligible nights with identical settings. They replace four low-weight rule agents (US500 full-reversal and full-steps, US100 largest-gap and full-steps), so the cohort stays at 20. Strategy explanations show the control's side against the rule's; the Night Lab report adds a same-nights comparison.

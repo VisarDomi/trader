@@ -110,6 +110,10 @@ The marker's `services` list owns each hold: a user-requested model-only resume 
 `trader-forecaster.service` while leaving lab/video entries intact. Use
 `python3 ops/lab/forecaster-control.py resume` for that scoped action. Forecaster startup, dependency
 evidence and health checks honour the service list; a later global stop reinstates every hold.
+The nightly lab works the same way: `python3 ops/lab/lab-control.py resume` removes `trader-lab.timer`
+and `trader-lab.service` from the list and starts the timer; each run checks `lab-control.py check`
+(an `ExecCondition`), so the lab runs while other holds such as the video pipeline stay in place.
+Before November 9 the lab units waited for the file to disappear, so a partial resume never restarted them.
 
 ## Secrets
 
