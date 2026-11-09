@@ -14,7 +14,7 @@ test('offline worker preserves the last complete cohort, marks it saved, and ign
  const listeners=new Map<string,Function>(),saved=new Map<string,Response>();
  let fail=false,incomplete=false;
  const cache={match:async(r:Request)=>saved.get(r.url)?.clone(),put:async(r:Request,v:Response)=>saved.set(r.url,v.clone())};
- const scope={URL,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({at:123,rows:Array.from({length:incomplete?19:20},()=>({}))})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
+ const scope={URL,Response,caches:{open:async()=>cache},fetch:async()=>{if(fail)throw Error('Offline');return Response.json({schema:2,at:123,rows:Array.from({length:incomplete?19:20},()=>({}))})},self:{location:{origin:'https://trader.invalid'},registration:{scope:'https://trader.invalid/night-lab/'},addEventListener:(name:string,fn:Function)=>listeners.set(name,fn)}};
  runInNewContext(readFileSync(new URL('../../../../ops/lab/night-lab-sw.js',import.meta.url),'utf8'),scope);
  async function request(path:string,method='GET'){let response:Promise<Response>|undefined;listeners.get('fetch')!({request:new Request('https://trader.invalid'+path,{method}),respondWith:(r:Promise<Response>)=>response=r});return response?await(await response).json():null}
  expect(await request('/api/native/v1/leaderboard')).toBeNull();expect(await request('/night-lab/forward.json','POST')).toBeNull();

@@ -112,8 +112,10 @@ on resign. Phone frame measurements are distinct from the slower Mac simulator's
 - Twelve domain checks and guarded simulator compilation pass. The focused offline 21-row fixture
   (twenty cohort plus the older twin) verifies the twenty matches, sort, detail/back/forward, exact
   focal anchor, portrait/landscape and cold/warm return. QA bundle is uninstalled and the shared
-  guest/owned GUI shut down. No physical-phone UI automation. Signed delivery status is recorded
-  after submitting the verified source through ios-push.
+  guest/owned GUI shut down. No physical-phone UI automation.
+- Paid job `20261109T014034Z-3148a2ba42`, frozen source `b9b8ad5`, is **installed** in place and
+  approved for renewal. The queue verified the artifact/device inventory and retained the renewal
+  schedule; it did not launch or drive the phone UI.
 
 ## Delivery — November 8, 2026 · content-only cleanup
 

@@ -1,82 +1,122 @@
 [
   {
     "id": "visar-night-trading",
-    "codeHash": "56ac3bdfe7c1"
+    "codeHash": "56ac3bdfe7c1",
+    "epic": "US500",
+    "leverage": 200
   },
   {
     "id": "visar-night-lab/body-tight-100x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 100
   },
   {
     "id": "visar-night-lab/steps-10x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 10
   },
   {
     "id": "visar-night-lab/broad-5x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 5
   },
   {
     "id": "visar-night-lab/body-5x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 5
   },
   {
     "id": "visar-night-lab/body-20x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 20
   },
   {
     "id": "visar-night-lab/clean-50x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 50
   },
   {
     "id": "visar-night-lab/retrace-100x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 100
   },
   {
     "id": "visar-night-lab/steps-3x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 3
   },
   {
     "id": "visar-night-lab/broad-1x",
-    "codeHash": "b50b682fde5b"
+    "codeHash": "b50b682fde5b",
+    "epic": "US500",
+    "leverage": 1
   },
   {
     "id": "visar-night-us100/broad-5x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 5
   },
   {
     "id": "visar-night-us100/baseline-1x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 1
   },
   {
     "id": "visar-night-us100/steps-20x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 20
   },
   {
     "id": "visar-night-us100/steps-tight-100x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 100
   },
   {
     "id": "visar-night-us100/body-5x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 5
   },
   {
     "id": "visar-night-us100/steps-3x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 3
   },
   {
     "id": "visar-night-us100/steps-10x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 10
   },
   {
     "id": "visar-night-us100/steps-tight-50x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 50
   },
   {
     "id": "visar-night-us100/steps-tight-20x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 20
   },
   {
     "id": "visar-night-us100/steps-1x",
-    "codeHash": "8f1a2d30b2c0"
+    "codeHash": "8f1a2d30b2c0",
+    "epic": "US100",
+    "leverage": 1
   }
 ]
