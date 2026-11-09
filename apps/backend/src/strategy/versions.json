@@ -302,5 +302,17 @@
     "timeframe": "1m",
     "extra": [],
     "description": "US100 night: full/central day, overnight bid gap, then capital-profit target/loss budget or 08:27 Tirana."
+  },
+  "visar-night-v2-control-us500": {
+    "hash": "8f05956f10ac",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US500 direction control: the frequent-core night's eligible days, always long or a random side, same exits."
+  },
+  "visar-night-v2-control-us100": {
+    "hash": "fa1a309a3f82",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US100 direction control: the frequent-core night's eligible days, always long or a random side, same exits."
   }
 }

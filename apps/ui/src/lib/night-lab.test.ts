@@ -21,9 +21,12 @@ test('all session/gap/risk combinations are rendered together without a reveal c
  runInNewContext(cell+'\n'+view+'\nthis.rendered=exitFocus()+studyOverview()+D.instruments.map(instrumentView).join(\'\');',compact,{timeout:10000});
  expect(compact.rendered).toBe(scope.rendered);
  expect(report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'))).toHaveLength(19);
- expect(new Set(report.cohort.map((r:any)=>r.minimumGapBp))).toEqual(new Set([0,5,15,30]));
+ expect(new Set(report.cohort.map((r:any)=>r.minimumGapBp))).toEqual(new Set([0,5,15]));
  expect(new Set(report.cohort.map((r:any)=>r.profitPct))).toEqual(new Set([0,20,50,100]));
- const replacements=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'));
+ const replacements=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-')&&r.role!=='control');
+ // Direction controls: same nights as their partner (equal trade counts), selected on nothing.
+ const controls=report.cohort.filter((r:any)=>r.role==='control');expect(controls).toHaveLength(4);
+ for(const c of controls){const partner=report.cohort.find((r:any)=>r.id===c.partner);expect(partner.metrics.trades).toBe(c.metrics.trades);expect({...c.params,direction:undefined}).toEqual({...partner.params,direction:undefined})}
  expect(replacements.filter((r:any)=>r.role.startsWith('frequent-')&&r.metrics.trades/report.years>=18)).toHaveLength(10);
  expect(replacements.every((r:any)=>r.metrics.totalReturn>0&&r.metrics.maxDrawdown<=.4&&r.metrics.trades>=18)).toBe(true);
 });

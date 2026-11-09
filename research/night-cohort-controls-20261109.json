@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-09",
+  "requestedBy": "user",
+  "reason": "Direction controls: trade exactly the eligible nights of each index's frequent-core rule agent, with identical session window, gap, leverage, loss and profit settings, but always long or with a random side. If the previous-day direction rule adds nothing, the controls should do as well as the rule. Two rule agents per index were removed to keep the cohort at 20, chosen from the overnight assessment's lowest-weight roles (full-session or sparse/large-gap).",
+  "removed": [
+    {"id": "visar-night-v2-us500/full-reversal", "epic": "US500", "leverage": 100},
+    {"id": "visar-night-v2-us500/full-steps", "epic": "US500", "leverage": 50},
+    {"id": "visar-night-v2-us100/largest-gap", "epic": "US100", "leverage": 100},
+    {"id": "visar-night-v2-us100/full-steps", "epic": "US100", "leverage": 3}
+  ],
+  "controls": [
+    {"id": "visar-night-v2-control-us100/always-long", "epic": "US100", "leverage": 20, "codeHash": "fa1a309a3f82", "partner": "visar-night-v2-us100/frequent-core", "direction": "long", "sessionWindow": "central", "minimumGapBp": 0, "policy": "current", "role": "control"},
+    {"id": "visar-night-v2-control-us100/random-direction", "epic": "US100", "leverage": 20, "codeHash": "fa1a309a3f82", "partner": "visar-night-v2-us100/frequent-core", "direction": "random", "sessionWindow": "central", "minimumGapBp": 0, "policy": "current", "role": "control"},
+    {"id": "visar-night-v2-control-us500/always-long", "epic": "US500", "leverage": 20, "codeHash": "8f05956f10ac", "partner": "visar-night-v2-us500/frequent-core", "direction": "long", "sessionWindow": "central", "minimumGapBp": 0, "policy": "current", "role": "control"},
+    {"id": "visar-night-v2-control-us500/random-direction", "epic": "US500", "leverage": 20, "codeHash": "8f05956f10ac", "partner": "visar-night-v2-us500/frequent-core", "direction": "random", "sessionWindow": "central", "minimumGapBp": 0, "policy": "current", "role": "control"}
+  ]
+}

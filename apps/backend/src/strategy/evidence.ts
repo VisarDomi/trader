@@ -89,15 +89,21 @@ export function explain(agentId:string,hash:string,c:Inputs,side:Side,opts:Order
       const start=atLocal(day.date,TZ.NEW_YORK,startMinute),points=day.points.map((value:number,i:number)=>({t:start+i*900000,value})),classified=slug.startsWith('visar-night-v2-')?windowClassify(f,p as any,minutes):classifyNightSession(f,p as any);
       out.panels.push({title:`Previous New York session · ${classified>0?'bullish':classified<0?'bearish':'did not qualify'}`,unit:'Price',note:`${startMinute===630?'10:30–15:30; first hour and last half-hour ignored':'09:30–16:00'} New York · 15-minute decision checkpoints. Intraminute retraces use conservative high/low excursions.`,series:[{name:'Session path',points}],guides:[{label:'Recognition open',value:day.open},{label:'Minimum bullish close',value:day.open*(1+p.trendPct/100)},{label:'Maximum bearish close',value:day.open*(1-p.trendPct/100)}],markers:[],from:start,through:start+minutes*60000});
       const entry=localTime(c.time,p.timeZone),yesterday=new Date(Date.UTC(entry.year,entry.month-1,entry.day)-86400000).toISOString().slice(0,10);
-      g('Session direction',classified,'=',dir,'');g('Calendar allows entry',nightCalendarAllows(yesterday,entry.date)?1:0,'=',1,'yes/no');
+      // Direction controls trade the rule's eligible nights; the rule's side, not the traded side, defines eligibility.
+      const control=slug.startsWith('visar-night-v2-control-'),ruleDir=control?Math.sign(classified)||dir:dir;
+      if(control){out.title=`Direction control · ${p.direction==='long'?'always long':'random direction'} on the rule's nights`;
+        g('Previous session qualified (bullish or bearish)',Math.abs(classified),'=',1,'');
+        g(p.direction==='long'?'Control side: always long':'Control side: fair coin',dir,'=',dir,'',`The rule would ${ruleDir>0?'buy':'sell'}; this control ${side==='long'?'buys':'sells'}.`);}
+      else g('Session direction',classified,'=',dir,'');
+      g('Calendar allows entry',nightCalendarAllows(yesterday,entry.date)?1:0,'=',1,'yes/no');
       g('Entry clock',entry.minuteOfDay,'=',207,'minute of day');
       g('Weekday entry',entry.weekday>=1&&entry.weekday<=5?1:0,'=',1,'yes/no');
       g('Reference belongs to previous day',s.referenceDate===yesterday?1:0,'=',1,'yes/no');
-      if(s.reference>0){g(side==='long'?'Dip below 22:00 reference':'Bounce above 22:00 reference',price,side==='long'?'<':'>',s.reference,'Price');
+      if(s.reference>0){g(ruleDir>0?'Dip below 22:00 reference':'Bounce above 22:00 reference',price,ruleDir>0?'<':'>',s.reference,'Price');
         const minimum=p.minPullbackBp??0;
-        if(slug.startsWith('visar-night-v2-'))g('Minimum opposite-side bid gap',dir*(s.reference-price)/s.reference*10000,'>=',minimum,'bp');
+        if(slug.startsWith('visar-night-v2-'))g('Minimum opposite-side bid gap',ruleDir*(s.reference-price)/s.reference*10000,'>=',minimum,'bp');
         const at=atLocal(yesterday,p.timeZone,1320),candles=b.filter(x=>x.time+tf>=at);
-        out.panels.push({title:'22:00 reference → 03:27 decision',unit:'Price',note:`${p.timeZone} · last closed bid prices, before execution spread. Minimum counter-move ${minimum}bp.`,series:[{name:'Overnight price',points:sampled(candles,candles.map(x=>x.close),tf,true)}],guides:[{label:'22:00 reference',value:s.reference},...(minimum>0?[{label:`${minimum}bp entry boundary`,value:s.reference*(1-dir*minimum/10000)}]:[])],markers:[{t:c.bar.time+tf,value:price,label:'SIGNAL'}],from:at,through:c.bar.time+tf});
+        out.panels.push({title:'22:00 reference → 03:27 decision',unit:'Price',note:`${p.timeZone} · last closed bid prices, before execution spread. Minimum counter-move ${minimum}bp.`,series:[{name:'Overnight price',points:sampled(candles,candles.map(x=>x.close),tf,true)}],guides:[{label:'22:00 reference',value:s.reference},...(minimum>0?[{label:`${minimum}bp entry boundary`,value:s.reference*(1-ruleDir*minimum/10000)}]:[])],markers:[{t:c.bar.time+tf,value:price,label:'SIGNAL'}],from:at,through:c.bar.time+tf});
       }else g('22:00 reference',NaN,'>',0,'Price');
     }
     out.exitRule=`${p.profitPct?`Profit target +${p.profitPct}% of this trade's entry capital, or `:''}08:27 ${p.timeZone}; protective loss budget ${p.lossPct}% of entry capital. Targets are rebased to actual fill/rounded size. Opening/reference candles, coverage and policy-event filters must qualify.`;

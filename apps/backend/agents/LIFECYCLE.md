@@ -33,7 +33,10 @@ After its first demotion the exception no longer grants re-entry. Changed source
 of the exception. `visar-night-trading:US500@200` is the first such admission, requested on 2026-10-15.
 
 Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
-`martingale-monkey`, `bold-play`) are never judged or retired. The ruin controls `bold-play` and
+`martingale-monkey`, `bold-play`, and the night cohort's direction controls `visar-night-v2-control-us100` /
+`-us500`) are never judged or retired. The direction controls trade exactly their `frequent-core` partner's
+eligible nights with identical settings, always long or with a random side, and hold user-requested demo
+admissions so the comparison also runs on Capital. The ruin controls `bold-play` and
 `martingale-monkey` are automatically paper-only by slug, including future code versions. There is no
 live-money stage.
 

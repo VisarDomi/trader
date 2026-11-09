@@ -207,6 +207,18 @@
       ],
       "visar-night-v2-us100/central-body": [
         10
+      ],
+      "visar-night-v2-control-us100/always-long": [
+        20
+      ],
+      "visar-night-v2-control-us100/random-direction": [
+        20
+      ],
+      "visar-night-v2-control-us500/always-long": [
+        20
+      ],
+      "visar-night-v2-control-us500/random-direction": [
+        20
       ]
     }
   },
@@ -362,6 +374,22 @@
     "visar-night-us100/steps-1x:US100@1": {
       "date": "2026-11-09",
       "reason": "User-requested replacement by the v2 session/gap/frequency cohort. Superseded experiment, not a losing-strategy verdict. Original source, backtest and forward/broker history retained in Graveyard."
+    },
+    "visar-night-v2-us500/full-reversal:US500@100": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the always-long and random-direction controls (2026-11-09), keeping the cohort at 20. Chosen from the overnight assessment's lowest-weight roles (full-session or sparse/large-gap). Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+    },
+    "visar-night-v2-us500/full-steps:US500@50": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the always-long and random-direction controls (2026-11-09), keeping the cohort at 20. Chosen from the overnight assessment's lowest-weight roles (full-session or sparse/large-gap). Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+    },
+    "visar-night-v2-us100/largest-gap:US100@100": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the always-long and random-direction controls (2026-11-09), keeping the cohort at 20. Chosen from the overnight assessment's lowest-weight roles (full-session or sparse/large-gap). Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+    },
+    "visar-night-v2-us100/full-steps:US100@3": {
+      "date": "2026-11-09",
+      "reason": "User-requested replacement by the always-long and random-direction controls (2026-11-09), keeping the cohort at 20. Chosen from the overnight assessment's lowest-weight roles (full-session or sparse/large-gap). Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     }
   },
   "demoAdmissions": {
@@ -420,20 +448,10 @@
       "date": "2026-11-09",
       "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=54, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us500/full-steps:US500@50": {
-      "codeHash": "55524f991713",
-      "date": "2026-11-09",
-      "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=33, 2 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
-    },
     "visar-night-v2-us100/central-reversal:US100@50": {
       "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
       "reason": "Explicit user-requested capital-profit exit dimension: +100% or 08:27, with loss stop. Diverse finite-history role; N=28, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
-    },
-    "visar-night-v2-us500/full-reversal:US500@100": {
-      "codeHash": "55524f991713",
-      "date": "2026-11-09",
-      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=22, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
     "visar-night-v2-us100/large-gap:US100@100": {
       "codeHash": "18439f2d4f1e",
@@ -445,18 +463,8 @@
       "date": "2026-11-09",
       "reason": "Explicit user-requested capital-profit exit dimension: +100% or 08:27, with loss stop. Diverse finite-history role; N=22, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
-    "visar-night-v2-us100/largest-gap:US100@100": {
-      "codeHash": "18439f2d4f1e",
-      "date": "2026-11-09",
-      "reason": "Explicit user-requested capital-profit exit dimension: +50% or 08:27, with loss stop. Diverse finite-history role; N=18, 2 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
-    },
     "visar-night-v2-us500/central-steps:US500@10": {
       "codeHash": "55524f991713",
-      "date": "2026-11-09",
-      "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=25, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
-    },
-    "visar-night-v2-us100/full-steps:US100@3": {
-      "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
       "reason": "Explicit user-requested capital-profit exit dimension: 08:27, with loss stop. Diverse finite-history role; N=25, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
     },
@@ -464,6 +472,26 @@
       "codeHash": "18439f2d4f1e",
       "date": "2026-11-09",
       "reason": "Explicit user-requested capital-profit exit dimension: +20% or 08:27, with loss stop. Diverse finite-history role; N=24, 0 target hits. Selected history is not validation; normal safety and subsequent demotion apply."
+    },
+    "visar-night-v2-control-us100/always-long:US100@20": {
+      "codeHash": "fa1a309a3f82",
+      "date": "2026-11-09",
+      "reason": "User-requested direction control for visar-night-v2-us100/frequent-core: same nights, settings, sizing and exits; buys every eligible night instead of following the previous day. Control: never judged or retired; normal safety applies."
+    },
+    "visar-night-v2-control-us100/random-direction:US100@20": {
+      "codeHash": "fa1a309a3f82",
+      "date": "2026-11-09",
+      "reason": "User-requested direction control for visar-night-v2-us100/frequent-core: same nights, settings, sizing and exits; takes a random side on every eligible night instead of following the previous day. Control: never judged or retired; normal safety applies."
+    },
+    "visar-night-v2-control-us500/always-long:US500@20": {
+      "codeHash": "8f05956f10ac",
+      "date": "2026-11-09",
+      "reason": "User-requested direction control for visar-night-v2-us500/frequent-core: same nights, settings, sizing and exits; buys every eligible night instead of following the previous day. Control: never judged or retired; normal safety applies."
+    },
+    "visar-night-v2-control-us500/random-direction:US500@20": {
+      "codeHash": "8f05956f10ac",
+      "date": "2026-11-09",
+      "reason": "User-requested direction control for visar-night-v2-us500/frequent-core: same nights, settings, sizing and exits; takes a random side on every eligible night instead of following the previous day. Control: never judged or retired; normal safety applies."
     }
   }
 }
