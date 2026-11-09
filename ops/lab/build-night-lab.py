@@ -33,7 +33,7 @@ files=list((ROOT/'apps/backend/data/backtests/2024-01_2026-09').glob('visar-nigh
 for r in [load('../night-audit-20261108/baseline-x200.json')]+[json.loads(f.read_text()) for f in files]:
     cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'nasdaqExcessPp':r['metrics']['totalReturn']*100-benchmarks['US100']['returnPct']})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
-(ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{'id':r['id'],'codeHash':r['codeHash']} for r in cohort],indent=2)+'\n')
+(ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 trades=load('breakdown.json')['rows']
 # Nasdaq original-rule paths are research observations, not new live original records.
 opps={r['date']:r for r in load('us100-opportunities.json')};a=arrays['US100'];wanted={r['session'] for r in opps.values()};paths={}

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Correct Night Lab Capital cash reads to use the arena’s actual-demo stage; pin exact cohort
+  source/instrument/tier, retain archived members, and invalidate the earlier forward cache.
+  A regression verifies distinct virtual and actual returns rather than accepting duplicated values.
+
 - Add the standalone installable Night Lab report with both instruments, 648 visible risk cells,
   131 original-rule trade paths, the 20-agent forward cohort and a fee-free full-cash Nasdaq hold
   proxy. Show purchase-budget assumptions, matched broker minimums and missing listings explicitly;

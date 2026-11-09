@@ -51,6 +51,27 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   Startup now rechecks persisted eligible results when ready. A real offline-start regression injects
   the upload during backfill and verifies a queued admission without reposting. No orders/network in
   that regression. Source/record IDs are retained across the normal systemd reload.
+- Native paid job 20261109T014034Z-3148a2ba42 is installed in place and approved for renewal;
+  source b9b8ad5, no phone UI launch/automation. Native focus-anchor fractions are stable across
+  navigation and restart; raw pixel offset appropriately changes when header geometry changes.
+- All 20 standard virtual records are present (10/10); nineteen initial Capital assignments required
+  one further Tier1 slot. Excluded the weakest current eligible non-control Tier1 incumbent,
+  tsmom/20d NATURALGAS at −2.91% over four closed trades, from Capital only. This is a user-directed
+  capacity demotion, not a mature failure claim. Its virtual evidence continues and broker close jobs
+  retain its actual deal history. Existing 19 roster retirements remain separate and archived.
+- Live verification caught/corrected a new-report wiring error: the internal Capital stage parameter
+  is demo, not capital. The PWA had duplicated virtual returns into its cash column. Native/main
+  evidence was unaffected. Corrected the explicit stage read, added a regression with distinct cash/
+  virtual returns, and versioned/purged the affected forward cache. Cohort reads pin instrument,
+  tier and source hash and retain archived records, so demotion cannot masquerade as an outage.
+- Final live verification: all twenty cohort records (10 US500/10 US100) are assigned to Capital demo;
+  excluded incumbent has no open broker deal, queue is empty. Review: stream/model healthy, arena
+  428 MB, 4,600 virtual records (553 standard/4,047 comparisons), 442/450 broker slots, no dropped
+  ticks; projected two-year storage33.3GB, stress72.0GB under100GB. Verdicts401early/8keep/0leaders
+  plus144controls; monkeys0/36. Original keeps its two trades, +96.9577% virtual versus +97.3535%
+  actual cash. Night Lab HTTP200 and its authenticated-edge redirect verified; final cash read/cache
+  verification follows the small report correction’s normal dashboard publication. No physical action
+  is needed; native installation is already verified.
 - Every heavy research/build job is isolated inside trader.slice on this PC, below aggregate 50%;
   Mac builds/guest use the shared guard, exact shared guest and isolated QA bundle. Existing holds
   and original histories are preserved. No extra tick recording copy or new quote subscription.
