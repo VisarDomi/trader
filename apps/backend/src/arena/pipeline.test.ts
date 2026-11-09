@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { admissionGate, backtestGate, virtualEligible, tradeT } from './pipeline.ts';
 import type { RunRow } from './db.ts';
 import type { Trade } from '../sdk/types.ts';
-import { confirmsDeal, scaledSize } from './broker.ts';
+import { closingDirection, confirmsDeal, scaledSize } from './broker.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import { RUN_STATUS } from '../engine/run.ts';
 import {PRIMARY_BACKTEST_WINDOW_ID} from '../engine/run-id.ts';
@@ -89,6 +89,24 @@ describe('broker confirmation identity', () => {
         deal,
       ),
     ).toBe(true);
+  });
+  test('a close confirmation carries the closing direction, so a long closes as SELL', () => {
+    // Shape of a real EURUSD close confirmation (Arena 01 round trip, 2026-11-09).
+    const close = {
+      dealStatus: ACCEPTED,
+      status: 'CLOSED',
+      epic: EPIC,
+      dealId: 'ours',
+      affectedDeals: [{ dealId: 'ours', status: 'FULLY_CLOSED' }] as { dealId: string; status: string }[],
+      direction: 'SELL',
+      size: 100,
+      level: 1.1192,
+      profit: -0.007,
+    } as const;
+    expect(closingDirection('long')).toBe('SELL');
+    expect(closingDirection('short')).toBe('BUY');
+    expect(confirmsDeal(close, { epic: EPIC, direction: closingDirection('long'), size: 100, dealId: 'ours' })).toBe(true);
+    expect(confirmsDeal(close, { epic: EPIC, direction: 'BUY', size: 100, dealId: 'ours' })).toBe(false);
   });
   test('scaled mirror sizes round down and do not inflate tiny orders without limit', () => {
     expect(scaledSize(getInstrument(EPIC), 10000, 0.2)).toBe(2000);

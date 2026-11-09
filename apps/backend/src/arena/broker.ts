@@ -1051,7 +1051,9 @@ export class BrokerMirror {
         this.closeWaiting.add(d.id);
         return;
       }
-      const direction = current.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;
+      // A close confirmation reports the closing order's direction: SELL closes a long, BUY a short
+      // (verified with a round trip on Arena 01, 2026-11-09).
+      const direction = closingDirection(current.side as Side);
       if (
         !confirmsDeal(conf, {
           epic: current.epic,
@@ -1362,6 +1364,11 @@ export class BrokerMirror {
  * confirmation when the reference is not the latest (it echoes the reference back), so a broker stop that
  * fills in between hands us another deal's confirmation.
  */
+/** Direction of the order that closes a position of this side. */
+export function closingDirection(side: Side): string {
+  return side === 'long' ? DIRECTION_SELL : DIRECTION_BUY;
+}
+
 export function confirmsDeal(
   conf: Confirmation,
   deal: {

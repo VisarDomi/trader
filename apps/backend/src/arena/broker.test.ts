@@ -59,21 +59,24 @@ function fixture(candidates: MirrorCandidate[], current: Record<string, string>,
   db.setSetting(BROKER_SETTINGS.ACCOUNTS, { [ACCOUNT]: { name: NAME, allocation: 100000, hedging: true, leverage: 1, killed: false } });
   let posts = 0;
   let deletes = 0;
+  // Like Capital.com: a confirmation carries the order's direction, so closing this long confirms as SELL.
+  let lastOrder: 'BUY' | 'SELL' = 'BUY';
   const client = {
     transactions: async () => ({ transactions: [], complete: true }), logins: 1, selectAccount: async () => {},
     get: async (path: string) => {
       if (path === '/api/v1/accounts') return { accounts: [{ accountId: ACCOUNT, accountName: NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } }] };
       if (path === '/api/v1/accounts/preferences') return { hedgingMode: true, leverages: {} };
-      if (path.startsWith('/api/v1/confirms/')) return { dealStatus: 'ACCEPTED', epic: EPIC, direction: 'BUY', size: 100, dealId: 'ours', level: 1.12 };
+      if (path.startsWith('/api/v1/confirms/')) return { dealStatus: 'ACCEPTED', epic: EPIC, direction: lastOrder, size: 100, dealId: 'ours', level: 1.12 };
       return { positions: [] };
     },
     post: async (_path: string, _body: unknown, hooks?: { sent?: () => void }) => {
       if (postDelayMs) await Bun.sleep(postDelayMs);
       hooks?.sent?.();
       posts++;
+      lastOrder = 'BUY';
       return { dealReference: 'fixture' };
     },
-    delete: async () => { deletes++; return { dealReference: 'fixture' }; },
+    delete: async () => { deletes++; lastOrder = 'SELL'; return { dealReference: 'fixture' }; },
   } as unknown as CapitalClient;
   const mirror = new BrokerMirror(client, db, { prefix: 'Arena', accountTiers: { [NAME]: 1 } });
   mirror.setCandidateSource(() => candidates);
@@ -162,6 +165,8 @@ test('the Capital clock requests the scheduled close without a quote or a new ba
     for (let i = 0; i < 100 && db.openDeals().length; i++) await Bun.sleep(10);
     expect(counts().deletes).toBe(1);
     expect(db.openDeals()).toHaveLength(0);
+    // Closed by its own confirmation, so the exit price is recorded.
+    expect(db.dealsForRun(RUN).find(d => d.deal_id === 'ours')?.close_price).toBe(1.12);
   } finally { mirror.stop(); db.db.close(); }
 });
 
