@@ -297,6 +297,12 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   stop's confirmation. It cost one wrong record (a EURUSD close stored at an AUDUSD price, −$5,019 instead of
   −$26.64). The broker now accepts a confirmation only when its epic, direction, size and deal id match the deal;
   otherwise reconcile settles the deal from `/positions`.
+- A confirmation's `direction` is the **order's** direction: a close of a long confirms as `SELL`, of a short as
+  `BUY` (verified with a minimum-size round trip on Arena 01, 2026-11-09; the close reference is
+  `p_<position dealId>`). The October 15 check compared closes with the position's direction, so from then on
+  nearly every genuine close was "left to reconcile", re-sent, and recorded from the 404 as already closed with
+  no exit price. P&L was unaffected (it is allocated from Capital.com's transaction history); exit prices and
+  exit slippage were lost for Oct 15 – Nov 9, and each close cost a second request. Fixed on 2026-11-09.
 - `PUT /session` (account switch) changes the active account **of that session only** (verified: another session
   switching to Visi left the broker session on Gerti). It does, however, move the login-wide `preferred` account,
   which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
