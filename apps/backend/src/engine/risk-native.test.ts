@@ -6,7 +6,7 @@ import { MarketEngine } from './market.ts';
 import { RISK_BACKEND, riskBackend } from './risk-native.ts';
 import { TICK_SOURCE } from './ticks.ts';
 import type { LoadedAgent } from './loader.ts';
-import { VirtualGateway, VirtualVenue } from './venue.ts';
+import { VirtualVenue } from './venue.ts';
 import fixtures from './fixtures/capital-markets.json';
 
 const EPIC = 'US500', COUNT = 24;
@@ -19,7 +19,7 @@ nativeTest('native risk preserves the reference engine through stops, callbacks,
         const events: unknown[] = [];
         const instrument = { ...getInstrument(EPIC) };
         const engine = new MarketEngine(instrument, null, useNative);
-        const venue = new VirtualVenue(instrument), gateway = new VirtualGateway();
+        const venue = new VirtualVenue(instrument);
         venue.update({ ...fixtures.markets.US500, snapshot: { ...fixtures.markets.US500.snapshot, marketStatus: 'TRADEABLE' } }, now);
         for (let i = 0; i < COUNT; i++) {
           const def: AgentDefinition = {
@@ -44,7 +44,7 @@ nativeTest('native risk preserves the reference engine through stops, callbacks,
           };
           const agent: LoadedAgent = { id: `parity-${i}`, slug: 'parity', variant: null, file: '', source: '', codeHash: 'fixture', params: {}, def: defineAgent(def) };
           engine.addRun({ runId: agent.id, agent, leverage: 200, capital: 10000, checkStopsOnCandles: false,
-            execution: delayed ? { venue, gateway, latencyMs: 500, now: () => now } : undefined,
+            execution: delayed ? { venue, latencyMs: 500, now: () => now } : undefined,
             onEvent: e => events.push(e) });
         }
         return { engine, events, venue };

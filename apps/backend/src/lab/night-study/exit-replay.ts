@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {loadAgents,type LoadedAgent} from '../../engine/loader';
 import {getInstrument} from '../../engine/instruments';
 import {MarketEngine} from '../../engine/market';
-import {VirtualVenue,VirtualGateway,DEFAULT_EXECUTION_MS,type CapitalMarket} from '../../engine/venue';
+import {VirtualVenue,DEFAULT_EXECUTION_MS,type CapitalMarket} from '../../engine/venue';
 import snapshot from '../../engine/fixtures/capital-markets.json';
 import {ENGINE_VERSION} from '../../engine/version';
 import {tickMinutes,replayData} from '../tick-tape';
@@ -38,7 +38,7 @@ async function main(){
   const defs:LoadedAgent['def'][]=jobs.map((p:any)=>cachedSignalDefinition({...base,def:reference},signals,p.minimumGapBp,epic));
   const barCallbacks=defs.map(d=>d.onBar),tickCallbacks=defs.map(d=>d.onTick);
   const agents=jobs.map((p:any,i:number)=>{const params={...reference.params,...policy.params,sessionStart:window==='central'?630:570,sessionEnd:window==='central'?930:960,lossPct:p.lossPct,marginPct:90,minPullbackBp:p.minimumGapBp,profitPct:p.profitPct};return {...base,id:`night-exit/${epic}/${window}/${policy.id}/B${p.minimumGapBp}/T${p.profitPct}/${p.id}`,def:defs[i]!,params,codeHash:createHash('sha256').update(referenceHash+oracle.inputSHA+JSON.stringify(params)).digest('hex').slice(0,12)} as LoadedAgent});
-  const runs=agents.map((agent,i)=>engine.addRun({runId:agent.id,agent,leverage:jobs[i]!.leverage,capital:10000,checkStopsOnCandles:false,execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,gateway:new VirtualGateway(),now:()=>clock}}));
+  const runs=agents.map((agent,i)=>engine.addRun({runId:agent.id,agent,leverage:jobs[i]!.leverage,capital:10000,checkStopsOnCandles:false,execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,now:()=>clock}}));
   const options={mode:'synthetic' as const,recordings:[],seed:1,ticksPerMinute:16},data=replayData(options);let first=true,delivered=0,minutes=0;const began=Date.now();
   console.log('START',epic,window,policy.id,jobs.length);
   for await(const minute of tickMinutes(epic,STANDARD_WINDOW.start,STANDARD_WINDOW.end,options,data)){

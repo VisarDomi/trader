@@ -103,24 +103,55 @@ export const RESOLUTION = {
 } as const;
 export type Resolution = (typeof RESOLUTION)[keyof typeof RESOLUTION];
 
+/** Which waiting request gets the next slot: orders first, their follow-ups next, everything else last. */
+export const REQUEST_PRIORITY = { ORDER: 0, FOLLOW_UP: 1, BACKGROUND: 2 } as const;
+export type RequestPriority = (typeof REQUEST_PRIORITY)[keyof typeof REQUEST_PRIORITY];
+
 /**
  * Spaces requests at least `minIntervalMs` apart. Clients that share one pacer
- * share one request budget (e.g. the arena's data client and broker client).
+ * share one request budget (e.g. the arena's data client and broker sessions).
+ * When requests wait, the next slot goes to the highest priority (FIFO within
+ * one), so an order never queues behind candle polls or reconciliation.
  */
 export class RequestPacer {
   private nextSlot = 0;
+  private readonly waiting: { resolve: () => void; since: number }[][] = [[], [], []];
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(readonly minIntervalMs: number) {}
 
-  async wait(): Promise<void> {
+  wait(priority: RequestPriority = REQUEST_PRIORITY.BACKGROUND): Promise<void> {
     const now = Date.now();
-    const slot = Math.max(now, this.nextSlot);
-    this.nextSlot = slot + this.minIntervalMs;
-    if (slot > now) {
-      recordPace(slot - now);
-      await Bun.sleep(slot - now);
+    if (now >= this.nextSlot && !this.waiting.some(q => q.length > 0)) {
+      this.nextSlot = now + this.minIntervalMs;
+      return Promise.resolve();
     }
+    return new Promise(resolve => {
+      this.waiting[priority]!.push({ resolve, since: now });
+      this.schedule();
+    });
   }
+
+  private schedule(): void {
+    if (this.timer) return;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      const next = this.waiting.find(q => q.length > 0)?.shift();
+      if (!next) return;
+      const now = Date.now();
+      this.nextSlot = now + this.minIntervalMs;
+      recordPace(now - next.since);
+      next.resolve();
+      if (this.waiting.some(q => q.length > 0)) this.schedule();
+    }, Math.max(0, this.nextSlot - Date.now()));
+  }
+}
+
+/** Orders (open and close) first; confirmations, position checks, stops and session work next. */
+export function requestPriority(method: string, path: string): RequestPriority {
+  if ((method === 'POST' && path === '/api/v1/positions') || (method === 'DELETE' && path.startsWith('/api/v1/positions/'))) return REQUEST_PRIORITY.ORDER;
+  if (path.startsWith('/api/v1/confirms/') || path.startsWith('/api/v1/positions/') || path === '/api/v1/session') return REQUEST_PRIORITY.FOLLOW_UP;
+  return REQUEST_PRIORITY.BACKGROUND;
 }
 
 /** Every client in this process shares the login limit. */
@@ -170,7 +201,7 @@ export class CapitalClient {
 
   private async doLogin(): Promise<void> {
     await loginPacer.wait();
-    await this.pacer.wait();
+    await this.pacer.wait(REQUEST_PRIORITY.FOLLOW_UP);
     const res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
       method: 'POST',
       headers: {
@@ -228,7 +259,7 @@ export class CapitalClient {
   private async switchAccountRaw(accountId: string): Promise<void> {
     let res: Response;
     for (let attempt = 0; ; attempt++) {
-      await this.pacer.wait();
+      await this.pacer.wait(REQUEST_PRIORITY.FOLLOW_UP);
       res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
         method: 'PUT',
         headers: this.authHeaders(),
@@ -264,8 +295,9 @@ export class CapitalClient {
 
   async request<T>(method: string, path: string, body?: unknown, hooks?: RequestHooks): Promise<T> {
     if (!this.cst || Date.now() - this.authedAt > SESSION_REFRESH_MS) await this.login();
+    const priority = requestPriority(method, path);
     for (let attempt = 0; ; attempt++) {
-      await this.pacer.wait();
+      await this.pacer.wait(priority);
       hooks?.sent?.();
       const res = await measuredFetch(`${DEMO_BASE_URL}${path}`, {
         method,

@@ -21,8 +21,9 @@ import { TickJournal } from './tick-journal.ts';
 
 const BROKER_OFF = 'off';
 /**
- * ~6 requests/s of the login's 10, shared by candle polling and the broker.
- * The lab (≤3.3/s, mostly at night) and position-opener use the rest.
+ * ~6 requests/s of the login's 10 (Capital: 10/s per user; opening orders at most 1 per 0.1 s), shared by
+ * candle polling and the broker's sessions. Orders take the next free slot (REQUEST_PRIORITY). The lab
+ * (≤3.3/s, mostly at night) and position-opener use the rest.
  */
 const ARENA_REQUEST_INTERVAL_MS = 170;
 
@@ -41,7 +42,12 @@ const dataClient = new CapitalClient(creds, pacer);
 const broker =
   brokerPrefix === BROKER_OFF || brokerPrefix.trim() === ''
     ? null
-    : new BrokerMirror(new CapitalClient(creds, pacer), db, { prefix: brokerPrefix, accountTiers: loadRoster().accounts });
+    : new BrokerMirror(new CapitalClient(creds, pacer), db, {
+        prefix: brokerPrefix,
+        accountTiers: loadRoster().accounts,
+        // One session per demo account (9 checked concurrently on 2026-11-10): no switching, no cross-account waits.
+        sessionFor: () => new CapitalClient(creds, pacer),
+      });
 
 const tickJournal = new TickJournal(resolve(dirname(dbPath),'ticks.db'), message => db.event('error','ticks',message));
 tickJournal.start();

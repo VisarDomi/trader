@@ -92,6 +92,8 @@ export class AgentEvidenceService {
     this.loadCosts(row.kind,now,isShadow(row.id)?row.id:undefined);
     const a=this.agents.get(row.agent_id), extra=row.extra?JSON.parse(row.extra):{};
     const tracked=this.arena.tracked.get(row.id)?.run;
+    // The engine skips quotes that change nothing for a run; show the latest one.
+    tracked?.adoptQuote(this.arena.engines.get(row.epic)?.lastAcceptedTick??null);
     const saved=!tracked&&row.snapshot?JSON.parse(row.snapshot):null;
     const p=tracked?.position??saved?.position, q=tracked?.lastQuote??saved?.lastTick;
     const equity=tracked?.markToMarket()??row.equity;

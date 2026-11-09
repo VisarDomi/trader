@@ -143,22 +143,3 @@ describe('Capital demo observed contract', () => {
     expect(run.trades[0]?.exitReason).toBe(EXIT_REASON.SESSION_END);
   });
 });
-
-test('a virtual login paces bursts and accounts for switching plus confirmation requests', async () => {
-  const { VirtualGateway } = await import('./venue.ts');
-  const g = new VirtualGateway();
-  const OPEN = 'open';
-  expect(g.reserve('a', 1, OPEN, START)).toBe(START + 340);
-  expect(g.reserve('b', 1, OPEN, START)).toBe(START + 850);
-  expect(g.reserve('c', 2, OPEN, START)).toBe(START + 1700);
-  for (let i = 1; i < 12; i++) g.reserve('a', 1, OPEN, START);
-  expect(typeof g.reserve('a', 1, OPEN, START)).toBe('string');
-});
-
-test('virtual API budgets restore past attempts without double counting', async () => {
-  const { VirtualGateway } = await import('./venue.ts');
-  const g = new VirtualGateway();
-  for (let i = 0; i < 12; i++) { g.observeOpen('same-run', START - i * 1000, START); g.observeOpen('same-run', START - i * 1000, START); }
-  expect(typeof g.reserve('same-run', 1, 'open', START)).toBe('string');
-  expect(typeof g.reserve('another-run', 1, 'open', START)).toBe('number');
-});

@@ -12,7 +12,7 @@ import type { EquityPoint, RunMetrics } from '../engine/metrics.ts';
 import type { LogLine, RunStatus } from '../engine/run.ts';
 import type { Trade } from '../sdk/types.ts';
 import { tickMinutes, recordingSnapshot, replayData, TICK_MODE, type ReplayOptions, type ReplayData } from './tick-tape.ts';
-import { DEFAULT_EXECUTION_MS, VirtualVenue, VirtualGateway, type CapitalMarket } from '../engine/venue.ts';
+import { DEFAULT_EXECUTION_MS, VirtualVenue, type CapitalMarket } from '../engine/venue.ts';
 import marketSnapshot from '../engine/fixtures/capital-markets.json';
 import { MINUTE_MS } from '../engine/clock.ts';
 import { replayWindow } from './replay-coverage.ts';
@@ -127,7 +127,7 @@ export async function backtestEpic(
       leverage,
       capital: BACKTEST_CAPITAL,
       checkStopsOnCandles: false,
-      execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,gateway:new VirtualGateway(),now:()=>clock},
+      execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,now:()=>clock},
     }),
   );
 

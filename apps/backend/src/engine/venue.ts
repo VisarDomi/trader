@@ -74,41 +74,15 @@ export class VirtualVenue {
     return null;
   }
 }
-/** One synthetic API login per scenario, with the arena's real pacing and hourly safeguards. */
-export class VirtualGateway {
-  nextSlot = 0;
-  private account: number | null = null;
-  private opens: number[] = [];
-  private runOpens = new Map<string, number[]>();
-  observeOpen(runId: string, time: number, now: number): void {
-    if (now - time >= 3_600_000) return;
-    const recent = this.runOpens.get(runId) ?? [];
-    if (recent.includes(time)) return;
-    recent.push(time); this.runOpens.set(runId, recent); this.opens.push(time);
-  }
-  reserve(runId: string, account: number, kind: string, now: number): number | string {
-    const hour = 3_600_000;
-    if (kind === 'open') {
-      this.opens = this.opens.filter(t => now - t < hour);
-      const recent = (this.runOpens.get(runId) ?? []).filter(t => now - t < hour);
-      if (this.opens.length >= 600 || recent.length >= 12) return 'virtual API open-rate safeguard';
-      this.opens.push(now);
-      recent.push(now);
-      this.runOpens.set(runId, recent);
-    }
-    let slot = Math.max(this.nextSlot, now);
-    if (this.account !== account) {
-      slot += 2 * 170;
-      this.account = account;
-    }
-    this.nextSlot = slot + (kind === 'stops' ? 1 : kind === 'open' ? 3 : 2) * 170;
-    return slot;
-  }
-}
+/**
+ * A runaway guard per run, the same rule the broker mirror applies to one run's real orders. Other runs'
+ * orders never delay or block a paper order: Capital's request budget is the real mirror's queue, not the
+ * engine's (user request 2026-11-10).
+ */
+export const MAX_OPENS_PER_RUN_PER_HOUR = 12;
 export interface LiveExecution {
   venue: VirtualVenue;
   latencyMs: number;
-  gateway?: VirtualGateway;
   now?: () => number;
   /** Recording failures pause new entries while existing protections and closes continue. */
   entryAllowed?:()=>boolean;

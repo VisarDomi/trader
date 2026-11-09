@@ -1,5 +1,5 @@
 import type { LiveExecution } from './venue.ts';
-import { QUOTE_MAX_AGE_MS } from './venue.ts';
+import { QUOTE_MAX_AGE_MS, MAX_OPENS_PER_RUN_PER_HOUR } from './venue.ts';
 import { TICK_SOURCE, type Tick } from './ticks.ts';
 /**
  * AgentRun — one agent trading one instrument with its own virtual account.
@@ -424,6 +424,33 @@ export class AgentRun {
   }
 
   /**
+   * Whether this quote can change anything for the run beyond which quote it holds. A flat run without
+   * pending orders or a tick callback: never. An open position: only when the quote reaches one of its
+   * levels (stop or trailing stop, the trailing anchor, take-profit, margin close-out, a new equity peak,
+   * a deeper drawdown) or a time rule applies (funding rollover, scheduled close, session end). The tests
+   * repeat checkTickProtections' arithmetic exactly; a skipped quote is adopted later (adoptQuote), so
+   * results equal delivering every quote, while a quote costs a few comparisons per open position.
+   */
+  quoteMatters(q: Tick): boolean {
+    if (this.startTime === 0 || this.pending.length !== 0 || this.agent.onTick !== undefined) return true;
+    const pos = this.position;
+    if (pos === null || this.status !== RUN_STATUS.RUNNING) return false;
+    if (pos.closeAt !== undefined || this.agent.intradayOnly) return true;
+    if (fundingDay(q.receivedAt) > pos.lastFundingDay) return true;
+    const long = pos.side === SIDE_LONG, px = long ? q.bid : q.ask;
+    const eq = this.balance + (long ? (px - pos.entryPrice) * pos.size : (pos.entryPrice - px) * pos.size);
+    if (eq > this.peakEquity) return true;
+    if (this.peakEquity > 0 && (this.peakEquity - eq) / this.peakEquity > this.maxDrawdown) return true;
+    if (long ? px > pos.trailAnchor : px < pos.trailAnchor) return true;
+    const trail = pos.trailingStop === null ? null : long ? pos.trailAnchor - pos.trailingStop : pos.trailAnchor + pos.trailingStop;
+    const useTrail = trail !== null && (pos.stopLoss === null || (long ? trail > pos.stopLoss : trail < pos.stopLoss));
+    const stopPrice = useTrail ? trail : pos.stopLoss;
+    if (stopPrice !== null && (long ? px <= stopPrice : px >= stopPrice)) return true;
+    if (pos.takeProfit !== null && (long ? px >= pos.takeProfit : px <= pos.takeProfit)) return true;
+    return this.marginBreached(px);
+  }
+
+  /**
    * Catch up on quotes skipped while idle: the quote onTick would have left behind. The engine accepted it
    * at arrival under the same freshness rule, so only this run's own ordering is re-checked.
    */
@@ -622,11 +649,8 @@ export class AgentRun {
     if(this.tick)this.quote=this.tick;
     this.rngState = s.rngState;
     this.pending = structuredClone(s.pending ?? []);
-    if (this.execution?.gateway)
-      for (const p of this.pending) this.execution.gateway.nextSlot = Math.max(this.execution.gateway.nextSlot, p.due);
     this.executionStats = { ...(s.executionStats ?? this.executionStats) };
     this.openAttempts = (s.openAttempts ?? [...trades.map(t => t.entryTime), ...(s.position ? [s.position.entryTime] : []), ...(s.pending ?? []).filter(p => p.kind === 'open').map(p => p.at)]).filter(t => this.now() - t < 3_600_000);
-    if (this.execution?.gateway) for (const time of this.openAttempts) this.execution.gateway.observeOpen(this.runId, time, this.now());
     this.trades.push(...trades);
     this.equity.push(...equity);
   }
@@ -639,10 +663,11 @@ export class AgentRun {
   private enqueueCommand(command: PendingCommand): void {
     this.riskChanged?.();
     if (this.pending.length >= 8) return this.reject('too many pending commands');
-    const slot = this.execution?.gateway?.reserve(this.runId, this.leverage, command.kind, command.at);
-    if (typeof slot === 'string') return this.reject(slot);
-    if (command.kind === 'open') this.openAttempts = [...this.openAttempts.filter(t => command.at - t < 3_600_000), command.at];
-    if (slot !== undefined) command.due = Math.max(command.due, slot + this.execution!.latencyMs);
+    if (command.kind === 'open') {
+      const recent = this.openAttempts.filter(t => command.at - t < 3_600_000);
+      if (this.execution && recent.length >= MAX_OPENS_PER_RUN_PER_HOUR) return this.reject(`open-rate safeguard: ${recent.length} opens in the last hour`);
+      this.openAttempts = [...recent, command.at];
+    }
     if (command.kind === 'open' && this.currentBar) command.barCloseTime = this.currentBar.time + this.primary.tfMs;
     this.executionStats.submitted++;
     if (this.quote) command.decisionMid = (this.quote.bid + this.quote.ask) / 2;

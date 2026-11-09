@@ -98,7 +98,7 @@ export class MarketEngine {
     readonly instrument: Instrument,
     private readonly forecasts: ForecastProvider | null = null,
     useNativeRisk = true,
-    /** Skip flat, idle runs on each quote (see AgentRun.quoteIdle); false replays every quote to every run. */
+    /** Deliver a quote only to runs it can change (see AgentRun.quoteMatters); false delivers every quote to every run. */
     readonly skipIdleQuotes = true,
   ) { this.risk = new RiskBatch(useNativeRisk); }
 
@@ -241,7 +241,8 @@ export class MarketEngine {
     const runs = this.runs, skip = this.skipIdleQuotes;
     for (let i = 0; i < runs.length; i++) {
       const run = runs[i]!;
-      if (skip && run.quoteIdle) continue;
+      // The native risk batch updates positions itself; with it only flat idle runs are skipped.
+      if (skip && (risk === undefined ? !run.quoteMatters(q) : run.quoteIdle)) continue;
       run.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
     }
     return closed;
@@ -275,7 +276,12 @@ export class MarketEngine {
       const bar = series.flushThrough(through);
       if (bar) closed.push({ series, bar });
     }
-    for (const r of this.runs) r.onClock(time);
+    // Only open positions act on the clock (funding, scheduled and session-end exits), on the quote they would hold.
+    for (const r of this.runs) {
+      if (r.position === null) continue;
+      r.adoptQuote(this.lastTick);
+      r.onClock(time);
+    }
     return closed;
   }
   processClock(time: number): void {
@@ -286,7 +292,10 @@ export class MarketEngine {
     this.tickMinute = null;
     this.completedThrough = c.time + MINUTE_MS;
     this.completedCandles.push(c);
-    for (const r of this.runs) r.onCandle(c, true);
+    for (const r of this.runs) {
+      r.adoptQuote(this.lastTick);
+      r.onCandle(c, true);
+    }
     const closed: ClosedBar[] = [];
     for (const series of this.series.values()) for (const bar of series.push(c)) closed.push({ series, bar });
     return closed;

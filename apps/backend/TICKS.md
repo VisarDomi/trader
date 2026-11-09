@@ -49,9 +49,9 @@ from four candle prices. Results and dashboard badges expose recorded/generated 
 generator/seed/density and engine version. The standard 2024–September 2026 test is wholly synthetic:
 recording started afterward.
 
-Orders share durable pending commands, per-run simulated API pacing and 500 ms baseline latency in
-backtests; they need an executable quote after the delay. Live scenario gateways still model shared
-queues. Backtests use the captured October 15 dealing-rule snapshot; they do not invent historical rule,
+Orders use durable pending commands and a 500 ms baseline delay in backtests and live; each fills on the
+first quote stamped at or after its due time. Paper orders do not queue behind each other (engine
+`2026-11-feed-time-v2`). Backtests use the captured October 15 dealing-rule snapshot; they do not invent historical rule,
 funding-rate, network or market-impact observations. End-of-data liquidation marks the last known quote.
 
 Closed bars contain only observed ticks. Clock boundaries close quiet partial bars without inventing

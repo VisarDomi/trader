@@ -1,6 +1,6 @@
 import { CONTROL_SLUGS, LIFECYCLE,silentDaysFor } from '../engine/policy.ts';
 import { explain,beforeEntryState } from '../strategy/evidence.ts';
-import { VirtualVenue, VirtualGateway, DEFAULT_EXECUTION_MS, VIRTUAL_MODEL, type CapitalMarket } from '../engine/venue.ts';
+import { VirtualVenue, DEFAULT_EXECUTION_MS, VIRTUAL_MODEL, type CapitalMarket } from '../engine/venue.ts';
 import {
   backtestGate,
   admissionGate,
@@ -108,7 +108,6 @@ export class Arena {
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private probeTimer: ReturnType<typeof setInterval> | null = null;
   private polling = false;
-  private readonly gateways = new Map<string, VirtualGateway>();
   readonly venues = new Map<string, VirtualVenue>();
   private readonly loopDelay = monitorEventLoopDelay({ resolution: 20 });
   /** Time per part of the arena's work (quotes, bars, persistence, API …), see executionStatus(). */
@@ -240,15 +239,6 @@ export class Arena {
     }, 120_000);
   }
 
-  private gateway(delay: string): VirtualGateway {
-    let gateway = this.gateways.get(delay);
-    if (!gateway) {
-      gateway = new VirtualGateway();
-      this.gateways.set(delay, gateway);
-    }
-    return gateway;
-  }
-
   private createRuns(now: number): Set<string> {
     const fresh = new Set<string>();
     const active = this.db.runs(RUN_KIND.DEMO);
@@ -284,7 +274,6 @@ export class Arena {
         execution: {
           venue: this.venues.get(epic)!,
           latencyMs: DEFAULT_EXECUTION_MS,
-          gateway: this.gateway('standard'),
           now:()=>this.replayClock??Date.now(),
           entryAllowed:()=>this.tickJournal?.lastError==null,
         },
@@ -366,7 +355,6 @@ export class Arena {
           execution: {
             venue: this.venues.get(epic)!,
             latencyMs,
-            gateway: this.gateway(String(latencyMs)),
             now:()=>this.replayClock??Date.now(),
             entryAllowed:()=>this.tickJournal?.lastError==null,
           },

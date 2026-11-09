@@ -272,3 +272,24 @@ test('an order is announced at the decision with its size and executable price, 
   expect(events.map(ev => ev.type)).toEqual(['order', 'open']);
   expect(r.pendingOpen).toBeNull();
 });
+test('a burst of other runs never delays or blocks a paper order; one run is limited to 12 opens an hour', () => {
+  let now = T;
+  const instrument = { ...getInstrument(EPIC) },
+    venue = new VirtualVenue(instrument);
+  venue.update((fixtures.markets as unknown as Record<string, CapitalMarket>)[EPIC]!, now);
+  const e = new MarketEngine(instrument);
+  const runs = Array.from({ length: 800 }, (_, i) => e.addRun({ runId: `burst-${i}`, capital: 10_000, leverage: 20, checkStopsOnCandles: false,
+    agent: agent({ onTick(ctx) { if (!ctx.state.ordered) { ctx.state.ordered = true; ctx.buy({ size: 1 }); } } }),
+    execution: { venue, latencyMs: 500, now: () => now } }));
+  e.processTick(quote(0, 100));
+  now = T + 500;
+  e.processTick(quote(500, 101));
+  expect(runs.every(r => r.position?.entryPrice === 102)).toBe(true);
+  // One run reopening every few seconds hits its own guard on the 13th open within an hour.
+  const churn = e.addRun({ runId: 'churn', capital: 10_000, leverage: 20, checkStopsOnCandles: false,
+    agent: agent({ onTick(ctx) { if (ctx.position) ctx.close('churn'); else ctx.buy({ size: 1 }); } }),
+    execution: { venue, latencyMs: 500, now: () => now } });
+  for (let k = 0; k < 120; k++) { now = T + 1000 + k * 1000; e.processTick(quote(1000 + k * 1000, 100)); }
+  expect(churn.trades.length + (churn.position ? 1 : 0)).toBe(12);
+  expect(churn.logs.some(l => l.message.includes('open-rate safeguard'))).toBe(true);
+});
