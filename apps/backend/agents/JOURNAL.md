@@ -5,6 +5,30 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon) — babysitter visit, virtual day 33
+
+- Ran at 15:45 UTC instead of 08:30: the scheduled run failed twice on its provider (unsupported model).
+- Health: green after one broker fix. Stream and forecaster up, 0 errors in 3 days, queue 0, watchdog quiet.
+  Tick journal 46.9 M received, 0 dropped, archive one minute behind on its every-minute timer. Storage
+  15.1 GB; two-year projection 35.0 GB, 4× stress 74.3 GB of 100 GB. Arena 489–534 MB before the deploy,
+  330 MB after. Both `pc-server-trader-*` units in trader.slice. The nightly lab stays paused by the user's
+  heavy-resource hold (since Oct 21; forecaster resumed Nov 1), so no backtests or additions from this visit.
+- Fix (041104e): close confirmations carry the closing order's direction (SELL for a long), which a
+  minimum-size EURUSD round trip on Arena 01 confirmed ($0.013 in spread). The Oct 15 identity check compared
+  them with the position's direction, so from then on nearly every arena close was left to reconcile, sent
+  again and recorded from the 404 without an exit price: 0 of 4,400+ closes priced since Oct 16. P&L was not
+  affected (it is allocated from Capital.com's transactions; 11 of 5,315 trade entries unallocated), but exit
+  prices and exit slippage are missing for Oct 15 – Nov 9 and each close cost a second request. After the
+  deploy, 4 of the first 5 closes were priced (within 0.3 points of paper); the fifth was its own broker
+  take-profit. The test fixture now answers like the real API and asserts the exit price.
+- Cost evidence: `audit-costs --backfill` attached quote metadata to all 7 candidates (0 unmatched).
+- Policy calendar: FOMC (page updated Oct 28) and BOJ decision dates through 2027-12-31 match the official
+  schedules; no change. Coverage ends 2027-12-31, more than 90 days ahead.
+- Verdicts: control 144, early 400, keep 8, leader 0, retire 0; monkey sanity 0 of 36.
+- Retired: none listed. Added: none (today's user-requested Visar v2 cohort is this week's addition).
+- Left alone: uncommitted edits to `AGENTS.md` and `apps/forecaster/server.py` from another session.
+- Next: Thursday — confirm exit prices stay recorded and exit slippage reappears on the Status panel.
+
 ## 2026-11-09 (Mon, user-requested) — profit exits as a full dimension
 
 - Added deadline-only versus +20/+50/+100% of each trade's starting capital, with the same loss
