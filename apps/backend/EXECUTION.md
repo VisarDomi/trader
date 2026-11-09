@@ -83,6 +83,34 @@ Primary references: [Capital API](https://open-api.capital.com/),
 
 ## Capacity
 
+Update 2026-11-09: `bun run benchmark-arena --runs N` now replays one full recorded day (2026-11-05, 3.0M
+quotes on 20 instruments) through the arena's live path: every quote, the one-second clock, bar dispatch,
+orders on, the per-minute state save into a scratch database. Copies of the planned runs, warmed on 10 days
+of candles. CPU for the whole day:
+
+| Runs | Before | After (idle runs skip quotes; idle flat runs saved every 10 min) | State rows written |
+|---|---|---|---|
+| 5,000 | 219 s (0.25% of a core) | 99 s (0.11%) | 7.0M → 1.2M |
+| 20,000 | 963 s (1.1%) | 386 s (0.45%) | 28.2M → 4.8M |
+| 50,000 | — | 963 s (1.1%), 420 MB | 11.9M |
+
+Identical opens and trades before and after. Memory grows ~6 KB per run plus its trade history; most of
+the arena's memory is the shared 120-day candle history. The live arena reports CPU by part in
+`/api/execution` (`cpuParts`), which is where the remaining cost lives (metrics, API, broker candidates).
+What remains per quote is runs that are never idle: open positions, pending orders and agents with an
+`onTick` callback (they are processed on every quote even when the callback returns at once).
+
+Live, after the 2026-11-09 deploy (4,644 runs, 2,820 of them holding a position): 5.3% of a core in total;
+quotes 1.7% (0.34 ms per quote, ≈0.7 µs per open position for tick-precision stops, targets, margin and
+drawdown), API 0.3–1%, state saves 0.2%, bar dispatch 0.2%, broker candidates 0.2%. Positions, not agents,
+set the per-quote cost: a million runs with today's 60% in a position would need most of a core for
+quotes alone. The next step there is a per-instrument index of trigger prices (stop, target, trailing,
+margin call), so a quote touches only the positions whose trigger it crosses, with drawdown tracked by
+the price extremes between evaluations; then sharing bar work between runs of the same agent and
+parameters (leverage tiers and delay comparisons decide identically until their accounts differ).
+
+Earlier (2026-10-15):
+
 `bun run benchmark-arena 5000` inside `trader.slice` exercised actual agents on two days of cached bars:
 138 MB RSS, 0.08 ms p95 per instrument-minute, 178 ms to persist all states. A separate offline replay of
 all 120 days with a consistent production database copy started 5,000 runs in 22.3 seconds at 332 MB.
@@ -102,6 +130,26 @@ backtest push triggers a debounced service reload to warm newly eligible records
 Production verification exposed the 100-row history cap and unlinked SWAP entries; those behaviors were
 added to the regression suite. Restart replay also now activates restored runs only when their resume time
 is reached, avoiding a scan of every dormant run for each of 120 days of candles.
+
+## Feed time and decision-time orders (2026-11-09, engine `2026-11-feed-time`)
+
+Capital's demo WebSocket delivers each quote 2–13 s after its own timestamp; the delay varies over days
+(US100 median 4.5 s on Oct 16, 13 s on Nov 4, 2 s right after the Nov 9 restart). A REST snapshot shows
+the same price, with the same timestamp, 5–7 s before the stream delivers it, and a second, fresh
+connection was exactly as late as the arena's, so the delay is Capital's, not a backlog of ours.
+
+Before this change the paper engine filled orders on the quote in hand (several seconds old), closed live
+minutes by the clock before their last quotes arrived (so live candles lacked their final seconds), and
+the broker mirror sent the demo order only after the paper fill. Paired demo deals agreed with their paper
+trades within one spread only 63% of the time over October 10 – November 9, and Capital's own stops fired a
+median 5.7 s before ours.
+
+Now: (1) an order fills on the first quote stamped at or after the moment it reaches the venue
+(decision + execution delay, receive clock); (2) the clock closes a quiet minute only after 1.5 × the
+smoothed feed delay, and a minute otherwise closes on the first quote stamped in a later minute, so live
+candles match Capital's and the backtests'; (3) the mirror sends the demo order when the order is decided
+(`order` run event) and links the later paper fill to it. Generated quotes have no delay and replay as
+before. The paper–demo twin report (`/api/twins`, Paper vs demo) measures the result daily.
 
 ## Tick execution update (2026-10-16)
 
