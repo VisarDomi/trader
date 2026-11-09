@@ -96,6 +96,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
 | Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the dashboard Status page |
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
+| Visar night paper grid | Last nightly step: `cd apps/backend && bun run night-grid` replays all 336 settings per index since 2026-10-01 into `data/night-grid/`, copied to `trader-ui/night-grid/` (Night Lab → Paper grid). Idle minutes carry only their open/high/low/close quotes; `--full` replays every quote for an audit. Paper only. |
 | Free heavy CPU/RAM/GPU work / resume it | `heavy-resources-stop` / `heavy-resources-start`: video pipeline, TimesFM and nightly lab work. Trading, tick capture/archive and dashboard stay running. The hold survives reboot until explicitly resumed. |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
 | Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |

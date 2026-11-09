@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- **Night Lab paper grid** — `/night-lab/grid.json` serves the nightly paper grid (both indexes, without per-night ledgers; rejects partial or mismatched files) and Night Lab shows it as one table per index: day filter × window rows, gap × leverage columns, and in each cell the rule, always-long and coin returns on the same nights. ● marks settings that also run on Capital demo. Switch between all nights since 1 Oct, the pre-cohort holdout and strictly forward nights. Offline copy kept by the service worker.
 - **Night Lab cohort as coordinates** — uniform agent names (US500 · base, · big move, …, · original) and one column per dimension, with each agent's change from the base in bold, plus the dimension it explores.
 
 - **Night Lab direction controls** — the cohort table labels the four always-long and random-direction controls, and a new section compares each index's rule agent with its controls on the same nights (backtest trades, win rate, return, drawdown).

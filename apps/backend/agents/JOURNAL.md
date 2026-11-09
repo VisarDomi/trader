@@ -5,6 +5,27 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon, user-requested) — Visar night paper grid (672 settings, nightly)
+
+- Why: the user agreed ten demo probes per index cannot map the space, and asked whether a few hundred
+  paper settings is too much. Inert settings stay out (profit targets; the loss limit at 1:20).
+- Grid per index: NY window (central, full) × day filter (standard, big-move, strong-day, steady-day,
+  efficient-day, small-pullback, tiny-pullback) × gap (0, 5, 15, 30 bp) × leverage (1:20, 1:200, loss limit
+  50%) × side (rule, always long, coin) = 336, built from the v3 base and control sources. A test proves the
+  19 v3 demo agents are exactly their grid cells. Window from 2026-10-01 (after the study window); the
+  per-cell split shows the holdout before the cohort was fixed and strictly forward nights from 2026-11-10.
+- Cross-check: the full/standard/1:200 rule cell reproduces the original agent's two live nights
+  (2026-10-16 long, 2026-11-03 short; Nov 3 identical fills, +93.5% vs +96.96% live).
+- Cost: a full replay took 207 s (US500) and 834 s (US100) for 39 days. Idle minutes now carry only the
+  quotes that set open/high/low/close (after the engine's own acceptance rule): every candle and rejected
+  count since October is identical, and all 672 cells match the full replay exactly, in 54 s + 100 s. About
+  4 s per day of data, so roughly 25 minutes a night after a year, inside trader.slice. A first version
+  picked quotes by arrival rather than quote time and differed on one US500 day; caught by the comparison.
+- Since 2026-10-01 (5 qualifying US500 nights at most): the US500 rule beat always-long in all 62 traded
+  settings and the coin in 42; US100 the rule beat always-long in none of 52 and the coin in 21. A handful
+  of shared nights; nothing is selected from this.
+- Night Lab → Paper grid; data in `trader-ui/night-grid/`, written by the nightly job.
+
 ## 2026-11-09 (Mon, user-requested) — nightly lab resumed after 19 days
 
 - Why it stopped: `heavy-resources-stop` on 2026-10-21 10:54 UTC wrote the hold file listing the video

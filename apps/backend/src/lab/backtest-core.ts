@@ -6,7 +6,8 @@ import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import type { ForecastProvider } from '../engine/market.ts';
 import { backtestRunId, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
-import { MarketEngine } from '../engine/market.ts';
+import { acceptsTick, MarketEngine } from '../engine/market.ts';
+import type { Tick } from '../engine/ticks.ts';
 import type { EquityPoint, RunMetrics } from '../engine/metrics.ts';
 import type { LogLine, RunStatus } from '../engine/run.ts';
 import type { Trade } from '../sdk/types.ts';
@@ -66,12 +67,47 @@ export interface BacktestResult {
   agentUsPerTick?: number;
 }
 
+export interface ReplayThinning {
+  /**
+   * While no run holds a position or a pending order, deliver only the quotes that set each minute's
+   * open, high, low and close (see idleMinuteTicks). Candles, last quotes and clocks are unchanged, so agents
+   * that decide on closed bars trade identically (verify against a full replay when adopting it). Bar
+   * volume, the quote count, is not preserved.
+   */
+  idleOhlcOnly?: boolean;
+}
+
+/**
+ * The quotes of an idle replay minute that rebuild the engine's identical candle and state: quotes the engine
+ * would reject are dropped (and counted), quotes stamped outside this minute pass through, and of this
+ * minute's own quotes the first, highest-bid, lowest-bid and last remain. A minute that mixes recorder
+ * journals is delivered whole, because sequence order is only checked between neighbours of one journal.
+ */
+export function idleMinuteTicks(ticks: readonly Tick[], minute: number, previous: Tick | null): { ticks: readonly Tick[]; rejected: number } {
+  const accepted: Tick[] = [];
+  for (const q of ticks) if (acceptsTick(q, previous)) { accepted.push(q); previous = q; }
+  if (accepted.length <= 4 || new Set(accepted.map((q) => q.journalId)).size > 1) return { ticks, rejected: 0 };
+  const keep = new Set<number>([accepted.length - 1]);
+  let first = -1, high = -1, low = -1, last = -1;
+  for (let i = 0; i < accepted.length; i++) {
+    const q = accepted[i]!;
+    if (q.time < minute || q.time >= minute + MINUTE_MS) { keep.add(i); continue; }
+    if (first < 0) first = i;
+    last = i;
+    if (high < 0 || q.bid > accepted[high]!.bid) high = i;
+    if (low < 0 || q.bid < accepted[low]!.bid) low = i;
+  }
+  for (const i of [first, high, low, last]) if (i >= 0) keep.add(i);
+  return { ticks: [...keep].sort((a, b) => a - b).map((i) => accepted[i]!), rejected: ticks.length - accepted.length };
+}
+
 export async function backtestEpic(
   epic: string,
   specs: { agent: LoadedAgent; leverage: number }[],
   window: BacktestWindow,
   forecasts: ForecastProvider | null = null,
   options: ReplayOptions = {},
+  thinning: ReplayThinning = {},
 ): Promise<BacktestResult[]> {
   const started = Date.now();
   const instrument = {...getInstrument(epic)};
@@ -95,17 +131,20 @@ export async function backtestEpic(
 
   const data=replayData(options);
   data.recordings=options.recordings??(options.mode===TICK_MODE.SYNTHETIC?[]:await recordingSnapshot(window.start,window.end));
-  let n=0;
+  let n=0,skippedRejected=0;
   for await(const minute of tickMinutes(epic,window.start,window.end,options,data)) {
     clock=minute.time;venue.updatedAt=clock;
     engine.processClock(clock);
-    for(const tick of minute.ticks){clock=tick.receivedAt;engine.processTick(tick);}
+    const idle=thinning.idleOhlcOnly&&!runs.some(r=>r.position!==null||r.pendingOrders>0);
+    const delivered=idle?idleMinuteTicks(minute.ticks,minute.time,engine.lastAcceptedTick):{ticks:minute.ticks,rejected:0};
+    skippedRejected+=delivered.rejected;
+    for(const tick of delivered.ticks){clock=tick.receivedAt;engine.processTick(tick);}
     clock=minute.time+MINUTE_MS;
     engine.processClock(clock);
     engine.takeCompletedCandles();
     n++;
   }
-  data.rejectedTicks=engine.rejectedTicks;
+  data.rejectedTicks=engine.rejectedTicks+skippedRejected;
   data.window=replayWindow(window.start,window.end,data.firstTickAt,data.lastTickAt);
   const endTime=n>0?clock:window.end;
   for (const run of runs) run.finish(endTime);

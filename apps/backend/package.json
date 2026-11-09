@@ -9,6 +9,7 @@
     "sync-ticks": "bun run src/lab/sync-ticks.ts",
     "storage": "bun run src/lab/storage.ts",
     "backtest": "bun run src/lab/backtest.ts",
+    "night-grid": "bun run src/lab/night-study/forward-grid.ts",
     "push-history": "bun run src/lab/push-history.ts",
     "forecasts": "bun run src/lab/forecast-precompute.ts",
     "check-agent": "bun run src/lab/check-agent.ts",
