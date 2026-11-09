@@ -149,6 +149,8 @@ export interface MirrorCandidate extends SlotCandidate {
   specialAdmission?: boolean;
   /** The run's leverage tier: it is mirrored on an account of that tier. */
   tier: number;
+  /** The paper open order on its way to the paper venue (side and decision time), when there is one. */
+  pendingOpen?: { side: Side; at: number } | null;
   /** The paper position, when there is one (to retry an open the broker rejected). */
   entry: {
     size: number;
@@ -160,6 +162,29 @@ export interface MirrorCandidate extends SlotCandidate {
     validUntil?: number;
     closeAt?: number;
   } | null;
+}
+
+/** A demo open: sent when the paper order is decided, or (fallback) when the paper position has filled. */
+interface OpenRequest {
+  runId: string;
+  side: Side;
+  size: number;
+  /** The paper fill price, or the executable price when the order was decided. */
+  price: number;
+  decisionTime: number;
+  /** Set when the paper position already exists (the fallback and retry path). */
+  fillTime: number | null;
+  barCloseTime?: number;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  trailingStop?: number | null;
+  validUntil?: number;
+  closeAt?: number;
+}
+
+function fillRequest(e: Extract<RunEvent, { type: 'open' }>): OpenRequest {
+  return { runId: e.runId, side: e.side, size: e.size, price: e.price, decisionTime: e.decisionTime ?? e.time, fillTime: e.time,
+    barCloseTime: e.barCloseTime, stopLoss: e.stopLoss, takeProfit: e.takeProfit, trailingStop: e.trailingStop };
 }
 
 interface Confirmation {
@@ -481,6 +506,23 @@ export class BrokerMirror {
   /** Paper-trade event from the arena. */
   onRunEvent(e: RunEvent): void {
     if (e.type === 'log' || e.type === 'error' || !this.ready || !this.enabled) return;
+    if (e.type === 'order') {
+      // Capital's quote stream arrives seconds late, so the paper order fills on a quote that arrives
+      // seconds after the decision. The demo order leaves at the decision, as a real trader's would.
+      if (e.kind === 'close') {
+        this.closeRunDeals(e.runId, `paper ${e.reason ?? 'exit'} decided`);
+        return;
+      }
+      const id = this.runAccounts[e.runId];
+      const account = id ? this.accounts.get(id) : undefined;
+      if (!account || Date.now() - e.time > STALE_EVENT_MS || e.size === undefined || e.price === undefined) return;
+      for (const d of this.db.openDeals().filter(d => d.run_id === e.runId && d.side !== e.side)) this.enqueueClose(d, 'paper reversal decided');
+      const order: OpenRequest = { runId: e.runId, side: e.side, size: e.size, price: e.price, decisionTime: e.time, fillTime: null,
+        barCloseTime: e.barCloseTime, stopLoss: e.stopLoss ?? null, takeProfit: e.takeProfit ?? null, trailingStop: e.trailingStop,
+        validUntil: e.validUntil, closeAt: e.closeAt };
+      this.enqueue(account.id, () => this.openDeal(account, order));
+      return;
+    }
     if (e.type === 'close') {
       this.closeRunDeals(e.runId, `paper ${e.trade.exitReason}`, e.trade.exitPrice);
       return;
@@ -493,7 +535,21 @@ export class BrokerMirror {
     const id = this.runAccounts[e.runId];
     const account = id ? this.accounts.get(id) : undefined;
     if (!account || Date.now() - e.time > STALE_EVENT_MS) return;
-    this.enqueue(account.id, () => this.openDeal(account, e));
+    this.enqueue(account.id, () => this.linkFill(account, e));
+  }
+
+  /**
+   * The paper position filled. Its demo deal normally left when the order was decided: record the paper
+   * fill on it (twin pairing uses the fill time). Without one (no order event, e.g. across a restart) the
+   * fill opens the demo deal, as before decision-time orders.
+   */
+  private async linkFill(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
+    const decided = e.decisionTime === undefined ? [] : this.db.dealsForRun(e.runId).filter(d => d.decision_time === e.decisionTime && d.side === e.side && d.virtual_fill_time === null);
+    if (decided.length) {
+      for (const d of decided) this.db.updateDeal(d.id, { virtual_fill_time: e.time, paper_open_price: e.price, paper_size: e.size });
+      return;
+    }
+    await this.openDeal(account, fillRequest(e));
   }
 
   // ------------------------------------------------------------------ cycle
@@ -796,7 +852,7 @@ export class BrokerMirror {
       if (now - Math.max(...rejected.map(d => d.open_time), this.reopenChecks.get(c.runId) ?? 0) < OPEN_RETRY_MS) continue;
       const { size, price, stopLoss, takeProfit, trailingStop } = c.entry;
       const retry = () =>
-        this.openDeal(account, {
+        this.openDeal(account, fillRequest({
           type: 'open',
           runId: c.runId,
           side: c.side!,
@@ -806,7 +862,7 @@ export class BrokerMirror {
           stopLoss,
           takeProfit,
           trailingStop,
-        });
+        }));
       if (MARKET_CLOSED.test(rejected.at(-1)!.note ?? '')) {
         this.reopenChecks.set(c.runId, now);
         // Checked on whichever account the session is on (no switch), opened on the run's own.
@@ -843,7 +899,7 @@ export class BrokerMirror {
     if (d.account_id) this.enqueue(d.account_id, () => this.closeDeal(d, note, paperPrice));
   }
 
-  private async openDeal(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
+  private async openDeal(account: Account, e: OpenRequest): Promise<void> {
     const run = parseDemoRunId(e.runId);
     if (!this.enabled || !run || account.retiring || this.isKilled(account.id) || this.runAccounts[e.runId] !== account.id) return;
     if (account.leverageOk !== true || account.tier !== run.leverage) {
@@ -851,10 +907,15 @@ export class BrokerMirror {
       return;
     }
     const candidate = this.candidates().find(c => c.runId === e.runId);
-    // A queue delay can outlive the paper position or a reversal: never send that stale open.
-    if (!candidate?.entry || candidate.side !== e.side || candidate.entry.time !== e.time) return;
-    if (candidate.entry.validUntil !== undefined && Date.now() >= candidate.entry.validUntil) return;
-    if (candidate.entry.closeAt !== undefined && Date.now() >= candidate.entry.closeAt) return;
+    // A queue delay can outlive the paper order, its position or a reversal: never send that stale open.
+    // A decided order is still pending, or has filled since (then the position's current protections apply).
+    const filled = candidate?.entry && candidate.side === e.side &&
+      (e.fillTime === null ? candidate.entry.time >= e.decisionTime : candidate.entry.time === e.fillTime) ? candidate.entry : null;
+    const pending = e.fillTime === null && candidate?.pendingOpen?.side === e.side && candidate.pendingOpen.at === e.decisionTime;
+    if (!filled && !pending) return;
+    const validUntil = filled?.validUntil ?? e.validUntil, closeAt = filled?.closeAt ?? e.closeAt;
+    if (validUntil !== undefined && Date.now() >= validUntil) return;
+    if (closeAt !== undefined && Date.now() >= closeAt) return;
     const inst = getInstrument(run.epic);
     const open = this.db.openDeals();
     if (open.some(d => d.run_id === e.runId)) {
@@ -888,12 +949,12 @@ export class BrokerMirror {
       epic: inst.epic,
       side: e.side,
       size,
-      paper_size: e.size,
+      paper_size: filled?.size ?? e.size,
       deal_id: null,
       status: DEAL_STATUS.OPEN,
       open_time: Date.now(),
       open_price: null,
-      paper_open_price: e.price,
+      paper_open_price: filled?.price ?? e.price,
       close_time: null,
       close_price: null,
       paper_close_price: null,
@@ -901,14 +962,16 @@ export class BrokerMirror {
       note: null,
     });
     this.db.updateDeal(rowId, {
-      decision_time: e.decisionTime ?? e.time,
-      virtual_fill_time: e.time,
+      decision_time: e.decisionTime,
+      virtual_fill_time: filled ? filled.time : null,
       bar_close_time: e.barCloseTime ?? null,
     });
     let submitted = false;
     try {
       // onFill may have rebased protections before this queued open is sent.
-      const protection = { stopLoss:candidate.entry.stopLoss, takeProfit:candidate.entry.takeProfit, trailingStop:candidate.entry.trailingStop };
+      const protection = filled
+        ? { stopLoss: filled.stopLoss, takeProfit: filled.takeProfit, trailingStop: filled.trailingStop }
+        : { stopLoss: e.stopLoss, takeProfit: e.takeProfit, trailingStop: e.trailingStop };
       const ref = await this.client.post<{ dealReference: string }>(
         '/api/v1/positions',
         {
@@ -921,8 +984,9 @@ export class BrokerMirror {
         {
           sent: () => {
             const now = Date.now();
-            if ((candidate.entry!.validUntil !== undefined && now >= candidate.entry!.validUntil) ||
-              (candidate.entry!.closeAt !== undefined && now >= candidate.entry!.closeAt))
+            const entry = this.candidates().find(c => c.runId === e.runId)?.entry;
+            const until = entry?.validUntil ?? validUntil, at = entry?.closeAt ?? closeAt;
+            if ((until !== undefined && now >= until) || (at !== undefined && now >= at))
               throw new ExpiredEntry('timed entry expired before submission');
             this.db.updateDeal(rowId, { sent_time: now });
           },
@@ -983,13 +1047,13 @@ export class BrokerMirror {
       });
       // Stop events arriving before a permanent deal id cannot be applied yet.
       // Synchronize the current levels once confirmation makes that possible.
-      const latest=this.candidates().find(c=>c.runId===e.runId&&c.side===e.side&&c.entry?.time===e.time)?.entry;
+      const latest=this.candidates().find(c=>c.runId===e.runId&&c.side===e.side&&c.entry&&(e.fillTime===null?c.entry.time>=e.decisionTime:c.entry.time===e.fillTime))?.entry;
       if(latest&&(latest.stopLoss!==protection.stopLoss||latest.takeProfit!==protection.takeProfit||latest.trailingStop!==protection.trailingStop))
         await this.putStops(dealId,latest.stopLoss,latest.takeProfit,latest.trailingStop);
       this.db.event(
         'info',
         'broker',
-        `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price})`,
+        `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price}${e.fillTime === null ? ', at the decision' : ''})`,
       );
     } catch (err) {
       if (err instanceof ExpiredEntry) {

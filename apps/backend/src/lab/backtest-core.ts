@@ -75,6 +75,8 @@ export interface ReplayThinning {
    * volume, the quote count, is not preserved.
    */
   idleOhlcOnly?: boolean;
+  /** Deliver every quote to every run, idle or not (the engine skips idle runs by default); for equivalence checks. */
+  everyRunEveryQuote?: boolean;
 }
 
 /**
@@ -117,7 +119,7 @@ export async function backtestEpic(
   if(!rules)throw new Error(`missing Capital rules snapshot for ${epic}`);
   const market={...rules,snapshot:{...rules.snapshot,marketStatus:'TRADEABLE'}};
   venue.update(market,clock);
-  const engine = new MarketEngine(instrument, forecasts);
+  const engine = new MarketEngine(instrument, forecasts, true, !thinning.everyRunEveryQuote);
   const runs = specs.map(({ agent, leverage }) =>
     engine.addRun({
       runId: backtestRunId(window.id, agent.id, epic, leverage),
@@ -135,10 +137,23 @@ export async function backtestEpic(
   for await(const minute of tickMinutes(epic,window.start,window.end,options,data)) {
     clock=minute.time;venue.updatedAt=clock;
     engine.processClock(clock);
-    const idle=thinning.idleOhlcOnly&&!runs.some(r=>r.position!==null||r.pendingOrders>0);
-    const delivered=idle?idleMinuteTicks(minute.ticks,minute.time,engine.lastAcceptedTick):{ticks:minute.ticks,rejected:0};
-    skippedRejected+=delivered.rejected;
-    for(const tick of delivered.ticks){clock=tick.receivedAt;engine.processTick(tick);}
+    const busy=()=>runs.some(r=>r.position!==null||r.pendingOrders>0);
+    let idle=thinning.idleOhlcOnly&&!busy();
+    if(!idle){for(const tick of minute.ticks){clock=tick.receivedAt;engine.processTick(tick);}}
+    else {
+      // With a delayed feed the previous bar closes on this minute's first quote, so a decision can come
+      // inside a thinned minute: from then on every quote is delivered. The acceptance chain follows the
+      // full stream throughout, so delivered quotes and rejection counts match a full replay exactly.
+      const kept=new Set(idleMinuteTicks(minute.ticks,minute.time,engine.lastAcceptedTick).ticks);
+      let chain=engine.lastAcceptedTick;
+      for(const tick of minute.ticks){
+        if(!acceptsTick(tick,chain)){skippedRejected++;continue;}
+        chain=tick;
+        if(idle&&!kept.has(tick))continue;
+        clock=tick.receivedAt;engine.processTick(tick);
+        if(idle&&busy())idle=false;
+      }
+    }
     clock=minute.time+MINUTE_MS;
     engine.processClock(clock);
     engine.takeCompletedCandles();
@@ -147,6 +162,7 @@ export async function backtestEpic(
   data.rejectedTicks=engine.rejectedTicks+skippedRejected;
   data.window=replayWindow(window.start,window.end,data.firstTickAt,data.lastTickAt);
   const endTime=n>0?clock:window.end;
+  engine.adoptLatestQuote();
   for (const run of runs) run.finish(endTime);
 
   const durationMs = Date.now() - started;

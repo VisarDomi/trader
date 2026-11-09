@@ -198,3 +198,77 @@ test('a profitable open position is not counted as a cash-balance drawdown at a 
  e.processTick(quote(0,100));e.processTick(quote(1000,120));e.processClock(T+MINUTE_MS);
  expect(r.markToMarket()).toBe(11900);expect(r.metrics().maxDrawdown).toBeLessThan(.02);
 });
+test('a delayed feed: an order fills at the first quote stamped at or after its due time, not the stale quote in hand', () => {
+  // Capital's demo stream delivers quotes ~8 s after their timestamps (2026-11-09).
+  const DELAY = 8_000;
+  let now = T;
+  const instrument = { ...getInstrument(EPIC) },
+    venue = new VirtualVenue(instrument);
+  venue.update((fixtures.markets as unknown as Record<string, CapitalMarket>)[EPIC]!, now);
+  const e = new MarketEngine(instrument),
+    a = agent({
+      onTick(ctx) {
+        if (!ctx.state.ordered) {
+          ctx.state.ordered = true;
+          ctx.buy({ size: 1 });
+        }
+      },
+    });
+  const r = e.addRun({ runId: 'feed-delay', agent: a, capital: 10_000, leverage: 20, checkStopsOnCandles: false, execution: { venue, latencyMs: 500, now: () => now } });
+  const late = (stamp: number, bid: number) => ({ ...quote(stamp, bid), receivedAt: T + stamp + DELAY });
+  now = T + DELAY;
+  e.processTick(late(0, 100)); // decision at T+8000 (receive clock): due T+8500
+  now = T + DELAY + 600;
+  e.processTick(late(600, 101)); // received after the due time, but stamped 7.9 s before it
+  expect(r.position).toBeNull();
+  now = T + 2 * DELAY + 500;
+  e.processTick(late(DELAY + 500, 105)); // the price Capital had when the order arrived
+  expect(r.position?.entryPrice).toBe(106);
+});
+test('a delayed feed: late quotes stay in the minute they were stamped in; the clock waits for them', () => {
+  const DELAY = 8_000;
+  const bars: { time: number; close: number }[] = [];
+  const { e } = setup(agent({ onTick() {}, onBar(ctx) { bars.push({ time: ctx.bar.time, close: ctx.bar.close }); } }));
+  const late = (stamp: number, bid: number) => ({ ...quote(stamp, bid), receivedAt: T + stamp + DELAY });
+  e.processTick(late(10_000, 100));
+  e.processTick(late(50_000, 101));
+  e.processClock(T + MINUTE_MS); // minute over by the receive clock; its last quote is still in flight
+  expect(bars).toEqual([]);
+  e.processTick(late(59_000, 103)); // arrives at T+67 s, stamped in the first minute
+  e.processClock(T + MINUTE_MS + DELAY);
+  expect(bars).toEqual([]);
+  e.processTick(late(MINUTE_MS + 2_000, 104)); // first quote of the next minute closes it, complete
+  expect(bars).toEqual([{ time: T, close: 103 }]);
+  // A quiet market: the clock closes the minute once the grace (1.5 × the observed delay) has passed.
+  e.processClock(T + 2 * MINUTE_MS + 11_000);
+  expect(bars).toHaveLength(1);
+  e.processClock(T + 2 * MINUTE_MS + 12_500);
+  expect(bars.map(b => b.time)).toEqual([T, T + MINUTE_MS]);
+  expect(e.clockGraceMs).toBe(12_000);
+});
+test('quotes without a feed delay (generated ticks) keep closing minutes exactly at the minute boundary', () => {
+  const bars: number[] = [];
+  const { e } = setup(agent({ onTick() {}, onBar(ctx) { bars.push(ctx.bar.time); } }));
+  e.processTick(quote(10_000, 100));
+  e.processClock(T + MINUTE_MS);
+  expect(bars).toEqual([T]);
+  expect(e.clockGraceMs).toBe(0);
+});
+test('an order is announced at the decision with its size and executable price, before the delayed paper fill', () => {
+  const DELAY = 8_000;
+  let now = T + DELAY;
+  const instrument = { ...getInstrument(EPIC) },
+    venue = new VirtualVenue(instrument);
+  venue.update((fixtures.markets as unknown as Record<string, CapitalMarket>)[EPIC]!, now);
+  const events: { type: string; time?: number }[] = [];
+  const e = new MarketEngine(instrument);
+  const r = e.addRun({ runId: 'announce', agent: agent({ onTick(ctx) { if (!ctx.state.ordered) { ctx.state.ordered = true; ctx.buy({ size: 1 }); } } }),
+    capital: 10_000, leverage: 20, checkStopsOnCandles: false, execution: { venue, latencyMs: 500, now: () => now }, onEvent: ev => events.push(ev as never) });
+  e.processTick({ ...quote(0, 100), receivedAt: T + DELAY });
+  expect(events).toEqual([expect.objectContaining({ type: 'order', kind: 'open', time: T + DELAY, side: 'long', size: 1, price: 101 })]);
+  expect(r.pendingOpen).toEqual({ side: 'long', at: T + DELAY });
+  now = T + 2 * DELAY + 500;
+  e.processTick({ ...quote(DELAY + 500, 104), receivedAt: now });
+  expect(events.map(ev => ev.type)).toEqual(['order', 'open']);
+  expect(r.pendingOpen).toBeNull();
+});
