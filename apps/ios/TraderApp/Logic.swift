@@ -155,7 +155,13 @@ enum Presentation {
                    body:body,badge: badge, stats:stats, route: Route(screen: .run, id: id, stage: stage))
     }
     static func matches(_ row: Row, query: String) -> Bool {
-        query.isEmpty || "\(row.title) \(row.subtitle) \(row.body) \(row.badge)".localizedCaseInsensitiveContains(query)
+        // The user's cohort alias includes both instruments and the frozen original.
+        if query.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()=="visar",
+           let route=row.route,[Screen.run,.agent].contains(route.screen) {
+            let id=route.id
+            return id.hasPrefix("visar-night-") || id.contains(":visar-night-")
+        }
+        return query.isEmpty || "\(row.title) \(row.subtitle) \(row.body) \(row.badge)".localizedCaseInsensitiveContains(query)
     }
     static func make(_ route: Route, data: JSON, query: String = "", sort: Int = 0) -> Content {
         var out: Content
@@ -297,6 +303,12 @@ enum Presentation {
             out=Content(title:"Source",sections:[])
         }
         out.sections=out.sections.map { section in Section(title:section.title,rows:section.rows.filter {matches($0,query:query)}) }.filter { !$0.rows.isEmpty }
+        if !query.isEmpty, !out.sections.isEmpty {
+            if route.screen == .rankings {
+                let stage=route.stage=="capital" ? "Capital demo":route.stage=="virtual" ? "Virtual engine":"Backtests"
+                out.sections[0].title="\(stage) · \(out.sections[0].rows.count) records"
+            } else if route.screen == .agents {out.sections[0].title="\(out.sections[0].rows.count) active variants"}
+        }
         out.renderID=out.sections.hashValue
         return out
     }

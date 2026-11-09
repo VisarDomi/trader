@@ -102,6 +102,19 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
+## November 9, 2026 · Visar cohort navigation
+
+- `visar` searches the 20-member US500/US100 cohort, including the unchanged original. The older
+  small-risk twin remains separately searchable. Filtered counts show the actual matching rows.
+- Saved query/sort survive detail, back, forward, rotation, foreground refresh and relaunch. Search
+  dismissal during navigation cannot clear the stored filter. Header/notice layout and programmatic
+  scroll restoration preserve the same focal row/fraction; intentional search edits reset to top.
+- Twelve domain checks and guarded simulator compilation pass. The focused offline 21-row fixture
+  (twenty cohort plus the older twin) verifies the twenty matches, sort, detail/back/forward, exact
+  focal anchor, portrait/landscape and cold/warm return. QA bundle is uninstalled and the shared
+  guest/owned GUI shut down. No physical-phone UI automation. Signed delivery status is recorded
+  after submitting the verified source through ios-push.
+
 ## Delivery — November 8, 2026 · content-only cleanup
 
 - Removed generated introductions/methodology, repeated headings and positive verification badges;

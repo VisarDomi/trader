@@ -4,7 +4,7 @@ import KitLists
 import KitNavigation
 
 @MainActor
-final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpdating {
+final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpdating,UISearchBarDelegate {
     var place:Route
     private var state:ScreenState
     private var content:Content
@@ -14,6 +14,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private var deferredStatus:String?
     private var visible=false,restored=false
     private var configuringSearch=true
+    private var restoringScroll=false
     private var lastSave:CFTimeInterval=0
     private let search=UISearchController(searchResultsController:nil)
     private let header=UIStackView(),notice=UILabel(),descriptionLabel=UILabel()
@@ -38,7 +39,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         tableView.accessibilityIdentifier="screen.\(place.screen.rawValue)"
         refreshControl=UIRefreshControl();refreshControl?.addTarget(self,action:#selector(pullRefresh),for:.valueChanged)
         if ![.more,.connection,.trade,.run].contains(place.screen) {
-            search.searchResultsUpdater=self;search.obscuresBackgroundDuringPresentation=false
+            definesPresentationContext=true
+            search.searchResultsUpdater=self;search.searchBar.delegate=self;search.obscuresBackgroundDuringPresentation=false
             search.searchBar.placeholder="Search \(content.title.lowercased())";search.searchBar.text=state.query
             navigationItem.searchController=search;navigationItem.hidesSearchBarWhenScrolling=state.query.isEmpty
         }
@@ -61,6 +63,11 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     }
     override func viewWillAppear(_ animated:Bool) {
         super.viewWillAppear(animated)
+        // UIKit dismisses search while pushing a detail. That is not a filter edit.
+        configuringSearch=true
+        search.searchBar.text=state.query
+        navigationItem.hidesSearchBarWhenScrolling=state.query.isEmpty
+        configuringSearch=false
         navigationController?.setNavigationBarHidden(false,animated:false)
         navigationController?.navigationBar.prefersLargeTitles=true
         navigationItem.largeTitleDisplayMode = [.trade,.run].contains(place.screen) ? .never:.automatic
@@ -71,7 +78,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         startTimer()
     }
     override func viewWillDisappear(_ animated:Bool) {
-        saveAnchor();super.viewWillDisappear(animated);pause()
+        saveAnchor();pause();super.viewWillDisappear(animated)
     }
     func pause(){visible=false;timer?.invalidate();timer=nil;loadTask?.cancel();FrameMonitor.shared.scrolling(false)}
     func resumed(){guard viewIfLoaded?.window != nil else{return};visible=true;startTimer();refreshIfVisible()}
@@ -96,7 +103,15 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private func changeSort(_ value:Int){deferred=nil;deferredStatus=nil;state.sort=value;updateSortingMenu();state.anchorKey=nil;state.atTop=true;load(refresh:false);stateChanged()}
     func updateSearchResults(for searchController:UISearchController) {
         let query=searchController.searchBar.text ?? ""
-        guard !configuringSearch,query != state.query else{return}
+        guard !configuringSearch,visible,searchController.isActive,
+              navigationController?.topViewController === self,query != state.query else{return}
+        changeQuery(query)
+    }
+    func searchBarCancelButtonClicked(_ searchBar:UISearchBar) {
+        guard visible,navigationController?.topViewController === self else{return}
+        changeQuery("")
+    }
+    private func changeQuery(_ query:String) {
         deferred=nil;deferredStatus=nil
         state.query=query;state.anchorKey=nil;state.atTop=true
         navigationItem.hidesSearchBarWhenScrolling=state.query.isEmpty
@@ -135,19 +150,25 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     }
     private func apply(_ next:Content) {
         FrameMonitor.shared.measure("trader.list.apply") {
-            let anchor=currentAnchor()
+            let resetTop=state.atTop
+            let anchor=resetTop ? nil:currentAnchor()
             let changed=next.renderID != content.renderID
             content=next;title=next.title;updateHeader();if changed{tableView.reloadData()}
             AppDiagnostics.save(route:place,content:next,phase:next.refreshed>0 ? "live":"local")
-            if changed,restored,let anchor {restore(anchor)}
+            if changed,restored {
+                if resetTop {tableView.setContentOffset(CGPoint(x:0,y:-tableView.adjustedContentInset.top),animated:false)}
+                else if let anchor {restore(anchor)}
+            }
         }
     }
     private func updateHeader() {
+        let anchor=restored && visible && !state.atTop ? currentAnchor():nil
         guard isViewLoaded else{return}
         descriptionLabel.text=content.subtitle
         notice.text=statusText.isEmpty ? "":statusText
         descriptionLabel.isHidden=content.subtitle.isEmpty;notice.isHidden=(notice.text ?? "").isEmpty
         layoutHeader()
+        if let anchor {tableView.layoutIfNeeded();restore(anchor)}
         if content.sections.isEmpty && content.refreshed>0 {
             let label=UILabel();label.text=state.query.isEmpty ? "No records yet.":"No matching records.";label.textColor = .secondaryLabel;label.textAlignment = .center;tableView.backgroundView=label
         } else {tableView.backgroundView=nil}
@@ -230,6 +251,9 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         return ScrollAnchoring.anchor(in:tableView,items:items)
     }
     private func restore(_ anchor:ScrollAnchor) {
+        guard !restoringScroll else{return}
+        restoringScroll=true
+        defer{restoringScroll=false}
         for (s,section) in content.sections.enumerated() {
             if let r=section.rows.firstIndex(where:{$0.id==anchor.key}) {
                 let p=IndexPath(row:r,section:s)
@@ -239,7 +263,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         }
     }
     private func saveAnchor() {
-        guard isViewLoaded,restored,visible else{return}
+        guard isViewLoaded,restored,visible,!restoringScroll else{return}
         state.atTop=tableView.contentOffset.y <= -tableView.adjustedContentInset.top+8
         if let a=currentAnchor(){state.anchorKey=a.key;state.anchorFraction=a.fraction}
         stateChanged()
@@ -250,5 +274,10 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     override func scrollViewDidEndDragging(_ scrollView:UIScrollView,willDecelerate decelerate:Bool){if !decelerate{settled()}}
     override func scrollViewDidEndDecelerating(_ scrollView:UIScrollView){settled()}
     private func settled(){FrameMonitor.shared.scrolling(false);saveAnchor();if let message=deferredStatus{statusText=message;deferredStatus=nil};if let next=deferred{deferred=nil;apply(next)}else{updateHeader()}}
-    func debug()->[String:Any]{["screen":place.screen.rawValue,"id":place.id,"stage":place.stage,"rows":content.sections.reduce(0){$0+$1.rows.count},"query":state.query,"anchor":state.anchorKey ?? "","refreshed":content.refreshed,"width":view.bounds.width,"height":view.bounds.height,"offset":tableView.contentOffset.y]}
+    #if targetEnvironment(simulator)
+    func testSearch(_ query:String){search.isActive=true;search.searchBar.text=query;updateSearchResults(for:search)}
+    func testSort(_ value:Int){changeSort(value)}
+    func testOpenRow(_ index:Int){let rows=content.sections.flatMap(\.rows);guard rows.indices.contains(index),let route=rows[index].route else{return};saveAnchor();liveNavigation?.open(ScreenController(route:route),animated:false)}
+    #endif
+    func debug()->[String:Any]{["screen":place.screen.rawValue,"id":place.id,"stage":place.stage,"rows":content.sections.reduce(0){$0+$1.rows.count},"query":state.query,"searchText":search.searchBar.text ?? "","sort":state.sort,"anchor":state.anchorKey ?? "","anchorFraction":currentAnchor()?.fraction ?? -1,"currentAnchor":currentAnchor()?.key ?? "","insetTop":tableView.adjustedContentInset.top,"refreshed":content.refreshed,"width":view.bounds.width,"height":view.bounds.height,"offset":tableView.contentOffset.y]}
 }
