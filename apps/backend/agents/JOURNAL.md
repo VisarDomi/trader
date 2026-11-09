@@ -72,6 +72,12 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   actual cash. Night Lab HTTP200 and its authenticated-edge redirect verified; final cash read/cache
   verification follows the small report correction’s normal dashboard publication. No physical action
   is needed; native installation is already verified.
+- Final corrected PWA feed verified live after publication: schema 2, exactly 20 source/instrument/tier
+  pinned rows, 20/20 Capital assignments, original virtual 0.969577 versus actual cash 0.973535. All 19
+  requested replacement histories are present in Graveyard. Standalone report/manifest/worker/icon
+  assets are served by the normal UI runtime; edge authentication stays intact. Six web regressions
+  pass, including distinct actual cash, archived identity and bounded offline fallback. UI diagnostics
+  have zero errors/warnings; backend/regression/native-risk checks and paid/native checks pass.
 - Every heavy research/build job is isolated inside trader.slice on this PC, below aggregate 50%;
   Mac builds/guest use the shared guard, exact shared guest and isolated QA bundle. Existing holds
   and original histories are preserved. No extra tick recording copy or new quote subscription.
