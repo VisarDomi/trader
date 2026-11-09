@@ -14,6 +14,8 @@ Requests are serialized on one model instance (one GPU).
 from __future__ import annotations
 
 import json
+import ctypes
+import gc
 import os
 import sys
 import threading
@@ -38,11 +40,22 @@ _lock = threading.Lock()
 _stats = {"requests": 0, "series": 0, "seconds": 0.0, "started": time.time()}
 
 
+def release_unused_cpu_memory() -> None:
+    # GPU transfer and checkpoint loading leave large freed CPU allocations.
+    # Return those pages without changing model precision, weights or forecasts.
+    gc.collect()
+    try:
+        ctypes.CDLL(None).malloc_trim(0)
+    except AttributeError:
+        pass
+
+
 def load_model() -> TimesFM3Forecaster:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     t0 = time.time()
     model = TimesFM3Forecaster.from_pretrained(MODEL_ID, device=device, per_core_batch_size=BATCH)
     print(f"loaded {MODEL_ID} on {device} in {time.time() - t0:.1f}s (batch {BATCH}, symmetric={SYMMETRIC})", flush=True)
+    release_unused_cpu_memory()
     return model
 
 
@@ -68,6 +81,7 @@ def forecast(series: list[list[float]], horizon: int) -> dict:
     mean = [o.forecast.astype(float).round(6).tolist() for o in outs]
     # o.quantiles is [horizon, levels]; send [levels][horizon].
     quantiles = [o.quantiles.T.astype(float).round(6).tolist() for o in outs]
+    release_unused_cpu_memory()
     return {"model": MODEL_ID, "mean": mean, "quantiles": quantiles, "seconds": round(dt, 4)}
 
 
