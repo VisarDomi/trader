@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- **Night Lab direction controls** — the cohort table labels the four always-long and random-direction controls, and a new section compares each index's rule agent with its controls on the same nights (backtest trades, win rate, return, drawdown).
+
 - Show all four capital-profit exits alongside every existing Night Lab dimension, with exit-mix bars, target-hit counts,192charts and quote-path ranges. Reduce embedded data without rounding. Pin live/offline schema3 responses to exact source versions.
 
 - Expand every Night Lab dimension without a selector: all5,184risk cases,48equity plots and the new source-specific forward cohort with window/filter/gap columns. Key offline cash snapshots to cohort identity.

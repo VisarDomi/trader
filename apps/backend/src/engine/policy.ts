@@ -7,6 +7,9 @@ export const CONTROL_SLUGS: ReadonlySet<string> = new Set([
   'bold-play',
   'martingale-monkey',
   'skew-monkey',
+  // Direction controls for the Visar night cohort: same nights as frequent-core, always long or a coin flip.
+  'visar-night-v2-control-us100',
+  'visar-night-v2-control-us500',
 ]);
 /** Random-entry agents whose results show what luck looks like. */
 export const RANDOM_BASELINE_SLUG = 'random-baseline';

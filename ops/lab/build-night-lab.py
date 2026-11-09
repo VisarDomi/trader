@@ -31,23 +31,28 @@ for r in stocks['rows']:
 whole=sum(r['holdingsPrice'] for r in stocks['rows']);binding=max(stocks['rows'],key=lambda r:r['holdingsPrice']/r['normalizedWeight']);weighted=binding['holdingsPrice']/binding['normalizedWeight']
 stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'wholeShareRoundedCash':sum(math.ceil(weighted*r['normalizedWeight']/r['holdingsPrice']-1e-10)*r['holdingsPrice'] for r in stocks['rows']),'bindingTicker':binding['ticker'],'matched':len(known),'partialCFDFloor':sum(r['minimumNotional'] for r in known),'partialWeightedCFDFloor':max(r['minimumNotional']/r['normalizedWeight'] for r in known),'missing':[r['ticker'] for r in stocks['rows'] if not r['usdMatched']]})
 selection=json.loads((ROOT/'research/night-cohort-20261109.json').read_text())
+# User-requested direction controls replace four rule agents (research/night-cohort-controls-20261109.json).
+controls=json.loads((ROOT/'research/night-cohort-controls-20261109.json').read_text())
+removed={(r['id'],r['epic'],r['leverage']) for r in controls['removed']}
+members=[c for c in selection['agents'] if (c['id'],c['epic'],c['leverage']) not in removed]
+assert len(members)==len(selection['agents'])-len(removed)
 cohort=[]
 inputs=[(load('../night-audit-20261108/baseline-x200.json'),{'sessionWindow':'full','minimumGapBp':0,'policy':'current','role':'original'})]
-for chosen in selection['agents']:
+for chosen in members+controls['controls']:
     file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
     r=json.loads(file.read_text());assert r['codeHash']==chosen['codeHash']
     inputs.append((r,chosen))
 for r,chosen in inputs:
     hits=sum(t['exitReason']=='take_profit' or (t.get('exitNote')or'').startswith('capital take profit +') for t in r['trades'])
     path_range=None
-    if chosen['role']!='original':
+    if chosen['role'] not in ('original','control'):
         checks=[r]
         for seed,density in [(2,16),(3,16),(1,64)]:
             raw=json.loads((EXITS/f"{r['epic']}-s{seed}-n{density}.json").read_text())
             check=next(x for x in raw['runs'] if x['agentId']==r['agentId']);assert check['codeHash']==r['codeHash'] and check['errors']==0
             checks.append(check)
         path_range={'paths':4,'minReturnPct':min(x['metrics']['totalReturn']*100 for x in checks),'maxReturnPct':max(x['metrics']['totalReturn']*100 for x in checks),'minWinPct':min(x['metrics']['winRate']*100 for x in checks),'maxWinPct':max(x['metrics']['winRate']*100 for x in checks),'maxDrawdownPct':max(x['metrics']['maxDrawdown']*100 for x in checks)}
-    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':path_range,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']}})
+    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':path_range,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']},**({k:chosen[k] for k in ['partner','direction']} if chosen['role']=='control' else {})})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 study_events=json.loads((STUDY/'event-calendar.json').read_text());trade_sets={}

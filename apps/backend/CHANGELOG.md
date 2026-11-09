@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add direction controls to the Visar night cohort: always-long and random-direction agents per index that trade exactly the `frequent-core` agent's eligible nights with identical settings. They replace four low-weight rule agents (US500 full-reversal and full-steps, US100 largest-gap and full-steps), so the cohort stays at 20. Strategy explanations show the control's side against the rule's; the Night Lab report adds a same-nights comparison.
+
 - Fix broker close confirmations: Capital.com reports the closing order's direction (SELL for a long), but closes were checked against the position's direction. Since 2026-10-15 nearly every close was re-sent and stored without an exit price (P&L stayed correct from transaction history). Verified with an Arena 01 round trip; tests now use the real confirmation shape.
 
 - Add capital-profit close targets to the Visar cohort and a20,736-case full-engine study with5,184 exact deadline controls. Rebase SL/TP to fills; fix queued native protection synchronization; retain original and source-version histories.
