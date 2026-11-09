@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Keep manual and automatic UI builds inside the configured lab's `trader.slice` resource budget.
 - Add full09:30–16:00 versus central10:30–15:30 NY recognition and minimum counter-moves of
   0/5/15/30bp. Show all gap summaries together, paired risk grids/curves, per-year evidence and
   ignored-edge trade paths; keep all5,184research settings in exports. Live cohort remains frozen.

@@ -5,6 +5,12 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 ## 2026-11-09 (Mon, user-requested) — rare event context, central session and gap sizes
 
+- Publication exposed that the shared publisher invoked dashboard builds outside trader.slice.
+  The repository's UI build entry now joins a two-CPU/2 GiB scope inside the aggregate budget,
+  reuses an existing trader scope, and fails closed if the configured lab manager is unavailable.
+  A real Vite build passed with its process verified in trader.slice and its scope limits read back
+  as two CPUs/2 GiB. Other build hosts retain normal Vite behavior. No shared publisher or unrelated
+  service changed. Published report/worker/exports match source bytes; forward feed has all20assigned.
 - Confirmed the frozen original has always implemented the user's direction rule: bullish prior NY
   session plus a 03:27 bid below the 22:00 reference buys; bearish plus a bid above sells. Equal or
   same-side prices skip. Existing twenty agents accept any positive bid counter-move. Bid signal
