@@ -3,6 +3,51 @@
 Newest entry first. Written by the coding agent on each babysitter visit; the rules it follows are in
 [LIFECYCLE.md](LIFECYCLE.md). The idea log at the bottom lists every agent idea tried.
 
+## 2026-11-09 (Mon, user-requested) — inspect all 71 night setups
+
+- Joined every original night trade to the independent prior-session oracle, overnight reference and
+  frozen low-exposure replay. This is descriptive research, not a babysitter retirement/admission
+  cycle or a new optimized agent. Source 56ac3bdfe7c1, parameters, original results and demo records
+  remain unchanged. All work stays within January 2024–September 2026.
+- Strongest descriptive split: the 20 setups with 50–75% adverse daytime reversals have six wins,
+  −18.47% mean account return/trade and lose in each calendar-year slice. Keeping only <50% leaves
+  51 trades, −2.36% mean and 18.6/year versus the original 25.8/year; 2026 remains poor. Stricter
+  ≤35% retains 22, roughly break-even arithmetic mean (−0.12%) but just eight/year. Efficiency ≥60%
+  retains only three, all in 2024. Body ≥80% retains 18 at +1.99% mean but loses in 2025. None is
+  validated. Both directions lose overall; two of eleven stopped trades finish positive at 08:27.
+- Added a standalone interactive decision view and CSV for all 71 trades: declared feature bins,
+  per-year samples, exploratory single-filter subsets/frequency, efficiency/reversal scatter and
+  selectable previous-session paths, high/low envelopes, conservative adverse spans, exact cutoffs,
+  night pullbacks, execution outcomes and spread drag. Verified desktop/mobile and interaction
+  states using html_preview. No generic app panels or native/PWA feature changes were introduced.
+- Private artifacts are in data/night-breakdown-20261109; findings and limitations are appended to
+  visar-night-trading.md. Checks cover all date/side joins, full bin partitions, independent feature
+  agreement and identical entries in the no-tight-stop comparison. Bounded one-CPU /1 GiB jobs ran
+  in trader.slice; existing heavy-service holds and the one-copy tick archive were left intact.
+  Research/docs only: no arena restart or user physical action required. Future variants must be
+  frozen prospectively; inspected years are not fresh holdouts, and frequency must not force loose
+  trend definitions. Unrelated user edits remain outside this commit.
+- User clarified the decision axes during research: trade frequency from strict/loose day rules,
+  and win rate at every leverage and per-trade loss target, not just portfolio drawdown. Completed
+  all 324 fresh full-engine comparisons: six definitions × nine tiers × loss targets 5/10/20/30/40/50%.
+  Nothing is configured beyond 50%; actual stop overshoot is shown. All ledgers reconcile, and every
+  eligible night is either filled or accounted for by an entry rejection. Current-policy/50% controls
+  at 1:1, 1:20 and 1:200 exactly reproduce the prior audit. All 54 current-definition cells lose.
+- Interactive report opens on the win-rate grid, with return/worst-trade/portfolio-DD alternatives,
+  each scenario's equity, frequency, N, win/loss sizes, same-payoff break-even win rate, streaks,
+  spread drag, yearly results and human-readable rejections. 1:200/5% has 62 fills because nine
+  stop-distance rejections join the original one expiry. Higher win rate can worsen profitability:
+  1:50/50% wins 46.5% yet loses 68.6% overall, versus 38.0% wins and a 52.9% loss at the 5% target.
+  Body ≥80% at 1:20/50% returns +9.85% with 14.87% portfolio DD, but only 18 trades /6.5 per year;
+  at 1:200 it still loses 43%. These observed subsets are hypotheses, not independent validation.
+- Seven representative risk cells received three extra generated-path checks (21 runs). Original
+  1:200/50% remains 31/71 wins across paths; 1:200/5% ranges 61–63 fills, 9.5–11.5% wins, −82.45%
+  to −75.42% total. Tight-stop fills remain approximate and the view shows these tested ranges.
+  Full matrix CSV, spec, replay results, summaries and HTML builder are retained privately beside
+  the original 71-trade CSV. Each replay worker was capped at one CPU /2 GiB in trader.slice;
+  aggregate use stayed below the user's 50% limit. No live policy, account or production deployment
+  changed. Only the research contract and journal are shipped.
+
 ## 2026-11-08 (Sun, user-requested) — night backtest versus 2/2 forward wins
 
 - Audited unchanged source 56ac3bdfe7c1 rather than tuning it. Standard 973,384 minute rows are
