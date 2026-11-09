@@ -1,5 +1,5 @@
 import {test,expect} from 'bun:test';
-import reference,{capitalProfitLevel} from '../../../agents/visar-night-v2-us500/reference';
+import reference,{capitalProfitLevel} from '../../../agents/visar-night-v3-us500/reference';
 import {MarketEngine} from '../../engine/market';
 import {getInstrument} from '../../engine/instruments';
 import type {LoadedAgent} from '../../engine/loader';

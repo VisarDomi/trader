@@ -30,29 +30,23 @@ for r in stocks['rows']:
     if r['usdMatched']:known.append(r)
 whole=sum(r['holdingsPrice'] for r in stocks['rows']);binding=max(stocks['rows'],key=lambda r:r['holdingsPrice']/r['normalizedWeight']);weighted=binding['holdingsPrice']/binding['normalizedWeight']
 stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'wholeShareRoundedCash':sum(math.ceil(weighted*r['normalizedWeight']/r['holdingsPrice']-1e-10)*r['holdingsPrice'] for r in stocks['rows']),'bindingTicker':binding['ticker'],'matched':len(known),'partialCFDFloor':sum(r['minimumNotional'] for r in known),'partialWeightedCFDFloor':max(r['minimumNotional']/r['normalizedWeight'] for r in known),'missing':[r['ticker'] for r in stocks['rows'] if not r['usdMatched']]})
-selection=json.loads((ROOT/'research/night-cohort-20261109.json').read_text())
-# User-requested direction controls replace four rule agents (research/night-cohort-controls-20261109.json).
-controls=json.loads((ROOT/'research/night-cohort-controls-20261109.json').read_text())
-removed={(r['id'],r['epic'],r['leverage']) for r in controls['removed']}
-members=[c for c in selection['agents'] if (c['id'],c['epic'],c['leverage']) not in removed]
-assert len(members)==len(selection['agents'])-len(removed)
+# The live cohort (v3, 2026-11-09): ten single-dimension directions per index around one base, the
+# original agent kept as the US500 full-day 1:200 point. Earlier selections stay in research/ for history.
+selection=json.loads((ROOT/'research/night-cohort-v3-20261109.json').read_text())
 cohort=[]
-inputs=[(load('../night-audit-20261108/baseline-x200.json'),{'sessionWindow':'full','minimumGapBp':0,'policy':'current','role':'original'})]
-for chosen in members+controls['controls']:
-    file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
-    r=json.loads(file.read_text());assert r['codeHash']==chosen['codeHash']
+inputs=[]
+for chosen in selection['members']:
+    if chosen['role']=='original':r=load('../night-audit-20261108/baseline-x200.json')
+    else:
+        file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
+        r=json.loads(file.read_text())
+    assert r['codeHash']==chosen['codeHash'] and r['agentId']==chosen['id'] and r['leverage']==chosen['leverage']
     inputs.append((r,chosen))
 for r,chosen in inputs:
     hits=sum(t['exitReason']=='take_profit' or (t.get('exitNote')or'').startswith('capital take profit +') for t in r['trades'])
-    path_range=None
-    if chosen['role'] not in ('original','control'):
-        checks=[r]
-        for seed,density in [(2,16),(3,16),(1,64)]:
-            raw=json.loads((EXITS/f"{r['epic']}-s{seed}-n{density}.json").read_text())
-            check=next(x for x in raw['runs'] if x['agentId']==r['agentId']);assert check['codeHash']==r['codeHash'] and check['errors']==0
-            checks.append(check)
-        path_range={'paths':4,'minReturnPct':min(x['metrics']['totalReturn']*100 for x in checks),'maxReturnPct':max(x['metrics']['totalReturn']*100 for x in checks),'minWinPct':min(x['metrics']['winRate']*100 for x in checks),'maxWinPct':max(x['metrics']['winRate']*100 for x in checks),'maxDrawdownPct':max(x['metrics']['maxDrawdown']*100 for x in checks)}
-    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':path_range,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**{k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role']},**({k:chosen[k] for k in ['partner','direction']} if chosen['role']=='control' else {})})
+    meta={k:chosen[k] for k in ['sessionWindow','minimumGapBp','policy','role','name','dimension','explores','coordinates','comparesWith']}
+    if chosen['role']=='control':meta.update({k:chosen[k] for k in ['partner','direction']})
+    cohort.append({'id':r['agentId'],'epic':r['epic'],'leverage':r['leverage'],'lossPct':r['params']['lossPct'],'profitPct':r['params'].get('profitPct',0),'targetHits':hits,'pathRange':None,'params':r['params'],'metrics':r['metrics'],'codeHash':r['codeHash'],'benchmarkEpic':r['epic'],'benchmarkExcessPp':r['metrics']['totalReturn']*100-benchmarks[r['epic']]['returnPct'],**meta})
 assert len(cohort)==20 and sum(r['epic']=='US500' for r in cohort)==10
 (ROOT/'apps/ui/src/lib/server/night-lab-cohort.json').write_text(json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort],indent=2)+'\n')
 study_events=json.loads((STUDY/'event-calendar.json').read_text());trade_sets={}
@@ -90,7 +84,7 @@ for inst in instruments:
             for k in ['profitPct','targetHits','deadlineExits','otherExits']:r[k]=c[k]
     positive=[dict(r,benchmarkEpic=epic,benchmarkExcessPp=r['returnPct']-benchmarks[epic]['returnPct']) for r in exits['runs'] if r['profitPct']>0]
     inst['exitStudy']={'runs':positive,'curves':exits['curves'],'audit':exits['audit']}
-data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'takeProfitTargets':[0,20,50,100],'caseCount':20736,'selection':{k:selection[k] for k in ['date','method','tierUse']}}
+data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'takeProfitTargets':[0,20,50,100],'caseCount':20736,'selection':{k:selection[k] for k in ['date','revision','method','base']}}
 assert len(instruments)==2 and all(len(x['runs'])==324 for x in instruments)
 (OUT/'report.json').write_text(json.dumps(data,separators=(',',':')))
 # The page embeds only fields it renders, at full numerical precision. Complete

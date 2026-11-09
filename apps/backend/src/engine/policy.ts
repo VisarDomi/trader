@@ -10,6 +10,8 @@ export const CONTROL_SLUGS: ReadonlySet<string> = new Set([
   // Direction controls for the Visar night cohort: same nights as frequent-core, always long or a coin flip.
   'visar-night-v2-control-us100',
   'visar-night-v2-control-us500',
+  'visar-night-v3-control-us100',
+  'visar-night-v3-control-us500',
 ]);
 /** Random-entry agents whose results show what luck looks like. */
 export const RANDOM_BASELINE_SLUG = 'random-baseline';
@@ -40,10 +42,13 @@ const SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(['visar-night-lab/body-5x','v
 
 const V2_SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(["visar-night-v2-us100/central-reversal", "visar-night-v2-us500/full-reversal", "visar-night-v2-us100/large-gap", "visar-night-v2-us500/central-body", "visar-night-v2-us100/largest-gap", "visar-night-v2-us500/central-steps", "visar-night-v2-us100/full-steps", "visar-night-v2-us100/central-body"]);
 
+// v3 directions with about one entry a month (stricter day filters, larger gap).
+const V3_SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(['us500','us100'].flatMap(i=>['big-move','strong-day','steady-day','gap-15bp'].map(v=>`visar-night-v3-${i}/${v}`)));
+
 // Frozen sparse experiments must be allowed to reach their declared entry cadence.
 // Error/ruin and mature losing-evidence rules still apply immediately as before.
 export function silentDaysFor(agentId:string):number {
   if(agentId==='visar-night-lab/clean-50x')return 365;
-  if(SPARSE_NIGHT_IDS.has(agentId)||V2_SPARSE_NIGHT_IDS.has(agentId))return 180;
+  if(SPARSE_NIGHT_IDS.has(agentId)||V2_SPARSE_NIGHT_IDS.has(agentId)||V3_SPARSE_NIGHT_IDS.has(agentId))return 180;
   return LIFECYCLE.SILENT_DAYS;
 }

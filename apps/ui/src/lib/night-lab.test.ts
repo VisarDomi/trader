@@ -20,15 +20,23 @@ test('all session/gap/risk combinations are rendered together without a reveal c
  const compact:any={...scope,D:embedded};
  runInNewContext(cell+'\n'+view+'\nthis.rendered=exitFocus()+studyOverview()+D.instruments.map(instrumentView).join(\'\');',compact,{timeout:10000});
  expect(compact.rendered).toBe(scope.rendered);
- expect(report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-'))).toHaveLength(19);
+ // v3: ten designed directions per index around one base, plus the original record.
+ const v3=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v3-'));expect(v3).toHaveLength(19);
  expect(new Set(report.cohort.map((r:any)=>r.minimumGapBp))).toEqual(new Set([0,5,15]));
- expect(new Set(report.cohort.map((r:any)=>r.profitPct))).toEqual(new Set([0,20,50,100]));
- const replacements=report.cohort.filter((r:any)=>r.id.startsWith('visar-night-v2-')&&r.role!=='control');
- // Direction controls: same nights as their partner (equal trade counts), selected on nothing.
+ expect(new Set(report.cohort.map((r:any)=>r.profitPct))).toEqual(new Set([0]));
+ expect(report.cohort.every((r:any)=>r.lossPct===50)).toBe(true);
+ for(const epic of ['US500','US100']){
+  const base=report.cohort.find((r:any)=>r.epic===epic&&r.role==='base');
+  for(const r of report.cohort.filter((r:any)=>r.epic===epic&&r.role!=='base')){
+   const changed=Object.keys(base.coordinates).filter(k=>base.coordinates[k]!==r.coordinates[k]);
+   // One change from the base; the full-day 1:200 points (original, US100 full-day-200) are one change from leverage-200.
+   expect(changed.length).toBe(r.comparesWith?.endsWith('/leverage-200')?2:1);
+  }
+ }
+ // Direction controls: same nights as their base (equal trade counts), settings equal apart from the side.
  const controls=report.cohort.filter((r:any)=>r.role==='control');expect(controls).toHaveLength(4);
  for(const c of controls){const partner=report.cohort.find((r:any)=>r.id===c.partner);expect(partner.metrics.trades).toBe(c.metrics.trades);expect({...c.params,direction:undefined}).toEqual({...partner.params,direction:undefined})}
- expect(replacements.filter((r:any)=>r.role.startsWith('frequent-')&&r.metrics.trades/report.years>=18)).toHaveLength(10);
- expect(replacements.every((r:any)=>r.metrics.totalReturn>0&&r.metrics.maxDrawdown<=.4&&r.metrics.trades>=18)).toBe(true);
+ const original=report.cohort.find((r:any)=>r.role==='original');expect(original.id).toBe('visar-night-trading');expect(original.name).toBe('US500 · original');
 });
 test('expanded study retains the twenty-member cohort and original 648 bounded risk settings',()=>{
  expect(report.cohort).toHaveLength(20);expect(report.cohort.filter((r:any)=>r.epic==='US500')).toHaveLength(10);expect(report.cohort.filter((r:any)=>r.epic==='US100')).toHaveLength(10);

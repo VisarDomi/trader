@@ -14,8 +14,8 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
  const root=import.meta.dir+'/../../agents/';const original=readFileSync(root+'visar-night-trading.ts','utf8');
  expect(readFileSync(root+'_retired/visar-night-lab-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'")).toBe(original);
  expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
- expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(23);
- expect(plans.filter(p=>p.agent.slug.startsWith('visar-night-v2-control-'))).toHaveLength(4);
+ expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(42);
+ expect(plans.filter(p=>p.agent.slug.startsWith('visar-night-v3-control-'))).toHaveLength(4);
 });
 test('sparse experiments have enough observation time while errors and ordinary silence still retire',()=>{
  const now=Date.UTC(2027,2,1),row={agentId:'visar-night-lab/clean-50x',slug:'visar-night-lab',status:'active',startedAt:now-90*86400000,metrics:{trades:0,tStat:0}} as LeaderboardRow;
@@ -26,4 +26,5 @@ test('sparse experiments have enough observation time while errors and ordinary 
  expect(silentDaysFor('visar-night-lab/body-20x')).toBe(180);
  expect(silentDaysFor('visar-night-v2-us100/largest-gap')).toBe(180);
  expect(silentDaysFor('visar-night-v2-us100/frequent-core')).toBe(60);
+ expect(silentDaysFor('visar-night-v3-us500/strong-day')).toBe(180);expect(silentDaysFor('visar-night-v3-us500/base')).toBe(60);
 });

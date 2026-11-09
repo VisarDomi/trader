@@ -314,5 +314,29 @@
     "timeframe": "1m",
     "extra": [],
     "description": "US100 direction control: the frequent-core night's eligible days, always long or a random side, same exits."
+  },
+  "visar-night-v3-us500": {
+    "hash": "8354a30c0e07",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US500 night v3: one base (10:30–15:30 day, any gap, 1:20, 50% loss limit, 08:27) plus one change per variant: day size, day shape, gap or leverage."
+  },
+  "visar-night-v3-us100": {
+    "hash": "6d175db7dd11",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US100 night v3: one base (10:30–15:30 day, any gap, 1:20, 50% loss limit, 08:27) plus one change per variant: day size, day shape, gap or leverage."
+  },
+  "visar-night-v3-control-us500": {
+    "hash": "1b545896d222",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US500 v3 direction control: the base agent's eligible nights, always long or a random side, same exits."
+  },
+  "visar-night-v3-control-us100": {
+    "hash": "2e666eb542a7",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US100 v3 direction control: the base agent's eligible nights, always long or a random side, same exits."
   }
 }
