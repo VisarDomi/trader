@@ -13,6 +13,10 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 
 ## Notes
 
+- `npm run build` joins `trader.slice` on the configured Linux lab, including the shared
+  publisher's automatic builds. New scopes have a two-CPU/2 GiB ceiling inside the aggregate
+  six-CPU/15 GiB budget. Builds already in the slice reuse it; other machines use Vite normally.
+  If the configured lab's user manager is unavailable, the build fails instead of running unbounded.
 - All data comes from the arena API, server-side through `$lib/server/arena.ts`. The browser never
   talks to the arena or to Capital.com. Mutations (broker mirror on/off, exclude a run) are form
   actions that send `ARENA_TOKEN`.
