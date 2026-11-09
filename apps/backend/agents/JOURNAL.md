@@ -5,6 +5,45 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-09 (Mon, user-requested) — paper–demo twins, Capital's late quote stream, cheap idle agents
+
+- Why: the user wants every agent, demo or paper, trading on ticks by its own policy; each demo agent with a
+  paper twin whose convergence is checked daily; then as many paper agents as possible on as little as
+  possible (thousands now, 20k–1M later). The 9 demo accounts validate the engine; paper carries the rest.
+- Twin report: each closed demo deal paired with its paper trade (run + paper fill time), compared per unit of
+  notional; demo close prices from Capital's booked P&L (85% of demo closes had no close price: broker stops,
+  or closes confirmed with another deal's confirmation). Last 30 days: 3,609 pairs, 63% within one spread,
+  mean gap +0.4 bp (demo slightly better), 95th percentile 9.8 bp, demo − paper +$314 at paper size; paper
+  funding charged $2.8k more than Capital's swaps (to investigate). Agents: 48 converged, 38 watch, 167
+  diverged, 91 too few.
+- Found: Capital's demo quote stream arrives 2–13 s after each quote's timestamp (grew from 5 s to 13 s over
+  late October and early November; 2 s after tonight's restart). REST shows the same price and timestamp 5–7 s
+  earlier; a fresh connection was exactly as late as the arena's (6 ms apart), so it is Capital's. PC clock
+  NTP-synced (0.8 ms). Effects: paper filled on stale quotes, live minutes closed before their last quotes,
+  Capital's stops fired a median 5.7 s before ours, demo orders left after the paper fill.
+- Changed (engine `2026-11-feed-time`, 4cb33da): fills on the first quote stamped at or after the order's
+  arrival; quiet minutes close after 1.5 × the observed delay; the mirror sends demo orders at the decision
+  and links the later paper fill. Backtests on generated quotes unchanged; the night grid keeps the same
+  trades in all 336 US500 settings (returns +0.1 pp on average; the original's Nov 3 entry 7548.3 vs 7548.5),
+  and its thinned replay still equals a full replay exactly (all 672 settings, both indexes). The version bump refreshes all backtests in
+  tonight's lab run; admissions wait for it.
+- Cheaper agents: idle flat runs skip quotes and take the latest quote when observed (identical results for
+  486 runs, 1,525 trades, 11 recorded days); idle runs are saved every 10 minutes, not every minute. Full
+  recorded day: 5,000 runs 219 → 99 s CPU, 20,000 runs 963 → 386 s (0.45% of a core); state rows 28.2M → 4.8M;
+  50,000 runs 963 s (1.1%), 420 MB. Same opens and trades before and after.
+  Live arena CPU by part is now in `/api/execution`: after the deploy 5.3% of a core, of which quotes 1.7%
+  (0.34 ms per quote; 2,820 of 4,644 runs hold a position and are checked on every quote, ≈0.7 µs each).
+  Positions, not agents, set the per-quote cost; the step toward a million runs is a trigger-price index.
+- Capital's delay switches between regimes (BTC today: ~0.1 s 17:15–19:15 UTC, 7–10 s before and after),
+  across restarts and connections alike; the engine follows the measured delay per instrument.
+- The demo order historically reached Capital a median 7.3 s after the decision (95th percentile 45 s):
+  the mirror's single session switching between nine accounts at top-of-hour bursts. Decision-time orders
+  remove the wait for the paper fill, not this queue; it is the next gap to close.
+- Visits are now daily at 09:30 with `bun run twins` first (LIFECYCLE "Paper–demo twins").
+- Deployed 8fedc5f 21:27; 85 agents, 4,644 runs, no load errors.
+- Next: first twin numbers under the new engine (agreement should rise if the feed delay was the main gap);
+  funding gap; the 167 diverged agents by exit type; the run cap (5,000) once production CPU parts are known.
+
 ## 2026-11-09 (Mon, user-requested) — Visar night paper grid (672 settings, nightly)
 
 - Why: the user agreed ten demo probes per index cannot map the space, and asked whether a few hundred
