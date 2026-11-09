@@ -545,10 +545,10 @@ export class BrokerMirror {
    */
   private async linkFill(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
     const decided = e.decisionTime === undefined ? [] : this.db.dealsForRun(e.runId).filter(d => d.decision_time === e.decisionTime && d.side === e.side && d.virtual_fill_time === null);
-    if (decided.length) {
-      for (const d of decided) this.db.updateDeal(d.id, { virtual_fill_time: e.time, paper_open_price: e.price, paper_size: e.size });
-      return;
-    }
+    for (const d of decided) this.db.updateDeal(d.id, { virtual_fill_time: e.time, paper_open_price: e.price, paper_size: e.size });
+    // A decided deal that is open, still unconfirmed, or refused (retried by syncWithPaper) stands for this
+    // fill. One already closed before the fill (e.g. by a stop) leaves the paper position to open anew.
+    if (decided.some(d => d.status === DEAL_STATUS.OPEN || (d.status === DEAL_STATUS.FAILED && d.note?.startsWith(NOTE_REJECTED)))) return;
     await this.openDeal(account, fillRequest(e));
   }
 
@@ -828,11 +828,13 @@ export class BrokerMirror {
   private syncWithPaper(): void {
     if (this.live.length === 0) return;
     const side = new Map(this.live.map(c => [c.runId, c.side]));
+    // A demo deal sent at the decision precedes its paper fill (seconds later on Capital's delayed stream).
+    const pendingSide = new Map(this.live.flatMap(c => (c.pendingOpen ? [[c.runId, c.pendingOpen.side] as const] : [])));
     const open = this.db.openDeals();
     for (const d of open) {
       if (!d.deal_id || !d.account_id || !this.accounts.has(d.account_id)) continue;
       const paper = side.get(d.run_id);
-      if (paper === d.side) continue;
+      if (paper === d.side || (d.virtual_fill_time === null && pendingSide.get(d.run_id) === d.side)) continue;
       this.enqueueClose(d, paper === undefined ? 'run is no longer live' : 'paper position is flat');
     }
     const withDeal = new Set(open.map(d => d.run_id));
