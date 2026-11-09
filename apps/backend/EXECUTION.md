@@ -31,12 +31,14 @@ stay in ignored `data/`; committed observations contain no account/deal IDs or c
 
 ## Virtual execution
 
-`src/engine/venue.ts` holds refreshed market rules and a synthetic API gateway per scenario. Each gateway
-models the arena's 170 ms request pacing, account-switch/verification request cost, order/confirmation/position-verification
-requests and 600 opens/hour / 12 opens/run/hour safeguards, retained across restarts. It does not make extra Capital requests per run.
-A standard command adds 500 ms assumed transport/processing delay, then fills on a fresh quote. The fixed
-latencies are experiments, not a claim that Capital always takes that long. The gateway approximates its
-queue as FIFO; the real mirror groups jobs by account.
+`src/engine/venue.ts` holds refreshed market rules. Every paper order is independent: it fills 500 ms after
+its decision (the comparison cohorts use other fixed delays) on the first quote stamped at or after that
+moment. Other runs' orders never delay or block it (user request 2026-11-10: a burst must not affect the
+engine); until engine `2026-11-feed-time-v2` a synthetic gateway per scenario modelled the mirror's shared
+request queue and a 600 opens/hour budget across all runs. What remains is a per-run runaway guard, 12 opens
+an hour, the same rule the mirror applies to one run. Capital's request budget is the real mirror's queue:
+one session per demo account, orders ahead of confirmations ahead of polling, ≈6 requests/s in total
+(Capital: 10 per second per user; orders at most 1 per 0.1 s; 1,000 demo orders an hour).
 
 Orders persist while pending. New entries fail closed when market metadata is stale (>3 minutes), the
 market is closed, quotes are stale (>30 seconds), price input is invalid, or size/stops/margin fail at
@@ -71,7 +73,8 @@ There is still no claim of exact equivalence:
 - Dividends, commodity basis adjustments and corporate actions are recorded when Capital reports them,
   but are not forecast/simulated. Current funding rates cannot reproduce historical rate changes.
 - Network outages and ambiguous confirmations are observed and reconciled; the simulator does not invent
-  future outages. FIFO pacing and fixed transport delays approximate an unobservable broker queue.
+  future outages. Paper orders assume a fixed delay; the real mirror queues behind Capital's request budget
+  in bursts, which the twin report measures (decision → order accepted).
 - A stop during a disconnected stream or downtime cannot be reproduced exactly without the missed tick tape.
 - Scaling to 0.2× and conservative lot rounding change very small positions. Live market impact is outside
   a demo-only experiment. The old period includes the earlier instant-fill model.
@@ -118,7 +121,7 @@ The server keeps its existing 500 MB soft / 700 MB hard memory and one-core CPU 
 
 The initial expansion keeps the 550 existing standard records, plus complete, current-backtest-qualified
 latency cohorts (170, 300, 500, 1,000, 2,000, 5,000, 10,000, 30,000, 60,000 and 120,000 ms). Each cohort has
-its own gateway and freshly warmed records. Paired cohorts share warmed state and random stream, so their
+its own fixed delay and freshly warmed records. Paired cohorts share warmed state and random stream, so their
 execution assumptions are the experimental difference. Their strategy parameters are unchanged. The
 5,000-run cap includes all cohorts; the initial target leaves room for new strategy ideas. This tests
 execution robustness without claiming thousands of new independent strategies.

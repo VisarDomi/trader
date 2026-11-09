@@ -51,8 +51,9 @@ export default defineAgent({
   **$10,000** virtual account (see [Leverage](#leverage)).
 - **One position per run.** `buy()` while short closes the short and opens a long (a reversal).
   `buy()` while already long is ignored.
-- In backtests and the virtual arena, orders queue with API pacing and transport
-  delay, then fill on a fresh quote: buys at ask, sells at bid. `ctx.position` changes when filled;
+- In backtests and the virtual arena, an order fills after a fixed execution delay
+  (500 ms) on the first quote stamped at or after that moment: buys at ask, sells at
+  bid. Other agents' orders never delay it; one run may open at most 12 times an hour. `ctx.position` changes when filled;
   `onFill` is the completion callback. `ctx.close()` cancels an open still in flight.
   There are no limit/stop entry orders — check conditions in your chosen callback and call `buy`/`sell`.
 - Stops, trailing protections and margin are checked on each usable tick in both modes. The first
@@ -122,7 +123,8 @@ In `onBar`, `ctx.time` is the bar's **close** time; the bar's open is `ctx.bar.t
 For minute-specific orders use a `1m` primary timeframe. Optional `validUntil` (UTC ms) discards an entry
 that reaches execution too late, including Capital mirror retries. Optional `closeAt` requests a timed exit
 from the arena's one-second clock; Capital closes are also requested independently of quote/bar delivery.
-Both survive restarts. The actual fill follows market availability, API pacing and network latency. In a
+Both survive restarts. The actual fill follows market availability, the execution delay and, on Capital,
+the mirror's request queue. In a
 backtest, a missing exit minute closes at the next observed candle's open instead of inventing a price.
 `TZ.TIRANA` provides DST-aware Albania time. See `visar-night-trading.ts` for a complete example.
 

@@ -27,8 +27,11 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
  * mirrored run of the tier by PROMOTION_MARGIN takes its slot once that run is
  * flat (promotion/demotion; see slots.ts).
  *
- * Requests: one session switches between accounts; jobs are grouped per
- * account and paced by the RequestPacer shared with the candle poller.
+ * Requests: one Capital session per account (BrokerOptions.sessionFor), so no
+ * account switching; each account runs its own job queue (orders before
+ * reconciliation) and all share the arena's request budget, where orders take
+ * the next free slot (RequestPacer priorities). Without sessionFor, one session
+ * switches between accounts and jobs run one at a time.
  *
  * Safety rails (an older experiment wiped an account with a runaway loop):
  *   - the session's account is verified after every switch and re-login
@@ -47,6 +50,7 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
  *     again, without using up the retries; a close is retried every cycle until
  *     it goes through
  */
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { CapitalClient } from '../capital/client.ts';
 import { CapitalApiError } from '../capital/client.ts';
 import type { Instrument } from '../engine/instruments.ts';
@@ -136,6 +140,11 @@ export interface BrokerOptions {
   prefix: string;
   /** Account name → leverage tier (agents/roster.json "accounts"). */
   accountTiers: Readonly<Record<string, number>>;
+  /**
+   * A Capital session for one account. With it every account keeps its own session (no switching) and its
+   * own job queue, so an order on one account never waits for another account's work.
+   */
+  sessionFor?: (accountId: string) => CapitalClient;
 }
 
 /** A live demo run the arena offers for mirroring. */
@@ -324,6 +333,11 @@ export class BrokerMirror {
   private readonly accounts = new Map<string, Account>();
   private readonly queue: Job[] = [];
   private draining = false;
+  private readonly drainingAccounts = new Set<string>();
+  /** The account whose job is running, for this.client (jobs of different accounts run concurrently). */
+  private readonly jobAccount = new AsyncLocalStorage<string>();
+  private readonly sessions = new Map<string, CapitalClient>();
+  private readonly verifiedSessions = new Map<string, number>();
   private sessionAccount: string | null = null;
   private verifiedLogins = -1;
   private readonly opens: number[] = [];
@@ -343,7 +357,7 @@ export class BrokerMirror {
   private ready = false;
 
   constructor(
-    private readonly client: CapitalClient,
+    private readonly controlClient: CapitalClient,
     private readonly db: ArenaDB,
     private readonly opts: BrokerOptions,
   ) {
@@ -356,6 +370,21 @@ export class BrokerMirror {
       recent.push(d.open_time); this.runOpens.set(d.run_id, recent);
     }
     this.opens.sort((a, b) => a - b);
+  }
+
+  /** The session for the running job's account, or the control session outside jobs. */
+  private get client(): CapitalClient {
+    const id = this.jobAccount.getStore();
+    return id !== undefined && this.opts.sessionFor ? this.session(id) : this.controlClient;
+  }
+
+  private session(accountId: string): CapitalClient {
+    let s = this.sessions.get(accountId);
+    if (!s) {
+      s = this.opts.sessionFor!(accountId);
+      this.sessions.set(accountId, s);
+    }
+    return s;
   }
 
   /** The arena's live runs. Must be set before start(). */
@@ -1356,7 +1385,9 @@ export class BrokerMirror {
 
   private enqueue(accountId: string, run: () => Promise<void>, tag?: Job['tag']): void {
     this.queue.push({ accountId, enqueuedAt: Date.now(), run, tag });
-    if (!this.draining) void this.drain();
+    if (this.opts.sessionFor) {
+      if (!this.drainingAccounts.has(accountId)) void this.drainAccount(accountId);
+    } else if (!this.draining) void this.drain();
   }
 
   /** Jobs for the session's current account first (fewer switches), unless the oldest job has waited too long. */
@@ -1368,37 +1399,66 @@ export class BrokerMirror {
     return this.queue.shift()!;
   }
 
+  /** One session switching between accounts: one job at a time. */
   private async drain(): Promise<void> {
     this.draining = true;
-    while (this.queue.length > 0) {
-      const job = this.nextJob();
-      const name = this.accounts.get(job.accountId)?.name ?? job.accountId;
-      try {
-        await this.ensureAccount(job.accountId);
-      } catch (err) {
-        if (!job.retried && this.accounts.has(job.accountId)) {
-          setTimeout(() => {
-            this.queue.push({ ...job, retried: true });
-            if (!this.draining) void this.drain();
-          }, JOB_RETRY_DELAY_MS);
-          this.db.event('warn', 'broker', `switch to ${name} failed (${errorText(err)}); retrying the job`);
-        } else {
-          this.fail(`job on ${name}`, err);
-        }
-        continue;
+    while (this.queue.length > 0) await this.runJob(this.nextJob());
+    this.draining = false;
+  }
+
+  /** One account's own session and queue: its orders first, then reconciliation, in arrival order. */
+  private async drainAccount(accountId: string): Promise<void> {
+    this.drainingAccounts.add(accountId);
+    try {
+      for (;;) {
+        let i = this.queue.findIndex(j => j.accountId === accountId && j.tag !== JOB_RECONCILE);
+        if (i < 0) i = this.queue.findIndex(j => j.accountId === accountId);
+        if (i < 0) break;
+        await this.runJob(this.queue.splice(i, 1)[0]!);
       }
-      try {
-        await job.run();
-      } catch (err) {
+    } finally {
+      this.drainingAccounts.delete(accountId);
+    }
+  }
+
+  private async runJob(job: Job): Promise<void> {
+    const name = this.accounts.get(job.accountId)?.name ?? job.accountId;
+    try {
+      await this.ensureAccount(job.accountId);
+    } catch (err) {
+      if (!job.retried && this.accounts.has(job.accountId)) {
+        setTimeout(() => this.requeue({ ...job, retried: true }), JOB_RETRY_DELAY_MS);
+        this.db.event('warn', 'broker', `switch to ${name} failed (${errorText(err)}); retrying the job`);
+      } else {
         this.fail(`job on ${name}`, err);
       }
+      return;
     }
-    this.draining = false;
+    try {
+      await this.jobAccount.run(job.accountId, job.run);
+    } catch (err) {
+      this.fail(`job on ${name}`, err);
+    }
+  }
+
+  private requeue(job: Job): void {
+    this.queue.push(job);
+    if (this.opts.sessionFor) {
+      if (!this.drainingAccounts.has(job.accountId)) void this.drainAccount(job.accountId);
+    } else if (!this.draining) void this.drain();
   }
 
   /** Put the session on the account, verified; again after any re-login. */
   private async ensureAccount(id: string): Promise<void> {
     if (!this.accounts.has(id)) throw new Error(`account ${id} is not available`);
+    if (this.opts.sessionFor) {
+      // The account's own session: chosen once, re-verified after a re-login (which reselects it itself).
+      const session = this.session(id);
+      if (this.verifiedSessions.get(id) === session.logins) return;
+      await session.selectAccount(id);
+      this.verifiedSessions.set(id, session.logins);
+      return;
+    }
     if (this.sessionAccount === id && this.verifiedLogins === this.client.logins) return;
     this.sessionAccount = null;
     await this.client.selectAccount(id);
@@ -1408,7 +1468,8 @@ export class BrokerMirror {
 
   private async confirm(dealReference: string): Promise<Confirmation> {
     for (let i = 0; i < CONFIRM_ATTEMPTS; i++) {
-      await Bun.sleep(CONFIRM_DELAY_MS);
+      // The order request has returned, so its confirmation is usually ready at once.
+      if (i > 0) await Bun.sleep(CONFIRM_DELAY_MS);
       try {
         const c = await this.client.get<Confirmation>(`/api/v1/confirms/${dealReference}`);
         if (c.dealStatus !== 'UNKNOWN') return c;

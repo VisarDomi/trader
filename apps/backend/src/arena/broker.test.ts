@@ -295,3 +295,56 @@ async function orderDone(db: ArenaDB, deals = 1): Promise<void> {
   }
   await Bun.sleep(30);
 }
+
+test('with a session per account, accounts work in parallel and an order goes before that account\'s reconciliation', async () => {
+  const OTHER = 'arena-two', OTHER_NAME = 'Arena 02', RUN2 = 'demo:fixture:EURUSD:x2:hash';
+  const db = new ArenaDB(':memory:');
+  db.setSetting(BROKER_SETTINGS.ENABLED, true);
+  db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, { [RUN]: ACCOUNT, [RUN2]: OTHER });
+  db.setSetting(BROKER_SETTINGS.ACCOUNTS, { [ACCOUNT]: { name: NAME, allocation: 100000, hedging: true, leverage: 1, killed: false },
+    [OTHER]: { name: OTHER_NAME, allocation: 100000, hedging: true, leverage: 2, killed: false } });
+  const log: string[] = [];
+  const selected: string[] = [];
+  let blockedReconcile = true;
+  const session = (label: string) => {
+    let account = '';
+    return {
+      logins: 1, historyTransactions: async () => ({ transactions: [], complete: true }),
+      selectAccount: async (id: string) => { account = id; selected.push(`${label}:${id}`); },
+      get: async (path: string) => {
+        if (path === '/api/v1/accounts') return { accounts: [
+          { accountId: ACCOUNT, accountName: NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } },
+          { accountId: OTHER, accountName: OTHER_NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } }] };
+        if (path === '/api/v1/accounts/preferences') return { hedgingMode: true, leverages: {} };
+        if (path === '/api/v1/positions') {
+          // Account 1's reconciliation hangs until released; account 2 must not wait for it.
+          while (account === ACCOUNT && blockedReconcile) await Bun.sleep(5);
+          return { positions: [] };
+        }
+        if (path.startsWith('/api/v1/confirms/')) return { dealStatus: 'REJECTED', epic: EPIC, direction: 'BUY', size: 100, reason: 'fixture' };
+        return {};
+      },
+      post: async (_p: string, _b: unknown, hooks?: { sent?: () => void }) => { hooks?.sent?.(); log.push(`order on ${account}`); return { dealReference: 'r' }; },
+    } as unknown as CapitalClient;
+  };
+  const sessions = new Map<string, CapitalClient>();
+  const candidates: MirrorCandidate[] = [
+    { runId: RUN, epic: EPIC, tier: 1, score: 0, side: null, entry: null, pendingOpen: { side: LONG, at: Date.now() } },
+    { runId: RUN2, epic: EPIC, tier: 2, score: 0, side: null, entry: null, pendingOpen: { side: LONG, at: Date.now() } },
+  ];
+  const mirror = new BrokerMirror(session('control'), db, { prefix: 'Arena', accountTiers: { [NAME]: 1, [OTHER_NAME]: 2 },
+    sessionFor: id => sessions.get(id) ?? sessions.set(id, session(id)).get(id)! });
+  mirror.setCandidateSource(() => candidates);
+  try {
+    void mirror.start();
+    for (let i = 0; i < 100 && selected.length < 2; i++) await Bun.sleep(10);
+    const at = candidates[1]!.pendingOpen!.at;
+    mirror.onRunEvent({ type: 'order', kind: 'open', runId: RUN2, time: at, side: LONG, size: 500, price: 1.12, stopLoss: null, takeProfit: null });
+    for (let i = 0; i < 100 && !log.length; i++) await Bun.sleep(10);
+    expect(log).toEqual([`order on ${OTHER}`]); // account 1 is still stuck in its reconciliation
+    blockedReconcile = false;
+    for (let i = 0; i < 100 && mirror.status().queued; i++) await Bun.sleep(10);
+    await Bun.sleep(30);
+    expect(selected.sort()).toEqual([`${ACCOUNT}:${ACCOUNT}`, `${OTHER}:${OTHER}`]); // each session chose its account once
+  } finally { mirror.stop(); db.db.close(); }
+});

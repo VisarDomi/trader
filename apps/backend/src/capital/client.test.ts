@@ -71,3 +71,21 @@ test('silently truncated transaction history is recovered by time bisection and 
   expect(history.requests).toBeGreaterThan(1);
   expect(history.transactions).toHaveLength(301);
 });
+test('waiting orders take the next slot ahead of earlier background requests', async () => {
+  const { REQUEST_PRIORITY, requestPriority } = await import('./client.ts');
+  const pacer = new RequestPacer(20);
+  const order: string[] = [];
+  await pacer.wait();
+  const jobs = [
+    ...Array.from({ length: 5 }, (_, i) => pacer.wait(REQUEST_PRIORITY.BACKGROUND).then(() => order.push(`poll ${i}`))),
+    pacer.wait(REQUEST_PRIORITY.FOLLOW_UP).then(() => order.push('confirm')),
+    pacer.wait(REQUEST_PRIORITY.ORDER).then(() => order.push('order')),
+  ];
+  await Promise.all(jobs);
+  expect(order.slice(0, 2)).toEqual(['order', 'confirm']);
+  expect(order.slice(2)).toEqual(['poll 0', 'poll 1', 'poll 2', 'poll 3', 'poll 4']);
+  expect(requestPriority('POST', '/api/v1/positions')).toBe(REQUEST_PRIORITY.ORDER);
+  expect(requestPriority('DELETE', '/api/v1/positions/abc')).toBe(REQUEST_PRIORITY.ORDER);
+  expect(requestPriority('GET', '/api/v1/confirms/ref')).toBe(REQUEST_PRIORITY.FOLLOW_UP);
+  expect(requestPriority('GET', '/api/v1/prices/US500')).toBe(REQUEST_PRIORITY.BACKGROUND);
+});

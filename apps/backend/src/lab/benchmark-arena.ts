@@ -1,11 +1,16 @@
 /**
  * Capacity benchmark on the arena's live path: real agents, recorded quotes, orders on.
  *
- *   bun run benchmark-arena [--runs 5000] [--day YYYY-MM-DD] [--hours 24] [--warm-days 30] [--epics US500,US100]
+ *   bun run benchmark-arena [--runs 5000] [--day YYYY-MM-DD] [--hours 24] [--warm-days 30] [--lead-days 0]
+ *                           [--epics US500,US100] [--every-quote]
+ *
+ * --lead-days replays that many recorded days with orders on before the measured window, so the measured
+ * day starts with realistic open positions. --every-quote delivers every quote to every run (no skipping),
+ * for comparison.
  *
  * Every run is a distinct copy of a planned agent × instrument × leverage (the plan is cycled). Runs warm
  * up on 1-minute candles with orders off, as the arena does for new runs. Then they replay one day of
- * recorded quotes through the same MarketEngine, VirtualVenue and latency gateway as the arena: each
+ * recorded quotes through the same MarketEngine, VirtualVenue and execution delay as the arena: each
  * quote, the one-second clock, bar dispatch and the per-minute state save into a scratch database.
  * The report gives CPU time per phase and the share of one core needed to keep up with real time.
  */
@@ -13,7 +18,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ArenaDB } from '../arena/db.ts';
-import { DEFAULT_EXECUTION_MS, VirtualGateway, VirtualVenue, type CapitalMarket } from '../engine/venue.ts';
+import { DEFAULT_EXECUTION_MS, VirtualVenue, type CapitalMarket } from '../engine/venue.ts';
 import { loadAgents, type LoadedAgent } from '../engine/loader.ts';
 import { loadRoster, planRuns } from '../engine/roster.ts';
 import { MarketEngine, type ClosedBar } from '../engine/market.ts';
@@ -34,8 +39,11 @@ const day = Date.parse((value('--day') ?? '2026-11-05') + 'T00:00:00Z');
 const hours = Number(value('--hours') ?? 24);
 const warmDays = Number(value('--warm-days') ?? 30);
 const onlyEpics = value('--epics')?.split(',');
+const leadDays = Number(value('--lead-days') ?? 0);
+const everyQuote = args.includes('--every-quote');
 const start = day,
-  end = day + hours * HOUR_MS;
+  end = day + hours * HOUR_MS,
+  replayFrom = start - leadDays * DAY_MS;
 
 const { agents } = await loadAgents();
 const plan = planRuns(agents, loadRoster()).runs.filter(p => !onlyEpics || onlyEpics.includes(p.epic));
@@ -45,7 +53,6 @@ const phase = { warmup: 0, ticks: 0, bars: 0, tickAgents: 0, clock: 0, persist: 
 let clock = start;
 const engines = new Map<string, MarketEngine>();
 const venues = new Map<string, VirtualVenue>();
-const gateways: VirtualGateway[] = [];
 const dirty = new Set<AgentRun>();
 const dirtyEpics = new Set<string>();
 let opens = 0;
@@ -56,11 +63,10 @@ for (let i = 0; i < count; i++) {
   let engine = engines.get(p.epic);
   if (!engine) {
     const instrument = { ...getInstrument(p.epic) };
-    engine = new MarketEngine(instrument);
+    engine = new MarketEngine(instrument, null, true, !everyQuote);
     engines.set(p.epic, engine);
   }
   const venue = venueFor(p.epic);
-  gateways[copy] ??= new VirtualGateway();
   const agent: LoadedAgent = copy ? { ...p.agent, id: `${p.agent.id}#${copy}` } : p.agent;
   const run = engine.addRun({
     runId: `benchmark/${agent.id}/${p.epic}/x${p.leverage}`,
@@ -68,7 +74,7 @@ for (let i = 0; i < count; i++) {
     leverage: p.leverage,
     capital: 10_000,
     checkStopsOnCandles: false,
-    execution: { venue, latencyMs: DEFAULT_EXECUTION_MS, gateway: gateways[copy], now: () => clock },
+    execution: { venue, latencyMs: DEFAULT_EXECUTION_MS, now: () => clock },
     onEvent: e => {
       if (e.type === 'open') opens++;
       const r = runById.get(e.runId);
@@ -85,7 +91,7 @@ function venueFor(epic: string): VirtualVenue {
     venue = new VirtualVenue({ ...getInstrument(epic) });
     const rules = (marketSnapshot.markets as unknown as Record<string, CapitalMarket>)[epic];
     if (!rules) throw Error(`missing Capital rules snapshot for ${epic}`);
-    venue.update({ ...rules, snapshot: { ...rules.snapshot, marketStatus: 'TRADEABLE' } }, start);
+    venue.update({ ...rules, snapshot: { ...rules.snapshot, marketStatus: 'TRADEABLE' } }, replayFrom);
     venues.set(epic, venue);
   }
   return venue;
@@ -94,7 +100,7 @@ function venueFor(epic: string): VirtualVenue {
 // Warm-up as for brand-new arena runs: one representative per agent × leverage sees every closed bar.
 const warmStarted = performance.now();
 for (const [epic, engine] of engines) {
-  const candles = await loadCandleArray(epic, start - warmDays * DAY_MS, start);
+  const candles = await loadCandleArray(epic, replayFrom - warmDays * DAY_MS, replayFrom);
   const representative = new Map<string, AgentRun>(),
     cloneOf = new Map<AgentRun, AgentRun>();
   for (const r of engine.runs) {
@@ -117,7 +123,7 @@ for (const [epic, engine] of engines) {
       r.restore(snapshot, [], []);
     }
     if (last) r.primeQuote(last);
-    r.markSynced(start);
+    r.markSynced(replayFrom);
     r.allowOrders = true;
   }
 }
@@ -166,19 +172,31 @@ function dispatchClosed(engine: MarketEngine, closed: ClosedBar[]): void {
   phase.bars += performance.now() - t;
 }
 
-const recordings = await recordingSnapshot(start, end);
+const recordings = await recordingSnapshot(replayFrom, end);
 const streams = [...engines].map(([epic, engine]) => ({
   epic,
   engine,
-  minutes: tickMinutes(epic, start, end, { mode: TICK_MODE.RECORDED, recordings }, replayData({ mode: TICK_MODE.RECORDED, recordings }))[Symbol.asyncIterator](),
+  minutes: tickMinutes(epic, replayFrom, end, { mode: TICK_MODE.RECORDED, recordings }, replayData({ mode: TICK_MODE.RECORDED, recordings }))[Symbol.asyncIterator](),
   next: null as null | IteratorResult<{ time: number; ticks: import('../engine/ticks.ts').Tick[] }>,
 }));
 for (const s of streams) s.next = await s.minutes.next();
 
-let ticks = 0;
-const cpuBefore = process.cpuUsage();
-const replayStarted = performance.now();
-for (let minute = start; minute < end; minute += MINUTE_MS) {
+let ticks = 0,
+  cpuBefore = process.cpuUsage(),
+  replayStarted = performance.now(),
+  openAtStart = 0,
+  tradesAtStart = 0;
+for (let minute = replayFrom; minute < end; minute += MINUTE_MS) {
+  if (minute === start && leadDays > 0) {
+    // The lead-in is over: measure from here, with the positions it left open.
+    for (const k of Object.keys(phase) as (keyof typeof phase)[]) if (k !== 'warmup') phase[k] = 0;
+    ticks = 0; opens = 0; savedStates = 0;
+    openAtStart = [...runById.values()].filter(r => r.position).length;
+    tradesAtStart = [...runById.values()].reduce((n, r) => n + r.trades.length, 0);
+    cpuBefore = process.cpuUsage(); replayStarted = performance.now();
+  }
+  // The arena refreshes market rules every minute; stale rules would refuse every order.
+  for (const v of venues.values()) v.updatedAt = minute;
   for (const s of streams) {
     const due = s.next && !s.next.done && s.next.value.time === minute ? s.next.value.ticks : [];
     let second = minute + 1000;
@@ -218,7 +236,7 @@ for (let minute = start; minute < end; minute += MINUTE_MS) {
 const replayMs = performance.now() - replayStarted;
 const cpu = process.cpuUsage(cpuBefore);
 const simulatedMs = end - start;
-const trades = [...runById.values()].reduce((n, r) => n + r.trades.length, 0);
+const trades = [...runById.values()].reduce((n, r) => n + r.trades.length, 0) - tradesAtStart;
 const open = [...runById.values()].filter(r => r.position).length;
 const cpuMs = (cpu.user + cpu.system) / 1000;
 const round = (x: number) => Math.round(x);
@@ -227,7 +245,10 @@ const report = {
   runs: count,
   instruments: engines.size,
   window: { start: new Date(start).toISOString(), hours },
+  leadDays,
+  deliveredTo: everyQuote ? 'every run' : 'runs a quote can change',
   ticks,
+  openAtStart,
   opens,
   trades,
   openAtEnd: open,

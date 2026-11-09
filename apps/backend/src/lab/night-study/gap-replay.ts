@@ -3,7 +3,7 @@ import{join}from'node:path';
 import{loadAgents,type LoadedAgent}from'../../engine/loader';
 import{getInstrument}from'../../engine/instruments';
 import{MarketEngine}from'../../engine/market';
-import{VirtualVenue,VirtualGateway,DEFAULT_EXECUTION_MS,type CapitalMarket}from'../../engine/venue';
+import{VirtualVenue,DEFAULT_EXECUTION_MS,type CapitalMarket}from'../../engine/venue';
 import snapshot from'../../engine/fixtures/capital-markets.json';
 import{ENGINE_VERSION}from'../../engine/version';
 import{tickMinutes,replayData}from'../tick-tape';
@@ -38,7 +38,7 @@ async function main(){
   let clock=STANDARD_WINDOW.start;const inst={...getInstrument(epic)},venue=new VirtualVenue(inst),rules=(snapshot.markets as any)[epic]as CapitalMarket;
   venue.update({...rules,snapshot:{...rules.snapshot,marketStatus:'TRADEABLE'}},clock);const engine=new MarketEngine(inst);
   const agents=jobs.map(({gap,profile})=>{const params={...base.params,...policy.params,lossPct:profile.lossPct,marginPct:90,minPullbackBp:gap};return {...base,id:`night-gap/${epic}/${window}/${policy.id}/B${gap}/${profile.id}`,def:cachedSignalDefinition(base,signals,gap,epic),params,codeHash:createHash('sha256').update(base.codeHash+oracle.inputSHA+window+JSON.stringify(params)).digest('hex').slice(0,12)}as LoadedAgent});
-  const runs=agents.map((agent,i)=>engine.addRun({runId:agent.id,agent,leverage:jobs[i]!.profile.leverage,capital:10000,checkStopsOnCandles:false,execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,gateway:new VirtualGateway(),now:()=>clock}}));
+  const runs=agents.map((agent,i)=>engine.addRun({runId:agent.id,agent,leverage:jobs[i]!.profile.leverage,capital:10000,checkStopsOnCandles:false,execution:{venue,latencyMs:DEFAULT_EXECUTION_MS,now:()=>clock}}));
   const options={mode:'synthetic'as const,recordings:[],seed:1,ticksPerMinute:16},data=replayData(options);let first=true,delivered=0,minutes=0;const begun=Date.now();
   console.log('START',epic,window,policy.id,jobs.length);
   for await(const minute of tickMinutes(epic,STANDARD_WINDOW.start,STANDARD_WINDOW.end,options,data)){

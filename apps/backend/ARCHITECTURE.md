@@ -132,12 +132,17 @@ closes).
 - **Renames:** deals are re-attached by deal id if an account is renamed;
   renaming an account away from the prefix closes the arena's deals there and
   stops using it.
-- **Requests:** one session switches between accounts (verified after every
-  switch and re-login); jobs are grouped per account and share a ~6 req/s pacer
-  with the candle poller. Backtest trade logs put the load at 3 orders in a
-  typical active minute, 34 at the 99th percentile and ~108 at the worst
-  top-of-hour minute (all 392 runs); the queue spreads a burst over seconds to
-  a minute instead of exceeding Capital.com's 10 req/s.
+- **Requests:** one Capital session per demo account (since 2026-11-10; nine
+  concurrent sessions checked first), so no account switching; each account has
+  its own job queue, orders before reconciliation. All sessions and the candle
+  poller share a ~6 req/s pacer in which orders take the next free slot, then
+  confirmations and position checks, then everything else. Capital answers an
+  order in ~0.12 s (p50; 0.6 s p95); before this the shared, switching session
+  made the order wait a median 7 s after the decision, 52 s at 40+ decisions
+  a minute. Backtest trade logs put the load at 3 orders in a typical active
+  minute, 34 at the 99th percentile and ~108 at the worst top-of-hour minute; a
+  burst that large still needs seconds at Capital's 10 req/s, which is the
+  mirror's queue only: paper orders never wait for it.
 - **Rails:** a run opening ≥12 times in an hour is excluded; ≤600 opens/hour in
   total (demo limit 1,000/hour); per-account kill switch below 50% of its
   allocation (two consecutive readings); hedging mode re-checked on every

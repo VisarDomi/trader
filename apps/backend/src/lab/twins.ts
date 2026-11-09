@@ -47,4 +47,7 @@ if (fortnight.overall.meanGapBps !== null && Math.abs(fortnight.overall.meanGapB
 if (fortnight.verdicts.diverged > 0) check(`${fortnight.verdicts.diverged} agents diverged over 14 days`);
 if (feed?.medianDelayMs > 20_000) check(`quote stream ${feed.medianDelayMs} ms late: close to the 30 s cut-off for usable quotes`);
 if (execution.virtual.cpuCorePercent > 50) check(`arena uses ${execution.virtual.cpuCorePercent}% of a core`);
+// Capital answers an order in ~0.12 s; more than a second from decision to acceptance is our queue.
+if (day.overall.entryLagP50Ms !== null && day.overall.entryLagP50Ms > 1000)
+  check(`demo orders accepted a median ${day.overall.entryLagP50Ms} ms after the decision (Capital itself takes ~120 ms): look at the broker queue`);
 console.log(out.join('\n'));
