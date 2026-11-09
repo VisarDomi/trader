@@ -70,6 +70,14 @@ time. Calendar age/P&L remain intact; an open holding with zero closed trades is
 recorded dependency intervals survive restarts, while earlier unknown availability is not invented.
 Paused dependencies cannot earn new Capital promotion. See [evidence](../EVIDENCE.md).
 
+The explicit November 9 Visar cohort includes sparse day definitions. Their no-trade timeout is
+180 days for the five named body/retracement variants and 365 for `visar-night-lab/clean-50x`,
+whose inspected cadence is about one trade/year. `silentDaysFor` in `engine/policy.ts` is shared by
+the runtime and review/UI; other runs retain 60 days. This extends only the opportunity to observe
+a rare entry. Error/ruin exits, maturity, losing-evidence demotion and source-specific admission
+rules are unchanged. The short normal timeout would otherwise eliminate a deliberate frequency
+experiment before its declared cadence could reasonably produce an observation.
+
 ## Retiring
 
 - **One run:** add `"<agentId>:<EPIC>@<tier>": { "date": "YYYY-MM-DD", "reason": "<review reason>" }` to

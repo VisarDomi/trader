@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add the user-requested 20-member Visar night cohort: preserve the original US500 source and
+  forward record, add nine US500 and ten US100 variants with source-pinned demo exceptions,
+  and replace 19 weak eligible flat standard runs while keeping their histories. Retain strategy
+  context adapters for both families. Give named sparse frequency experiments an explicit shared
+  no-trade window, preserving error/ruin and losing-evidence safeguards.
+
 - Audit visar-night-trading historical/forward execution. Correct replay coverage reporting: retain
   requested and actual input bounds, leave unknown calendar gaps null, and warn on large missing
   tails. Financial replay, strategy parameters and existing forward records remain unchanged.
