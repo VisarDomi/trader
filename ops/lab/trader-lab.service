@@ -1,10 +1,11 @@
 [Unit]
 Description=Trader nightly lab job (ingest candles, precompute forecasts, backtest new agents)
 After=network-online.target trader-forecaster.service
-ConditionPathExists=!%h/.local/share/heavy-resources/user-pause.json
 
 [Service]
 Type=oneshot
+# Skipped while the heavy-resource hold lists the lab (heavy-resources-stop); lab-control.py resume lifts only that.
+ExecCondition=/usr/bin/python3 %h/Documents/work/trading/trader/ops/lab/lab-control.py check
 Slice=trader.slice
 Nice=10
 WorkingDirectory=%h/Documents/work/trading/trader/apps/backend

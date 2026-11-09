@@ -1,5 +1,4 @@
 [Unit]
-ConditionPathExists=!%h/.local/share/heavy-resources/user-pause.json
 Description=Run the trader lab job nightly
 
 [Timer]
