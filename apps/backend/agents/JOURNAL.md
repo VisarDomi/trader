@@ -46,6 +46,17 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 - Pre-deploy snapshots preserve all20assigned identities and prove the nineteen replaced versions
   flat. Native decision/inspection data carries target prices and exit rules through the existing
   app contract. No phone installation or user action is required. Deployment verification follows.
+- Deployed33cd0cc: all20source/instrument/tier-pinned records are assigned; no unrelated mirror
+  was displaced. Original run id/start/source, two trades, return, win rate, equity and drawdown
+  match the pre-deploy snapshot. All19prior source versions retain source, runs and backtests in
+  Graveyard. Pool remains4645(553standard/4092comparisons),442Capital assignments, queue0,
+  stream/model healthy,468MB RSS; errors0 and dropped ticks0. Storage15.0GB, two-year34.7GB,
+  stress73.6GB under100GB. Verdicts400early/9keep/0leaders/144controls; monkeys0/36.
+- Published HTML/full JSON/worker and both10,368-row exit CSVs match committed bytes. Forward
+  schema3 returns all20current sources/assignments; original actual cash remains distinct from
+  virtual P&L. Complete projected/full-data renders agree for20,736cells/192plots; representative
+  desktop/phone QA has zero reveal controls and no document overflow. Backend179tests, both native
+  Rust tests and UI12tests pass. Archive timer has a future trigger; no physical action needed.
 
 
 ## 2026-11-09 (Mon, user-requested) — deploy gap/session cohort; show every dimension
