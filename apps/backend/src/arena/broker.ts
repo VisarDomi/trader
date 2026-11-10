@@ -553,7 +553,8 @@ export class BrokerMirror {
       return;
     }
     if (e.type === 'close') {
-      this.closeRunDeals(e.runId, `paper ${e.trade.exitReason}`, e.trade.exitPrice);
+      // Only the closed side: in a reversal the new side's deal left at the decision, before this paper close.
+      this.closeRunDeals(e.runId, `paper ${e.trade.exitReason}`, e.trade.exitPrice, e.trade.side);
       return;
     }
     if (e.type === 'stops') {
@@ -573,7 +574,9 @@ export class BrokerMirror {
    * fill opens the demo deal, as before decision-time orders.
    */
   private async linkFill(account: Account, e: Extract<RunEvent, { type: 'open' }>): Promise<void> {
-    const decided = e.decisionTime === undefined ? [] : this.db.dealsForRun(e.runId).filter(d => d.decision_time === e.decisionTime && d.side === e.side && d.virtual_fill_time === null);
+    // A decided order that waited in a burst until after the fill was sent already linked to it.
+    const decided = e.decisionTime === undefined ? [] : this.db.dealsForRun(e.runId).filter(d =>
+      d.decision_time === e.decisionTime && d.side === e.side && (d.virtual_fill_time === null || d.virtual_fill_time === e.time));
     for (const d of decided) this.db.updateDeal(d.id, { virtual_fill_time: e.time, paper_open_price: e.price, paper_size: e.size });
     // A decided deal that is open, still unconfirmed, or refused (retried by syncWithPaper) stands for this
     // fill. One already closed before the fill (e.g. by a stop) leaves the paper position to open anew.
@@ -922,8 +925,9 @@ export class BrokerMirror {
 
   // ------------------------------------------------------------------ actions
 
-  private closeRunDeals(runId: string, note: string, paperPrice?: number): void {
-    for (const d of this.db.openDeals().filter(d => d.run_id === runId)) this.enqueueClose(d, note, paperPrice);
+  private closeRunDeals(runId: string, note: string, paperPrice?: number, side?: Side): void {
+    for (const d of this.db.openDeals().filter(d => d.run_id === runId && (side === undefined || d.side === side)))
+      this.enqueueClose(d, note, paperPrice);
   }
 
   private enqueueClose(d: DealRow, note: string, paperPrice?: number): void {
@@ -1055,37 +1059,18 @@ export class BrokerMirror {
         return;
       }
       if (!dealId) return;
-      // A same-sized stale confirmation may pass the shape checks. Verify the new position itself.
-      const actual = await this.client.get<BrokerPosition>(`/api/v1/positions/${dealId}`);
-      const createdAt = brokerTime(actual.position.createdDateUTC);
-      if (!Number.isFinite(createdAt) || createdAt < this.db.openDeals().find(d => d.id === rowId)!.open_time - 5000) {
-        this.db.updateDeal(rowId, { note: 'unconfirmed: position predates this request or has no UTC creation time' });
-        return;
-      }
-      if (
-        actual.position.dealId !== dealId ||
-        actual.market.epic !== inst.epic ||
-        actual.position.direction !== expected.direction ||
-        Math.abs(actual.position.size - size) > 1e-9
-      ) {
-        this.db.updateDeal(rowId, { note: 'unconfirmed: confirmed position does not match the request' });
-        return;
-      }
       this.db.updateDeal(rowId, {
         deal_id: dealId,
         open_price: conf.level ?? null,
         confirmed_time: Date.now(),
       });
-      // Stop events arriving before a permanent deal id cannot be applied yet.
-      // Synchronize the current levels once confirmation makes that possible.
-      const latest=this.candidates().find(c=>c.runId===e.runId&&c.side===e.side&&c.entry&&(e.fillTime===null?c.entry.time>=e.decisionTime:c.entry.time===e.fillTime))?.entry;
-      if(latest&&(latest.stopLoss!==protection.stopLoss||latest.takeProfit!==protection.takeProfit||latest.trailingStop!==protection.trailingStop))
-        await this.putStops(dealId,latest.stopLoss,latest.takeProfit,latest.trailingStop);
       this.db.event(
         'info',
         'broker',
         `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price}${e.fillTime === null ? ', at the decision' : ''})`,
       );
+      // The account's next queued order goes before the position check and protection resync (~1 s at a burst).
+      this.enqueue(account.id, () => this.verifyOpen(rowId, dealId, expected, e, protection));
     } catch (err) {
       if (err instanceof ExpiredEntry) {
         this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: err.message });
@@ -1108,6 +1093,45 @@ export class BrokerMirror {
       this.db.updateDeal(rowId, { note: `unconfirmed: ${errorText(err)}` });
       this.fail(`open ${e.runId}`, err);
     }
+  }
+
+  /**
+   * A same-sized stale confirmation may pass the shape checks: check the new position itself (none failed
+   * in 5,633 deals from October 1 to November 10). A mismatch hands the deal back to reconcile, which adopts
+   * the run's position by epic, side and size. Then synchronize protections the run changed meanwhile.
+   */
+  private async verifyOpen(rowId: number, dealId: string, expected: { epic: string; direction: string; size: number },
+    e: OpenRequest, protection: { stopLoss: number | null; takeProfit: number | null; trailingStop?: number | null }): Promise<void> {
+    const row = this.db.openDeals().find(d => d.id === rowId);
+    if (!row || row.deal_id !== dealId) return;
+    let actual: BrokerPosition | undefined;
+    try {
+      actual = await this.client.get<BrokerPosition>(`/api/v1/positions/${dealId}`);
+    } catch (err) {
+      // Closed at the broker in the meantime (a stop): reconcile books it.
+      if (err instanceof CapitalApiError && err.status === 404) return;
+      throw err;
+    }
+    const unconfirmed = (why: string) => {
+      this.db.updateDeal(rowId, { deal_id: null, open_price: null, confirmed_time: null, note: `unconfirmed: ${why}` });
+      this.db.event('warn', 'broker', `open for ${e.runId}: ${why}; left to reconcile`);
+    };
+    const createdAt = brokerTime(actual?.position?.createdDateUTC);
+    if (!Number.isFinite(createdAt) || createdAt < row.open_time - 5000)
+      return unconfirmed('position predates this request or has no UTC creation time');
+    if (
+      actual!.position.dealId !== dealId ||
+      actual!.market?.epic !== expected.epic ||
+      actual!.position.direction !== expected.direction ||
+      Math.abs(actual!.position.size - expected.size) > 1e-9
+    )
+      return unconfirmed('confirmed position does not match the request');
+    // Stop events arriving before a permanent deal id cannot be applied yet.
+    // Synchronize the current levels once confirmation makes that possible.
+    const latest = this.candidates().find(c => c.runId === e.runId && c.side === e.side && c.entry &&
+      (e.fillTime === null ? c.entry.time >= e.decisionTime : c.entry.time === e.fillTime))?.entry;
+    if (latest && (latest.stopLoss !== protection.stopLoss || latest.takeProfit !== protection.takeProfit || latest.trailingStop !== protection.trailingStop))
+      await this.putStops(dealId, latest.stopLoss, latest.takeProfit, latest.trailingStop);
   }
 
   private async closeDeal(d: DealRow, note: string, paperPrice?: number): Promise<void> {
