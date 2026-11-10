@@ -53,6 +53,7 @@ import {ENGINE_VERSION} from '../engine/version.ts';
 import { riskBackend } from '../engine/risk-native.ts';
 import { ForecastAvailability } from './dependency.ts';
 import { CpuBudget } from './cpu-budget.ts';
+import { ENGINE_SINCE_KEY, ENGINE_VERSION_KEY } from './twins.ts';
 
 export const DEMO_CAPITAL = 10_000;
 /** 1-minute history kept for warming agents up (4h agents need ~35 days for 200 bars). */
@@ -165,6 +166,11 @@ export class Arena {
     if(this.tickJournal)for(const {run} of this.tracked.values()) {
       const tick=run.snapshot().lastTick;
       if(tick?.journalId===this.tickJournal.journalId && tick.sequence!==undefined)this.tickJournal.reserveAfter(tick.sequence);
+    }
+    // The twin check judges the engine that runs now: remember when this version first ran.
+    if(this.liveMode && this.db.getSetting<string|null>(ENGINE_VERSION_KEY,null)!==ENGINE_VERSION) {
+      this.db.setSetting(ENGINE_VERSION_KEY,ENGINE_VERSION);
+      this.db.setSetting(ENGINE_SINCE_KEY,Date.now());
     }
     if(this.liveMode && this.db.getSetting<number|null>('feed.ticksSince',null)===null) {
       const at=Math.floor(Date.now()/MINUTE_MS)*MINUTE_MS;

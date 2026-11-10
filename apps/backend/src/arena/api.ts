@@ -22,7 +22,7 @@ import {ENGINE_VERSION} from '../engine/version.ts';
 import { graveyard } from './graveyard.ts';
 import { AgentEvidenceService } from './evidence.ts';
 import { costFingerprint, ingestCosts } from './cost-ingest.ts';
-import { twinReport, TWIN_DEFAULT_DAYS, TWIN_MAX_DAYS } from './twins.ts';
+import { ENGINE_SINCE_KEY, ENGINE_VERSION_KEY, twinReport, TWIN_DEFAULT_DAYS, TWIN_MAX_DAYS } from './twins.ts';
 
 type Handler = (req: Request, params: Record<string, string>, url: URL) => Response | Promise<Response>;
 
@@ -193,7 +193,12 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   add(METHOD_GET, '/api/twins', (_req, _p, url) => {
     const days = Number(url.searchParams.get('days') ?? TWIN_DEFAULT_DAYS);
     if (!Number.isFinite(days) || days <= 0 || days > TWIN_MAX_DAYS) return json({ error: `days must be in (0, ${TWIN_MAX_DAYS}]` }, 400);
-    return json({ ...twinReport(db, days), feed: arena.feedStatus() });
+    // since=engine: only trades decided since the current engine version started; or a time in ms.
+    const engine = { version: db.getSetting<string | null>(ENGINE_VERSION_KEY, null), since: db.getSetting<number>(ENGINE_SINCE_KEY, 0) };
+    const sinceParam = url.searchParams.get('since');
+    const since = sinceParam === 'engine' ? engine.since : Number(sinceParam ?? 0);
+    if (!Number.isFinite(since) || since < 0) return json({ error: 'since must be "engine" or a time in ms' }, 400);
+    return json({ ...twinReport(db, days, Date.now(), since), engine, feed: arena.feedStatus() });
   });
 
   add(

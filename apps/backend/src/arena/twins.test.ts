@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
-import { buildTwinReport, CLOSED_BY, twinTrade, twinVerdict, twinStats, TWIN_VERDICT, type TwinRow } from './twins.ts';
+import { buildTwinReport, CLOSED_BY, twinReport, twinTrade, twinVerdict, twinStats, TWIN_VERDICT, type TwinRow } from './twins.ts';
+import { ArenaDB, DEAL_STATUS } from './db.ts';
 
 const T = Date.UTC(2026, 10, 5, 14);
 const RUN = 'demo:ema-cross/9-21:US500:x20:abc';
+const DAY = 86_400_000;
 /** A long US500 trade: paper buys 1 at 6000 and sells at 6010; the demo deal is 0.2 at the same prices. */
 function row(over: Partial<TwinRow> = {}): TwinRow {
   return {
@@ -67,4 +69,26 @@ test('the report groups pairs by run, instrument, exit and day, and counts unpai
   expect(r.byEpic.map(e => e.epic)).toEqual(['US500']);
   expect(r.days).toHaveLength(2);
   expect(r.unpaired).toEqual({ closedDeals: 3, withoutPaperTrade: 1, withoutBrokerPnl: 0 });
+});
+
+test('since the current engine: only trades decided from then on are paired', () => {
+  const db = new ArenaDB(':memory:');
+  try {
+    const now = T + 3_600_000;
+    db.db.query(`INSERT INTO runs (id, kind, agent_id, code_hash, epic, status, capital, params, started_at, updated_at, equity)
+      VALUES (?, 'demo', 'ema-cross/9-21', 'abc', 'US500', 'running', 10000, '{}', ?, ?, 10000)`).run(RUN, T - DAY, T);
+    for (const [i, decided] of [T - 600_000, T].entries()) {
+      const fill = decided + 500;
+      const id = db.insertDeal({ account: 'Arena 05', account_id: 'a5', run_id: RUN, epic: 'US500', side: 'long', size: 0.2, paper_size: 1, deal_id: `d${i}`,
+        status: DEAL_STATUS.CLOSED, open_time: decided + 200, open_price: 6000, paper_open_price: 6000, close_time: fill + 120_000, close_price: 6010,
+        paper_close_price: 6010, pnl: 2, note: 'paper signal' });
+      db.updateDeal(id, { decision_time: decided, virtual_fill_time: fill });
+      db.appendTrade(RUN, i, { side: 'long', size: 1, entryTime: fill, entryPrice: 6000, exitTime: fill + 120_000, exitPrice: 6010, pnl: 10, funding: 0,
+        exitReason: 'signal', barsHeld: 2 });
+    }
+    expect(twinReport(db, 1, now).overall.pairs).toBe(2);
+    const current = twinReport(db, 1, now, T);
+    expect(current.overall.pairs).toBe(1);
+    expect(current.since).toBe(T);
+  } finally { db.db.close(); }
 });
