@@ -15,7 +15,7 @@ import { effectiveLeverage } from '../engine/leverage.ts';
 import { runKey,PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import type { Candle } from '../engine/series.ts';
 import type { Arena } from './arena.ts';
-import type { AgentRow, RunRow } from './db.ts';
+import type { AgentRow, RunKind, RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
@@ -130,7 +130,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     const agents=url.searchParams.get('agents');
     const rows = leaderboard(arena, kind, url.searchParams.get('retired') === '1',actual?undefined:evidence,url.searchParams.get('scenario'),
       agents?new Set(agents.split(',')):undefined);
-    return json(actual ? demoLeaderboard(arena, rows,evidence) : rows);
+    return json(actual ? demoLeaderboard(arena, rows,evidence,Boolean(agents)) : rows);
   });
 
   add(METHOD_GET, '/api/scenarios', () =>
@@ -299,17 +299,20 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
   const db = arena.db;
   const agents = new Map(db.agents().map(a => [a.id, a]));
   const now=Date.now();
-  const backtests = new Map(db.listRuns(RUN_KIND.BACKTEST).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
+  // A few agents: read only their runs (indexed) instead of every run of every kind.
+  const scoped=only?[...only].flatMap(id=>db.listRunsForAgent(id)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0):undefined;
+  const runsOf=(k:RunKind,retired:boolean)=>scoped?scoped.filter(r=>r.kind===k&&(retired||!r.retired)):db.listRuns(k,retired);
+  const backtests = new Map(runsOf(RUN_KIND.BACKTEST,false).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const demotions = db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
-  const demoRows=db.listRuns(RUN_KIND.DEMO);
+  const demoRows=runsOf(RUN_KIND.DEMO,false);
   const forward = new Map(
     demoRows
       .filter(r => !isShadow(r.id))
       .map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]),
   );
-  const rows=kind===RUN_KIND.DEMO&&!includeRetired?demoRows:db.listRuns(kind,includeRetired);
-  return rows.filter(r=>(!only||only.has(r.agent_id))&&(!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario)).map(r => {
+  const rows=kind===RUN_KIND.DEMO&&!includeRetired?demoRows:runsOf(kind,includeRetired);
+  return rows.filter(r=>(!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario)).map(r => {
     const activeForward = forward.get(runKey(r.agent_id, r.epic, r.leverage ?? 0));
     const extra = r.extra ? JSON.parse(r.extra) : {};
     const a = agents.get(r.agent_id);
@@ -381,8 +384,8 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
   });
 }
 
-function demoLeaderboard(arena: Arena, rows: LeaderboardRow[], evidence?:AgentEvidenceService): LeaderboardRow[] {
-  const deals = arena.db.deals(100_000);
+function demoLeaderboard(arena: Arena, rows: LeaderboardRow[], evidence?:AgentEvidenceService,scoped=false): LeaderboardRow[] {
+  const deals = scoped ? rows.flatMap(r => arena.db.dealsForRun(r.runId)) : arena.db.deals(100_000);
   const grouped = Map.groupBy(deals, d => d.run_id);
   const scale = arena.broker?.status().scale ?? 0.2;
   return rows
