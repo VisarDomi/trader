@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nightly lab job: fresh candles -> daily history for the arena -> forecasts for any new agent -> backtests for new/changed agents -> Visar night paper grid.
+# Nightly lab job: fresh candles -> daily history for the arena -> forecasts for any new agent -> backtests for new/changed agents -> Visar night paper grid -> Night Lab report copy.
 # Runs inside trader.slice (50% CPU/RAM cap). Safe to run by hand.
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -32,5 +32,10 @@ if bun run night-grid; then
   fi
 else
   echo "night grid failed (continuing)"
+fi
+echo "== night lab report $(date -Is)"
+# The dashboard serves trader-ui/night-lab/night-lab.db; republish the lab's copy when it is missing or differs (after a wipe or a new report).
+if "$TRADER_PC_ACTIVE" && [[ -f data/night-lab/night-lab.db ]]; then
+  python3 "$REPO/ops/lab/night_lab_db.py" publish data/night-lab/night-lab.db "$TRADER_SERVER_ROOT/trader-ui/night-lab" || echo "night lab publish failed (continuing)"
 fi
 echo "== done $(date -Is)"

@@ -44,6 +44,11 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     expect(actual[0]!.demoAdmission).toEqual(admission);
     expect(bt[0]!.stage).toBe('demo');
     expect(virtual[0]!.metrics!.monthly).toHaveLength(0);
+    // agents= limits the rows to those agents, for both the virtual and the Capital demo view.
+    expect(await get<LeaderboardRow[]>(`/api/leaderboard?kind=demo&scenario=standard&agents=${encodeURIComponent(ID)},other`)).toHaveLength(1);
+    expect(await get<LeaderboardRow[]>('/api/leaderboard?kind=demo&scenario=standard&agents=other')).toHaveLength(0);
+    expect(await get<LeaderboardRow[]>('/api/leaderboard?kind=demo&stage=demo&agents=other')).toHaveLength(0);
+    expect(await get<LeaderboardRow[]>(`/api/leaderboard?kind=demo&stage=demo&agents=${encodeURIComponent(ID)}`)).toHaveLength(1);
     const detail = await get<RunDetail>(`/api/runs/${encodeURIComponent(RUN)}`);
     expect(detail.metrics!.monthly).toHaveLength(1);
     expect(detail.evidence?.costs?.closedTrades).toBe(0);

@@ -5,7 +5,8 @@
  * running build (PC deploys copy that folder forward), else the backend's data folder in dev.
  */
 import {existsSync} from 'node:fs';
-import {readFile} from 'node:fs/promises';
+import {readFile,stat} from 'node:fs/promises';
+import {prepare,type Prepared} from './night-lab';
 import {join,resolve} from 'node:path';
 
 export const GRID_EPICS=['US500','US100'] as const;
@@ -33,4 +34,14 @@ export function summarizeGrid(file:GridFile,epic:string){
 export async function nightGrid(dir:string){
   const epics=await Promise.all(GRID_EPICS.map(async epic=>summarizeGrid(JSON.parse(await readFile(join(dir,`${epic}.json`),'utf8')),epic)));
   return {schema:1,at:Math.min(...epics.map(e=>e.generatedAt)),epics};
+}
+
+/** The grid changes once a night: parse and compress it once per pair of files, not per request. */
+export function cachedNightGrid(dir:()=>string){
+  let key='',value:Promise<Prepared>|undefined;
+  return async():Promise<Prepared>=>{
+    const d=dir(),id=(await Promise.all(GRID_EPICS.map(epic=>stat(join(d,`${epic}.json`))))).map(s=>`${s.ino}:${s.size}:${s.mtimeMs}`).join('|');
+    if(id!==key||!value){key=id;value=nightGrid(d).then(g=>prepare(g,'grid'));value.catch(()=>{if(key===id)value=undefined})}
+    return value;
+  };
 }

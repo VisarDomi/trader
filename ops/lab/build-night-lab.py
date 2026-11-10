@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Publish bounded derived night-study results; never copy ticks, credentials or account data."""
-import array,base64,datetime as dt,gzip,hashlib,json,math,pathlib,zoneinfo
-ROOT=pathlib.Path(__file__).resolve().parents[2];P=ROOT/'apps/backend/data/night-breakdown-20261109';OUT=ROOT/'apps/ui/static/night-lab';OUT.mkdir(parents=True,exist_ok=True)
+"""Publish bounded derived night-study results to the Night Lab database; never copy ticks, credentials or account data."""
+import array,datetime as dt,hashlib,json,math,pathlib,zoneinfo
+ROOT=pathlib.Path(__file__).resolve().parents[2];P=ROOT/'apps/backend/data/night-breakdown-20261109'
+import night_lab_db  # the published report is one SQLite file served by the dashboard, never static assets
 STUDY=ROOT/'apps/backend/data/night-session-study-20261109'
 EXITS=ROOT/'apps/backend/data/night-exit-study-20261109'
 NY=zoneinfo.ZoneInfo('America/New_York');AL=zoneinfo.ZoneInfo('Europe/Tirane');UTC=dt.timezone.utc
@@ -91,32 +92,16 @@ for inst in instruments:
     inst['exitStudy']={'runs':positive,'curves':exits['curves'],'audit':exits['audit']}
 data={'generatedAt':dt.datetime.now(UTC).isoformat(),'years':(dt.date(2026,10,1)-dt.date(2024,1,1)).days/365.25,'window':['2024-01-01','2026-09-30'],'benchmarks':benchmarks,'stocks':stocks,'cohort':cohort,'instruments':instruments,'trades':trade_sets,'events':study_events,'gapThresholds':[0,5,15,30],'takeProfitTargets':[0,20,50,100],'caseCount':20736,'selection':{k:selection[k] for k in ['date','revision','method','base']}}
 assert len(instruments)==2 and all(len(x['runs'])==324 for x in instruments)
-(OUT/'report.json').write_text(json.dumps(data,separators=(',',':')))
-# The page embeds only fields it renders, at full numerical precision. Complete
-# audit/export data stays in report.json; unused trade/curve copies do not occupy phone RAM.
-view=json.loads(json.dumps(data))
-keys={'policy','profile','leverage','lossPct','profitPct','minimumGapBp','sessionWindow','n','eligible','tradesPerYear','wins','winPct','returnPct','maxDrawdownPct','worstTradePct','stops','rejected','targetHits','deadlineExits','otherExits','years','avgWinPct','avgLossPct','meanPct','meanSpreadPct','breakEvenWinPct','longestLossStreak'}
-def display_rows(rows):
-    out=[]
-    for r in rows:
-        x={k:v for k,v in r.items() if k in keys}
-        if r['profile']!='L20S20':
-            for k in ['avgWinPct','avgLossPct','meanPct','meanSpreadPct','breakEvenWinPct','longestLossStreak','years']:x.pop(k,None)
-        out.append(x)
-    return out
-for inst in view['instruments']:
-    inst['runs']=display_rows(inst['runs']);inst['central']['runs']=display_rows(inst['central']['runs'])
-    for part in [inst,inst['central']]:part['curves']={k:v for k,v in part['curves'].items() if k.endswith('/L20S20')}
-    for group in inst['gapStudy']['sessions'].values():
-        group['runs']=display_rows(group['runs']);group['trades']={}
-        group['curves']={g:{k:v for k,v in curves.items() if k.endswith('/L20S20')} for g,curves in group['curves'].items()}
-    inst['exitStudy']['runs']=display_rows(inst['exitStudy']['runs'])
-packed=base64.b64encode(gzip.compress(json.dumps(view,separators=(',',':')).encode(),mtime=0)).decode()
-template=(ROOT/'ops/lab/night-lab-template.html').read_text().replace('__STUDY_SCRIPT__',(ROOT/'ops/lab/night-lab-study-view.js').read_text());(OUT/'index.html').write_text(template.replace('__DATA__',packed))
-(OUT/'sw.js').write_text((ROOT/'ops/lab/night-lab-sw.js').read_text().replace('__VERSION__',hashlib.sha256(packed.encode()).hexdigest()[:12]).replace('__COHORT_VERSION__',hashlib.sha256(json.dumps([(r['id'],r['codeHash']) for r in cohort]).encode()).hexdigest()[:12]).replace('/*__COHORT_MEMBERS__*/[]',json.dumps([{k:r[k] for k in ['id','codeHash','epic','leverage']} for r in cohort])))
-(OUT/'manifest.webmanifest').write_text(json.dumps({'id':'/night-lab/','name':'Visar Night Lab','short_name':'Night Lab','start_url':'/night-lab/index.html','scope':'/night-lab/','display':'standalone','background_color':'#101114','theme_color':'#101114','icons':[{'src':'./icon-192.png','sizes':'192x192','type':'image/png'},{'src':'./icon-512.png','sizes':'512x512','type':'image/png'}]},indent=2)+'\n')
-for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']:(OUT/name).write_text((P/name).read_text())
-for epic in ['US500','US100']:(OUT/f'{epic.lower()}-gap-risk-grid.csv').write_text((STUDY/f'{epic}-gap-risk-grid.csv').read_text())
-for epic in ['US500','US100']:(OUT/f'{epic.lower()}-exit-risk-grid.csv').write_text((EXITS/f'{epic.lower()}-exit-risk-grid.csv').read_text())
-print('Published',len(cohort),'cohort members;20736 risk cells;0/20/50/100% profit targets; embedded display bytes',len(packed))
+# One database holds the complete report and its CSV exports (compressed once, here). The dashboard
+# serves each page section from it on demand; report.json is rebuilt from it byte for byte.
+text=lambda path:path.read_text().encode()  # the published CSVs have always had normalised newlines
+exports=[(name,'text/csv',text(P/name)) for name in ['trades.csv','risk-grid.csv','us100-risk-grid.csv']]
+exports+=[(f'{epic.lower()}-gap-risk-grid.csv','text/csv',text(STUDY/f'{epic}-gap-risk-grid.csv')) for epic in ['US500','US100']]
+exports+=[(f'{epic.lower()}-exit-risk-grid.csv','text/csv',text(EXITS/f'{epic.lower()}-exit-risk-grid.csv')) for epic in ['US500','US100']]
+assert sorted(n for n,_,_ in exports)==sorted(night_lab_db.CSV_EXPORTS)
+version=night_lab_db.write(data,exports,night_lab_db.LAB_DB,'build-night-lab.py')
+dest=night_lab_db.server_dir()
+if dest:print('Dashboard copy',dest,'updated' if night_lab_db.publish(night_lab_db.LAB_DB,dest) else 'already current')
+else:print('No dashboard runtime on this machine; nightly.sh publishes',night_lab_db.LAB_DB,'where one exists')
+print('Published report',version,'·',len(cohort),'cohort members · 20736 risk cells · 0/20/50/100% profit targets')
 print('Nasdaq fee-free full-cash price proxy',round(benchmarks['US100']['returnPct'],3),'%; whole-share scenario',round(whole,2),'USD; broker USD matches',len(known),'/101')
