@@ -170,11 +170,20 @@ until shown otherwise. The dashboard shows it under More → Paper vs demo (`/ap
 prints the daily check. Agent verdicts over a window: converged (≥90% agree, mean gap within half a
 spread), diverged (<75% agree or mean gap beyond a spread), watch in between, too few under 5 pairs.
 
-Known sources of gaps (2026-11-09): Capital's demo quote stream arrives 6–13 s after each quote's
-timestamp (REST shows the price 5–7 s earlier), so Capital's own stops fire before ours; demo orders reach
-Capital ~1 s after the paper fill (16 s at the 95th percentile at top-of-hour bursts); paper funding has
-run above Capital's booked swaps. Since `2026-11-feed-time` paper fills use the first quote stamped at or
-after the moment the order reaches Capital, and minutes close only once their late quotes arrive.
+The checks judge the current engine: `bun run twins` and the page's default view use only trades decided
+since the running engine version started (the arena records it as `engine.since`; a version bump restarts the
+window). The all-trades lines are context; old-engine divergence does not raise a CHECK.
+
+Known sources of gaps (2026-11-10): Capital's demo quote stream arrives 0.1–13 s after each quote's
+timestamp, in regimes (REST shows the price earlier), so Capital's own stops can fire before ours; paper fills
+use the first quote stamped at or after the order reaches Capital (`2026-11-feed-time`), and minutes close
+only once their late quotes arrive. Demo orders leave at the decision: accepted ~0.15–0.3 s after it, longer
+when one account has several orders in the same burst (each waits for the previous one's confirmation;
+Capital may answer a confirmation request with the account's latest deal). Capital books overnight swaps
+per account without a deal id, so the twins cannot compare funding per trade; at paper size its 14-day swaps
+(−$3.5k) exceeded the paper funding on paired trades (−$1.8k, closed trades only). Mirror bugs found by
+the twins: early closes of decided deals (fixed 0e754e4) and reversals closing their own new deal (fixed
+2026-11-10).
 
 ## Each visit (runbook)
 
