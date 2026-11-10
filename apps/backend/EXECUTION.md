@@ -97,7 +97,17 @@ of candles. CPU for the whole day:
 | 20,000 | 963 s (1.1%) | 386 s (0.45%) | 28.2M → 4.8M |
 | 50,000 | — | 963 s (1.1%), 420 MB | 11.9M |
 
-Identical opens and trades before and after. Memory grows ~6 KB per run plus its trade history; most of
+Identical opens and trades before and after. Those runs traded little: the benchmark refused orders after
+3 minutes on stale venue rules until 2026-11-10. With that fixed, 2 lead-in days with orders on, and engine
+`2026-11-feed-time-v2` (no modelled broker queue; quotes reach only positions they can change):
+
+| Runs | Open positions at start | Trades in the day | CPU for the day | Memory |
+|---|---|---|---|---|
+| 5,000 | 2,092 | 2,874 | 176 s (0.2% of a core); 237 s delivering every quote | 247 MB |
+| 20,000 | 8,358 | 11,535 | 722 s (0.84%) | 392 MB |
+
+State saving is now the largest part (open positions are saved every minute so a restart replays ticks
+exactly), then quote callbacks of agents that define one. Memory grows ~6 KB per run plus its trade history; most of
 the arena's memory is the shared 120-day candle history. The live arena reports CPU by part in
 `/api/execution` (`cpuParts`), which is where the remaining cost lives (metrics, API, broker candidates).
 What remains per quote is runs that are never idle: open positions, pending orders and agents with an

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Sub-second demo orders: one Capital session per demo account (no account switching), a job queue per account with orders before reconciliation, request priorities in the shared budget (orders, then confirmations and position checks, then polling) and an immediate first confirmation. Decision → accepted fell from a 7.4 s median (52 s at 40+ decisions a minute) to 0.2 s on the first night.
+
+- Engine `2026-11-feed-time-v2`: paper orders no longer pass through a modelled shared broker queue (FIFO pacing, 600 opens an hour across all runs); a burst never delays or blocks a paper order. A per-run guard of 12 opens an hour stays. Quotes reach only the positions they can change, and agent contexts are built from a per-run base; both proven identical on 11 recorded days.
+
 - Add paper–demo twins (user request 2026-11-09): every closed Capital demo deal is paired with its paper trade and compared per unit of notional (a pair agrees within one typical spread); per-agent verdicts converged / watch / diverged, by instrument, exit, day and largest gaps. `GET /api/twins?days=N`, `bun run twins` for the now-daily babysitter visit. Demo close prices come from Capital's booked P&L, since most demo closes are broker-side stops or closes confirmed with another deal's confirmation.
 
 - Engine `2026-11-feed-time`: Capital's demo quote stream arrives 6–13 s after each quote's timestamp (REST shows the price 5–7 s earlier; a fresh connection is just as late). Paper orders now fill on the first quote stamped at or after the moment the order reaches Capital, instead of the stale quote in hand, and the clock closes a quiet minute only after 1.5 × the observed delay, so live minutes contain their late quotes like Capital's candles and our backtests. Generated quotes have no delay and replay as before. Backtests refresh with the version; idle-minute thinning now switches to every quote when a decision falls inside a thinned minute.

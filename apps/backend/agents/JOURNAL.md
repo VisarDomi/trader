@@ -5,6 +5,38 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-10 (Tue, user-requested, night) — sub-second demo orders; bursts never touch the engine; cheaper quotes
+
+- Why: the user saw Capital's app answer in under a second, while our demo orders took seconds; a burst
+  must only queue on the broker side, never affect the engine; and the optimizations named the day before.
+- Diagnosis (14 days, 2,240 deals): Capital answers an order in 123 ms (p50; 602 ms p95). All the delay was
+  ours: decision → order sent 7.1 s median, 4.5 s even with under 10 decisions a minute, 52 s at 40+. One
+  session switched between the nine accounts (two requests per switch), each order held the single queue for
+  its confirmation (300 ms sleep first) and position check, and the minute's 40 candle/market requests
+  shared the same 170 ms pacer. Capital's limits (open-api.capital.com FAQ): 10 requests/s per user, orders
+  at most 1 per 0.1 s, 1,000 demo orders an hour, one login per second; concurrent sessions undocumented.
+- Fix (332d263): one session per demo account (nine concurrent sessions probed read-only first: all stayed
+  valid, the arena saw no 401s), a job queue per account with orders before reconciliation, a pacer that gives
+  the next slot to orders, then confirmations and position checks, then everything else, and an immediate
+  first confirmation. First night after it: decision → accepted 0.2 s median, 1.1 s p90, 2.3 s worst (8 deals,
+  at most 4 in a minute; the morning's hourly bursts are the real test). A burst of 40 still needs ~7 s at
+  Capital's budget; that is the mirror's queue only.
+- Engine `2026-11-feed-time-v2`: the modelled shared broker queue is gone from paper execution (it paced all
+  runs FIFO and capped them at 600 opens an hour together); each paper order fills after its own delay. A
+  per-run guard of 12 opens an hour stays. Tonight's lab refreshes the backtests for the version.
+- Quotes only reach positions they can change (a stop, the trailing anchor, take-profit, margin close-out, a
+  new equity peak or deeper drawdown, a time rule): 99.5% of position checks on 3 BTC days needed nothing.
+  11 recorded days, 486 runs, 1,525 trades: identical to delivering every quote. Agent contexts are built
+  from a per-run base (the top hotspot for agents with a quote callback): identical results, replay 69 → 52 s.
+  The benchmark now trades for real (it had refused orders after 3 minutes on stale venue rules): 5,000 runs
+  with 2,092 open positions, a full day, 237 s CPU delivering every quote vs 172 s skipping, same trades.
+- Not done: sharing bar work across copies of an agent (bars are 0.6% of engine CPU at 50,000 runs, and agents
+  branch on their own position). The night cohort and its delay copies (~113 runs per US index) define a quote
+  callback, so every US100/US500 quote still reaches them although it only acts with a profit target; a future
+  SDK flag could let new agent versions ask for quotes only while positioned (changing these agents' code
+  would restart the cohort).
+- Live after c33e40e: 0.23 ms per quote, quote callbacks 0.07 ms, 2–4% of a core in total by session.
+
 ## 2026-11-09 (Mon, user-requested) — paper–demo twins, Capital's late quote stream, cheap idle agents
 
 - Why: the user wants every agent, demo or paper, trading on ticks by its own policy; each demo agent with a
