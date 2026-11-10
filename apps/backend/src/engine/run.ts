@@ -223,6 +223,11 @@ export class AgentRun {
   readonly extra: ReadonlyMap<Timeframe, BarSeries>;
   readonly warmup: number;
   private readonly checkStopsOnCandles: boolean;
+  /** Agent definitions differ in shape; reading these per quote is a slow lookup, so they are read once. */
+  private readonly hasTickCallback: boolean;
+  private readonly intradayOnly: boolean;
+  /** Per-run part of the agent context: bound methods and live getters (see makeContext). */
+  private contextBase: object | null = null;
   private readonly onEvent?: (event: RunEvent) => void;
   private readonly onEntryDecision?: RunOptions['onEntryDecision'];
   private readonly beforeEntryContext?: RunOptions['beforeEntryContext'];
@@ -315,6 +320,8 @@ export class AgentRun {
     this.primary = opts.primary;
     this.extra = opts.extra;
     this.checkStopsOnCandles = opts.checkStopsOnCandles;
+    this.hasTickCallback = opts.agent.onTick !== undefined;
+    this.intradayOnly = opts.agent.intradayOnly === true;
     this.onEvent = opts.onEvent;
     this.onEntryDecision = opts.onEntryDecision;
     this.beforeEntryContext = opts.beforeEntryContext;
@@ -354,7 +361,7 @@ export class AgentRun {
       this.accrueFunding(c.time, c.close);
       // Only minutes that started after the entry can hit its stops.
       if (this.checkStopsOnCandles && c.time >= this.position.entryTime) this.checkStopsOnCandle(c, spread);
-      if (this.position && this.agent.intradayOnly && isSessionEnd(c.time)) {
+      if (this.position && this.intradayOnly && isSessionEnd(c.time)) {
         if (this.execution) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
         else this.closePosition(EXIT_REASON.SESSION_END, this.exitPrice(this.position.side), c.time + 60_000);
       }
@@ -420,7 +427,7 @@ export class AgentRun {
    * (adoptQuote). A run is never idle before its first quote (that quote sets its start time).
    */
   get quoteIdle(): boolean {
-    return this.position === null && this.pending.length === 0 && this.startTime !== 0 && this.agent.onTick === undefined;
+    return this.position === null && this.pending.length === 0 && this.startTime !== 0 && !this.hasTickCallback;
   }
 
   /**
@@ -432,10 +439,10 @@ export class AgentRun {
    * results equal delivering every quote, while a quote costs a few comparisons per open position.
    */
   quoteMatters(q: Tick): boolean {
-    if (this.startTime === 0 || this.pending.length !== 0 || this.agent.onTick !== undefined) return true;
+    if (this.startTime === 0 || this.pending.length !== 0 || this.hasTickCallback) return true;
     const pos = this.position;
     if (pos === null || this.status !== RUN_STATUS.RUNNING) return false;
-    if (pos.closeAt !== undefined || this.agent.intradayOnly) return true;
+    if (pos.closeAt !== undefined || this.intradayOnly) return true;
     if (fundingDay(q.receivedAt) > pos.lastFundingDay) return true;
     const long = pos.side === SIDE_LONG, px = long ? q.bid : q.ask;
     const eq = this.balance + (long ? (px - pos.entryPrice) * pos.size : (pos.entryPrice - px) * pos.size);
@@ -473,7 +480,7 @@ export class AgentRun {
   writeRisk(out: Float64Array, offset: number, q: Tick, day: number): boolean {
     const p = this.position;
     if (!p || this.status !== RUN_STATUS.RUNNING || this.pending.length ||
-      p.closeAt !== undefined || this.agent.intradayOnly || day > p.lastFundingDay) return false;
+      p.closeAt !== undefined || this.intradayOnly || day > p.lastFundingDay) return false;
     out[offset] = p.side === SIDE_LONG ? 1 : -1;
     out[offset + 1] = p.size;
     out[offset + 2] = p.entryPrice;
@@ -525,14 +532,14 @@ export class AgentRun {
     }
     if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.receivedAt);
     this.updateTrailAnchor(pos, exitPx);
-    if (this.agent.intradayOnly && isSessionEnd(q.time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
+    if (this.intradayOnly && isSessionEnd(q.time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
   }
 
   /** Separate from account checks so bar callbacks and tick callbacks see one consistent market event. */
   dispatchTick(expected?: Tick): void {
-    if (!this.tick || (expected && this.tick!==expected) || !this.agent.onTick || this.status !== RUN_STATUS.RUNNING) return;
+    if (!this.tick || (expected && this.tick!==expected) || !this.hasTickCallback || this.status !== RUN_STATUS.RUNNING) return;
     const started=performance.now();
-    try {this.agent.onTick(this.makeContext(this.currentBar??this.primary.last??null,this.tick.receivedAt) as never);}
+    try {this.agent.onTick!(this.makeContext(this.currentBar??this.primary.last??null,this.tick.receivedAt) as never);}
     catch(e){this.handleAgentError(e,this.tick.receivedAt);}
     this.agentTickMs+=performance.now()-started;
     this.ticksSeen++;
@@ -544,7 +551,7 @@ export class AgentRun {
     this.accrueFunding(time, this.quote.bid);
     if (this.position.closeAt !== undefined && time >= this.position.closeAt)
       this.closeByAgent(SCHEDULED_EXIT_NOTE, EXIT_REASON.SESSION_END);
-    if (this.agent.intradayOnly && isSessionEnd(time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
+    if (this.intradayOnly && isSessionEnd(time)) this.closeByAgent(undefined, EXIT_REASON.SESSION_END);
   }
 
   /** A primary-timeframe bar closed: let the agent decide. */
@@ -754,7 +761,7 @@ export class AgentRun {
       });
       return;
     }
-    if (this.agent.intradayOnly && isSessionBlackout(time)) {
+    if (this.intradayOnly && isSessionBlackout(time)) {
       this.log(time, `order ignored: ${side} during the daily session break window`);
       return;
     }
@@ -1155,10 +1162,27 @@ export class AgentRun {
     return pos.heldBars ?? 0;
   }
 
+  /**
+   * The agent's view for one callback. Everything that does not change between calls (bound methods, live
+   * getters for state, position, equity, bars …) sits on a per-run base object built once; each call adds
+   * only its own fields. Callbacks run on every quote for tick agents, so this is the engine's hottest
+   * allocation; values read through the context are the same as with a fresh literal per call.
+   */
   private makeContext(bar: Bar | null, eventTime?: number): AgentContext {
     const run = this;
     const time = eventTime ?? (bar ? bar.time + this.primary.tfMs : this.tick?.receivedAt??0);
-    const isWarmup = !this.allowOrders || this.primary.closedCount < this.warmup;
+    const ctx = Object.create(this.contextBase ??= this.buildContextBase()) as Record<string, unknown>;
+    ctx.bar = bar;
+    ctx.time = time;
+    ctx.tick = this.tick;
+    ctx.isWarmup = !this.allowOrders || this.primary.closedCount < this.warmup;
+    ctx.forecast = this.forecast;
+    ctx.log = (...args: unknown[]) => run.log(time, args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+    return ctx as unknown as AgentContext;
+  }
+
+  private buildContextBase(): object {
+    const run = this;
     return {
       epic: this.instrument.epic,
       instrument: this.instrumentInfo,
@@ -1171,12 +1195,12 @@ export class AgentRun {
       set state(value) {
         run.state = value;
       },
-      bar:bar!,
-      bars: this.primary.bars,
-      time,
-      tick:this.tick,
-      ticks:this.tickHistory,
-      isWarmup,
+      get bars() {
+        return run.primary.bars;
+      },
+      get ticks() {
+        return run.tickHistory;
+      },
       get position() {
         return run.publicPosition();
       },
@@ -1186,19 +1210,19 @@ export class AgentRun {
       get balance() {
         return run.balance;
       },
-      ta: this.primary.ta,
+      get ta() {
+        return run.primary.ta;
+      },
       tf(timeframe: Timeframe): TimeframeView {
         if (timeframe === run.primary.timeframe) return { bars: run.primary.bars, ta: run.primary.ta };
         const s = run.extra.get(timeframe);
         if (!s) throw new Error(`ctx.tf('${timeframe}') needs '${timeframe}' in extraTimeframes`);
         return { bars: s.bars, ta: s.ta };
       },
-      forecast: this.forecast,
       buy: (o?: OrderOptions) => run.open(SIDE_LONG, o),
       sell: (o?: OrderOptions) => run.open(SIDE_SHORT, o),
       close: (reason?: string) => run.closeByAgent(reason),
       setStops: (u: StopUpdate) => run.setStops(u),
-      log: (...args: unknown[]) => run.log(time, args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')),
       random: () => run.random(),
     };
   }
