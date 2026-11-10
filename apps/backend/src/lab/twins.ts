@@ -51,9 +51,9 @@ out.push(
 out.push(`runs: ${execution.virtual.standardRuns} standard + ${execution.virtual.comparisonRuns} delay comparisons (cap ${execution.virtual.runCap})`);
 
 if (day.overall.pairs >= 30 && day.overall.agreeShare !== null && fortnight.overall.agreeShare !== null && day.overall.agreeShare < fortnight.overall.agreeShare - 0.1)
-  check(`agreement fell to ${share(day.overall.agreeShare)} in the last day (14 days: ${share(fortnight.overall.agreeShare)})`);
-if (fortnight.overall.meanGapBps !== null && Math.abs(fortnight.overall.meanGapBps) > 1) check(`14-day mean gap ${bp(fortnight.overall.meanGapBps)}: a systematic bias`);
-if (fortnight.verdicts.diverged > 0) check(`${fortnight.verdicts.diverged} agents diverged over 14 days`);
+  check(`agreement fell to ${share(day.overall.agreeShare)} in the last day (current engine: ${share(fortnight.overall.agreeShare)})`);
+if (fortnight.overall.meanGapBps !== null && Math.abs(fortnight.overall.meanGapBps) > 1) check(`mean gap ${bp(fortnight.overall.meanGapBps)} over ${fortnight.overall.pairs} current-engine pairs: a systematic bias, or one outlier among few pairs`);
+if (fortnight.verdicts.diverged > 0) check(`${fortnight.verdicts.diverged} agents diverged under the current engine`);
 if (feed?.medianDelayMs > 20_000) check(`quote stream ${feed.medianDelayMs} ms late: close to the 30 s cut-off for usable quotes`);
 if (execution.virtual.cpuCorePercent > 50) check(`arena uses ${execution.virtual.cpuCorePercent}% of a core`);
 // Capital answers an order in ~0.12 s; more than a second from decision to acceptance is our queue.

@@ -5,6 +5,43 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-10 (Tue) — daily visit: three mirror fixes; twins judged on the current engine
+
+- Health: green. Stream and forecaster up; tick journal 48.8M received, 0 dropped; storage 15.6 GB (two-year
+  35.5 GB, 4× stress 75 GB of 100); no errors in 3 days. Nightly lab 03:37–03:46: all 556 backtests refreshed
+  for `2026-11-feed-time-v2` in 2.6 min (555 completed; leverage-ladder/hold US100 1:200 busted, −100% in 3
+  trades); night grid built 03:46. No agent was waiting for admission. Arena RSS 606 MB after 8 h (330 MB after
+  a restart, cgroup peak 742 MB): above the ~500 MB guide, to watch.
+- Verdicts: control 148, early 395, keep 9, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no
+  additions (Tuesday).
+- Twins: all trades over 14 days 2,202 pairs, 55% agree, 141 agents diverged: the old engine and the old queue.
+  Since engine v2 (decided after 2026-11-09 22:19 UTC) 11 pairs, 10 agree; all 16 entries since the feed-time
+  engine within a spread. Every disagreement found was the mirror: three timesfm-drift pairs (AUDUSD,
+  OIL_CRUDE ×2) from the early-close bug fixed in 0e754e4, and ema-cross/9-21 BTCUSD from the reversal bug
+  below. The remaining CHECK (mean +8.9 bp over 11 pairs) is that pair (+96 bp); it fades as pairs accumulate.
+- Fixed (13d3ba5, deployed d57347a 09:43):
+  - Reversals: the old side's paper close, seconds after the decision, closed every demo deal of the run,
+    including the new side's deal sent at the decision, and the fill then reopened it. All 4 reversals since
+    decision-time orders (ema-cross BTCUSD ×2, hma-slope GOLD, tsmom/5d US500): an extra spread and order, and
+    a 1–5 s demo deal paired with an hours-long paper trade. A paper close now closes only its own side.
+  - A decided order that waited in a burst until after its paper fill went out linked to the fill; the fill then
+    tried a second open, stopped by the guard ("previous deal is still open": SILVER 02:00, US100 and ETHUSD
+    05:00). The fill now recognises its deal.
+  - Several orders on one account in a burst: each waited ~1 s for the previous one's confirmation and position
+    check. The check (never failed in 5,633 deals since October 1) and the protection resync now run after the
+    account's queued orders. Since last night's broker fix: 47 orders, decision → accepted median 0.30 s, 35
+    under 1 s, 90th percentile 2.2 s; the slow ones were the 2nd–4th orders on one account at 02:00 and 05:00.
+- Twins judge the current engine (492ee71): the arena records `engine.since` when its engine version changes
+  (seeded to the v2 start, 2026-11-09 22:19 UTC); `bun run twins` raises CHECKs on trades decided since then,
+  with all trades as context, and Paper vs demo opens on that view.
+- Correction: the funding gap was not real. Capital books SWAP transactions without a deal id (known since
+  October, kept per account), so the twins compared paper funding with zero. Over 14 days at paper size,
+  Capital's swaps were −$3.5k against −$1.8k paper funding on paired, closed trades: paper does not overcharge,
+  and Capital may charge more. The 2026-11-09 entry's "$2.8k more" is wrong. CLI and page show paper funding.
+- Next: burst latency after this deploy (later orders on one account); match swaps to positions per account
+  and night (amount ∝ size × price) for a real funding comparison; arena RSS after 24 h; current-engine pairs
+  toward agent verdicts.
+
 ## 2026-11-10 (Tue, user-requested, night) — sub-second demo orders; bursts never touch the engine; cheaper quotes
 
 - Why: the user saw Capital's app answer in under a second, while our demo orders took seconds; a burst
@@ -1556,6 +1593,8 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 - Visar night v2 — user-selected full/central-session and minimum bid-gap/risk cohort; ten higher-frequency roles, nineteen replacements plus unchanged original. Backtest-selected, not validated; old nineteen archived (2026-11-09).
 
 One line per idea: agent — mechanism — status (date).
+
+Visit 2026-11-10: no new agent, retirement or tuning; mirror and twin-report fixes only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
