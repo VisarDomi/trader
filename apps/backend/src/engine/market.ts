@@ -76,6 +76,9 @@ export class MarketEngine {
   private completedCandles: Candle[] = [];
   private feedDelay: number | null = null;
   rejectedTicks = 0;
+  /** Accepted quotes, and quote deliveries to runs (the per-quote work: runs a quote could change). */
+  acceptedTicks = 0;
+  deliveredRunTicks = 0;
   /** Smoothed delay between a quote's timestamp and its arrival. */
   get feedDelayMs(): number {
     return this.feedDelay ?? 0;
@@ -239,10 +242,12 @@ export class MarketEngine {
     }
     const risk = this.risk.evaluate(this.runs, q);
     const runs = this.runs, skip = this.skipIdleQuotes;
+    this.acceptedTicks++;
     for (let i = 0; i < runs.length; i++) {
       const run = runs[i]!;
       // The native risk batch updates positions itself; with it only flat idle runs are skipped.
       if (skip && (risk === undefined ? !run.quoteMatters(q) : run.quoteIdle)) continue;
+      this.deliveredRunTicks++;
       run.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
     }
     return closed;

@@ -876,7 +876,9 @@ export class Arena {
     const epics = [...this.engines].map(([epic, e]) => {
       const delays = e.ticks.slice(-200).map(q => q.receivedAt - q.time).sort((a, b) => a - b);
       const at = (p: number) => (delays.length ? delays[Math.min(delays.length - 1, Math.floor((delays.length - 1) * p))]! : null);
-      return { epic, smoothedMs: Math.round(e.feedDelayMs), clockGraceMs: e.clockGraceMs, p50Ms: at(0.5), p95Ms: at(0.95), lastQuoteAt: e.lastAcceptedTick?.time ?? null };
+      return { epic, smoothedMs: Math.round(e.feedDelayMs), clockGraceMs: e.clockGraceMs, p50Ms: at(0.5), p95Ms: at(0.95), lastQuoteAt: e.lastAcceptedTick?.time ?? null,
+        runs: e.runs.length, positions: e.runs.filter(r => r.position !== null).length,
+        runsPerQuote: e.acceptedTicks ? Math.round((e.deliveredRunTicks / e.acceptedTicks) * 10) / 10 : null };
     });
     const p50s = epics.flatMap(e => (e.p50Ms === null ? [] : [e.p50Ms])).sort((a, b) => a - b);
     return { medianDelayMs: p50s.length ? p50s[Math.floor(p50s.length / 2)]! : null, epics };
