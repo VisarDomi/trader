@@ -76,7 +76,12 @@ export interface TwinTrade {
   paperUsd: number;
   demoUsd: number;
   gapUsd: number;
+  /**
+   * Linked broker adjustments minus paper funding. Capital books overnight swaps without a deal id, so they are
+   * not linked: until they are matched to positions this is paper funding with the sign flipped.
+   */
   fundingGapUsd: number;
+  paperFundingUsd: number;
   /** Decision → demo order accepted by Capital (the paper twin assumes DEFAULT_EXECUTION_MS). */
   entryLagMs: number | null;
   /** Paper exit → demo P&L booked (negative: the demo deal closed first). */
@@ -94,6 +99,7 @@ export interface TwinStats {
   demoUsd: number;
   gapUsd: number;
   fundingGapUsd: number;
+  paperFundingUsd: number;
   entryLagP50Ms: number | null;
   entryLagP95Ms: number | null;
   exitLagP50Ms: number | null;
@@ -122,6 +128,8 @@ export interface TwinReport {
   runs: TwinRun[];
   worst: TwinTrade[];
   unpaired: { closedDeals: number; withoutPaperTrade: number; withoutBrokerPnl: number };
+  /** Only trades decided from this time on (0: all). */
+  since?: number;
 }
 
 const round = (x: number, digits = 2) => {
@@ -176,6 +184,7 @@ export function twinTrade(r: TwinRow): TwinTrade | null {
     demoUsd: round(demoUsd),
     gapUsd: round(demoUsd - paperGross),
     fundingGapUsd: round(r.brokerAdjust * (r.paperSize / r.size) - funding),
+    paperFundingUsd: round(funding),
     entryLagMs: r.sentTime === null ? null : r.sentTime - (r.decisionTime ?? r.paperFillTime),
     exitLagMs: brokerExitAt === null ? null : brokerExitAt - r.paperExitTime,
   };
@@ -204,6 +213,7 @@ export function twinStats(trades: readonly TwinTrade[]): TwinStats {
     demoUsd: sum(t => t.demoUsd),
     gapUsd: sum(t => t.gapUsd),
     fundingGapUsd: sum(t => t.fundingGapUsd),
+    paperFundingUsd: sum(t => t.paperFundingUsd),
     entryLagP50Ms: q(entryLags, 0.5),
     entryLagP95Ms: q(entryLags, 0.95),
     exitLagP50Ms: q(exitLags, 0.5),
@@ -295,8 +305,18 @@ export function twinRows(db: ArenaDB, from: number, to: number): TwinRow[] {
     .all(from, to);
 }
 
-export function twinReport(db: ArenaDB, days: number, now = Date.now()): TwinReport {
+/**
+ * Pairs whose paper exit falls in the last `days`. With `since`, only trades decided (or, before decision-time
+ * orders, filled) from then on: the arena records when the current engine version started (ENGINE_SINCE_KEY),
+ * so the daily check judges the engine and mirror that run now, not the ones they replaced.
+ */
+export function twinReport(db: ArenaDB, days: number, now = Date.now(), since = 0): TwinReport {
   const to = now,
     from = now - days * DAY_MS;
-  return buildTwinReport(twinRows(db, from, to), from, to, now);
+  const rows = twinRows(db, from, to).filter(r => since === 0 || (r.decisionTime ?? r.paperFillTime ?? 0) >= since);
+  return { ...buildTwinReport(rows, from, to, now), since };
 }
+
+/** kv keys: the engine version the arena runs and when it first ran it. */
+export const ENGINE_VERSION_KEY = 'engine.version';
+export const ENGINE_SINCE_KEY = 'engine.since';

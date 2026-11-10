@@ -4,8 +4,9 @@
  *   bun run twins [--json]
  *
  * Reads the arena (ARENA_URL, default 127.0.0.1:4120): the last day and the last 14 days of paired demo
- * deals and paper trades, Capital's quote-stream delay and where the arena spends its CPU. Lines starting
- * with "CHECK" need a look: a divergence is an engine or mirror bug until shown otherwise.
+ * deals and paper trades (all, and those decided since the current engine version started, which the
+ * checks use), Capital's quote-stream delay and where the arena spends its CPU. Lines starting with "CHECK"
+ * need a look: a divergence is an engine or mirror bug until shown otherwise.
  */
 const base = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
 const get = async (path: string) => {
@@ -13,9 +14,12 @@ const get = async (path: string) => {
   if (!res.ok) throw Error(`${path}: ${res.status} ${await res.text()}`);
   return res.json() as Promise<any>;
 };
-const [day, fortnight, execution] = await Promise.all([get('/api/twins?days=1'), get('/api/twins?days=14'), get('/api/execution')]);
+// The checks judge the engine and mirror that run now: trades decided since the current engine version started.
+const [allDay, allFortnight, day, fortnight, execution] = await Promise.all([
+  get('/api/twins?days=1'), get('/api/twins?days=14'), get('/api/twins?days=1&since=engine'), get('/api/twins?days=14&since=engine'), get('/api/execution'),
+]);
 if (process.argv.includes('--json')) {
-  console.log(JSON.stringify({ day, fortnight, cpu: execution.virtual.cpuParts, feed: execution.virtual.feed }, null, 2));
+  console.log(JSON.stringify({ day, fortnight, allDay, allFortnight, cpu: execution.virtual.cpuParts, feed: execution.virtual.feed }, null, 2));
   process.exit(0);
 }
 const share = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
@@ -23,11 +27,16 @@ const bp = (x: number | null) => (x === null ? '—' : `${x > 0 ? '+' : ''}${x.t
 const usd = (x: number) => `${x < 0 ? '-' : '+'}$${Math.abs(x).toFixed(0)}`;
 const line = (label: string, o: any) =>
   `${label}: ${o.pairs} pairs, ${share(o.agreeShare)} agree, mean gap ${bp(o.meanGapBps)}, 95th pct ${o.p95AbsGapBps ?? '—'} bp, ` +
-  `demo − paper ${usd(o.gapUsd)}, funding ${usd(o.fundingGapUsd)}, demo order accepted ${o.entryLagP50Ms ?? '—'} ms after the decision (p95 ${o.entryLagP95Ms ?? '—'} ms; paper assumes 500)`;
+  `demo − paper ${usd(o.gapUsd)}, paper funding ${usd(o.paperFundingUsd)} (Capital's swaps carry no deal id: not paired), demo order accepted ${o.entryLagP50Ms ?? '—'} ms after the decision (p95 ${o.entryLagP95Ms ?? '—'} ms; paper assumes 500)`;
 const out: string[] = [];
 const check = (why: string) => out.push(`CHECK ${why}`);
-out.push(line('last day', day.overall), line('last 14 days', fortnight.overall));
-out.push(`agents (14 days): ${Object.entries(fortnight.verdicts).map(([v, n]) => `${n} ${v}`).join(', ')}`);
+const verdicts = (r: any) => Object.entries(r.verdicts).map(([v, n]) => `${n} ${v}`).join(', ');
+const since = new Date(fortnight.engine.since).toISOString().slice(0, 16).replace('T', ' ');
+out.push(`all trades: ${line('last day', allDay.overall)}`, `all trades: ${line('last 14 days', allFortnight.overall)}`);
+out.push(`all trades, agents (14 days): ${verdicts(allFortnight)}`);
+out.push(`current engine ${fortnight.engine.version} (trades decided since ${since} UTC; the checks below use these):`);
+out.push(line('  last day', day.overall), line('  last 14 days', fortnight.overall));
+out.push(`  agents: ${verdicts(fortnight)}`);
 for (const r of fortnight.runs.filter((r: any) => r.verdict === 'diverged').slice(0, 10))
   out.push(`  diverged ${r.runId}: ${r.pairs} pairs, ${share(r.agreeShare)} agree, mean gap ${bp(r.meanGapBps)} (spread ${r.toleranceBps} bp), ${usd(r.gapUsd)}`);
 for (const e of fortnight.byExit.slice(0, 6))

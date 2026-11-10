@@ -10,6 +10,11 @@
 	const VERDICT_CLASS: Record<string, string> = { converged: 'status-good', watch: 'status-warning', diverged: 'status-critical', 'too few': '' };
 	const reasons: Record<string, string> = { stop_loss: 'stop', take_profit: 'take-profit', trailing_stop: 'trailing stop', signal: 'agent exit', reverse: 'reversal', session_end: 'timed exit', margin_call: 'margin call' };
 	let showAll = $state(false);
+	const title = $derived(
+		data.window === 'engine'
+			? `since the current engine started (${r?.engine?.version ?? '?'}, ${day(r?.since)})`
+			: `last ${data.window} days`,
+	);
 	const runs = $derived(r ? (showAll ? r.runs : r.runs.filter((x: any) => x.verdict !== 'too few').slice(0, 60)) : []);
 </script>
 
@@ -17,7 +22,7 @@
 	<header class="row" style="justify-content: space-between">
 		<h1>Paper vs demo</h1>
 		<nav class="pill-group" aria-label="Window">
-			{#each data.windows as d}<a href="?days={d}" class:active={d === data.days}>{d} days</a>{/each}
+			{#each data.windows as d}<a href="?days={d}" class:active={d === data.window}>{d === 'engine' ? 'Current engine' : `${d} days`}</a>{/each}
 		</nav>
 	</header>
 	<p class="secondary lede">
@@ -31,14 +36,17 @@
 	{#if r}
 		<div class="grid">
 			<section class="card stack-sm">
-				<h2>Agreement, last {data.days} days</h2>
+				<h2>Agreement, {title}</h2>
 				<div class="big">{share(r.overall.agreeShare)} <span class="muted">of {r.overall.pairs} paired trades agree</span></div>
 				<div>Mean gap {bp(r.overall.meanGapBps)} · median size {absBp(r.overall.medianAbsGapBps)} · 95th percentile {absBp(r.overall.p95AbsGapBps)}</div>
 				<div>
 					Paper {usd(r.overall.paperUsd, 0)} · demo at paper size {usd(r.overall.demoUsd, 0)} ·
 					<strong class:up={r.overall.gapUsd > 0} class:down={r.overall.gapUsd < 0}>{usd(r.overall.gapUsd, 0)}</strong> for demo
 				</div>
-				<div class="muted">Swap and adjustments vs paper funding: {usd(r.overall.fundingGapUsd, 0)} for demo</div>
+				<div class="muted">
+					Paper funding {usd(r.overall.paperFundingUsd ?? 0, 0)}, not compared: Capital books overnight swaps per account without a deal id,
+					so they cannot be paired with trades yet.
+				</div>
 			</section>
 			<section class="card stack-sm">
 				<h2>Agents</h2>
