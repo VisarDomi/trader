@@ -2,7 +2,8 @@
 """Reproducible user-requested selection on inspected history, never validation."""
 import collections,json,math,pathlib
 ROOT=pathlib.Path(__file__).resolve().parents[2]
-D=json.loads((ROOT/'apps/ui/static/night-lab/report.json').read_text())
+import night_lab_db
+D=night_lab_db.read_report(night_lab_db.LAB_DB)  # the published report, rebuilt from the Night Lab database
 EXITS=ROOT/'apps/backend/data/night-exit-study-20261109'
 TIERS={1:3,2:0,3:2,5:4,10:5,20:3,50:5,100:3,200:2}
 # Free slots plus the nineteen replaced assignments; no other strategy is displaced.

@@ -96,6 +96,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
 | Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the dashboard Status page |
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
+| Night Lab report | `python3 ops/lab/build-night-lab.py` (inside trader.slice) writes the study once into `apps/backend/data/night-lab/night-lab.db` and publishes it to `trader-ui/night-lab/`; the nightly job republishes it if missing. The dashboard serves each page section from it; nothing data-sized is in `apps/ui/static` or the UI build. Details: `apps/ui/setup.md` → Night Lab. |
 | Visar night paper grid | Last nightly step: `cd apps/backend && bun run night-grid` replays all 336 settings per index since 2026-10-01 into `data/night-grid/`, copied to `trader-ui/night-grid/` (Night Lab → Paper grid). Idle minutes carry only their open/high/low/close quotes; `--full` replays every quote for an audit. Paper only. |
 | Free heavy CPU/RAM/GPU work / resume it | `heavy-resources-stop` / `heavy-resources-start`: video pipeline, TimesFM and nightly lab work. Trading, tick capture/archive and dashboard stay running. The hold survives reboot until explicitly resumed. |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |

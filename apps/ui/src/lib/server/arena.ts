@@ -50,7 +50,7 @@ export const arena = {
 	scenarios: () => call<{ name: string; count: number }[]>('/api/scenarios'),
 	status: () => call<ArenaStatus>('/api/status'),
 	events: (limit = 200) => call<ArenaEvent[]>(`/api/events?limit=${limit}`),
-	leaderboard: (kind: RunKind, retired = false, stage = '', scenario = '') => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}${stage ? `&stage=${stage}` : ''}${scenario ? `&scenario=${encodeURIComponent(scenario)}` : ''}`),
+	leaderboard: (kind: RunKind, retired = false, stage = '', scenario = '', agents: readonly string[] = []) => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}${stage ? `&stage=${stage}` : ''}${scenario ? `&scenario=${encodeURIComponent(scenario)}` : ''}${agents.length ? `&agents=${encodeURIComponent(agents.join(','))}` : ''}`),
 	agents: () => call<AgentListItem[]>('/api/agents'),
 	graveyard: () => call<GraveyardEntry[]>('/api/graveyard'),
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),

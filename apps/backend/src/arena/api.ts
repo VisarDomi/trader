@@ -126,7 +126,10 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   add(METHOD_GET, '/api/leaderboard', (_req, _p, url) => {
     const kind = url.searchParams.get('kind') === RUN_KIND.BACKTEST ? RUN_KIND.BACKTEST : RUN_KIND.DEMO;
     const actual=url.searchParams.get('stage')===STAGE.DEMO;
-    const rows = leaderboard(arena, kind, url.searchParams.get('retired') === '1',actual?undefined:evidence,url.searchParams.get('scenario'));
+    // agents=a,b,…: only those agents' rows (the Night Lab needs 20 of thousands).
+    const agents=url.searchParams.get('agents');
+    const rows = leaderboard(arena, kind, url.searchParams.get('retired') === '1',actual?undefined:evidence,url.searchParams.get('scenario'),
+      agents?new Set(agents.split(',')):undefined);
     return json(actual ? demoLeaderboard(arena, rows,evidence) : rows);
   });
 
@@ -292,7 +295,7 @@ function compactMetrics(raw: string): RunMetrics {
 }
 
 function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.BACKTEST, includeRetired: boolean,
-  evidence?:AgentEvidenceService,scenario:string|null=null): LeaderboardRow[] {
+  evidence?:AgentEvidenceService,scenario:string|null=null,only?:ReadonlySet<string>): LeaderboardRow[] {
   const db = arena.db;
   const agents = new Map(db.agents().map(a => [a.id, a]));
   const now=Date.now();
@@ -306,7 +309,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       .map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]),
   );
   const rows=kind===RUN_KIND.DEMO&&!includeRetired?demoRows:db.listRuns(kind,includeRetired);
-  return rows.filter(r=>!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario).map(r => {
+  return rows.filter(r=>(!only||only.has(r.agent_id))&&(!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario)).map(r => {
     const activeForward = forward.get(runKey(r.agent_id, r.epic, r.leverage ?? 0));
     const extra = r.extra ? JSON.parse(r.extra) : {};
     const a = agents.get(r.agent_id);

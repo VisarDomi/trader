@@ -1,5 +1,6 @@
 """Independent session oracle, reconciled research summaries and sourced event context."""
 import array,collections,csv,datetime as dt,hashlib,json,math,pathlib,re,statistics,zoneinfo
+import night_lab_db
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OLD=ROOT/'apps/backend/data/night-breakdown-20261109'
 OUT=ROOT/'apps/backend/data/night-session-study-20261109'
@@ -18,7 +19,7 @@ def features(d):
     return {'direction':direction,'move':abs(change)/d['open']*100,'eff':abs(change)/distance if distance else 0,'agree':sum(s*direction>0 for s in steps)/d['intervals'],'retrace':(d['draw'] if direction>0 else d['rebound'])/ran if ran else 1,'range':ran/d['open']*100,'body':abs(change)/ran if ran else 0,'n':d['n'],'points':len(d['prices'])}
 def oracle(epic,policies):
     file=ROOT/f'apps/backend/data/candles/{epic}_1704067200000_1790812800000.f64';raw=file.read_bytes();a=array.array('d');a.frombytes(raw)
-    published=load(ROOT/'apps/ui/static/night-lab/report.json')['benchmarks'][epic]['inputSHA'];assert hashlib.sha256(raw).hexdigest()==published
+    published=night_lab_db.benchmark(epic)['inputSHA'];assert hashlib.sha256(raw).hexdigest()==published
     days={k:{} for k in WINDOWS};active={};opps={k:{p['id']:[] for p in policies} for k in WINDOWS};refdate=None;reference=0;selected={};cal=calendar()
     for i in range(0,len(a),7):
         t,o,h,l,c,spread,volume=a[i:i+7];time=dt.datetime.fromtimestamp(t/1000,UTC);ny=time.astimezone(NY);local=(time+dt.timedelta(minutes=1)).astimezone(AL);nm=ny.hour*60+ny.minute;lm=local.hour*60+local.minute;date=ny.date().isoformat()

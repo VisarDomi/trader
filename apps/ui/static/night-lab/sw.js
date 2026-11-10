@@ -1,20 +1,46 @@
-const STUDY='night-lab-study-391e1be551bd',LIVE='night-lab-forward-v3-cf4d147e1bab';
-const MEMBERS=[{"id": "visar-night-trading", "codeHash": "56ac3bdfe7c1", "epic": "US500", "leverage": 200}, {"id": "visar-night-v3-us500/base", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-control-us500/always-long", "codeHash": "1b545896d222", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-control-us500/random-direction", "codeHash": "1b545896d222", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/big-move", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/strong-day", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/steady-day", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/gap-5bp", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/gap-15bp", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 20}, {"id": "visar-night-v3-us500/leverage-200", "codeHash": "8354a30c0e07", "epic": "US500", "leverage": 200}, {"id": "visar-night-v3-us100/base", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-control-us100/always-long", "codeHash": "2e666eb542a7", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-control-us100/random-direction", "codeHash": "2e666eb542a7", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/big-move", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/strong-day", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/steady-day", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/gap-5bp", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/gap-15bp", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 20}, {"id": "visar-night-v3-us100/leverage-200", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 200}, {"id": "visar-night-v3-us100/full-day-200", "codeHash": "6d175db7dd11", "epic": "US100", "leverage": 200}];
-const GRID='night-lab-grid-v1';
+// Night Lab offline support. The page shell is cached on install; the report summary and each
+// section are cached as they are viewed. Sections are immutable per report version, so they are
+// served from the cache first; a newer summary removes sections of older versions. Downloads
+// (report.json, CSVs) are never stored on the device. Earlier workers' caches, including the
+// full-report copy they kept, are removed on activation.
+const SHELL='night-lab-shell-v1',DATA='night-lab-data-v1',LIVE='night-lab-forward-v4',GRID='night-lab-grid-v2';
+const KEEP=new Set([SHELL,DATA,LIVE,GRID]);
+const FILES=['./index.html','./night-lab.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const SECTION=/\/night-lab\/data\/([0-9a-f]{16})\//;
+const scoped=path=>new URL(path,self.registration.scope);
 function gridComplete(data){return data.schema===1&&data.epics?.length===2&&data.epics.every(e=>e.cells?.length===336)}
-function complete(data){return MEMBERS.length===20&&data.schema===3&&data.rows?.length===MEMBERS.length&&new Set(data.rows.map(r=>r.agentId)).size===MEMBERS.length&&data.rows.every(r=>MEMBERS.some(m=>m.id===r.agentId&&m.codeHash===r.codeHash&&m.epic===r.epic&&m.leverage===r.leverage))}
-const FILES=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./report.json','./us500-exit-risk-grid.csv','./us100-exit-risk-grid.csv','./us500-gap-risk-grid.csv','./us100-gap-risk-grid.csv','./trades.csv','./risk-grid.csv','./us100-risk-grid.csv'];
-self.addEventListener('install',event=>event.waitUntil((async()=>{await (await caches.open(STUDY)).addAll(FILES);await self.skipWaiting()})()));
-self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if((key.startsWith('night-lab-study-')&&key!==STUDY)||(key.startsWith('night-lab-forward-')&&key!==LIVE)||(key.startsWith('night-lab-grid-')&&key!==GRID))await caches.delete(key);await self.clients.claim()})()));
+async function cohort(){
+ const saved=await (await caches.open(DATA)).match(scoped('./data/summary.json').href);
+ try{return saved?(await saved.json()).cohort:null}catch{return null}
+}
+// The forward rows must be the complete cohort of the saved report: unique, same code, index and tier.
+async function complete(data){
+ const members=await cohort();
+ if(data.schema!==3||!Array.isArray(data.rows)||!data.rows.length||new Set(data.rows.map(r=>r.agentId)).size!==data.rows.length)return false;
+ return !members||(data.rows.length===members.length&&data.rows.every(r=>members.some(m=>m.id===r.agentId&&m.codeHash===r.codeHash&&m.epic===r.epic&&m.leverage===r.leverage)));
+}
+const offline=(error,status=503)=>new Response(JSON.stringify({error}),{status,headers:{'content-type':'application/json'}});
+self.addEventListener('install',event=>event.waitUntil((async()=>{await (await caches.open(SHELL)).addAll(FILES);await self.skipWaiting()})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('night-lab-')&&!KEEP.has(key))await caches.delete(key);await self.clients.claim()})()));
+// Live data: the network when it is complete, else the last complete copy marked offline.
+function live(event,name,valid){
+ const key=new Request(new URL(event.request.url).origin+new URL(event.request.url).pathname);
+ event.respondWith((async()=>{const cache=await caches.open(name);try{const r=await fetch(event.request);if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Unavailable');const data=await r.clone().json();if(!await valid(data))throw Error('Incomplete');await cache.put(key,r.clone());return r}catch{const old=await cache.match(key);if(!old)return offline('Offline');const data=await old.json();if(!await valid(data))return offline('Outdated saved copy');return new Response(JSON.stringify({...data,offline:true}),{headers:{'content-type':'application/json'}})}})());
+}
 self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.pathname.startsWith('/night-lab/'))return;
+ if(url.pathname==='/night-lab/forward.json')return live(event,LIVE,complete);
+ if(url.pathname==='/night-lab/grid.json')return live(event,GRID,gridComplete);
+ if(url.pathname==='/night-lab/data/summary.json'){
+  event.respondWith((async()=>{const cache=await caches.open(DATA);try{const r=await fetch(event.request);if(!r.ok)throw Error('Unavailable');const version=(await r.clone().json()).version;await cache.put(url.href,r.clone());
+   for(const old of await cache.keys()){const v=SECTION.exec(new URL(old.url).pathname)?.[1];if(v&&v!==version)await cache.delete(old)}return r}
+   catch{return (await cache.match(url.href))??offline('Report unavailable offline')}})());return;
+ }
+ if(SECTION.test(url.pathname)){
+  event.respondWith((async()=>{const cache=await caches.open(DATA),saved=await cache.match(url.href);if(saved)return saved;try{const r=await fetch(event.request);if(r.ok&&r.headers.get('content-type')?.includes('application/json'))await cache.put(url.href,r.clone());return r}catch{return offline('This section was not saved for offline use')}})());return;
+ }
+ if(!FILES.some(p=>scoped(p).pathname===url.pathname))return;
+ // The shell is revalidated on every online load (the server sends no cache lifetime for it).
  const key=new Request(url.origin+url.pathname);
- if(url.pathname==='/night-lab/forward.json'){
-  event.respondWith((async()=>{const cache=await caches.open(LIVE);try{const r=await fetch(event.request);if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Unavailable');const data=await r.clone().json();if(!complete(data))throw Error('Incomplete or mismatched cohort');await cache.put(key,r.clone());return r}catch{const old=await cache.match(key);if(!old)return new Response('{"error":"Offline"}',{status:503,headers:{'content-type':'application/json'}});const data=await old.json();if(!complete(data))return new Response('{"error":"Outdated saved cohort"}',{status:503,headers:{'content-type':'application/json'}});return new Response(JSON.stringify({...data,offline:true}),{headers:{'content-type':'application/json'}})}})());return;
- }
- if(url.pathname==='/night-lab/grid.json'){
-  event.respondWith((async()=>{const cache=await caches.open(GRID);try{const r=await fetch(event.request);if(!r.ok||!r.headers.get('content-type')?.includes('application/json'))throw Error('Unavailable');const data=await r.clone().json();if(!gridComplete(data))throw Error('Incomplete grid');await cache.put(key,r.clone());return r}catch{const old=await cache.match(key);if(!old)return new Response('{"error":"Offline"}',{status:503,headers:{'content-type':'application/json'}});const data=await old.json();if(!gridComplete(data))return new Response('{"error":"Outdated saved grid"}',{status:503,headers:{'content-type':'application/json'}});return new Response(JSON.stringify({...data,offline:true}),{headers:{'content-type':'application/json'}})}})());return;
- }
- if(!FILES.some(p=>new URL(p,self.registration.scope).pathname===url.pathname))return;
- event.respondWith((async()=>{const cache=await caches.open(STUDY);try{const r=await fetch(event.request);if(r.ok&&r.url.startsWith(self.registration.scope)){await cache.put(key,r.clone());return r}throw Error('Unavailable')}catch{return (await cache.match(key))??new Response('Report unavailable offline',{status:503})}})());
+ event.respondWith((async()=>{const cache=await caches.open(SHELL);try{const r=await fetch(url.href,{cache:'no-cache'});if(r.ok&&r.url.startsWith(self.registration.scope)){await cache.put(key,r.clone());return r}throw Error('Unavailable')}catch{return (await cache.match(key))??new Response('Night Lab unavailable offline',{status:503})}})());
 });
