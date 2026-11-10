@@ -20,7 +20,8 @@ async function complete(data){
  return !members||(data.rows.length===members.length&&data.rows.every(r=>members.some(m=>m.id===r.agentId&&m.codeHash===r.codeHash&&m.epic===r.epic&&m.leverage===r.leverage)));
 }
 const offline=(error,status=503)=>new Response(JSON.stringify({error}),{status,headers:{'content-type':'application/json'}});
-self.addEventListener('install',event=>event.waitUntil((async()=>{await (await caches.open(SHELL)).addAll(FILES);await self.skipWaiting()})()));
+// 'reload': the static shell has no cache lifetime, so a browser may hold a heuristically fresh old copy.
+self.addEventListener('install',event=>event.waitUntil((async()=>{await (await caches.open(SHELL)).addAll(FILES.map(f=>new Request(f,{cache:'reload'})));await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('night-lab-')&&!KEEP.has(key))await caches.delete(key);await self.clients.claim()})()));
 // Live data: the network when it is complete, else the last complete copy marked offline.
 function live(event,name,valid){
