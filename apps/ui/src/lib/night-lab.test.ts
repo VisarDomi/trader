@@ -141,8 +141,8 @@ const ORIGIN='https://trader.invalid',SCOPE=ORIGIN+'/night-lab/';
 function worker(network:(url:string)=>Response|Promise<Response>){
  const listeners=new Map<string,Function>(),stores=new Map<string,Map<string,Response>>();
  const open=async(name:string)=>{let m=stores.get(name);if(!m)stores.set(name,m=new Map());const key=(r:Request|string)=>typeof r==='string'?r:r.url;
-  return {match:async(r:Request|string)=>m.get(key(r))?.clone(),put:async(r:Request|string,v:Response)=>{m.set(key(r),v.clone())},keys:async()=>[...m.keys()].map(u=>new Request(u)),delete:async(r:Request|string)=>m.delete(key(r)),addAll:async(urls:string[])=>{for(const u of urls)m.set(new URL(u,SCOPE).href,new Response('shell'))}}};
- const scope={URL,Request,Response,Set,JSON,caches:{open,keys:async()=>[...stores.keys()],delete:async(n:string)=>stores.delete(n)},
+  return {match:async(r:Request|string)=>m.get(key(r))?.clone(),put:async(r:Request|string,v:Response)=>{m.set(key(r),v.clone())},keys:async()=>[...m.keys()].map(u=>new Request(u)),delete:async(r:Request|string)=>m.delete(key(r)),addAll:async(requests:Request[])=>{for(const r of requests){expect(r.cache).toBe('reload');m.set(new URL(r.url,SCOPE).href,new Response('shell'))}}}};
+ const scope={URL,Request:class extends Request{constructor(u:string|Request,init?:RequestInit){super(typeof u==='string'?new URL(u,SCOPE).href:u,init)}},Response,Set,JSON,caches:{open,keys:async()=>[...stores.keys()],delete:async(n:string)=>stores.delete(n)},
   fetch:async(r:Request|string)=>{const res=await network(typeof r==='string'?r:r.url);if(!res.url)Object.defineProperty(res,'url',{value:typeof r==='string'?r:r.url});return res},
   self:{location:{origin:ORIGIN},registration:{scope:SCOPE},addEventListener:(n:string,fn:Function)=>listeners.set(n,fn),skipWaiting:async()=>{},clients:{claim:async()=>{}}}};
  createContext(scope);runInContext(sw,scope);
