@@ -9,9 +9,24 @@ import KitImages
 public struct StripPosition: Codable, Sendable, Equatable {
     public var index: Int
     public var fraction: Double
-    public init(index: Int, fraction: Double) {
+    public var zoom: ZoomState?
+    public var aspect: Double?
+    // Zoom can put the centre in the legal padding above/below the pages.
+    // Keep that exact location while `fraction` retains its legacy 0...1 meaning.
+    public var point: Double?
+    public init(index: Int, fraction: Double, zoom: ZoomState? = nil, aspect: Double? = nil, point: Double? = nil) {
         self.index = index
         self.fraction = min(max(fraction.isFinite ? fraction : 0, 0), 1)
+        self.zoom = zoom
+        self.aspect = aspect.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        self.point = point.flatMap { $0.isFinite ? $0 : nil }
+    }
+
+    // Rebase between document and chapter indices without dropping viewport fields.
+    public func at(index: Int) -> StripPosition {
+        var position = self
+        position.index = index
+        return position
     }
 }
 
@@ -30,6 +45,8 @@ public protocol StripReaderDelegate: AnyObject {
     func strip(_ strip: StripReaderView, sourceFor index: Int) -> ImageSource
     // Finger up and momentum (or a zoom) over: save the position.
     func strip(_ strip: StripReaderView, settledAt position: StripPosition)
+    // Reading priority may follow the visible page without saving/settling a scroll.
+    func strip(_ strip: StripReaderView, visibleAt position: StripPosition)
     // The visible range reached the last pages (time to append the next chapter).
     func stripNearEnd(_ strip: StripReaderView)
     // Text drawn over a page that failed to load, nil for none.
@@ -40,6 +57,7 @@ public protocol StripReaderDelegate: AnyObject {
 }
 
 public extension StripReaderDelegate {
+    func strip(_ strip: StripReaderView, visibleAt position: StripPosition) {}
     func strip(_ strip: StripReaderView, localFileFor index: Int) -> URL? { nil }
     func stripNearEnd(_ strip: StripReaderView) {}
     func strip(_ strip: StripReaderView, failureTextFor index: Int, error: Error) -> String? { nil }
@@ -53,15 +71,20 @@ public extension StripReaderDelegate {
 // near the screen hold decoded images; every page loads when it comes near.
 @MainActor
 public final class StripReaderView: UIView, UIScrollViewDelegate {
+    public enum PageGeometry: Sendable { case adaptive, measured }
     public weak var delegate: StripReaderDelegate?
-    public let pipeline: ImagePipeline
-    // Height of a page whose size is unknown, for a given page width.
-    public var placeholderHeight: (CGFloat) -> CGFloat = { $0 * 1.5 }
-    // How many screens beyond the visible one hold decoded pages.
-    public var preloadScreens: CGFloat = 1.5
-    public let scrollView = UIScrollView()
-
-    public private(set) var pages: [StripPage] = []
+    private let pipeline: ImagePipeline
+    private let geometry: PageGeometry
+    private let preloadScreens: CGFloat = 1.5
+    private var locksPageDimensions: Bool { if case .measured = geometry { return true }; return false }
+    private func placeholderHeight(_ width: CGFloat) -> CGFloat { locksPageDimensions ? 0 : width * 1.5 }
+    private let scrollView = UIScrollView()
+    private var pages: [StripPage] = []
+    public var pageCount: Int { pages.count }
+    #if targetEnvironment(simulator)
+    public var testScrollView: UIScrollView { scrollView }
+    public var testPageAspects: [CGFloat] { pages.compactMap(\.aspect) }
+    #endif
     private let content = UIView()
     private var tops: [CGFloat] = []
     private var heights: [CGFloat] = []
@@ -69,26 +92,44 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     private var reuse: [PageCell] = []
     private var failures: [Int: (attempts: Int, retryAt: CFTimeInterval)] = [:]
     private var laidOutWidth: CGFloat = 0
-    private var pendingPosition: StripPosition?
+    private var laidOutHeight: CGFloat = 0
+    private enum GeometryPhase: Equatable { case ready, updating }
+    private var geometryPhase = GeometryPhase.ready
+    // UIScrollView quantizes offsets to physical pixels. Keep the subpixel
+    // remainder in document coordinates so successive size corrections do not drift.
+    private var offsetCorrection = CGPoint.zero
+    private enum Restoration { case ready, pending(StripPosition), applying(StripPosition) }
+    private var restoration = Restoration.ready
+    private var pendingPosition: StripPosition? {
+        get { if case .pending(let value) = restoration { return value }; return nil }
+        set { restoration = newValue.map(Restoration.pending) ?? .ready }
+    }
+    private var viewportReady: Bool {
+        bounds.width > 0 && bounds.height > 0 && scrollView.bounds.size == bounds.size &&
+        laidOutWidth == bounds.width && laidOutHeight == bounds.height
+    }
     private var pendingTop: Int?
     // A page opened at its top keeps its top at the screen's top while sizes settle (until a
     // finger touches), instead of the centre: a resumed page never slides away.
     private var pinnedTop: Int?
-    private var touching = false
+    private var interaction = DocumentMotionState()
+    private var touching: Bool { interaction.touching }
     private var lastNearEnd = -1
+    private var lastVisiblePage = -1
     private let footer = UILabel()
     // Keep the rendered pages and their base geometry stable for the whole pinch. Sharper
     // decodes, newly learned sizes and appended chapters commit after UIKit finishes zooming.
-    private var zoomInProgress = false
-    private var scrollInProgress = false
+    private var zoomInProgress: Bool { interaction.pinching }
+    private var scrollInProgress: Bool { interaction.scrolling }
     private var pinchQuality: CGFloat = 1
     private var pendingAspects: [Int: CGFloat] = [:]
     private var pendingAppend = false
     private var pendingImages: [Int: UIImage] = [:]
     private var measuredImages = Set<String>()
 
-    public init(pipeline: ImagePipeline) {
+    public init(pipeline: ImagePipeline, geometry: PageGeometry = .adaptive) {
         self.pipeline = pipeline
+        self.geometry = geometry
         super.init(frame: .zero)
         backgroundColor = .black
         scrollView.delegate = self
@@ -112,7 +153,7 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
         doubleTap.numberOfTapsRequired = 2
         scrollView.addGestureRecognizer(doubleTap)
         let touch = TouchTracker { [weak self] down in
-            self?.touching = down
+            self?.interaction.touch(down)
             if down { self?.pinnedTop = nil }
             if !down { DispatchQueue.main.async { [weak self] in self?.settleIfIdle() } }
         }
@@ -124,6 +165,8 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     // MARK: pages
 
     public func setPages(_ pages: [StripPage], position: StripPosition? = nil) {
+        restoration = position.map(Restoration.pending) ?? .ready
+        pendingTop = nil
         pendingAspects = [:]
         pendingAppend = false
         pendingImages = [:]
@@ -133,9 +176,9 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
         cells.removeAll()
         failures.removeAll()
         lastNearEnd = -1
+        lastVisiblePage = -1
         self.pages = pages
         relayout(keeping: nil)
-        if let position { scroll(to: position) }
     }
 
     // New pages after the last (the next chapter); nothing on screen moves.
@@ -180,28 +223,65 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
 
     // The page at the screen's centre and where its top is on screen.
     private var screenAnchor: (index: Int, top: CGFloat)? {
-        guard laidOutWidth > 0, !tops.isEmpty else { return nil }
+        guard layoutPosition != nil, !tops.isEmpty else { return nil }
         let index = pageIndex(atContentY: centreContentY)
-        return (index, tops[index] * scrollView.zoomScale - scrollView.contentOffset.y)
+        return (index, convert(CGPoint(x: 0, y: tops[index]), from: content).y)
     }
 
     // MARK: position
 
-    public var currentPosition: StripPosition? { laidOutWidth > 0 ? position(atContentY: centreContentY) : nil }
+    public var currentPosition: StripPosition? { viewportReady && !isRestoringPosition ? position(atContentY: centreContentY) : nil }
+    // Before resizing the child scroll view, its old viewport still describes
+    // the picture the user saw. Capture that coordinate system, not a mixed one.
+    private var layoutPosition: StripPosition? {
+        guard laidOutWidth > 0, laidOutHeight > 0, !isRestoringPosition,
+              scrollView.bounds.size == CGSize(width: laidOutWidth, height: laidOutHeight) else { return nil }
+        return position(atContentY: centreContentY)
+    }
+    public var savedPosition: StripPosition? {
+        switch restoration {
+        case .pending(let value), .applying(let value): return value
+        case .ready: return currentPosition ?? layoutPosition
+        }
+    }
+    private var isRestoringPosition: Bool { if case .ready = restoration { return pendingTop != nil }; return true }
 
     // Puts `position` at the screen's centre (applied after the first layout if needed).
     public func scroll(to position: StripPosition) {
-        guard laidOutWidth > 0, heights.indices.contains(position.index) else { pendingPosition = position; pendingTop = nil; pinnedTop = nil; return }
-        pendingPosition = nil
+        guard viewportReady, heights.indices.contains(position.index) else { pendingPosition = position; pendingTop = nil; pinnedTop = nil; return }
+        var target = position
+        // A fractional position is only exact in the geometry it was saved in.
+        // Older snapshots recover that geometry from the cached visible image's
+        // header; no gallery-wide scan or image decode is needed.
+        if target.aspect == nil, let file = delegate?.strip(self, localFileFor: target.index),
+           let size = ImagePipeline.pixelSize(file), size.width > 0, size.height > 0 {
+            let measured = size.width / size.height
+            if let known = pages[target.index].aspect, abs(known - measured) / known < 0.003 { target.aspect = Double(known) }
+            else { target.aspect = Double(measured) }
+        }
+        if let value = target.aspect, value.isFinite, value > 0, pages[target.index].aspect != CGFloat(value) {
+            pages[target.index].aspect = CGFloat(value)
+            pendingPosition = target
+            relayout(keeping: nil)
+            return
+        }
+        restoration = .applying(position)
         pendingTop = nil
         pinnedTop = nil
-        let y = tops[position.index] + heights[position.index] * position.fraction
-        setCentre(contentY: y)
+        let scale = CGFloat(position.zoom?.scale ?? 1)
+        offsetCorrection = .zero
+        scrollView.setZoomScale(min(max(scale, scrollView.minimumZoomScale), scrollView.maximumZoomScale), animated: false)
+        positionContent()
+        let y = tops[position.index] + heights[position.index] * (position.point ?? position.fraction)
+        let x = CGFloat(position.zoom?.x ?? 0.5) * laidOutWidth * scrollView.zoomScale + content.frame.minX - scrollView.bounds.width / 2
+        setOffset(y * scrollView.zoomScale + content.frame.minY - scrollView.bounds.height / 2, x: x)
+        restoration = .ready
+        updateVisible()
     }
 
     // Puts a page's top at the top of the screen (a resumed page, read from its start).
     public func scroll(toTopOf index: Int) {
-        guard laidOutWidth > 0, heights.indices.contains(index) else {
+        guard viewportReady, heights.indices.contains(index) else {
             if pages.indices.contains(index) { pendingTop = index }
             return
         }
@@ -217,19 +297,44 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     private func position(atContentY y: CGFloat) -> StripPosition? {
         guard !tops.isEmpty else { return nil }
         let index = pageIndex(atContentY: y)
-        return StripPosition(index: index, fraction: Double((y - tops[index]) / max(heights[index], 1)))
+        let zoom = scrollView.zoomScale > 1.001
+            ? ZoomState(scale: Double(scrollView.zoomScale), x: Double(visibleContent.midX / laidOutWidth)) : nil
+        let point = Double((y - tops[index]) / max(heights[index], 1))
+        return StripPosition(index: index, fraction: point, zoom: zoom, aspect: pages[index].aspect.map { Double($0) },
+                             point: (0...1).contains(point) ? nil : point)
     }
 
     private func setCentre(contentY y: CGFloat) {
-        setOffset(y * scrollView.zoomScale - scrollView.bounds.height / 2)
+        setOffset(y * scrollView.zoomScale + content.frame.minY - scrollView.bounds.height / 2)
     }
 
-    private func setOffset(_ y: CGFloat) {
-        if geometryInMotion, abs(scrollView.contentOffset.y - y) <= 0.001 { return }
+    private func setOffset(_ y: CGFloat, x: CGFloat? = nil) {
+        let previous = geometryPhase; geometryPhase = .updating
+        defer { geometryPhase = previous; if previous == .ready { updateVisible() } }
         let maxOffset = max(0, scrollView.contentSize.height - scrollView.bounds.height)
         let target = min(max(0, y), maxOffset)
-        guard abs(scrollView.contentOffset.y - target) > 0.001 else { return }
-        scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: target)
+        let targetX = x.map { min(max(0, $0), max(0, scrollView.contentSize.width - scrollView.bounds.width)) } ?? scrollView.contentOffset.x
+        let pixels = max(1, window?.screen.scale ?? traitCollection.displayScale)
+        // A saved document-origin remainder may put the requested coordinate
+        // just outside a quantized scroll boundary. Preserve that subpixel
+        // remainder; larger out-of-range requests still use the legal clamp.
+        let preciseY = abs(y - target) <= 1 / pixels ? y : target
+        let preciseX = x.flatMap { abs($0 - targetX) <= 1 / pixels ? $0 : nil } ?? targetX
+        let rounded = CGPoint(x: (targetX * pixels).rounded() / pixels, y: (target * pixels).rounded() / pixels)
+        if abs(scrollView.contentOffset.x - rounded.x) > 0.001 || abs(scrollView.contentOffset.y - rounded.y) > 0.001 {
+            scrollView.contentOffset = CGPoint(x: targetX, y: target)
+        }
+        let zoom = max(scrollView.zoomScale, 0.001)
+        offsetCorrection.y += (scrollView.contentOffset.y - preciseY) / zoom
+        if x != nil { offsetCorrection.x += (scrollView.contentOffset.x - preciseX) / zoom }
+        positionContent()
+    }
+
+    private func positionContent() {
+        guard laidOutWidth > 0 else { return }
+        let zoom = scrollView.zoomScale
+        content.center = CGPoint(x: max(laidOutWidth * zoom, scrollView.bounds.width) / 2 + offsetCorrection.x * zoom,
+                                 y: content.bounds.height * zoom / 2 + offsetCorrection.y * zoom)
     }
 
     // The page containing content y (clamped to the first and last page).
@@ -246,9 +351,9 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        let anchor = laidOutWidth > 0 ? currentPosition : nil
+        let anchor = layoutPosition
         if scrollView.frame != bounds { scrollView.frame = bounds }
-        if bounds.width != laidOutWidth { relayout(keeping: anchor) }
+        if bounds.width != laidOutWidth || bounds.height != laidOutHeight { relayout(keeping: anchor) }
         if let pendingPosition { scroll(to: pendingPosition) }
         if let pendingTop { scroll(toTopOf: pendingTop) }
         updateVisible()
@@ -263,7 +368,10 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     private func relayoutNow(keeping anchor: StripPosition?, screen: (index: Int, top: CGFloat)?) {
         let width = bounds.width
         guard width > 0 else { return }
+        let previous = geometryPhase; geometryPhase = .updating
+        defer { geometryPhase = previous; if previous == .ready { updateVisible() } }
         laidOutWidth = width
+        laidOutHeight = bounds.height
         tops = []
         heights = []
         var y = padding
@@ -275,8 +383,9 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
         }
         let total = y + padding
         let zoom = scrollView.zoomScale
+        offsetCorrection = CGPoint(x: screen == nil ? 0 : offsetCorrection.x, y: 0)
         content.bounds = CGRect(x: 0, y: 0, width: width, height: total)
-        content.center = CGPoint(x: width * zoom / 2, y: total * zoom / 2)
+        positionContent()
         scrollView.contentSize = CGSize(width: width * zoom, height: total * zoom)
         for (index, cell) in cells { cell.frame = frame(of: index) }
         layoutFooter()
@@ -296,7 +405,7 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     // MARK: visible pages
 
     private func updateVisible() {
-        guard !tops.isEmpty, laidOutWidth > 0 else { return }
+        guard geometryPhase == .ready, viewportReady, !isRestoringPosition, !tops.isEmpty else { return }
         let visible = visibleContent
         let visibleTop = visible.minY, visibleHeight = visible.height
         let margin = visibleHeight * preloadScreens
@@ -318,6 +427,10 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
             cell.reveal(shown.offsetBy(dx: 0, dy: -tops[index]), retaining: zoomInProgress)
         }
         pipeline.prioritiesChanged()
+        if let position = currentPosition, lastVisiblePage != position.index {
+            lastVisiblePage = position.index
+            delegate?.strip(self, visibleAt: position)
+        }
         if last >= pages.count - 3, lastNearEnd != pages.count {
             lastNearEnd = pages.count
             delegate?.stripNearEnd(self)
@@ -388,7 +501,7 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
         }
         // ImageIO rounds downsampled dimensions. A quality upgrade is the same page,
         // not new layout metadata; it must never resize the strip again.
-        if image.size.height > 0, measuredImages.insert(pages[index].key).inserted {
+        if !locksPageDimensions, image.size.height > 0, measuredImages.insert(pages[index].key).inserted {
             setAspect(image.size.width / image.size.height, at: index)
         }
     }
@@ -413,29 +526,32 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
         FrameMonitor.shared.scrolling(moving)
     }
 
-    public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { scrollInProgress = true; monitor(true) }
+    public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        pinnedTop = nil
+        interaction.drag(); monitor(true)
+    }
 
     public func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
         pinchQuality = zoomBucket
-        zoomInProgress = true
+        interaction.beginPinch()
         pinnedTop = nil
         monitor(true)
     }
 
     public func scrollViewDidZoom(_ scrollView: UIScrollView) {
         // Keep a page narrower than the screen centred horizontally (zooming out bounces).
-        let offsetX = max(0, (scrollView.bounds.width - scrollView.contentSize.width) / 2)
-        content.center.x = scrollView.contentSize.width / 2 + offsetX
+        positionContent()
         updateVisible()
     }
 
     public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         pinnedTop = nil
-        if !decelerate { scrollInProgress = false; monitor(false); settleIfIdle() }
+        interaction.dragEnded(decelerating: decelerate)
+        if !decelerate { interaction.settleScroll(); monitor(false); settleIfIdle() }
     }
-    public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { scrollInProgress = false; monitor(false); settleIfIdle() }
+    public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { interaction.settleScroll(); monitor(false); settleIfIdle() }
     public func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
-        zoomInProgress = false
+        interaction.endPinch()
         let ready = pendingImages
         pendingImages = [:]
         for (index, image) in ready {
@@ -450,13 +566,16 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
 
     private func settleIfIdle() {
         guard !touching, !zoomInProgress, !scrollView.isDragging, !scrollView.isDecelerating, !scrollView.isZooming, let position = currentPosition else { return }
-        scrollInProgress = false
+        interaction.settleScroll()
         applyPendingGeometry()
         delegate?.strip(self, settledAt: currentPosition ?? position)
     }
 
     private var geometryInMotion: Bool {
-        touching || scrollInProgress || zoomInProgress || scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating || scrollView.isZooming
+        // Fixed page boxes cannot reflow while scrolling. Only an active pinch
+        // needs its coordinate system held; dragging/deceleration never delays its tail.
+        zoomInProgress || scrollView.isZooming || (!locksPageDimensions &&
+            (touching || scrollInProgress || scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating))
     }
 
     private func applyPendingGeometry() {
@@ -479,9 +598,14 @@ public final class StripReaderView: UIView, UIScrollViewDelegate {
     }
 
     public var state: [String: Any] {
-        ["pages": pages.count, "decoded": cells.values.filter(\.hasImage).count,
-         "position": currentPosition.map { ["index": $0.index, "fraction": $0.fraction] } ?? [:],
-         "zoom": scrollView.zoomScale, "failures": failures.count]
+        let position = currentPosition
+        let picture = position.map { convert(frame(of: $0.index), from: content) }
+        return ["pages": pages.count, "decoded": cells.values.filter(\.hasImage).count,
+                "position": position.map { ["index": $0.index, "fraction": $0.fraction] } ?? [:],
+                "zoom": scrollView.zoomScale, "failures": failures.count,
+                "offset": [scrollView.contentOffset.x, scrollView.contentOffset.y],
+                "viewportReady": viewportReady, "restoring": isRestoringPosition,
+                "picture": picture.map { [$0.minX, $0.minY, $0.width, $0.height] } ?? []]
     }
 }
 

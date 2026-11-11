@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 import KitCore
+import KitLifecycle
 
 // A screen in the live stack. Screens below the top stay alive (their views, scroll offsets,
 // loaded images), which is what WebKit's back-forward cache gave by chance and may drop:
@@ -13,11 +14,15 @@ public protocol LiveScreen: UIViewController {
     var route: Data { get }
     // The screen's own state (scroll anchor, strip offsets), nil when it has none.
     func savedState() -> Data?
+    // Capture the live viewport into any progress/position stores before serializing
+    // the stack. This must not schedule another navigation save or load a view.
+    func captureState()
     // false while the screen owns the left edge (a zoomed picture pans there).
     var allowsEdgeBack: Bool { get }
 }
 
 public extension LiveScreen {
+    func captureState() {}
     var allowsEdgeBack: Bool { true }
     // Call when the screen's state changed (a scroll settled); the stack is saved soon after.
     func stateChanged() { (navigationController as? LiveNavigationController)?.screenChanged() }
@@ -45,17 +50,27 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
 
     private let writer: BackgroundWriter
     private let factory: Factory
+    private weak var stateStore: (any CheckpointStore)?
     private var forward: [any LiveScreen] = []
     private var savedForward: [SavedStack.Entry] = []
     private var forwardPan: UIScreenEdgePanGestureRecognizer!
-    private var interactiveForward: UIPercentDrivenInteractiveTransition?
-    private var pushingForward = false
+    private enum ForwardState {
+        case idle, requested
+        case interactive(UIPercentDrivenInteractiveTransition)
+        case finishing(UIPercentDrivenInteractiveTransition)
+    }
+    private var forwardState = ForwardState.idle
+    private var interactiveForward: UIPercentDrivenInteractiveTransition? {
+        switch forwardState { case .interactive(let driver), .finishing(let driver): return driver; default: return nil }
+    }
     private var saveScheduled = false
     private var warmed = false
 
-    public init(file: URL, factory: @escaping Factory, root: @autoclosure () -> any LiveScreen) {
+    public init(file: URL, factory: @escaping Factory, root: @autoclosure () -> any LiveScreen,
+                stateStore: (any CheckpointStore)? = nil) {
         writer = BackgroundWriter(url: file, label: "kit-navigation")
         self.factory = factory
+        self.stateStore = stateStore
         let saved = (try? DurableFile.readJSON(SavedStack.self, from: file)) ?? SavedStack()
         let screens = saved.back.compactMap { factory($0.route, $0.state) }
         super.init(nibName: nil, bundle: nil)
@@ -77,6 +92,10 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
         forwardPan.edges = .right
         forwardPan.delegate = self
         view.addGestureRecognizer(forwardPan)
+        if stateStore != nil {
+            AppLifecycle.shared.onResignActive { [weak self] in self?.flush() }
+            AppLifecycle.shared.onResignActiveAsync { [weak self] in await self?.stateStore?.finishWrites() }
+        }
     }
 
     // After a relaunch the screens below the top are built too, off screen at the screen's size,
@@ -109,6 +128,7 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
 
     // Replaces the top screen (a page change that adds no history entry).
     public func replaceTop(with screen: any LiveScreen) {
+        (topViewController as? any LiveScreen)?.captureState()
         var stack = viewControllers
         if stack.isEmpty { stack = [screen] } else { stack[stack.count - 1] = screen }
         setViewControllers(stack, animated: false)
@@ -116,8 +136,8 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
     }
 
     public func goForward(animated: Bool = true) {
-        guard let screen = takeForward() else { return }
-        pushingForward = true
+        guard case .idle = forwardState, transitionCoordinator == nil, let screen = takeForward() else { return }
+        forwardState = .requested
         pushViewController(screen, animated: animated)
     }
 
@@ -137,6 +157,7 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
     }
 
     private func saveNow() {
+        (topViewController as? any LiveScreen)?.captureState()
         let stack = SavedStack(back: screens.map { SavedStack.Entry(route: $0.route, state: $0.savedState()) },
                                forward: forward.reversed().map { SavedStack.Entry(route: $0.route, state: $0.savedState()) }.reversed() + savedForward)
         writer.save(json: stack)
@@ -146,6 +167,7 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
     public func flush() {
         save()
         writer.flush()
+        stateStore?.flush()
     }
 
     private func takeForward() -> (any LiveScreen)? {
@@ -159,13 +181,20 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
 
     // MARK: going back keeps the screen for going forward
 
+    override public func pushViewController(_ viewController: UIViewController, animated: Bool) {
+        (topViewController as? any LiveScreen)?.captureState()
+        super.pushViewController(viewController, animated: animated)
+    }
+
     public func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
         // A screen that left the stack by going back becomes the next forward screen.
         if let coordinator = transitionCoordinator, coordinator.isCancelled { return }
+        if case .requested = forwardState { forwardState = .idle }
         screenChanged()
     }
 
     override public func popViewController(animated: Bool) -> UIViewController? {
+        (topViewController as? any LiveScreen)?.captureState()
         let popped = super.popViewController(animated: animated)
         guard let screen = popped as? any LiveScreen else { return popped }
         if let coordinator = transitionCoordinator {
@@ -211,7 +240,8 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
             return (topViewController as? any LiveScreen)?.allowsEdgeBack ?? true
         }
         if gestureRecognizer === forwardPan {
-            return canGoForward && transitionCoordinator == nil
+            if case .idle = forwardState { return canGoForward && transitionCoordinator == nil }
+            return false
         }
         return true
     }
@@ -227,19 +257,18 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
         let progress = min(max(-pan.translation(in: view).x / width, 0), 1)
         switch pan.state {
         case .began:
-            guard let screen = takeForward() else { return }
-            interactiveForward = UIPercentDrivenInteractiveTransition()
-            pushingForward = true
+            guard case .idle = forwardState, transitionCoordinator == nil, let screen = takeForward() else { return }
+            forwardState = .interactive(UIPercentDrivenInteractiveTransition())
             pushViewController(screen, animated: true)
         case .changed:
             interactiveForward?.update(progress)
         case .ended:
             let velocity = -pan.velocity(in: view).x
             if progress > 0.33 || velocity > 600 { interactiveForward?.finish() } else { interactiveForward?.cancel() }
-            interactiveForward = nil
+            if let driver = interactiveForward { forwardState = .finishing(driver) }
         default:
             interactiveForward?.cancel()
-            interactiveForward = nil
+            if let driver = interactiveForward { forwardState = .finishing(driver) }
         }
     }
 
@@ -251,10 +280,13 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
 
     public func navigationController(_ navigationController: UINavigationController, animationControllerFor operation: UINavigationController.Operation,
                                      from fromVC: UIViewController, to toVC: UIViewController) -> (any UIViewControllerAnimatedTransitioning)? {
-        guard operation == .push, pushingForward else { return nil }
-        pushingForward = false
-        return ForwardPush(onCancel: { [weak self] in
-            if let screen = toVC as? any LiveScreen { self?.forward.append(screen) }
+        guard operation == .push else { return nil }
+        switch forwardState { case .requested, .interactive: break; default: return nil }
+        return ForwardPush(onFinish: { [weak self] cancelled in
+            guard let self else { return }
+            if cancelled, let screen = toVC as? any LiveScreen { forward.append(screen) }
+            forwardState = .idle
+            screenChanged()
         })
     }
 }
@@ -262,8 +294,8 @@ public final class LiveNavigationController: UINavigationController, UINavigatio
 // The forward push follows the finger from the right edge, the mirror of the system's back.
 @MainActor
 final class ForwardPush: NSObject, UIViewControllerAnimatedTransitioning {
-    private let onCancel: () -> Void
-    init(onCancel: @escaping () -> Void) { self.onCancel = onCancel }
+    private let onFinish: (Bool) -> Void
+    init(onFinish: @escaping (Bool) -> Void) { self.onFinish = onFinish }
 
     nonisolated func transitionDuration(using context: (any UIViewControllerContextTransitioning)?) -> TimeInterval { 0.3 }
 
@@ -287,8 +319,9 @@ final class ForwardPush: NSObject, UIViewControllerAnimatedTransitioning {
                 to.view.layer.shadowOpacity = 0
                 from.view.frame = context.initialFrame(for: from)
                 let cancelled = context.transitionWasCancelled
-                if cancelled { to.view.removeFromSuperview(); self.onCancel() }
+                if cancelled { to.view.removeFromSuperview() }
                 context.completeTransition(!cancelled)
+                self.onFinish(cancelled)
             }
         }
     }
