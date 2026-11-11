@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import KitCore
 import KitNet
 
@@ -32,10 +35,17 @@ public final class BackgroundTransfers: NSObject, URLSessionDownloadDelegate, @u
     private var finishEvents: Completion?
     private let identifier: String
     private let connections: Int
+    private let ownership = BackgroundTransferOwnership()
     private lazy var session: URLSession = {
+#if canImport(Darwin)
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
+#else
+        let configuration = URLSessionConfiguration.default  // Linux logic tests: no background sessions
+#endif
         configuration.isDiscretionary = false
+#if canImport(Darwin)
         configuration.sessionSendsLaunchEvents = true
+#endif
         configuration.httpMaximumConnectionsPerHost = connections
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
@@ -67,19 +77,10 @@ public final class BackgroundTransfers: NSObject, URLSessionDownloadDelegate, @u
     }
 
     public func handOff(_ items: [Item]) async {
-        let running = Set(await session.allTasks.compactMap { $0.taskDescription.flatMap(Self.decode)?.file })
-        for item in items where !running.contains(item.file) && Self.safe(item.file) {
-            var request = URLRequest(url: item.url)
-            for (name, value) in item.headers { request.setValue(value, forHTTPHeaderField: name) }
-            let task = session.downloadTask(with: request)
-            task.taskDescription = Self.encode(item)
-            task.resume()
-        }
+        await ownership.handOff(items, session: session)
     }
 
-    public func reclaim() async {
-        for task in await session.allTasks { task.cancel() }
-    }
+    public func reclaim() async { await ownership.reclaim(session) }
 
     public func pendingCount() async -> Int { await session.allTasks.count }
 
@@ -92,6 +93,11 @@ public final class BackgroundTransfers: NSObject, URLSessionDownloadDelegate, @u
     static func decode(_ description: String) -> Item? {
         guard let item = try? JSONDecoder().decode(Item.self, from: Data(description.utf8)), safe(item.file) else { return nil }
         return item
+    }
+
+    static func liveFiles(_ tasks: [URLSessionTask]) -> Set<String> {
+        Set(tasks.filter { $0.state == .running || $0.state == .suspended }
+            .compactMap { $0.taskDescription.flatMap(decode)?.file })
     }
 
     public func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
@@ -123,3 +129,39 @@ public final class BackgroundTransfers: NSObject, URLSessionDownloadDelegate, @u
         if let completion { DispatchQueue.main.async { completion.call() } }
     }
 }
+
+// Serializes task creation after allTasks returns. Reentrancy across that await
+// is governed by the explicit ownership ticket, not by callback timing.
+private actor BackgroundTransferOwnership {
+    private var state = TransferOwnership()
+    func handOff(_ items: [BackgroundTransfers.Item], session: URLSession) async {
+        let ticket = state.handOff()
+        let tasks = await session.allTasks
+        guard state.ownsHandoff(ticket) else { return }
+        var running = BackgroundTransfers.liveFiles(tasks)
+        for item in items where BackgroundTransfers.safe(item.file) && running.insert(item.file).inserted {
+            var request = URLRequest(url: item.url)
+            for (name, value) in item.headers { request.setValue(value, forHTTPHeaderField: name) }
+            let task = session.downloadTask(with: request)
+            task.taskDescription = BackgroundTransfers.encode(item)
+            task.resume()
+        }
+        state.handedOff(ticket)
+    }
+    func reclaim(_ session: URLSession) async {
+        let ticket = state.reclaim()
+        let tasks = await session.allTasks
+        guard state.ownsReclaim(ticket) else { return }
+        for task in tasks { task.cancel() }
+        state.reclaimed(ticket)
+    }
+}
+
+#if !canImport(Darwin)
+// Linux (logic tests on the PC): corelibs URLSession has only the callback form.
+extension URLSession {
+    var allTasks: [URLSessionTask] {
+        get async { await withCheckedContinuation { continuation in getAllTasks { continuation.resume(returning: $0) } } }
+    }
+}
+#endif

@@ -79,6 +79,7 @@ Pairing/signing data, app products, raw test captures and live-device records mu
 
 ```sh
 bun test apps/ui/src/lib/server/native-contract.test.ts
+bash apps/ios/scripts/test.sh   # TraderLogic tests on this PC (Swift for Linux); ios-push runs them first
 # Run native compilation/domain checks through mac-workload in the logged-in GUI session.
 # In a guarded session on the explicit shared guest, with a private derived-response fixture:
 python3 scripts/check-simulator.py --device UUID --fixture /tmp/trader-fixture.json --strategy
