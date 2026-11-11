@@ -136,7 +136,10 @@ closes).
   concurrent sessions checked first), so no account switching; each account has
   its own job queue, orders before reconciliation. All sessions and the candle
   poller share a ~6 req/s pacer in which orders take the next free slot, then
-  confirmations and position checks, then everything else. Capital answers an
+  confirmations and protection updates, then everything else. Each new position
+  is checked against its order by the account's next reconciliation (one list of
+  all positions, within about a minute), not by a request per order, so a
+  burst carries orders and confirmations only. Capital answers an
   order in ~0.12 s (p50; 0.6 s p95); before this the shared, switching session
   made the order wait a median 7 s after the decision, 52 s at 40+ decisions
   a minute. Backtest trade logs put the load at 3 orders in a typical active

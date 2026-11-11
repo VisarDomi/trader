@@ -351,6 +351,8 @@ export class BrokerMirror {
   /** Run → when its market was last checked for reopening (an open refused because the market was closed). */
   private readonly reopenChecks = new Map<string, number>();
   private readonly timedCloseAttempts = new Map<string, number>();
+  /** Confirmed opens whose position the account's next reconciliation checks (deal row id → what was ordered). */
+  private readonly unverified = new Map<number, { accountId: string; dealId: string; runId: string; expected: { epic: string; direction: string; size: number } }>();
   private cycling = false;
   private lastCycleAt = 0;
   private lastError: string | null = null;
@@ -634,7 +636,7 @@ export class BrokerMirror {
       const every =
         a.tier !== null && a.leverageOk === null
           ? 0
-          : mine.some(d => !d.deal_id)
+          : mine.some(d => !d.deal_id) || [...this.unverified.values()].some(u => u.accountId === a.id)
             ? RECONCILE_UNCONFIRMED_MS
             : mine.length > 0
               ? RECONCILE_OPEN_MS
@@ -1069,8 +1071,10 @@ export class BrokerMirror {
         'broker',
         `opened ${e.side} ${size} ${inst.epic} @ ${conf.level} on ${account.name} for ${e.runId} (paper ${e.size} @ ${e.price}${e.fillTime === null ? ', at the decision' : ''})`,
       );
-      // The account's next queued order goes before the position check and protection resync (~1 s at a burst).
-      this.enqueue(account.id, () => this.verifyOpen(rowId, dealId, expected, e, protection));
+      // The position itself is checked by the account's next reconciliation, which lists every position in one
+      // request: a burst carries only orders and confirmations. The protection resync follows the account's queued orders.
+      this.unverified.set(rowId, { accountId: account.id, dealId, runId: e.runId, expected });
+      this.enqueue(account.id, () => this.syncProtection(rowId, dealId, e, protection));
     } catch (err) {
       if (err instanceof ExpiredEntry) {
         this.db.updateDeal(rowId, { status: DEAL_STATUS.FAILED, note: err.message });
@@ -1096,42 +1100,29 @@ export class BrokerMirror {
   }
 
   /**
-   * A same-sized stale confirmation may pass the shape checks: check the new position itself (none failed
-   * in 5,633 deals from October 1 to November 10). A mismatch hands the deal back to reconcile, which adopts
-   * the run's position by epic, side and size. Then synchronize protections the run changed meanwhile.
+   * Stop events arriving before a permanent deal id cannot be applied yet: synchronize the levels the run changed
+   * meanwhile once confirmation makes that possible. No request when nothing changed.
    */
-  private async verifyOpen(rowId: number, dealId: string, expected: { epic: string; direction: string; size: number },
-    e: OpenRequest, protection: { stopLoss: number | null; takeProfit: number | null; trailingStop?: number | null }): Promise<void> {
+  private async syncProtection(rowId: number, dealId: string, e: OpenRequest,
+    protection: { stopLoss: number | null; takeProfit: number | null; trailingStop?: number | null }): Promise<void> {
     const row = this.db.openDeals().find(d => d.id === rowId);
     if (!row || row.deal_id !== dealId) return;
-    let actual: BrokerPosition | undefined;
-    try {
-      actual = await this.client.get<BrokerPosition>(`/api/v1/positions/${dealId}`);
-    } catch (err) {
-      // Closed at the broker in the meantime (a stop): reconcile books it.
-      if (err instanceof CapitalApiError && err.status === 404) return;
-      throw err;
-    }
-    const unconfirmed = (why: string) => {
-      this.db.updateDeal(rowId, { deal_id: null, open_price: null, confirmed_time: null, note: `unconfirmed: ${why}` });
-      this.db.event('warn', 'broker', `open for ${e.runId}: ${why}; left to reconcile`);
-    };
-    const createdAt = brokerTime(actual?.position?.createdDateUTC);
-    if (!Number.isFinite(createdAt) || createdAt < row.open_time - 5000)
-      return unconfirmed('position predates this request or has no UTC creation time');
-    if (
-      actual!.position.dealId !== dealId ||
-      actual!.market?.epic !== expected.epic ||
-      actual!.position.direction !== expected.direction ||
-      Math.abs(actual!.position.size - expected.size) > 1e-9
-    )
-      return unconfirmed('confirmed position does not match the request');
-    // Stop events arriving before a permanent deal id cannot be applied yet.
-    // Synchronize the current levels once confirmation makes that possible.
     const latest = this.candidates().find(c => c.runId === e.runId && c.side === e.side && c.entry &&
       (e.fillTime === null ? c.entry.time >= e.decisionTime : c.entry.time === e.fillTime))?.entry;
     if (latest && (latest.stopLoss !== protection.stopLoss || latest.takeProfit !== protection.takeProfit || latest.trailingStop !== protection.trailingStop))
       await this.putStops(dealId, latest.stopLoss, latest.takeProfit, latest.trailingStop);
+  }
+
+  /**
+   * A same-sized stale confirmation may pass the shape checks, so the new position itself is checked (none failed in
+   * 5,633 deals from October 1 to November 10). Why it is not this order's position, or null.
+   */
+  private static positionMismatch(p: BrokerPosition, row: DealRow, expected: { epic: string; direction: string; size: number }): string | null {
+    const createdAt = brokerTime(p.position.createdDateUTC);
+    if (!Number.isFinite(createdAt) || createdAt < row.open_time - 5000) return 'position predates this request or has no UTC creation time';
+    if (p.market?.epic !== expected.epic || p.position.direction !== expected.direction || Math.abs(p.position.size - expected.size) > 1e-9)
+      return 'confirmed position does not match the request';
+    return null;
   }
 
   private async closeDeal(d: DealRow, note: string, paperPrice?: number): Promise<void> {
@@ -1323,6 +1314,19 @@ export class BrokerMirror {
         account_id: a.id,
       });
       this.db.event('warn', 'broker', `re-attached deal ${p.position.dealId} (${row.epic}, ${row.run_id}) found on ${a.name}`);
+    }
+    // Opens confirmed since the last pass: a position that is not this order's goes back to adoption below.
+    for (const [rowId, u] of this.unverified) {
+      if (u.accountId !== a.id) continue;
+      this.unverified.delete(rowId);
+      const d = tracked.find(x => x.id === rowId), p = open.get(u.dealId);
+      if (!d || d.deal_id !== u.dealId || !p) continue; // closed or relinked meanwhile: the steps below book it
+      const why = BrokerMirror.positionMismatch(p, d, u.expected);
+      if (!why) continue;
+      this.db.updateDeal(d.id, { deal_id: null, open_price: null, confirmed_time: null, note: `unconfirmed: ${why}` });
+      this.db.event('warn', 'broker', `open for ${u.runId}: ${why}; left to reconcile`);
+      trackedIds.delete(u.dealId);
+      d.deal_id = null;
     }
     for (const d of tracked.filter(d => !d.deal_id)) {
       const direction = d.side === 'long' ? DIRECTION_BUY : DIRECTION_SELL;

@@ -248,6 +248,8 @@ export class AgentRun {
 
   private quote: Quote | null = null;
   private tick: Tick | null = null;
+  /** The quote in hand followed the instrument's previous one without a pause (see exitFill). */
+  private continuousQuote = false;
   private readonly tickHistory: readonly Tick[];
   private readonly execution?: LiveExecution;
   private replayTime:number|null=null;
@@ -407,7 +409,7 @@ export class AgentRun {
   }
 
   /** Live quote (arena only): stops and margin at tick precision. */
-  onTick(q: Quote, dispatchAgent = true, risk?: Float64Array, riskOffset = 0): void {
+  onTick(q: Quote, dispatchAgent = true, risk?: Float64Array, riskOffset = 0, continuous = false): void {
     // lastTime tracks candles only (it is the resume point after a restart).
     if (this.execution && (q.time > this.now() + 1000 || this.now() - q.time > QUOTE_MAX_AGE_MS)) { this.riskChanged?.(); return; }
     if (!Number.isFinite(q.bid) || !Number.isFinite(q.ask) || q.bid <= 0 || q.ask < q.bid || (this.quote && q.time < this.quote.time))
@@ -417,8 +419,21 @@ export class AgentRun {
     this.tick = q.source !== undefined && q.receivedAt !== undefined ? q as Tick : {...q,receivedAt:q.receivedAt??q.time,source:q.source??TICK_SOURCE.SYNTHETIC};
     if (this.startTime === 0) this.startTime = this.tick.receivedAt;
     this.flushPending();
+    this.continuousQuote = continuous;
     this.checkTickProtections(this.tick, risk, riskOffset);
     if (dispatchAgent) this.dispatchTick();
+  }
+
+  /**
+   * A take-profit is a limit order. While the instrument quotes continuously the venue trades through the level between
+   * two of our quotes, and fills there: Capital's targets filled at the level or better (median +0.26 bp, 83 closes,
+   * Nov 2026), never at the next quote our stream delivered after a hole (ETHUSD Nov 10 13:30: level 2055.76, Capital
+   * 2055.28, our next quote 2038.36). After a pause in quoting the first quote is the market, so a gap fills there.
+   * Stops stay at the quote: a stop becomes a market order and slips (Capital: median 0.15 bp, several bp at releases).
+   */
+  private exitFill(reason: ExitReason, pos: OpenPosition, quotePx: number): number {
+    if (reason !== EXIT_REASON.TAKE_PROFIT || !this.continuousQuote || pos.takeProfit === null) return quotePx;
+    return pos.side === SIDE_LONG ? Math.min(quotePx, pos.takeProfit) : Math.max(quotePx, pos.takeProfit);
   }
 
   /**
@@ -502,7 +517,7 @@ export class AgentRun {
       this.peakEquity = risk[offset + 1]!;
       this.maxDrawdown = risk[offset + 2]!;
       const reason = NATIVE_EXIT_REASON[risk[offset]! - 1];
-      if (reason) return this.closePosition(reason, this.exitPrice(pos.side), q.receivedAt);
+      if (reason) return this.closePosition(reason, this.exitFill(reason, pos, this.exitPrice(pos.side)), q.receivedAt);
       pos.trailAnchor = risk[offset + 3]!;
       return;
     }
@@ -528,7 +543,7 @@ export class AgentRun {
     }
     if (pos.takeProfit !== null) {
       const hit = pos.side === SIDE_LONG ? exitPx >= pos.takeProfit : exitPx <= pos.takeProfit;
-      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, exitPx, q.receivedAt);
+      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, this.exitFill(EXIT_REASON.TAKE_PROFIT, pos, exitPx), q.receivedAt);
     }
     if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.receivedAt);
     this.updateTrailAnchor(pos, exitPx);

@@ -309,16 +309,20 @@ test('in a reversal the paper close of the old side leaves the new side\'s decid
   } finally { mirror.stop(); db.db.close(); }
 });
 
-test('an account\'s next order goes before the previous order\'s position check; a mismatch goes back to reconcile', async () => {
+test('a burst sends only orders and confirmations; reconciliation checks the new positions in one request and hands a mismatch to adoption', async () => {
   const now = Date.now(), RUN_B = 'demo:fixture-b:EURUSD:x1:hash', calls: string[] = [];
   const db = new ArenaDB(':memory:');
   db.setSetting(BROKER_SETTINGS.ENABLED, true);
   db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, { [RUN]: ACCOUNT, [RUN_B]: ACCOUNT });
   db.setSetting(BROKER_SETTINGS.ACCOUNTS, { [ACCOUNT]: { name: NAME, allocation: 100000, hedging: true, leverage: 1, killed: false } });
   const candidates: MirrorCandidate[] = [RUN, RUN_B].map(runId => ({ runId, epic: EPIC, tier: 1, score: 0, side: null, entry: null, pendingOpen: { side: LONG, at: now } }));
+  const created = new Date(now).toISOString().replace('Z', '');
+  // Capital's book after the burst: deal1 is run A's; "deal2" (named by run B's confirmation) is another SELL;
+  // run B's own BUY is deal3. Before the burst the account held only the older SELL.
+  let positions: unknown[] = [{ position: { dealId: 'deal2', direction: 'SELL', size: 100, createdDateUTC: created }, market: { epic: EPIC } }];
   let n = 0;
   const client = {
-    logins: 1, selectAccount: async () => {}, transactions: async () => ({ transactions: [], complete: true }),
+    logins: 1, selectAccount: async () => {}, historyTransactions: async () => ({ transactions: [], complete: true }),
     get: async (path: string) => {
       if (path === '/api/v1/accounts') return { accounts: [{ accountId: ACCOUNT, accountName: NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } }] };
       if (path === '/api/v1/accounts/preferences') return { hedgingMode: true, leverages: {} };
@@ -326,13 +330,9 @@ test('an account\'s next order goes before the previous order\'s position check;
         calls.push(`confirm ${path.slice(17)}`);
         return { dealStatus: 'ACCEPTED', epic: EPIC, direction: 'BUY', size: 100, dealId: `deal${path.slice(-1)}`, level: 1.12 };
       }
-      if (path.startsWith('/api/v1/positions/deal')) {
-        const id = path.slice(18);
-        calls.push(`check ${id}`);
-        // The second position turns out to be a SELL: the confirmation was not this order's.
-        return { position: { dealId: id, direction: id === 'deal2' ? 'SELL' : 'BUY', size: 100, createdDateUTC: new Date().toISOString().replace('Z', '') }, market: { epic: EPIC } };
-      }
-      return { positions: [] };
+      if (path === '/api/v1/positions') { calls.push('positions'); return { positions }; }
+      calls.push(`get ${path}`);
+      return {};
     },
     post: async (_path: string, _body: unknown, hooks?: { sent?: () => void; accepted?: () => void }) => {
       hooks?.sent?.();
@@ -343,16 +343,29 @@ test('an account\'s next order goes before the previous order\'s position check;
   } as unknown as CapitalClient;
   const mirror = new BrokerMirror(client, db, { prefix: 'Arena', accountTiers: { [NAME]: 1 } });
   mirror.setCandidateSource(() => candidates);
+  const internal = mirror as unknown as { accounts: Map<string, { lastReconcileAt: number }>; cycle(): Promise<void> };
   try {
     await mirror.start();
     await settled(mirror);
+    calls.length = 0;
     for (const runId of [RUN, RUN_B])
       mirror.onRunEvent({ type: 'order', kind: 'open', runId, time: now, side: LONG, size: 500, price: 1.12, stopLoss: null, takeProfit: null });
-    for (let i = 0; i < 300 && calls.filter(c => c.startsWith('check')).length < 2; i++) await Bun.sleep(10);
+    for (let i = 0; i < 300 && calls.filter(c => c.startsWith('confirm')).length < 2; i++) await Bun.sleep(10);
     await settled(mirror);
-    expect(calls).toEqual(['post 1', 'confirm ref1', 'post 2', 'confirm ref2', 'check deal1', 'check deal2']);
+    expect(calls).toEqual(['post 1', 'confirm ref1', 'post 2', 'confirm ref2']);
+    expect(db.dealsForRun(RUN_B)[0]).toMatchObject({ deal_id: 'deal2' });
+    positions = [
+      { position: { dealId: 'deal1', direction: 'BUY', size: 100, createdDateUTC: created }, market: { epic: EPIC } },
+      ...positions,
+      { position: { dealId: 'deal3', direction: 'BUY', size: 100, level: 1.121, createdDateUTC: created }, market: { epic: EPIC } },
+    ];
+    internal.accounts.get(ACCOUNT)!.lastReconcileAt = 0;
+    await internal.cycle();
+    await settled(mirror);
+    expect(calls.filter(c => c === 'positions' || c.startsWith('get /api/v1/positions/'))).toEqual(['positions']);
     expect(db.dealsForRun(RUN)[0]).toMatchObject({ deal_id: 'deal1', open_price: 1.12, note: null });
-    expect(db.dealsForRun(RUN_B)[0]).toMatchObject({ deal_id: null, open_price: null, confirmed_time: null, note: 'unconfirmed: confirmed position does not match the request' });
+    // Run B's deal was not its order's position: unconfirmed, then adopted as the BUY it really opened.
+    expect(db.dealsForRun(RUN_B)[0]).toMatchObject({ deal_id: 'deal3', open_price: 1.121, confirmed_time: null, note: 'unconfirmed: confirmed position does not match the request' });
   } finally { mirror.stop(); db.db.close(); }
 });
 

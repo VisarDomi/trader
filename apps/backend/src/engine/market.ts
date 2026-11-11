@@ -30,6 +30,12 @@ export const TICK_HISTORY_LIMIT = 512;
  * stamped in. Replays of quotes without a delay (generated ticks) keep a zero grace.
  */
 export const FEED_GRACE_FACTOR = 1.5;
+/**
+ * A quote stamped within this of the instrument's previous one: the venue quoted continuously in between, even where
+ * our stream skipped prices (Capital's arrives in bursts with holes of seconds). A longer pause is a closed or halted
+ * market, and the next quote is a gap.
+ */
+export const CONTINUOUS_QUOTES_MS = 60_000;
 const FEED_DELAY_ALPHA = 0.05;
 
 /** The engine's quote acceptance rule: sane prices, neither stale nor from the future, in order after the previous accepted quote. */
@@ -216,6 +222,7 @@ export class MarketEngine {
         const bar = series.flushThrough(bucket);
         if (bar) closed.push({ series, bar });
       }
+    const continuous = this.lastTick !== null && q.time - this.lastTick.time <= CONTINUOUS_QUOTES_MS;
     this.lastTick = q;
     this.observeDelay(q);
     this.ticks.push(q);
@@ -248,7 +255,7 @@ export class MarketEngine {
       // The native risk batch updates positions itself; with it only flat idle runs are skipped.
       if (skip && (risk === undefined ? !run.quoteMatters(q) : run.quoteIdle)) continue;
       this.deliveredRunTicks++;
-      run.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH);
+      run.onTick(q, false, risk, i * RISK_OUTPUT_WIDTH, continuous);
     }
     return closed;
   }

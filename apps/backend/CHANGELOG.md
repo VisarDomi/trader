@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Engine `2026-11-tp-level`: a take-profit crossed while the instrument quotes continuously fills at its level, not at the next quote our stream delivered. Capital fills targets at the level or better (median +0.26 bp over 83 closes), but its stream arrives in bursts with holes of seconds in fast markets; paper had filled 25 targets better than demo beyond a spread in 14 days (−356 bp), e.g. ETHUSD on 2026-11-10 at 13:30 (level 2055.76, Capital 2055.28, paper 2038.36). After a pause in quoting (over a minute) the reopening quote is still the fill. Stops unchanged (market orders; paper stays conservative).
+- Broker: a new position is checked by the account's next reconciliation (one list of all positions) instead of one GET per order, so a top-of-hour burst carries orders and confirmations only (about a third fewer requests in the shared budget). The protection resync after confirmation sends nothing when the levels did not change.
+
 - Sub-second demo orders: one Capital session per demo account (no account switching), a job queue per account with orders before reconciliation, request priorities in the shared budget (orders, then confirmations and position checks, then polling) and an immediate first confirmation. Decision → accepted fell from a 7.4 s median (52 s at 40+ decisions a minute) to 0.2 s on the first night.
 
 - Engine `2026-11-feed-time-v2`: paper orders no longer pass through a modelled shared broker queue (FIFO pacing, 600 opens an hour across all runs); a burst never delays or blocks a paper order. A per-run guard of 12 opens an hour stays. Quotes reach only the positions they can change, and agent contexts are built from a per-run base; both proven identical on 11 recorded days.

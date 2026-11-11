@@ -51,7 +51,8 @@ test('tick-only agent trades before any closed bar, gets current bid/ask and fil
   expect(r.trades).toHaveLength(1);
   expect(r.trades[0]).toMatchObject({
     entryPrice: 101,
-    exitPrice: 109,
+    // The target is a limit: quoting continued, so the venue filled it at its level, not at our next quote.
+    exitPrice: 108,
     exitReason: EXIT_REASON.TAKE_PROFIT,
     entryTime: T,
     exitTime: T + 1000,
@@ -62,6 +63,24 @@ test('tick-only agent trades before any closed bar, gets current bid/ask and fil
   ]);
   expect(seen).toHaveLength(3);
 });
+test('a target crossed between continuous quotes fills at its level; after a pause in quoting at the reopening quote; stops at the quote', () => {
+  const run = (side: 'long' | 'short', path: [number, number][], protection: { stopLoss?: number; takeProfit?: number }) => {
+    const { e, r } = setup(agent({ onTick(ctx) { if (ctx.ticks.length === 1) (side === 'long' ? ctx.buy : ctx.sell)({ size: 1, ...protection }); } }));
+    for (const [offset, bid] of path) e.processTick(quote(offset, bid));
+    return r.trades[0]!;
+  };
+  // Long, target 108: the stream skipped from 102 to 115 within seconds (Capital's holes): filled at 108.
+  expect(run('long', [[0, 100], [1000, 102], [4000, 115]], { takeProfit: 108 })).toMatchObject({ exitPrice: 108, exitReason: EXIT_REASON.TAKE_PROFIT });
+  // Short, target 90 (bought back at the ask): the next quote's ask 81 is past it: filled at 90.
+  expect(run('short', [[0, 100], [3000, 80]], { takeProfit: 90 })).toMatchObject({ exitPrice: 90, exitReason: EXIT_REASON.TAKE_PROFIT });
+  // A target reached exactly fills at the quote, which is the level.
+  expect(run('long', [[0, 100], [1000, 108]], { takeProfit: 108 })).toMatchObject({ exitPrice: 108 });
+  // The market stopped quoting for over a minute and reopened beyond the target: a gap fills at the reopening quote.
+  expect(run('long', [[0, 100], [61_000 + 30_000, 115]], { takeProfit: 108 })).toMatchObject({ exitPrice: 115, exitReason: EXIT_REASON.TAKE_PROFIT });
+  // A stop is a market order: it fills at the quote that crossed it, continuous or not.
+  expect(run('long', [[0, 100], [2000, 90]], { stopLoss: 95 })).toMatchObject({ exitPrice: 90, exitReason: EXIT_REASON.STOP_LOSS });
+});
+
 test('each repeated delivered quote is a tick; replayed IDs, late source quotes, crossed quotes and future/stale ticks are filtered', () => {
   const { e, r } = setup(
     agent({
