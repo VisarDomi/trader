@@ -37,14 +37,23 @@ moment. Other runs' orders never delay or block it (user request 2026-11-10: a b
 engine); until engine `2026-11-feed-time-v2` a synthetic gateway per scenario modelled the mirror's shared
 request queue and a 600 opens/hour budget across all runs. What remains is a per-run runaway guard, 12 opens
 an hour, the same rule the mirror applies to one run. Capital's request budget is the real mirror's queue:
-one session per demo account, orders ahead of confirmations ahead of polling, ≈6 requests/s in total
+one session per demo account, orders ahead of confirmations ahead of polling (since 2026-11-11 a new position
+is checked by the account's next reconciliation, one request for all positions, not one per order), ≈6 requests/s in total
 (Capital: 10 per second per user; orders at most 1 per 0.1 s; 1,000 demo orders an hour).
 
 Orders persist while pending. New entries fail closed when market metadata is stale (>3 minutes), the
 market is closed, quotes are stale (>30 seconds), price input is invalid, or size/stops/margin fail at
 execution. A close can wait for a market to reopen. The engine freezes order size at submission and tests
 margin again at fill rather than silently shrinking an in-flight order. Protective stops use tick prices;
-candle prices cannot become live fills. Quotes continue arriving while forecasts run; obsolete closed-bar
+candle prices cannot become live fills. A stop fills at the quote that crosses it (a stop becomes a market order;
+Capital's stop fills: median 0.15 bp worse than the level, several bp at data releases). A take-profit is a limit:
+since engine `2026-11-tp-level` it fills at its level while the instrument quotes continuously (quotes under a
+minute apart), because Capital fills targets at the level or better (median +0.26 bp, 83 closes) and its quote
+stream arrives in bursts with holes of seconds in fast markets, so our next quote can be far past a level the venue
+traded through (ETHUSD 2026-11-10 13:30: level 2055.76, Capital 2055.28, our next quote 2038.36). After a pause
+in quoting the reopening quote is the market, and a gap fills there. Over 14 days the twins had 25 targets where
+paper filled better than demo beyond a spread (−356 bp in total) and 3 the other way; stops are the mirror image
+(60 pairs where demo filled better, +514 bp; 6 the other way): paper stays conservative there. Quotes continue arriving while forecasts run; obsolete closed-bar
 callbacks are skipped rather than run against future bar history.
 
 Non-crypto weekend funding is charged three times on Friday, with no Saturday/Sunday charge. The 1:1
