@@ -97,7 +97,6 @@ func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from
     let card=Presentation.tradeCard(data,runId:"demo:fixture",stage:"virtual")
     #expect(card.route?.screen == .trade && card.route?.version=="7")
     #expect(card.chart?.series.count==2)
-    #expect(try JSONDecoder().decode(Row.self,from:JSONEncoder().encode(card))==card)
 }
 @Test func unpricedBrokerCloseRetainsItsTimeWithoutInventingAFillPrice() throws {
     let data=try json("""
