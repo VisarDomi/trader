@@ -5,6 +5,37 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-11 (Wed) — daily visit: targets fill at their level; bursts lose the per-order position check
+
+- Health: green. Stream and forecaster up; tick journal 51.7M received, 0 dropped; storage 15.6 GB (two-year
+  35.7 GB, 4× stress 76 GB of 100); no errors in 3 days. Nightly lab 03:31–03:43, no backtest work (engine
+  unchanged), night grid built 03:43 (US500 186 / US100 156 of 336 settings traded), Night Lab report already
+  published. Cost backfill: 0 candidates. Arena RSS 411 MB nine hours after the midnight restart (606 MB at 8 h
+  the day before). Calendar coverage through 2027-12-31.
+- Verdicts: control 148, early 394, keep 9, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no
+  additions (Wednesday).
+- Twins, current engine (decided since 2026-11-09 22:19 UTC): 180 pairs, 82% agree, mean +0.83 bp; since
+  yesterday's mirror fixes (08:43 UTC) 139 pairs, 81% agree, mean −0.38 bp. CHECK: swing-reversal/p05 US100
+  1:2, 5 of 7 agree; one pair is the 16:00 burst (demo entered 6.1 s after the decision), the other within a
+  bp. Of the 27 disagreeing pairs since the fixes, 9 come from burst entry delays (random sign, no bias).
+- Found: the largest gap (swing-reversal/p10 ETHUSD, −83 bp) was the engine. Capital's activity shows the
+  target at 2055.76 filled at 2055.28 at 13:30:26 (US release); our stream was 12–14 s late and arrived in
+  bursts with ~3 s holes, and the next quote we got was 2038.36, where paper filled. Over 14 days: 25 targets
+  where paper beat demo beyond a spread (−356 bp in total), 3 the other way. Capital's own records (4 days, all
+  Arena accounts): targets fill at the level or better (median +0.26 bp, 83 closes); stops slip a median
+  0.15 bp (p5 −3.5 bp). Fixed (engine `2026-11-tp-level`, 13b560d, deployed 09:44): a target crossed while the
+  instrument quotes continuously (quotes under a minute apart) fills at its level; after a pause the reopening
+  quote is still the fill. Stops unchanged: they are market orders and paper stays conservative (demo better in
+  60 of 845 stop pairs, +514 bp). The version bump restarts the twin window and refreshes backtests tonight.
+- Burst latency: Capital still answers an order in ~0.14 s, but at 16:00 41 orders took 25 s to leave our
+  queue (decision → sent up to 14 s): every order needs its confirmation before the account's next one, plus a
+  position check, all in the ~6 requests/s budget. The per-order position check (a GET each) now happens in the
+  account's next reconciliation (one GET of all positions, within about a minute), and the protection resync
+  sends nothing when levels did not change: about a third fewer requests per burst. The budget itself stays:
+  position-opener shares the login and its usage is unknown.
+- Next: burst decision → sent after this deploy (16:00 and 00:00 bursts); twin pairs under `2026-11-tp-level`;
+  broker-closed stops (paper conservative) if they keep many pairs from agreeing.
+
 ## 2026-11-10 (Tue) — daily visit: three mirror fixes; twins judged on the current engine
 
 - Health: green. Stream and forecaster up; tick journal 48.8M received, 0 dropped; storage 15.6 GB (two-year
@@ -1595,6 +1626,7 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 One line per idea: agent — mechanism — status (date).
 
 Visit 2026-11-10: no new agent, retirement or tuning; mirror and twin-report fixes only.
+Visit 2026-11-11: no new agent, retirement or tuning; engine (targets fill at their level) and mirror (position checks in reconciliation) fixes only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
