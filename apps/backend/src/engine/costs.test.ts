@@ -7,6 +7,7 @@ import { getInstrument } from './instruments.ts';
 import { defineAgent } from '../sdk/index.ts';
 import type { LoadedAgent } from './loader.ts';
 import { VirtualVenue } from './venue.ts';
+import { EXIT_REASON } from '../sdk/types.ts';
 import fixtures from './fixtures/capital-markets.json';
 const LONG='long',SHORT='short',EPIC='US500',T=Date.UTC(2026,9,29,10);
 const quote=(mid:number,spread:number,decisionMid?:number):FillQuoteEvidence=>({mid,spread,source:TICK_SOURCE.RECORDED,...(decisionMid!==undefined?{decisionMid}:{})});
@@ -44,4 +45,25 @@ test('queued fills capture the decision quotes without changing actual prices or
   for(const [at,bid]of [[0,100],[400,102],[1000,105],[1200,108],[2000,110]] as const){now=T+at;engine.processTick({time:now,receivedAt:now,bid,ask:bid+1,source:TICK_SOURCE.RECORDED});}
   expect(run.trades).toHaveLength(1);
   expect(run.trades[0]).toMatchObject({entryPrice:103,exitPrice:108,pnl:5,exitTime:T+2000,execution:{midpointPnl:6,spreadCost:1,timingCost:-1,adjustmentPnl:0}});
+});
+test('a target filled at its level is supported by the quote that crossed it; the level difference is an adjustment',()=>{
+  const q={bid:105,ask:106,time:T,source:TICK_SOURCE.RECORDED};
+  expect(fillQuote(q,LONG,false,104,2,undefined,undefined,104)).toMatchObject({mid:105.5,spread:1,limit:104});
+  expect(fillQuote(q,SHORT,false,107,2,undefined,undefined,107)).toMatchObject({mid:105.5,limit:107});
+  expect(fillQuote(q,LONG,false,105,2,undefined,undefined,104)?.limit).toBeUndefined();
+  expect(fillQuote(q,LONG,false,104,2)).toBeUndefined();
+  expect(fillQuote(q,LONG,false,106,2,undefined,undefined,106)).toBeUndefined();
+  expect(fillQuote(q,SHORT,false,104,2,undefined,undefined,104)).toBeUndefined();
+  expect(fillQuote(q,LONG,true,104,2,undefined,undefined,104)).toBeUndefined();
+  let now=T;
+  const instrument={...getInstrument(EPIC)},venue=new VirtualVenue(instrument);
+  venue.update({...fixtures.markets.US500,snapshot:{...fixtures.markets.US500.snapshot,marketStatus:'TRADEABLE'}},now);
+  const def=defineAgent({name:'cost-target',description:'cost target',instruments:[EPIC],timeframe:'1m',warmup:0,params:{},
+    onTick(ctx){if(ctx.ticks.length===1)ctx.buy({size:1,takeProfit:104});}});
+  const agent:LoadedAgent={id:'cost-target',slug:'cost-target',variant:null,file:'',source:'',codeHash:'fixture',params:{},def};
+  const engine=new MarketEngine(instrument),run=engine.addRun({runId:agent.id,agent,leverage:20,capital:10000,checkStopsOnCandles:false,
+    execution:{venue,latencyMs:500,now:()=>now}});
+  for(const [at,bid]of [[0,100],[400,100],[1000,100],[2000,105]] as const){now=T+at;engine.processTick({time:now,receivedAt:now,bid,ask:bid+1,source:TICK_SOURCE.RECORDED});}
+  expect(run.trades[0]).toMatchObject({entryPrice:101,exitPrice:104,pnl:3,exitReason:EXIT_REASON.TAKE_PROFIT,
+    execution:{midpointPnl:5,spreadCost:1,timingCost:0,adjustmentPnl:-1,exit:{mid:105.5,limit:104}}});
 });

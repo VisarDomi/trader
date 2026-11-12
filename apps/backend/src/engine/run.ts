@@ -439,6 +439,11 @@ export class AgentRun {
     return pos.side === SIDE_LONG ? Math.min(quotePx, pos.takeProfit) : Math.max(quotePx, pos.takeProfit);
   }
 
+  /** The level a tick-path exit may fill at instead of the quote (exitFill), for its cost evidence. */
+  private fillLimit(reason: ExitReason, pos: OpenPosition): number | undefined {
+    return reason === EXIT_REASON.TAKE_PROFIT && pos.takeProfit !== null ? pos.takeProfit : undefined;
+  }
+
   /**
    * A quote changes nothing for a flat run without pending orders or a tick callback except which quote
    * it holds, so the engine skips it and hands it the latest accepted quote when it is next observed
@@ -520,7 +525,7 @@ export class AgentRun {
       this.peakEquity = risk[offset + 1]!;
       this.maxDrawdown = risk[offset + 2]!;
       const reason = NATIVE_EXIT_REASON[risk[offset]! - 1];
-      if (reason) return this.closePosition(reason, this.exitFill(reason, pos, this.exitPrice(pos.side)), q.receivedAt);
+      if (reason) return this.closePosition(reason, this.exitFill(reason, pos, this.exitPrice(pos.side)), q.receivedAt, undefined, this.fillLimit(reason, pos));
       pos.trailAnchor = risk[offset + 3]!;
       return;
     }
@@ -546,7 +551,7 @@ export class AgentRun {
     }
     if (pos.takeProfit !== null) {
       const hit = pos.side === SIDE_LONG ? exitPx >= pos.takeProfit : exitPx <= pos.takeProfit;
-      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, this.exitFill(EXIT_REASON.TAKE_PROFIT, pos, exitPx), q.receivedAt);
+      if (hit) return this.closePosition(EXIT_REASON.TAKE_PROFIT, this.exitFill(EXIT_REASON.TAKE_PROFIT, pos, exitPx), q.receivedAt, undefined, this.fillLimit(EXIT_REASON.TAKE_PROFIT, pos));
     }
     if (this.marginBreached(exitPx)) return this.closePosition(EXIT_REASON.MARGIN_CALL, exitPx, q.receivedAt);
     this.updateTrailAnchor(pos, exitPx);
@@ -968,7 +973,7 @@ export class AgentRun {
     return size;
   }
 
-  private closePosition(reason: ExitReason, price: number, time: number, note?: string): void {
+  private closePosition(reason: ExitReason, price: number, time: number, note?: string, limit?: number): void {
     this.riskChanged?.();
     const pos = this.position;
     if (!pos) return;
@@ -991,7 +996,7 @@ export class AgentRun {
       ...(pos.barsHeldPartial ? {barsHeldPartial:true} : {}),
     };
     const exitQuote = fillQuote(this.quote, pos.side, false, px, this.instrument.pricePrecision,
-      this.execution && this.executing ? this.decisionMid : this.quote ? (this.quote.bid + this.quote.ask) / 2 : undefined, time);
+      this.execution && this.executing ? this.decisionMid : this.quote ? (this.quote.bid + this.quote.ask) / 2 : undefined, time, limit);
     if (pos.entryQuote && exitQuote) trade.execution = executionCosts(trade, pos.entryQuote, exitQuote);
     // Funding was already debited from the balance as it accrued.
     this.balance += gross;

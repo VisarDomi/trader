@@ -114,3 +114,17 @@ test('a live held position is not silent and recorded forecast downtime does not
   row.status='busted';
   expect(assess(row,new Map(),T).verdict).toBe(VERDICT.RETIRE);
 });
+test('a target exit at its level matches the archived quote that crossed it, and only that way',()=>{
+  const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);db.appendTrade(RUN,0,{...fixtureTrade(),exitReason:EXIT_REASON.TAKE_PROFIT});
+  const row=db.tradeRow(RUN,0)!;
+  const crossing={id:2,epic:EPIC,time:row.exit_time,receivedAt:row.exit_time,bid:row.exit_price+0.5,ask:row.exit_price+1.5,session:1,timestampFallback:0};
+  const exit=matchCostQuote(row,false,crossing,'fixture')!;
+  expect(exit).toMatchObject({limit:row.exit_price,mid:row.exit_price+1});
+  expect(matchCostQuote(row,false,{...crossing,bid:row.exit_price-0.5,ask:row.exit_price+0.5},'fixture')).toBeUndefined();
+  const entry=matchCostQuote(row,true,{id:1,epic:EPIC,time:row.entry_time,receivedAt:row.entry_time,bid:row.entry_price-1,ask:row.entry_price,session:1,timestampFallback:0},'fixture')!;
+  const payload={runId:RUN,idx:0,fingerprint:costFingerprint(row),entry,exit};
+  expect(()=>ingestCosts(db,[{...payload,exit:{...exit,limit:undefined}}])).toThrow('does not match');
+  expect(ingestCosts(db,[payload])).toEqual({attached:1,existing:0});
+  expect(JSON.parse(db.tradeRow(RUN,0)!.execution!)).toMatchObject({exit:{limit:row.exit_price},adjustmentPnl:-0.5*row.size});
+  db.db.close();
+});

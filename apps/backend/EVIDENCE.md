@@ -26,11 +26,14 @@ and recording sequences when available. This is per-fill evidence, not a second 
 existing quote path and makes no additional Capital subscriptions/orders.
 
 ```
-fill-time midpoint P&L − quoted spread + funding + rounding/protection adjustment = net P&L
+fill-time midpoint P&L − quoted spread + funding + rounding/protection/target-level adjustment = net P&L
 decision-midpoint signal P&L − signed timing cost = fill-time midpoint P&L
 ```
 
 Timing is positive adverse, negative favorable. The second identity requires both decision quotes.
+A take-profit filled at its level between quotes (engine `2026-11-tp-level`) is supported by the quote that
+crossed the level, stored with `limit`; the level's distance from that quote is part of the adjustment (since
+2026-11-12; such exits from November 11–12 carry evidence only where the backfill finds both ends).
 The double-spread diagnostic subtracts another spread from the same observed trades; it does not
 re-size positions or re-run signals/stops/liquidations, and is not an independent counterfactual backtest.
 Totals distinguish at-fill references, reconstructed matches, unknown trades and truncated histories.
@@ -40,7 +43,9 @@ funding/P&L is separate. Synthetic backtest references remain simulated, not rec
 `bun run audit-costs` reads the one compressed PostgreSQL archive and reports possible matches.
 `--backfill --limit 5000` attaches derived metadata through the private API. It checks each block's
 SHA-256, chooses the latest preceding delivered quote within 250 ms, and requires its executable side
-price to match the stored fill. It never searches older quotes for a convenient price. Exact historical
+price to match the stored fill (a take-profit exit at its level: the side at or beyond the level). It never
+searches older quotes for a convenient price, so entries under engine `2026-11-arrival-price`, filled at the
+quote before the one that released them, mostly stay unknown when their at-fill evidence is missing. Exact historical
 quote identity is still inferred and decision timing unknown: method `archived-quote-match` is distinct
 from an at-fill capture. Unmatched/pre-recording trades remain unknown. Only missing evidence is filled;
 a fingerprint protects trade identity. Original prices/P&L/source/tick history are never rewritten.
