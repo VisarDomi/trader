@@ -186,9 +186,12 @@ per account without a deal id, so the twins cannot compare funding per trade; at
 also arrives in bursts with holes of seconds: Capital's targets fill at their level (paper too since engine
 `2026-11-tp-level`), while its stops fill near the level and paper's at the next quote we receive, so broker-closed
 stops can agree less and favour demo (conservative paper; 60 of 845 pairs over 14 days). Top-of-hour bursts
-still take seconds on Capital's side of the mirror: ~6 requests/s shared by all accounts, each order needing
-its confirmation before the account's next one. Mirror bugs found by the twins: early closes of decided deals
-(fixed 0e754e4) and reversals closing their own new deal (fixed 2026-11-10).
+take up to ~2.5 s on Capital's side of the mirror (since 2026-11-11): ~6 requests/s shared by all accounts, each
+order needing its confirmation before the account's next one. Capital sometimes refuses an order without a reason
+(about 2%, at busy moments); it goes out again a second later (since 2026-11-12; before, five minutes later).
+A deal the lifecycle closes (a demotion to virtual, a run leaving the mirror) is not a twin: the paper trade goes on.
+Mirror bugs found by the twins: early closes of decided deals (fixed 0e754e4) and reversals closing their own new
+deal (fixed 2026-11-10).
 
 ## Each visit (runbook)
 
