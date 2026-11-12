@@ -6,6 +6,7 @@ import type { CostCandidate } from '../arena/db.ts';
 import type { FillQuoteEvidence } from '@trader/shared/types';
 import { fillQuote } from '../engine/costs.ts';
 import { getInstrument } from '../engine/instruments.ts';
+import { EXIT_REASON } from '../sdk/types.ts';
 import { COST_INGEST_BATCH } from '../arena/cost-ingest.ts';
 
 const MATCH_AGE_MS = 250;
@@ -17,8 +18,10 @@ const endpointKey=(c:Candidate,entry:boolean)=>`${c.run_id}:${c.idx}:${entry?'en
 export function matchCostQuote(c:CostCandidate,entry:boolean,tick:RecordedTick,journalId:string):FillQuoteEvidence|undefined {
   const at=entry?c.entry_time:c.exit_time;
   if(tick.epic!==c.epic||tick.receivedAt>at||at-tick.receivedAt>MATCH_AGE_MS||tick.time>tick.receivedAt+1000||tick.receivedAt-tick.time>30_000)return;
+  // A target fills at its level once a quote crosses it (engine 2026-11-tp-level): that quote supports the exit.
   return fillQuote({bid:tick.bid,ask:tick.ask,time:tick.time,receivedAt:tick.receivedAt,source:'recorded',sequence:tick.id,journalId},
-    c.side,entry,entry?c.entry_price:c.exit_price,getInstrument(c.epic).pricePrecision,undefined,at);
+    c.side,entry,entry?c.entry_price:c.exit_price,getInstrument(c.epic).pricePrecision,undefined,at,
+    !entry&&c.exit_reason===EXIT_REASON.TAKE_PROFIT?c.exit_price:undefined);
 }
 async function request(path:string,body?:unknown) {
   const token=process.env.ARENA_TOKEN;if(!token)throw new Error('ARENA_TOKEN required for cost evidence');

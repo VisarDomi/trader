@@ -2,6 +2,7 @@ import type { FillQuoteEvidence } from '@trader/shared/types';
 import type { ArenaDB, CostCandidate } from './db.ts';
 import { executionCosts } from '../engine/costs.ts';
 import { getInstrument } from '../engine/instruments.ts';
+import { EXIT_REASON } from '../sdk/types.ts';
 
 export const MAX_COST_QUOTE_AGE_MS = 1000;
 export const COST_INGEST_BATCH = 500;
@@ -15,10 +16,14 @@ function quote(value:FillQuoteEvidence,trade:CostCandidate,entry:boolean):FillQu
     throw new Error('invalid archived fill reference');
   const precision=getInstrument(trade.epic).pricePrecision,scale=10**precision;
   const price=value.mid+(((trade.side==='long')===entry)?1:-1)*value.spread/2;
-  const expected=entry?price:Math.round(price*scale)/scale;
-  if(Math.abs(expected-(entry?trade.entry_price:trade.exit_price))>1/scale*1e-6)throw new Error('archived quote does not match the stored fill');
+  const expected=entry?price:Math.round(price*scale)/scale,fill=entry?trade.entry_price:trade.exit_price,tolerance=1/scale*1e-6;
+  // A target filled at its level: the quote that crossed it is at or beyond the fill.
+  const atLevel=!entry&&trade.exit_reason===EXIT_REASON.TAKE_PROFIT&&value.limit===fill&&
+    (trade.side==='long'?expected>=fill-tolerance:expected<=fill+tolerance);
+  if(Math.abs(expected-fill)>tolerance&&!atLevel)throw new Error('archived quote does not match the stored fill');
   // Old decision prices cannot be inferred from fill quotes.
-  return {mid:value.mid,spread:value.spread,source:'recorded',ageMs:value.ageMs,journalId:value.journalId,sequence:value.sequence};
+  return {mid:value.mid,spread:value.spread,source:'recorded',ageMs:value.ageMs,journalId:value.journalId,sequence:value.sequence,
+    ...(atLevel&&Math.abs(expected-fill)>tolerance?{limit:fill}:{})};
 }
 export function ingestCosts(db:ArenaDB,body:unknown) {
   if(!Array.isArray(body)||body.length>COST_INGEST_BATCH)throw new Error('invalid cost batch');

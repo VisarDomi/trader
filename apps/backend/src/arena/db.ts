@@ -222,7 +222,7 @@ export interface CostAggregate {
 }
 export interface CostCandidate {
   run_id:string;idx:number;epic:string;side:Trade['side'];size:number;entry_time:number;exit_time:number;
-  entry_price:number;exit_price:number;pnl:number;funding:number;execution:string|null;
+  entry_price:number;exit_price:number;pnl:number;funding:number;execution:string|null;exit_reason:string|null;
 }
 
 export interface AgentRow {

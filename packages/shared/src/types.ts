@@ -12,6 +12,8 @@ export interface FillQuoteEvidence {
   ageMs?: number;
   journalId?: string;
   sequence?: number;
+  /** A target filled at this level between two quotes; the evidence is the quote that crossed it. */
+  limit?: number;
 }
 export interface ExecutionCostEvidence {
   method: 'fill-quotes' | 'archived-quote-match';
@@ -22,7 +24,7 @@ export interface ExecutionCostEvidence {
   spreadCost: number;
   /** Positive = adverse timing; negative = favorable. Unknown for old decisions. */
   timingCost: number | null;
-  /** Fill rounding and negative-balance protection; never disguised as fees. */
+  /** Fill rounding, targets filled at their level rather than at the crossing quote, and negative-balance protection; never disguised as fees. */
   adjustmentPnl: number;
 }
 
