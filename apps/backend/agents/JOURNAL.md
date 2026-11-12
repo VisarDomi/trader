@@ -5,6 +5,41 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-12 (Thu, evening) — user-requested check: first twins under arrival-price; target exits keep cost evidence
+
+- Twins under `2026-11-arrival-price` (decided since 08:40 UTC, 12 h): 43 pairs, 86% agree, mean +0.46 bp, p95
+  2.9 bp; no CHECK (1 agent converged, 30 too few). All 6 disagreeing pairs are entry gaps; their exits agree within
+  0.4 bp. Three came from top-of-hour bursts, where the demo order was accepted 1.7–3.2 s after the decision while
+  paper assumes 0.5 s (gaps of 0.7–1.7 bp, both signs).
+  timesfm-trend OIL_CRUDE 1:20 at 17:00 (+5.9 bp against a 3.5 bp tolerance): Capital's stream ran 11–14 s late and
+  had a 2.6 s hole (stamps 17:00:09.818 → 12.411) during a 7.5 bp rise. Paper filled at the last quote before the
+  hole (86.198); the demo filled 0.3 s after the decision at a price inside the hole (86.248). Random, not a rule.
+  Nothing unexplained.
+- Burst latency is set by our request budget. Each order costs ~0.35 s: the order and its confirmation at the
+  arena's 170 ms pacing. 12:00: 13 opens and 8 closes, last open accepted 7.7 s after its decision. 16:00: 23 opens
+  and 3 closes, 7.2 s. 09:00: 8 opens and 8 closes, 4.9 s. This morning's "worst 2.7 s" covered a quieter day;
+  LIFECYCLE corrected. Entry lag: p50 0.3 s, p95 3.3 s. The pace stays as it is: the login's other ~4 requests/s
+  belong to position-opener and the lab.
+- No reasonless refusal since the 1 s resend shipped, so it has nothing to verify yet.
+- Broker error at 13:16 UTC: a close for timesfm-drift/h4 US500 1:50 failed after 24 s with "Unable to connect".
+  Capital's own stop had already closed the deal: paper's stop fired at 13:16:30, and Capital's stream reaches us
+  6–12 s late. The arena booked the close as "already closed at broker" (−$19.2). The quote stream kept flowing.
+  One-off.
+- Found (costs): since `2026-11-tp-level`, a target filled at its level is not any quote's bid or ask, so no cost
+  evidence was stored. All 67 demo trades without cost evidence since 2026-11-11 were take-profits, and the backfill
+  could not match them (0 of 71 this evening).
+  Fixed (2fa796f, deployed 22:10 CET): the quote that crossed the level supports the exit (stored with `limit`), and
+  the level's distance from it goes into the adjustment. The backfill then attached 59 of 71. The other 12 are entries
+  under the arrival rule, where the backfill takes the releasing quote, so they stay unknown (EVIDENCE.md).
+  Take-profit evidence since 2026-11-11: 85 trades, adjustment −$42 against $334 of spread cost.
+- Health: green. Tick journal 56.29M received, 0 dropped, archive acknowledgements advancing; storage 15.9 GB
+  (two-year 36.2 GB, 4× stress 77.6 GB of 100). Watchdog quiet. Arena RSS 659 MB 12 h after the morning restart
+  (568 MB in the review); 263 MB after the deploy. trader.slice allows 15 GB, and RSS has moved between 410 and
+  660 MB for days without a steady climb: still watched, no action.
+- Verdicts: control 148, early 393, keep 10, leader 0, retire 0; monkey sanity 0 of 36. Nothing retired or added.
+- Next: twins under the arrival rule at 24 h; a reasonless refusal's resend when Capital next sends one; tonight's
+  backtest refresh for the arrival rule; arena RSS.
+
 ## 2026-11-12 (Thu) — daily visit: orders fill at the price on arrival; demotions are not twins; reasonless refusals resent
 
 - Health: green. Stream and forecaster up; tick journal 54.46M received, 0 dropped; storage 15.8 GB (two-year
@@ -1667,6 +1702,7 @@ One line per idea: agent — mechanism — status (date).
 Visit 2026-11-10: no new agent, retirement or tuning; mirror and twin-report fixes only.
 Visit 2026-11-11: no new agent, retirement or tuning; engine (targets fill at their level) and mirror (position checks in reconciliation) fixes only.
 Visit 2026-11-12: no new agent, retirement or tuning; engine (orders fill at the price on arrival), twins (lifecycle closes are not pairs) and mirror (reasonless refusals resent after 1 s) fixes only.
+Check 2026-11-12 (evening): no new agent, retirement or tuning; cost evidence for targets filled at their level only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
