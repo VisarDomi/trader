@@ -52,8 +52,8 @@ export default defineAgent({
 - **One position per run.** `buy()` while short closes the short and opens a long (a reversal).
   `buy()` while already long is ignored.
 - In backtests and the virtual arena, an order fills after a fixed execution delay
-  (500 ms) on the first quote stamped at or after that moment: buys at ask, sells at
-  bid. Other agents' orders never delay it; one run may open at most 12 times an hour. `ctx.position` changes when filled;
+  (500 ms) at the price in effect at that moment (the last quote stamped at or before it): buys at ask,
+  sells at bid. Other agents' orders never delay it; one run may open at most 12 times an hour. `ctx.position` changes when filled;
   `onFill` is the completion callback. `ctx.close()` cancels an open still in flight.
   There are no limit/stop entry orders — check conditions in your chosen callback and call `buy`/`sell`.
 - Stops, trailing protections and margin are checked on each usable tick in both modes. The first

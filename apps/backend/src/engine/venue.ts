@@ -4,6 +4,12 @@ import type { Side, OrderOptions } from '../sdk/types.ts';
 export const QUOTE_MAX_AGE_MS = 30_000;
 export const RULE_MAX_AGE_MS = 3 * 60_000;
 export const DEFAULT_EXECUTION_MS = 500;
+/**
+ * A quote stamped within this of the instrument's previous one: the venue quoted continuously in between, even where
+ * our stream skipped prices (Capital's arrives in bursts with holes of seconds). A longer pause is a closed or halted
+ * market, and the next quote is a gap.
+ */
+export const CONTINUOUS_QUOTES_MS = 60_000;
 export const VIRTUAL_MODEL = 'capital-v1';
 export interface DistanceRule {
   unit: string;

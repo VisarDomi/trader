@@ -127,7 +127,8 @@ export interface TwinReport {
   days: (TwinStats & { day: number })[];
   runs: TwinRun[];
   worst: TwinTrade[];
-  unpaired: { closedDeals: number; withoutPaperTrade: number; withoutBrokerPnl: number };
+  /** closedByLifecycle: demo deals the lifecycle closed while the paper trade went on (no twin). */
+  unpaired: { closedDeals: number; withoutPaperTrade: number; withoutBrokerPnl: number; closedByLifecycle: number };
   /** Only trades decided from this time on (0: all). */
   since?: number;
 }
@@ -147,9 +148,20 @@ export function closedByBroker(note: string | null): boolean {
   return /closed at broker|closed by the broker/i.test(note ?? '');
 }
 
-/** Pair one closed deal with its paper trade; null when either side lacks the numbers to compare. */
+/**
+ * The arena closed the demo deal for the run's stage, not for a paper exit (a demotion to virtual, the run leaving
+ * the mirror): the paper trade continues, so the deal has no twin. ema-cross/9-21 US30 and BTCUSD, demoted minutes
+ * after their entries on 2026-11-11, would have counted as +36 and +66 bp gaps against hours-long paper trades.
+ * A deal the broker had already closed (its own stop or target) stays a twin.
+ */
+export function closedByLifecycle(note: string | null): boolean {
+  return /^(demoted to virtual|run no longer mirrored)/.test(note ?? '') && !closedByBroker(note);
+}
+
+/** Pair one closed deal with its paper trade; null when either side lacks the numbers to compare or has no twin. */
 export function twinTrade(r: TwinRow): TwinTrade | null {
   if (
+    closedByLifecycle(r.note) ||
     r.openPrice === null || r.brokerPnl === null || r.paperEntry === null || r.paperExit === null ||
     r.paperExitTime === null || r.paperPnl === null || r.paperFillTime === null || !(r.size > 0) || !(r.paperSize > 0)
   )
@@ -285,6 +297,7 @@ export function buildTwinReport(rows: readonly TwinRow[], from: number, to: numb
       closedDeals: rows.length,
       withoutPaperTrade: rows.filter(r => r.paperEntry === null).length,
       withoutBrokerPnl: rows.filter(r => r.paperEntry !== null && (r.brokerPnl === null || r.openPrice === null)).length,
+      closedByLifecycle: rows.filter(r => closedByLifecycle(r.note)).length,
     },
   };
 }

@@ -1,5 +1,5 @@
 import type { LiveExecution } from './venue.ts';
-import { QUOTE_MAX_AGE_MS, MAX_OPENS_PER_RUN_PER_HOUR } from './venue.ts';
+import { QUOTE_MAX_AGE_MS, MAX_OPENS_PER_RUN_PER_HOUR, CONTINUOUS_QUOTES_MS } from './venue.ts';
 import { TICK_SOURCE, type Tick } from './ticks.ts';
 /**
  * AgentRun — one agent trading one instrument with its own virtual account.
@@ -256,6 +256,8 @@ export class AgentRun {
   private pending: PendingCommand[] = [];
   private openAttempts: number[] = [];
   private executing = false;
+  /** While a pending command executes: the arrival time of the quote that released it (the trade's time). */
+  private executedAt: number | undefined;
   private decisionTime: number | undefined;
   private decisionMid: number | undefined;
   private barCloseTime: number | undefined;
@@ -415,10 +417,11 @@ export class AgentRun {
     if (!Number.isFinite(q.bid) || !Number.isFinite(q.ask) || q.bid <= 0 || q.ask < q.bid || (this.quote && q.time < this.quote.time))
       { this.riskChanged?.(); return; }
     if(q.journalId!==undefined && q.journalId===this.tick?.journalId && q.sequence!==undefined && this.tick?.sequence!==undefined && q.sequence<=this.tick.sequence){ this.riskChanged?.(); return; }
+    const previous = this.tick;
     this.quote = q;
     this.tick = q.source !== undefined && q.receivedAt !== undefined ? q as Tick : {...q,receivedAt:q.receivedAt??q.time,source:q.source??TICK_SOURCE.SYNTHETIC};
     if (this.startTime === 0) this.startTime = this.tick.receivedAt;
-    this.flushPending();
+    this.flushPending(previous);
     this.continuousQuote = continuous;
     this.checkTickProtections(this.tick, risk, riskOffset);
     if (dispatchAgent) this.dispatchTick();
@@ -710,19 +713,28 @@ export class AgentRun {
   }
 
   /**
-   * An order reaches Capital at its due time (receive clock) and fills at the price Capital had then, so
-   * it executes on the first quote stamped at or after that time. Capital's stream delivers quotes seconds
-   * after their timestamps; filling on the quote in hand at the due time would use a stale price.
+   * An order reaches Capital at its due time (receive clock) and fills at the price Capital had then: the last
+   * quote stamped at or before that time. Capital's stream delivers quotes seconds after their timestamps, so the
+   * order executes when the first quote stamped after its due time arrives (until then a quote stamped earlier
+   * may still be in flight), at the quote before it. Demo orders fill exactly so: of 246 (2026-11-10 to 12), 189
+   * at the last quote stamped at or before Capital accepted them, 13 at the next one. The quote after the due time
+   * would take a price from after a hole in our stream (US100 2026-11-11 23:00: 5 s). After a pause in quoting
+   * (CONTINUOUS_QUOTES_MS) the market reopens at the new quote, which is the fill.
    */
-  private flushPending(): void {
+  private flushPending(previous: Quote | null): void {
     if (!this.pending.length || !this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
     this.riskChanged?.();
-    while (this.pending[0] && this.pending[0].due <= this.quote.time) {
+    const current = this.quote;
+    while (this.pending[0] && this.pending[0].due <= current.time) {
       const command = this.pending.shift()!;
       if (command.kind === 'open' && this.now() - command.at > Math.max(120_000, this.execution.latencyMs + QUOTE_MAX_AGE_MS)) {
         this.reject('open expired before a fresh executable quote');
         continue;
       }
+      const inEffect = current.time > command.due && previous !== null && previous.time <= command.due &&
+        current.time - previous.time <= CONTINUOUS_QUOTES_MS;
+      this.quote = inEffect ? previous : current;
+      this.executedAt = current.receivedAt ?? current.time;
       this.executing = true;
       this.decisionTime = command.at;
       this.decisionMid = command.decisionMid;
@@ -741,6 +753,8 @@ export class AgentRun {
         this.executionStats.totalDelayMs += delay;
         this.executionStats.maxDelayMs = Math.max(this.executionStats.maxDelayMs, delay);
       } finally {
+        this.quote = current;
+        this.executedAt = undefined;
         this.executing = false;
         this.decisionTime = undefined;
         this.decisionMid = undefined;
@@ -858,7 +872,7 @@ export class AgentRun {
       return;
     }
     if (!this.position || !this.canTrade('close')) return;
-    this.closePosition(exitReason, this.exitPrice(this.position.side), this.quote!.receivedAt??this.quote!.time, reason);
+    this.closePosition(exitReason, this.exitPrice(this.position.side), this.executedAt ?? this.quote!.receivedAt ?? this.quote!.time, reason);
   }
 
   private setStops(update: StopUpdate): void {

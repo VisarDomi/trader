@@ -160,7 +160,8 @@
 			<p class="muted small">
 				Positive means the demo did better. Entry and exit are price differences in basis points (the demo deal minus the paper trade, in the
 				trader's favour); dollars are scaled to the paper trade's size. {r.unpaired.withoutPaperTrade} older demo deals predate pairing and are
-				left out.
+				left out{#if r.unpaired.closedByLifecycle}, as are {r.unpaired.closedByLifecycle} closed by a demotion or by leaving the mirror while the
+				paper trade went on{/if}.
 			</p>
 		</section>
 	{/if}

@@ -19,7 +19,7 @@ import type { LoadedAgent } from './loader.ts';
 import { BarSeries, type Candle } from './series.ts';
 import type { Tick } from './ticks.ts';
 import { MINUTE_MS } from './clock.ts';
-import { QUOTE_MAX_AGE_MS } from './venue.ts';
+import { QUOTE_MAX_AGE_MS, CONTINUOUS_QUOTES_MS } from './venue.ts';
 import { RiskBatch, RISK_OUTPUT_WIDTH } from './risk-native.ts';
 
 export const TICK_HISTORY_LIMIT = 512;
@@ -30,12 +30,7 @@ export const TICK_HISTORY_LIMIT = 512;
  * stamped in. Replays of quotes without a delay (generated ticks) keep a zero grace.
  */
 export const FEED_GRACE_FACTOR = 1.5;
-/**
- * A quote stamped within this of the instrument's previous one: the venue quoted continuously in between, even where
- * our stream skipped prices (Capital's arrives in bursts with holes of seconds). A longer pause is a closed or halted
- * market, and the next quote is a gap.
- */
-export const CONTINUOUS_QUOTES_MS = 60_000;
+export { CONTINUOUS_QUOTES_MS } from './venue.ts';
 const FEED_DELAY_ALPHA = 0.05;
 
 /** The engine's quote acceptance rule: sane prices, neither stale nor from the future, in order after the previous accepted quote. */

@@ -51,6 +51,15 @@ test('rows without a paper twin or booked P&L are not paired', () => {
   expect(twinTrade(row({ brokerPnl: null }))).toBeNull();
 });
 
+test('a deal the lifecycle closed while the paper trade went on has no twin; one the broker closed first has', () => {
+  expect(twinTrade(row({ note: 'demoted to virtual: losing virtual trade evidence' }))).toBeNull();
+  expect(twinTrade(row({ note: 'run no longer mirrored' }))).toBeNull();
+  expect(twinTrade(row({ note: 'run no longer mirrored; already closed at broker' }))).not.toBeNull();
+  const r = buildTwinReport([row(), row({ note: 'demoted to virtual: losing virtual trade evidence' })], T - DAY, T + DAY, T);
+  expect(r.overall.pairs).toBe(1);
+  expect(r.unpaired.closedByLifecycle).toBe(1);
+});
+
 test('verdicts: too few, converged, watch and diverged', () => {
   const agreeing = Array.from({ length: 10 }, () => twinTrade(row())!);
   expect(twinVerdict(twinStats(agreeing.slice(0, 4)), 1)).toBe(TWIN_VERDICT.TOO_FEW);
@@ -68,7 +77,7 @@ test('the report groups pairs by run, instrument, exit and day, and counts unpai
   expect(r.runs[0]).toMatchObject({ runId: RUN, agentId: 'ema-cross/9-21', leverage: 20, verdict: TWIN_VERDICT.TOO_FEW });
   expect(r.byEpic.map(e => e.epic)).toEqual(['US500']);
   expect(r.days).toHaveLength(2);
-  expect(r.unpaired).toEqual({ closedDeals: 3, withoutPaperTrade: 1, withoutBrokerPnl: 0 });
+  expect(r.unpaired).toEqual({ closedDeals: 3, withoutPaperTrade: 1, withoutBrokerPnl: 0, closedByLifecycle: 0 });
 });
 
 test('since the current engine: only trades decided from then on are paired', () => {
