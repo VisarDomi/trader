@@ -154,7 +154,8 @@ closes).
   is gone is closed; broker-side stop/target copies protect deals if the arena
   is down; lost order confirmations are adopted from `/positions` on the next
   reconcile; an open the broker rejects is retried up to 4 times, 5 minutes
-  apart, while the paper position lasts (one refused because the market is
+  apart, while the paper position lasts (the first a second later when Capital
+  gave no reason; one refused because the market is
   closed waits until `GET /markets/{epic}` says it trades again, without using
   up the retries), and a close, refused or rejected, is retried every minute
   until it goes through.

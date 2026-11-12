@@ -45,7 +45,8 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
  *   - opens from replayed history (after a restart) are not mirrored, and a
  *     deal whose paper position is gone is closed
  *   - an open the broker rejected is tried again OPEN_RETRIES times,
- *     OPEN_RETRY_MS apart, while the paper position lasts; one refused because
+ *     OPEN_RETRY_MS apart, while the paper position lasts (the first at once,
+ *     after QUICK_RETRY_MS, when Capital gave no reason); one refused because
  *     the market is closed (daily break, weekend) waits until the market trades
  *     again, without using up the retries; a close is retried every cycle until
  *     it goes through
@@ -129,6 +130,12 @@ const MAX_PROMOTIONS_PER_CYCLE = 10;
 /** A rejected open is tried again this many times, this far apart, while its paper position is open. */
 const OPEN_RETRIES = 4;
 const OPEN_RETRY_MS = 5 * 60_000;
+/**
+ * Capital sometimes refuses an order without a reason: its activity shows a REJECTED working order from SYSTEM (3 of
+ * ~170 orders on 2026-11-11, at busy moments; one since October before). Other orders on the same account seconds
+ * later and each retry went through, so the first retry of such a refusal goes out after this, not OPEN_RETRY_MS.
+ */
+const QUICK_RETRY_MS = 1_000;
 /** Capital.com's rejection while an instrument is in its daily break or closed. */
 const MARKET_CLOSED = /currently closed|market_closed/i;
 const NOTE_REJECTED = 'rejected:';
@@ -189,6 +196,8 @@ interface OpenRequest {
   trailingStop?: number | null;
   validUntil?: number;
   closeAt?: number;
+  /** Already sent once more after a refusal without a reason (QUICK_RETRY_MS). */
+  resent?: boolean;
 }
 
 function fillRequest(e: Extract<RunEvent, { type: 'open' }>): OpenRequest {
@@ -346,6 +355,8 @@ export class BrokerMirror {
   private live: MirrorCandidate[] = [];
   private unassigned: SlotCandidate[] = [];
   private cycleTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Pending resends of orders Capital refused without a reason (QUICK_RETRY_MS). */
+  private readonly resendTimers = new Set<ReturnType<typeof setTimeout>>();
   /** Deals whose close waits for their market to reopen (logged once). */
   private readonly closeWaiting = new Set<number>();
   /** Run → when its market was last checked for reopening (an open refused because the market was closed). */
@@ -437,6 +448,8 @@ export class BrokerMirror {
 
   stop(): void {
     if (this.cycleTimer) clearTimeout(this.cycleTimer);
+    for (const t of this.resendTimers) clearTimeout(t);
+    this.resendTimers.clear();
   }
 
   status(): BrokerStatus {
@@ -1043,11 +1056,19 @@ export class BrokerMirror {
           status: DEAL_STATUS.FAILED,
           note: `${NOTE_REJECTED} ${conf.reason ?? 'unknown'}`,
         });
+        const resend = conf.dealStatus === 'REJECTED' && !conf.reason && !e.resent;
         this.db.event(
           'warn',
           'broker',
-          `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'} (retried while the paper position lasts)`,
+          `open rejected for ${e.runId} on ${account.name}: ${conf.reason ?? 'unknown'} (${resend ? 'no reason given: sent once more in a second' : 'retried while the paper position lasts'})`,
         );
+        if (resend) {
+          const t = setTimeout(() => {
+            this.resendTimers.delete(t);
+            this.enqueue(account.id, () => this.openDeal(account, { ...e, resent: true }));
+          }, QUICK_RETRY_MS);
+          this.resendTimers.add(t);
+        }
         return;
       }
       const dealId = conf.affectedDeals?.[0]?.dealId ?? conf.dealId ?? null;
