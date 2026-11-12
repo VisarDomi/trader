@@ -52,7 +52,7 @@ test('Capital hourly request budget survives a process restart', () => {
 });
 
 /** No network: an owned, already-configured demo account and an inert Capital client. */
-function fixture(candidates: MirrorCandidate[], current: Record<string, string>, postDelayMs = 0) {
+function fixture(candidates: MirrorCandidate[], current: Record<string, string>, postDelayMs = 0, confirmations: object[] = []) {
   const db = new ArenaDB(':memory:');
   db.setSetting(BROKER_SETTINGS.ENABLED, true);
   db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, current);
@@ -66,7 +66,8 @@ function fixture(candidates: MirrorCandidate[], current: Record<string, string>,
     get: async (path: string) => {
       if (path === '/api/v1/accounts') return { accounts: [{ accountId: ACCOUNT, accountName: NAME, balance: { balance: 100000, deposit: 100000, profitLoss: 0 } }] };
       if (path === '/api/v1/accounts/preferences') return { hedgingMode: true, leverages: {} };
-      if (path.startsWith('/api/v1/confirms/')) return { dealStatus: 'ACCEPTED', epic: EPIC, direction: lastOrder, size: 100, dealId: 'ours', level: 1.12 };
+      if (path.startsWith('/api/v1/confirms/'))
+        return confirmations.shift() ?? { dealStatus: 'ACCEPTED', epic: EPIC, direction: lastOrder, size: 100, dealId: 'ours', level: 1.12 };
       return { positions: [] };
     },
     post: async (_path: string, _body: unknown, hooks?: { sent?: () => void }) => {
@@ -450,4 +451,29 @@ test('with a session per account, accounts work in parallel and an order goes be
     await Bun.sleep(30);
     expect(selected.sort()).toEqual([`${ACCOUNT}:${ACCOUNT}`, `${OTHER}:${OTHER}`]); // each session chose its account once
   } finally { mirror.stop(); db.db.close(); }
+});
+
+test('an order Capital refuses without a reason goes out once more a second later; a reason or a second refusal waits for the retry cycle', async () => {
+  // Capital's activity shows these as REJECTED working orders from SYSTEM, without a reason (2026-11-11: 3 of ~170 orders).
+  const refused = { dealStatus: 'REJECTED', epic: EPIC, direction: 'BUY', size: 100 };
+  for (const [confirmations, posts, statuses] of [
+    [[refused], 2, [DEAL_STATUS.FAILED, DEAL_STATUS.OPEN]],
+    [[refused, refused], 2, [DEAL_STATUS.FAILED, DEAL_STATUS.FAILED]],
+    [[{ ...refused, reason: 'RISK_CHECK' }], 1, [DEAL_STATUS.FAILED]],
+  ] as const) {
+    const now = Date.now();
+    const candidate: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: 0, side: null, entry: null, pendingOpen: { side: LONG, at: now } };
+    const { db, mirror, counts } = fixture([candidate], { [RUN]: ACCOUNT }, 0, [...confirmations]);
+    try {
+      await mirror.start();
+      await settled(mirror);
+      mirror.onRunEvent({ type: 'order', kind: 'open', runId: RUN, time: now, side: LONG, size: 500, price: 1.1201, stopLoss: null, takeProfit: null });
+      await orderDone(db);
+      await Bun.sleep(1_300);
+      await orderDone(db, statuses.length);
+      expect(counts().posts).toBe(posts);
+      expect(db.dealsForRun(RUN).map(d => d.status)).toEqual([...statuses]);
+      if (posts === 2 && statuses[1] === DEAL_STATUS.OPEN) expect(db.dealsForRun(RUN)[1]).toMatchObject({ deal_id: 'ours', decision_time: now });
+    } finally { mirror.stop(); db.db.close(); }
+  }
 });
