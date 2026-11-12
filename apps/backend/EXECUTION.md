@@ -31,9 +31,15 @@ stay in ignored `data/`; committed observations contain no account/deal IDs or c
 
 ## Virtual execution
 
-`src/engine/venue.ts` holds refreshed market rules. Every paper order is independent: it fills 500 ms after
-its decision (the comparison cohorts use other fixed delays) on the first quote stamped at or after that
-moment. Other runs' orders never delay or block it (user request 2026-11-10: a burst must not affect the
+`src/engine/venue.ts` holds refreshed market rules. Every paper order is independent: it reaches the venue
+500 ms after its decision (the comparison cohorts use other fixed delays) and fills at the price in effect then,
+the last quote stamped at or before that moment, once a quote stamped after it shows that none is still in flight
+(engine `2026-11-arrival-price`; before it, the first quote stamped at or after that moment). Capital fills demo
+orders the same way: of 246 orders (2026-11-10 to 12), 189 filled at the last quote stamped at or before Capital
+accepted them and 13 at the next one. Replayed on those orders, the change cut the paper–demo entry gap from a
+mean 0.55 to 0.40 bp (median 0.24 to 0.15 bp), with no bias either way; the first quote after the moment had taken
+prices from after holes in our stream (US100 2026-11-11 23:00: 5 s). After a pause in quoting (over a minute) the
+reopening quote is the fill. Other runs' orders never delay or block it (user request 2026-11-10: a burst must not affect the
 engine); until engine `2026-11-feed-time-v2` a synthetic gateway per scenario modelled the mirror's shared
 request queue and a 600 opens/hour budget across all runs. What remains is a per-run runaway guard, 12 opens
 an hour, the same rule the mirror applies to one run. Capital's request budget is the real mirror's queue:
@@ -167,7 +173,8 @@ trades within one spread only 63% of the time over October 10 – November 9, an
 median 5.7 s before ours.
 
 Now: (1) an order fills on the first quote stamped at or after the moment it reaches the venue
-(decision + execution delay, receive clock); (2) the clock closes a quiet minute only after 1.5 × the
+(decision + execution delay, receive clock; since `2026-11-arrival-price` at the last quote stamped at or before
+that moment, see Virtual execution); (2) the clock closes a quiet minute only after 1.5 × the
 smoothed feed delay, and a minute otherwise closes on the first quote stamped in a later minute, so live
 candles match Capital's and the backtests'; (3) the mirror sends the demo order when the order is decided
 (`order` run event) and links the later paper fill to it. Generated quotes have no delay and replay as

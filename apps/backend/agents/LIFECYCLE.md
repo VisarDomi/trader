@@ -176,7 +176,8 @@ window). The all-trades lines are context; old-engine divergence does not raise 
 
 Known sources of gaps (2026-11-10): Capital's demo quote stream arrives 0.1–13 s after each quote's
 timestamp, in regimes (REST shows the price earlier), so Capital's own stops can fire before ours; paper fills
-use the first quote stamped at or after the order reaches Capital (`2026-11-feed-time`), and minutes close
+use the price in effect when the order reaches Capital, the last quote stamped at or before then
+(`2026-11-arrival-price`; Capital's demo fills follow the same rule), and minutes close
 only once their late quotes arrive. Demo orders leave at the decision: accepted ~0.15–0.3 s after it, longer
 when one account has several orders in the same burst (each waits for the previous one's confirmation;
 Capital may answer a confirmation request with the account's latest deal). Capital books overnight swaps

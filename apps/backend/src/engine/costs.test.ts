@@ -36,11 +36,12 @@ test('queued fills capture the decision quotes without changing actual prices or
   const instrument={...getInstrument(EPIC)},venue=new VirtualVenue(instrument);
   venue.update({...fixtures.markets.US500,snapshot:{...fixtures.markets.US500.snapshot,marketStatus:'TRADEABLE'}},now);
   const def=defineAgent({name:'cost-fixture',description:'cost fixture',instruments:[EPIC],timeframe:'1m',warmup:0,params:{},
-    onTick(ctx){if(ctx.ticks.length===1)ctx.buy({size:1});if(ctx.ticks.length===2)ctx.close();}});
+    onTick(ctx){if(ctx.ticks.length===1)ctx.buy({size:1});if(ctx.ticks.length===3)ctx.close();}});
   const agent:LoadedAgent={id:'cost-fixture',slug:'cost-fixture',variant:null,file:'',source:'',codeHash:'fixture',params:{},def};
   const engine=new MarketEngine(instrument),run=engine.addRun({runId:agent.id,agent,leverage:20,capital:10000,checkStopsOnCandles:false,
     execution:{venue,latencyMs:500,now:()=>now}});
-  for(const [i,bid]of [100,102,110].entries()){now=T+i*1000;engine.processTick({time:now,receivedAt:now,bid,ask:bid+1,source:TICK_SOURCE.RECORDED});}
+  // Buy decided at 100.5 (mid), filled at the quote in effect 500 ms later (102/103); close decided at 105.5, filled at 108/109.
+  for(const [at,bid]of [[0,100],[400,102],[1000,105],[1200,108],[2000,110]] as const){now=T+at;engine.processTick({time:now,receivedAt:now,bid,ask:bid+1,source:TICK_SOURCE.RECORDED});}
   expect(run.trades).toHaveLength(1);
-  expect(run.trades[0]).toMatchObject({entryPrice:103,exitPrice:110,pnl:7,execution:{midpointPnl:8,spreadCost:1,timingCost:-6,adjustmentPnl:0}});
+  expect(run.trades[0]).toMatchObject({entryPrice:103,exitPrice:108,pnl:5,exitTime:T+2000,execution:{midpointPnl:6,spreadCost:1,timingCost:-1,adjustmentPnl:0}});
 });

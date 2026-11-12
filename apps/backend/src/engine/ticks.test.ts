@@ -177,8 +177,8 @@ test('tick decisions share durable delayed execution: no fill before due time, a
   e.processTick(quote(300, 101));
   expect(r.position).toBeNull();
   now += 300;
-  e.processTick(quote(600, 102));
-  expect(r.position?.entryPrice).toBe(103);
+  e.processTick(quote(600, 102)); // the first quote stamped after the due time releases the order at the price then
+  expect(r.position?.entryPrice).toBe(102);
   const s = r.snapshot();
   const next = new MarketEngine(instrument);
   const restored = next.addRun({
@@ -192,7 +192,7 @@ test('tick decisions share durable delayed execution: no fill before due time, a
   restored.restore(s, [], []);
   next.processTick(quote(600, 102));
   expect(restored.state).toEqual(r.state);
-  expect(restored.position?.entryPrice).toBe(103);
+  expect(restored.position?.entryPrice).toBe(102);
 });
 test('a close deadline without quotes waits for the next executable quote and checks it before later intraminute extremes', () => {
   const { e, r } = setup(
@@ -217,7 +217,7 @@ test('a profitable open position is not counted as a cash-balance drawdown at a 
  e.processTick(quote(0,100));e.processTick(quote(1000,120));e.processClock(T+MINUTE_MS);
  expect(r.markToMarket()).toBe(11900);expect(r.metrics().maxDrawdown).toBeLessThan(.02);
 });
-test('a delayed feed: an order fills at the first quote stamped at or after its due time, not the stale quote in hand', () => {
+test('a delayed feed: an order fills at the quote stamped at its due time, not the stale quote in hand', () => {
   // Capital's demo stream delivers quotes ~8 s after their timestamps (2026-11-09).
   const DELAY = 8_000;
   let now = T;
@@ -311,4 +311,36 @@ test('a burst of other runs never delays or blocks a paper order; one run is lim
   for (let k = 0; k < 120; k++) { now = T + 1000 + k * 1000; e.processTick(quote(1000 + k * 1000, 100)); }
   expect(churn.trades.length + (churn.position ? 1 : 0)).toBe(12);
   expect(churn.logs.some(l => l.message.includes('open-rate safeguard'))).toBe(true);
+});
+
+test('an order fills at the price in effect when it reaches the venue: the last quote stamped by then, after a pause the reopening quote', () => {
+  // Capital fills a market order at the last quote stamped at or before it accepts it (189 of 246 demo orders,
+  // 2026-11-10 to 12); our stream can skip seconds of quotes, so the next one we receive can be far from that price.
+  const DELAY = 1_200;
+  let now = T;
+  const instrument = { ...getInstrument(EPIC) },
+    venue = new VirtualVenue(instrument);
+  venue.update((fixtures.markets as unknown as Record<string, CapitalMarket>)[EPIC]!, now);
+  const buyer = () => agent({ onTick(ctx) { if (!ctx.state.ordered) { ctx.state.ordered = true; ctx.buy({ size: 1 }); } } });
+  const late = (stamp: number, bid: number) => ({ ...quote(stamp, bid), receivedAt: T + stamp + DELAY });
+  const e = new MarketEngine(instrument);
+  const r = e.addRun({ runId: 'arrival', agent: buyer(), capital: 10_000, leverage: 20, checkStopsOnCandles: false, execution: { venue, latencyMs: 500, now: () => now } });
+  now = T + DELAY;
+  e.processTick(late(0, 100)); // decision at T+1200 (receive clock): due T+1700
+  now = T + DELAY + 1_000;
+  e.processTick(late(1_000, 103)); // stamped before the due time
+  expect(r.position).toBeNull();
+  now = T + DELAY + 6_000;
+  e.processTick(late(6_000, 90)); // the next quote after a 5 s hole in the stream: the price later, not at arrival
+  expect(r.position).toMatchObject({ entryPrice: 104, entryTime: T + DELAY + 6_000 });
+
+  // After a pause in quoting (a closed market) the reopening quote is the market.
+  const e2 = new MarketEngine(instrument);
+  const r2 = e2.addRun({ runId: 'reopen', agent: buyer(), capital: 10_000, leverage: 20, checkStopsOnCandles: false, execution: { venue, latencyMs: 500, now: () => now } });
+  now = T;
+  e2.processTick(quote(0, 100));
+  now = T + 90_000;
+  venue.updatedAt = now;
+  e2.processTick(quote(90_000, 120));
+  expect(r2.position?.entryPrice).toBe(121);
 });
