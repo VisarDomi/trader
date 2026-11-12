@@ -5,6 +5,45 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-12 (Thu) — daily visit: orders fill at the price on arrival; demotions are not twins; reasonless refusals resent
+
+- Health: green. Stream and forecaster up; tick journal 54.46M received, 0 dropped; storage 15.8 GB (two-year
+  36.0 GB, 4× stress 76.9 GB of 100); no errors in 3 days. Nightly lab 03:36–03:50: all backtests refreshed for
+  `2026-11-tp-level` (40 instrument groups in 4.7 min), night grid built 03:50 (US500 186 / US100 156 of 336
+  traded), Night Lab report already published. Cost backfill: 2 attached. Arena RSS 578 MB 24 h after yesterday's
+  restart (411 MB at 9 h), above the ~500 MB guide; today's two deploys restarted it (228 MB). Calendar coverage
+  through 2027-12-31. Dashboard redeployed by the watcher in 11 s.
+- Verdicts: control 148, early 394, keep 9, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no
+  additions (Thursday).
+- Twins under `2026-11-tp-level` (decided since 2026-11-11 08:44 UTC): 104 pairs, 79% agree, mean +1.16 bp:
+  CHECK. Two pairs made +103 of the +120 bp: ema-cross/9-21 US30 and BTCUSD 1:10 were demoted to virtual ("losing
+  virtual trade evidence") 3–4 minutes after their demo entries, which the demotion closed, while the paper trades
+  ran 1 h and 10 h (+36, +66 bp). A lifecycle close is not a twin: such deals are now counted apart (20993ac).
+  Without them: 102 pairs, 80% agree, mean +0.18 bp, p95 4.2 bp; targets 19 pairs, 95% agree. Both demotions
+  followed reversals: the new side's demo order leaves at the decision, before the closing paper trade's P&L
+  triggers the demotion (one spread at 0.2× size each, rare; left as is).
+- Found (engine): entry fills. Capital fills an order at the last quote stamped at or before it accepts it (189 of
+  246 orders since 2026-11-10 21:00 exactly; 13 at the next quote). Paper filled at the first quote stamped at or
+  after decision + 500 ms, so a hole in our stream gave it a later price (16 of 246 fills more than 2 s after the
+  due time, up to 10.7 s). Replayed on those 246 orders: mean |entry gap| 0.55 → 0.40 bp, median 0.24 → 0.15 bp,
+  p95 1.90 → 1.72 bp, no bias either way. Fixed: engine `2026-11-arrival-price` (20993ac, deployed ~09:35): the
+  first quote stamped after the due time releases the order at the quote before it; after a pause over a minute the
+  reopening quote is still the fill. Thinned and full recorded replays trade identically. The version restarts the
+  twin window (08:40 UTC) and tonight's lab refreshes the backtests.
+- The 23:00 US100 pairs (−7.9 bp and others) are timing, not a rule: Capital's US100 jumped from 28134 to 28178 and
+  back between 23:00:00.17 and 0.40; the demo order filled inside the jump 0.18 s after the decision, paper 0.5 s
+  later (it would still differ by ~10 bp under the new rule).
+- Burst latency after yesterday's broker change (13b560d): 170 orders, decision → accepted median 0.41 s, p90
+  1.6 s, p99 2.9 s; the largest burst (16:00, 13 orders) took at most 2.7 s.
+- Found (mirror): Capital refused 3 orders without a reason (swing-reversal/p05 ETHUSD 15:45, donchian/turtle-20
+  GOLD 16:00, rsi2/long-only US100 23:00); its activity shows a REJECTED working order from SYSTEM. One such
+  refusal since October before. Not a request collision (orders 170 ms apart across accounts); other orders on the
+  same account seconds later went through. Each demo entry then waited for the 5-minute retry (5.3–5.5 min behind
+  its paper twin). Now the first retry of a reasonless refusal goes out after 1 s, within the 5 attempts
+  (1c0ce48, deployed).
+- Next: twin pairs under `2026-11-arrival-price`; whether the 1 s resends go through; arena RSS at 24 h; tonight's
+  backtest refresh.
+
 ## 2026-11-11 (Wed) — daily visit: targets fill at their level; bursts lose the per-order position check
 
 - Health: green. Stream and forecaster up; tick journal 51.7M received, 0 dropped; storage 15.6 GB (two-year
@@ -1627,6 +1666,7 @@ One line per idea: agent — mechanism — status (date).
 
 Visit 2026-11-10: no new agent, retirement or tuning; mirror and twin-report fixes only.
 Visit 2026-11-11: no new agent, retirement or tuning; engine (targets fill at their level) and mirror (position checks in reconciliation) fixes only.
+Visit 2026-11-12: no new agent, retirement or tuning; engine (orders fill at the price on arrival), twins (lifecycle closes are not pairs) and mirror (reasonless refusals resent after 1 s) fixes only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
