@@ -131,7 +131,7 @@ do not tune this or other strategies for a better reported profit.
   and TimesFM 3 on the RTX 3060 12 GB. Heavy PC work belongs in `trader.slice`, ≤50% CPU/RAM.
   Trading/recording must keep running on Hetzner when the PC is off; archive resumes when it returns.
 - Touch only trader's parts of the shared server. Demo only; public repository, no committed secrets.
-- Nightly lab work at 03:30; watchdog every ten minutes; scheduled visits Monday/Thursday 09:30.
+- Nightly lab work at 03:30; watchdog every ten minutes; scheduled visits daily at 22:00 (Monday/Thursday 09:30 until November 9, daily 09:30 until November 12).
   Usual additions: 1–3 agents on Monday, at most every seven days, capacity permitting. Explicit user
   requests already authorized larger batches and the night experiment. Changes to these rules require
   evidence and a journal entry, not automatic requests for the user's approval.

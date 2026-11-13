@@ -198,7 +198,7 @@ deal (fixed 2026-11-10).
 
 ## Each visit (runbook)
 
-Visits are daily (09:30 Tirana). Steps 2–3 every day; retirements, additions and the full journal entry as
+Visits are daily (22:00 Tirana, since November 12; 09:30 before). Steps 2–3 every day; retirements, additions and the full journal entry as
 the steps below say. A quiet day with nothing to fix gets a one-line journal note only when the twin check
 or health changed.
 
