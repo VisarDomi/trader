@@ -5,6 +5,48 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-13 (Fri) — daily visit: a stream stall no longer rejects the price in effect; closed-by labels fixed
+
+- Visits now run at 22:00 (T3 task "Trader", prompt "do the daily check"; yesterday's evening check was the first);
+  setup.md, LIFECYCLE and PROJECT-CONTEXT updated.
+- Twins under `2026-11-arrival-price` (decided 2026-11-12 08:40 to 2026-11-13 21:07 UTC): 209 pairs, 84% agree,
+  mean +0.54 bp, p95 2.9 bp; 7 agents converged, 2 watch, none diverged; no CHECK.
+  Reversals: 14 pairs, mean +3.95 bp. One pair made it: gold-session/both GOLD 1:1, +57 bp.
+- Found (engine): at 2026-11-12 15:00 Capital's GOLD stream stalled; quotes stamped from 15:00:10 arrived 23–34 s
+  late in one backlog at 15:00:44. Quotes over 30 s old on arrival are dropped. The reversal decided at 15:00:09
+  was released by the quote stamped 15:00:17.8 and, under the arrival rule, met the quote in effect at its due
+  time (stamped 15:00:09.4). The open path judged that quote's age against the clock (35 s > 30 s) and rejected
+  the reversal ("quote unavailable or stale"), so paper stayed short.
+  The demo had already reversed at the decision: it closed the short and opened a long. The long was closed 39 s
+  later ("paper position is flat"), so the demo stayed flat for a day while paper ran its short to +$111.
+  The same check dropped closes and stop changes without a log line. Stale rejections went from 11–23 a day to 193
+  on 11-12 (41 on standard runs) and 45 on 11-13: my arrival rule caused them, since the old rule filled at the
+  releasing quote.
+  Fixed: engine `2026-11-arrival-stall` (7fde8c0, deployed 22:07 CET). Freshness is the releasing quote's, which
+  flushPending already checks against the clock; the fill stays the price in effect at the due time. A test covers
+  an open and a close across a 35 s stall. The version restarts the twin window (21:07 UTC), and tonight's lab
+  refreshes the backtests.
+- Found (twins report): "closed by" compared Capital's close with paper's exit time. Paper's exit time is when the
+  releasing quote reached us, seconds after the arena sends a close it decided, so all 73 signal exits were
+  labelled broker-closed. It now compares Capital's close time with the arena's close request; signal exits are
+  arena closes (68% agree, mean +0.12 bp). Their lower agreement comes from top-of-hour bursts: most signal exits
+  happen at bar closes, where both legs wait in the request queue (entry lag p95 4.1 s). This is noise without
+  bias; the pace stays as it is.
+- Costs: the live fix holds. All 45 take-profit exits since yesterday's deploy carry evidence (39 at the level).
+  Backfill: 12 candidates, 0 matched (yesterday's arrival-rule entries, unknown as documented).
+- Health: green. Tick journal 59.31M received, 0 dropped; storage 16.1 GB (two-year 36.6 GB, 4× stress 78.6 GB of
+  100). Nightly lab 03:34–03:52: backtests refreshed for `2026-11-arrival-price`; night grid built 03:52 (US500 186 /
+  US100 156 of 336 traded); report published. Watchdog quiet; the user's hold covers only the video pipeline.
+  The one error in 3 days is yesterday's "Unable to connect" close.
+  The arena instance stopped by tonight's deploy ran 24 h with a cgroup memory peak of 3.0 GB, 241 MB of it swapped
+  (RSS 568–659 MB at the reviews). The cgroup counts page cache of the 1.3 GB arena database. The new instance
+  holds 202 MB anon and 279 MB file cache; trader.slice allows 15 GB. Next: find which window the peak falls in.
+  Calendar coverage unchanged through 2027-12-31 (checked 2026-11-12).
+- Verdicts: control 148, early 392, keep 11, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no
+  additions (Friday).
+- Next: twins under `2026-11-arrival-stall`; stale-quote rejections per day (expect the old 11–23, mostly delay
+  comparisons); arena memory peak timing; a reasonless refusal's 1 s resend when one comes.
+
 ## 2026-11-12 (Thu, evening) — user-requested check: first twins under arrival-price; target exits keep cost evidence
 
 - Twins under `2026-11-arrival-price` (decided since 08:40 UTC, 12 h): 43 pairs, 86% agree, mean +0.46 bp, p95
@@ -1703,6 +1745,7 @@ Visit 2026-11-10: no new agent, retirement or tuning; mirror and twin-report fix
 Visit 2026-11-11: no new agent, retirement or tuning; engine (targets fill at their level) and mirror (position checks in reconciliation) fixes only.
 Visit 2026-11-12: no new agent, retirement or tuning; engine (orders fill at the price on arrival), twins (lifecycle closes are not pairs) and mirror (reasonless refusals resent after 1 s) fixes only.
 Check 2026-11-12 (evening): no new agent, retirement or tuning; cost evidence for targets filled at their level only.
+Visit 2026-11-13: no new agent, retirement or tuning; engine (a stream stall no longer makes the price in effect stale) and twin-report (closed-by from the close request) fixes only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).

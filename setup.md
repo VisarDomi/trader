@@ -101,7 +101,7 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | Free heavy CPU/RAM/GPU work / resume it | `heavy-resources-stop` / `heavy-resources-start`: video pipeline, TimesFM and nightly lab work. Trading, tick capture/archive and dashboard stay running. The hold survives reboot until explicitly resumed. |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
 | Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |
-| Babysitter visits | T3 Code scheduled task "Trader babysitter", daily 09:30 Europe/Tirane (Mondays and Thursdays until November 9, when the paper–demo twin check made it daily), posting into the "Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md`. Recreated October 19 with the thread's Codex provider after its former provider was disabled. |
+| Babysitter visits | T3 Code scheduled task "Trader", daily 22:00 Europe/Tirane with the prompt "do the daily check" (09:30 until November 12; Mondays and Thursdays until November 9, when the paper–demo twin check made it daily), posting into the "Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md`. Recreated October 19 with the thread's Codex provider after its former provider was disabled. |
 | Heavy job by hand | `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH <command>` |
 
 An existing `~/.local/share/heavy-resources/user-pause.json` is an explicit user hold. Respect it:
