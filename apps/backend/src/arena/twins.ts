@@ -41,6 +41,8 @@ export interface TwinRow {
   brokerAdjust: number;
   brokerCloseTime: number | null;
   closeTime: number | null;
+  /** When the arena asked Capital to close the deal (null when it never did). */
+  closeRequestedTime: number | null;
   note: string | null;
   paperFillTime: number | null;
   decisionTime: number | null;
@@ -158,6 +160,17 @@ export function closedByLifecycle(note: string | null): boolean {
   return /^(demoted to virtual|run no longer mirrored)/.test(note ?? '') && !closedByBroker(note);
 }
 
+/**
+ * Who closed the deal: Capital (its stop or target) when its close came before the arena asked for one, or when the
+ * arena never asked. Timing decides, not the note, which can say "already closed at broker" after the arena's own close
+ * went through with a mismatched confirmation. Paper's exit time cannot decide: it is when the releasing quote reached
+ * us, seconds after the arena sent the close it decided (2026-11-12: all 73 signal exits looked broker-closed).
+ */
+function closedFirstBy(r: TwinRow): ClosedBy {
+  if (r.brokerCloseTime === null) return closedByBroker(r.note) ? CLOSED_BY.BROKER : CLOSED_BY.ARENA;
+  return r.closeRequestedTime === null || r.brokerCloseTime < r.closeRequestedTime ? CLOSED_BY.BROKER : CLOSED_BY.ARENA;
+}
+
 /** Pair one closed deal with its paper trade; null when either side lacks the numbers to compare or has no twin. */
 export function twinTrade(r: TwinRow): TwinTrade | null {
   if (
@@ -184,9 +197,7 @@ export function twinTrade(r: TwinRow): TwinTrade | null {
     entryTime: r.paperFillTime,
     exitTime: r.paperExitTime,
     exitReason: r.exitReason ?? 'unknown',
-    // Timing decides: notes can say "already closed at broker" after the arena's own close went through
-    // with a mismatched confirmation.
-    closedBy: (brokerExitAt === null ? closedByBroker(r.note) : brokerExitAt < r.paperExitTime) ? CLOSED_BY.BROKER : CLOSED_BY.ARENA,
+    closedBy: closedFirstBy(r),
     entryBps: round((dir * (r.paperEntry - r.openPrice)) / r.paperEntry * 1e4),
     exitBps: round((dir * (brokerClose - r.paperExit)) / r.paperExit * 1e4),
     gapBps: round(gapBps),
@@ -307,7 +318,7 @@ export function twinRows(db: ArenaDB, from: number, to: number): TwinRow[] {
   return db.db
     .query<TwinRow, [number, number]>(
       `SELECT d.run_id runId, d.epic, d.side, d.size, d.paper_size paperSize, d.open_price openPrice, d.pnl brokerPnl,
-        COALESCE(d.cash_adjustment, 0) brokerAdjust, d.close_time closeTime, d.note,
+        COALESCE(d.cash_adjustment, 0) brokerAdjust, d.close_time closeTime, d.close_requested_time closeRequestedTime, d.note,
         d.virtual_fill_time paperFillTime, d.decision_time decisionTime, COALESCE(d.accepted_time, d.sent_time) sentTime,
         (SELECT MAX(c.time) FROM broker_cashflows c WHERE c.account_id = d.account_id AND c.deal_id = d.deal_id AND c.type = 'TRADE') brokerCloseTime,
         t.entry_price paperEntry, t.exit_price paperExit, t.exit_time paperExitTime, t.pnl paperPnl, t.funding paperFunding, t.exit_reason exitReason

@@ -9,7 +9,7 @@ const DAY = 86_400_000;
 function row(over: Partial<TwinRow> = {}): TwinRow {
   return {
     runId: RUN, epic: 'US500', side: 'long', size: 0.2, paperSize: 1,
-    openPrice: 6000, brokerPnl: 2, brokerAdjust: 0, brokerCloseTime: T + 60_500, closeTime: T + 61_000, note: 'paper signal',
+    openPrice: 6000, brokerPnl: 2, brokerAdjust: 0, brokerCloseTime: T + 60_500, closeTime: T + 61_000, closeRequestedTime: T + 60_200, note: 'paper signal',
     paperFillTime: T, decisionTime: T - 500, sentTime: T + 900, paperEntry: 6000, paperExit: 6010, paperExitTime: T + 60_000, paperPnl: 10, paperFunding: 0,
     exitReason: 'signal', ...over,
   };
@@ -44,6 +44,11 @@ test('who closed first is decided by timing, not by the mirror note', () => {
   expect(brokerStop.exitLagMs).toBe(-8_000);
   const ours = twinTrade(row({ note: 'paper position is flat; already closed at broker' }))!;
   expect(ours.closedBy).toBe(CLOSED_BY.ARENA);
+  // The arena's own close lands before paper's exit time, which is when the releasing quote reached us.
+  const decided = twinTrade(row({ closeRequestedTime: T + 50_000, brokerCloseTime: T + 50_300, paperExitTime: T + 58_000 }))!;
+  expect(decided.closedBy).toBe(CLOSED_BY.ARENA);
+  expect(twinTrade(row({ closeRequestedTime: null }))!.closedBy).toBe(CLOSED_BY.BROKER);
+  expect(twinTrade(row({ brokerCloseTime: null, note: 'paper stop_loss; already closed at broker' }))!.closedBy).toBe(CLOSED_BY.BROKER);
 });
 
 test('rows without a paper twin or booked P&L are not paired', () => {

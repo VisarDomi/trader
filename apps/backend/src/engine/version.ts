@@ -1,2 +1,2 @@
 /** Bump when execution/accounting changes invalidate cached backtests. */
-export const ENGINE_VERSION = '2026-11-arrival-price';
+export const ENGINE_VERSION = '2026-11-arrival-stall';

@@ -344,3 +344,33 @@ test('an order fills at the price in effect when it reaches the venue: the last 
   e2.processTick(quote(90_000, 120));
   expect(r2.position?.entryPrice).toBe(121);
 });
+
+test('after a stall in the stream an order still fills at the price in effect at its due time, and a close is not lost', () => {
+  // GOLD 2026-11-12 15:00: quotes stamped from 15:00:10 arrived 23–34 s late in one backlog; the reversal decided at
+  // 15:00:09 met the quote stamped 15:00:09.4, which was 35 s old by the time the backlog released the order.
+  let now = T;
+  const instrument = { ...getInstrument(EPIC) },
+    venue = new VirtualVenue(instrument);
+  venue.update((fixtures.markets as unknown as Record<string, CapitalMarket>)[EPIC]!, now);
+  const at = (stamp: number, received: number, bid: number) => ({ ...quote(stamp, bid), receivedAt: T + received });
+  const trader = () => agent({ onTick(ctx) {
+    if (ctx.ticks.length === 1) ctx.buy({ size: 1 });
+    if (ctx.ticks.length === 3) ctx.close();
+  } });
+  const e = new MarketEngine(instrument);
+  const r = e.addRun({ runId: 'stall', agent: trader(), capital: 10_000, leverage: 20, checkStopsOnCandles: false, execution: { venue, latencyMs: 500, now: () => now } });
+  now = T;
+  e.processTick(at(0, 0, 100)); // decision at T: due T+500
+  now = T + 400;
+  e.processTick(at(400, 400, 101)); // in effect at the due time
+  now = T + 35_000;
+  venue.updatedAt = now;
+  e.processTick(at(10_000, 35_000, 120)); // the backlog after a stall: stamped 10 s, received 35 s
+  expect(r.position).toMatchObject({ entryPrice: 102, entryTime: T + 35_000 }); // the decision at the third tick queues the close
+  now = T + 45_000;
+  venue.updatedAt = now;
+  e.processTick(at(45_000, 45_000, 125)); // releases the close (due T+35_500) at the quote stamped 10 s, now 35 s old
+  expect(r.position).toBeNull();
+  expect(r.trades[0]).toMatchObject({ entryPrice: 102, exitPrice: 120, exitTime: T + 45_000 });
+  expect(r.executionStats.rejected).toBe(0);
+});

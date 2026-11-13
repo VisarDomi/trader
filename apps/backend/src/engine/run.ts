@@ -258,6 +258,8 @@ export class AgentRun {
   private executing = false;
   /** While a pending command executes: the arrival time of the quote that released it (the trade's time). */
   private executedAt: number | undefined;
+  /** While a pending command executes: the timestamp of the quote that released it, which is what must be fresh. */
+  private releaseQuoteTime: number | undefined;
   private decisionTime: number | undefined;
   private decisionMid: number | undefined;
   private barCloseTime: number | undefined;
@@ -725,6 +727,10 @@ export class AgentRun {
    * at the last quote stamped at or before Capital accepted them, 13 at the next one. The quote after the due time
    * would take a price from after a hole in our stream (US100 2026-11-11 23:00: 5 s). After a pause in quoting
    * (CONTINUOUS_QUOTES_MS) the market reopens at the new quote, which is the fill.
+   * Freshness is the releasing quote's: when the stream stalls, the price in effect at the due time can be stamped
+   * more than QUOTE_MAX_AGE_MS before the backlog arrives (GOLD 2026-11-12 15:00: 35 s), and it is still the price
+   * the order met; judging it against now rejected 41 standard-run orders that day (the demo had already traded) and
+   * dropped closes and stop changes unlogged.
    */
   private flushPending(previous: Quote | null): void {
     if (!this.pending.length || !this.execution || !this.quote || this.execution.venue.problem(this.now(), this.quote.time)) return;
@@ -740,6 +746,7 @@ export class AgentRun {
         current.time - previous.time <= CONTINUOUS_QUOTES_MS;
       this.quote = inEffect ? previous : current;
       this.executedAt = current.receivedAt ?? current.time;
+      this.releaseQuoteTime = current.time;
       this.executing = true;
       this.decisionTime = command.at;
       this.decisionMid = command.decisionMid;
@@ -760,6 +767,7 @@ export class AgentRun {
       } finally {
         this.quote = current;
         this.executedAt = undefined;
+        this.releaseQuoteTime = undefined;
         this.executing = false;
         this.decisionTime = undefined;
         this.decisionMid = undefined;
@@ -926,8 +934,9 @@ export class AgentRun {
   private canTrade(action: string): boolean {
     if (this.status !== RUN_STATUS.RUNNING || !this.quote) return false;
     if (!this.allowOrders || this.primary.closedCount < this.warmup) return false;
-    if (this.execution && this.execution.venue.problem(this.now(), this.quote.time)) {
-      if (action === 'open') this.reject(this.execution.venue.problem(this.now(), this.quote.time)!);
+    const problem = this.execution?.venue.problem(this.now(), this.releaseQuoteTime ?? this.quote.time);
+    if (problem) {
+      if (action === 'open') this.reject(problem);
       return false;
     }
     if (this.balance <= 0 && action === 'open') {

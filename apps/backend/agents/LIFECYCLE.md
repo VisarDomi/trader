@@ -177,7 +177,8 @@ window). The all-trades lines are context; old-engine divergence does not raise 
 Known sources of gaps (2026-11-10): Capital's demo quote stream arrives 0.1–13 s after each quote's
 timestamp, in regimes (REST shows the price earlier), so Capital's own stops can fire before ours; paper fills
 use the price in effect when the order reaches Capital, the last quote stamped at or before then
-(`2026-11-arrival-price`; Capital's demo fills follow the same rule), and minutes close
+(`2026-11-arrival-price`; Capital's demo fills follow the same rule; since `2026-11-arrival-stall` a stall in the
+stream no longer turns that price stale), and minutes close
 only once their late quotes arrive. Demo orders leave at the decision: accepted ~0.15–0.3 s after it, longer
 when one account has several orders in the same burst (each waits for the previous one's confirmation;
 Capital may answer a confirmation request with the account's latest deal). Capital books overnight swaps
@@ -191,7 +192,8 @@ the arena's ~6 requests/s, shared by all accounts, each order needing its confir
 2026-11-12 had bursts of 16–26 orders (opens and closes) whose last order went out 5–8 s after the decision. Capital sometimes refuses an order without a reason
 (about 2%, at busy moments); it goes out again a second later (since 2026-11-12; before, five minutes later).
 A deal the lifecycle closes (a demotion to virtual, a run leaving the mirror) is not a twin: the paper trade goes on.
-Mirror bugs found by the twins: early closes of decided deals (fixed 0e754e4) and reversals closing their own new
+Engine bug found by the twins: orders rejected as stale after a stream stall although the demo had traded them
+(fixed in `2026-11-arrival-stall`). Mirror bugs found by the twins: early closes of decided deals (fixed 0e754e4) and reversals closing their own new
 deal (fixed 2026-11-10).
 
 ## Each visit (runbook)

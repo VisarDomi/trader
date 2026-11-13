@@ -39,7 +39,12 @@ orders the same way: of 246 orders (2026-11-10 to 12), 189 filled at the last qu
 accepted them and 13 at the next one. Replayed on those orders, the change cut the paper–demo entry gap from a
 mean 0.55 to 0.40 bp (median 0.24 to 0.15 bp), with no bias either way; the first quote after the moment had taken
 prices from after holes in our stream (US100 2026-11-11 23:00: 5 s). After a pause in quoting (over a minute) the
-reopening quote is the fill. Other runs' orders never delay or block it (user request 2026-11-10: a burst must not affect the
+reopening quote is the fill. The 30-second freshness limit applies to the quote that releases the order, not to
+the earlier price it fills at (engine `2026-11-arrival-stall`): when Capital's stream stalls and its backlog arrives
+late, that price can be stamped over 30 s before the backlog (GOLD 2026-11-12 15:00: 35 s). Judged against the
+clock, 41 standard-run orders were rejected on November 12 after the demo had already traded them, among them
+a reversal that left demo flat while paper stayed short for a day (+57 bp twin gap). Closes and stop changes in
+the same spot were dropped without a log line. Other runs' orders never delay or block it (user request 2026-11-10: a burst must not affect the
 engine); until engine `2026-11-feed-time-v2` a synthetic gateway per scenario modelled the mirror's shared
 request queue and a 600 opens/hour budget across all runs. What remains is a per-run runaway guard, 12 opens
 an hour, the same rule the mirror applies to one run. Capital's request budget is the real mirror's queue:
