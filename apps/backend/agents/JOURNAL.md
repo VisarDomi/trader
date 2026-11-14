@@ -5,6 +5,40 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-14 (Sat) — daily visit: Capital's own stops labelled correctly; failed requests broken down by route
+
+- Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 44 pairs, 100% agree, mean +0.46 bp, p95 2.1 bp;
+  2 agents converged, none watch or diverged; no CHECK. Capital's quote stream runs a median 90 ms behind its stamps.
+- Found (twins report): 16 of 19 stop-loss and 14 of 17 take-profit twins read as arena closes, though the arena's close
+  got "not found" (404): Capital's own stop or target had filled. Capital books such a close 30–400 ms after our request,
+  because with a fast stream both legs react to the same quote and Capital settles the race. Since 11-10, 114 of 411
+  such closes were booked 0–400 ms after our request (7 up to 9.6 s), so yesterday's timing rule called them ours.
+  A 404 means Capital closed first, with one exception: our earlier close went out but its confirmation named another
+  deal (1–2 a day since 11-10; 484 since 11-03, retried 0.8 s to minutes later, so no time bound separates them).
+  Fixed (d8eeb39, deployed 22:16): the broker marks an open deal whose close went out unconfirmed (mismatched
+  confirmation or failed request); a later 404 on it is noted "not found after an unconfirmed close" and timing decides.
+  The twins treat "already closed at broker" as Capital's close. Now 18/1 stop-loss and 15/2 take-profit broker/arena.
+  One legacy row (zscore-fade ETHUSD 20:54, a mismatch before the fix) reads as broker. Agreement is 100% either way.
+- Found (health): half of the last 2,048 Capital requests failed, and the totals could not say which. Telemetry now
+  counts failures by route and status (`errorsByRoute`, ids as `:id`); `bun run twins` prints the top four. After the
+  deploy: weekend candle polls of closed markets (`GET /prices/<epic>` 404, two per epic a minute) and one same-account
+  `PUT /session` 400. Harmless; on weekdays this should read near zero.
+- Health: green. Tick journal 60.38M received, 0 dropped; storage 16.4 GB (two-year 36.6 GB, 4× stress 77.8 GB of 100).
+  Nightly lab 03:34–03:50: 555 backtests refreshed for `2026-11-arrival-stall`, night grid built 03:50 (US500 186 /
+  US100 156 of 336 traded). Watchdog quiet; the user's hold covers only the video pipeline. Capital's weekly
+  maintenance dropped the stream at Fri 22:00 (4×) and Sat 06:00–08:00 UTC (116 one-minute reconnects), as last
+  Saturday; crypto opens at 06:00 were refused "market closed" and their paper trades stayed unpaired. Stale-quote
+  rejections since yesterday's fix: 0 (weekend; weekdays expected 11–23). Cost evidence on every exit since the
+  deploy except 10 shannon-demon rebalances entered October 16, before evidence existed; backfill 12 candidates, 0
+  matched (unchanged, documented). The one error in 3 days is still 11-12's "Unable to connect".
+  Arena memory: cgroup peak 2.6 GB in 24 h (361 MB swap peak); the process holds 513 MB anon, 311 MB file cache.
+  `bun run twins` adds ~25 MB, `bun run review` ~75 MB, so neither is the peak. A temporary per-minute sampler
+  (`trader-arena-memsample.timer`, transient, in trader.slice) logs to `~/.local/state/trader-diag/arena-mem.tsv`.
+- Verdicts: control 148, early 391, keep 12, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no
+  additions (Saturday).
+- Next: read the memory log for the peak's window, then stop the sampler; Monday's `errorsByRoute` (expect ~0);
+  weekday stale-quote rejections; a reasonless refusal's 1 s resend when one comes.
+
 ## 2026-11-13 (Fri) — daily visit: a stream stall no longer rejects the price in effect; closed-by labels fixed
 
 - Visits now run at 22:00 (T3 task "Trader", prompt "do the daily check"; yesterday's evening check was the first);
@@ -1746,6 +1780,7 @@ Visit 2026-11-11: no new agent, retirement or tuning; engine (targets fill at th
 Visit 2026-11-12: no new agent, retirement or tuning; engine (orders fill at the price on arrival), twins (lifecycle closes are not pairs) and mirror (reasonless refusals resent after 1 s) fixes only.
 Check 2026-11-12 (evening): no new agent, retirement or tuning; cost evidence for targets filled at their level only.
 Visit 2026-11-13: no new agent, retirement or tuning; engine (a stream stall no longer makes the price in effect stale) and twin-report (closed-by from the close request) fixes only.
+Visit 2026-11-14: no new agent, retirement or tuning; twin-report (a close that finds the deal gone is Capital's) and request-telemetry fixes only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
