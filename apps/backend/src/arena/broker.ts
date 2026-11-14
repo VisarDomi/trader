@@ -139,6 +139,11 @@ const QUICK_RETRY_MS = 1_000;
 /** Capital.com's rejection while an instrument is in its daily break or closed. */
 const MARKET_CLOSED = /currently closed|market_closed/i;
 const NOTE_REJECTED = 'rejected:';
+/**
+ * On an open deal: an earlier close request may have gone through without a confirmation of it (one naming another
+ * deal, or a failed request). A later "not found" then does not show that Capital's stop or target closed it first.
+ */
+export const NOTE_CLOSE_UNCONFIRMED = 'close sent without a matching confirmation';
 /** GET /markets/{epic} snapshot.marketStatus while the market takes orders. */
 const MARKET_TRADEABLE = 'TRADEABLE';
 
@@ -1196,6 +1201,7 @@ export class BrokerMirror {
         // Another deal's confirmation (seen once: an AUDUSD price on a EURUSD close whose broker stop had
         // already filled). Keep the deal open: reconcile marks it closed at the broker if it is gone, or the
         // next cycle closes it again.
+        this.db.updateDeal(d.id, { note: NOTE_CLOSE_UNCONFIRMED });
         this.db.event(
           'warn',
           'broker',
@@ -1218,11 +1224,12 @@ export class BrokerMirror {
       this.closeWaiting.delete(d.id);
     } catch (err) {
       if (err instanceof CapitalApiError && err.status === 404) {
+        // Gone before this request reached Capital: its own stop or target closed it, unless an earlier close may have.
         this.db.updateDeal(d.id, {
           status: DEAL_STATUS.CLOSED,
           close_time: Date.now(),
           paper_close_price: paperPrice ?? null,
-          note: `${note}; already closed at broker`,
+          note: current.note === NOTE_CLOSE_UNCONFIRMED ? `${note}; not found after an unconfirmed close` : `${note}; already closed at broker`,
         });
         return;
       }
@@ -1233,6 +1240,7 @@ export class BrokerMirror {
         this.closeWaiting.add(d.id);
         return;
       }
+      this.db.updateDeal(d.id, { note: NOTE_CLOSE_UNCONFIRMED });
       this.fail(`close ${current.run_id}`, err);
     }
   }

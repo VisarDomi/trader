@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { CapitalClient, DEMO_BASE_URL, RequestPacer, CapitalApiError } from './client.ts';
-import { networkStats } from './telemetry.ts';
+import { networkStats, route } from './telemetry.ts';
 const POST = 'POST';
 const API_KEY = 'test-key';
 const SECRET = 'test-password';
@@ -28,6 +28,8 @@ test('uncertain order failures are never replayed and telemetry keeps no credent
     expect(telemetry.includes(API_KEY)).toBe(false);
     expect(telemetry.includes(SECRET)).toBe(false);
     expect(telemetry.includes('test-cst')).toBe(false);
+    expect(networkStats().errorsByRoute[`${POST} ${POSITIONS} 504`]).toBeGreaterThanOrEqual(1);
+    expect(route('DELETE', `${DEMO_BASE_URL}/api/v1/positions/00000000-7386-e3f2?x=1`)).toBe('DELETE /api/v1/positions/:id');
   } finally {
     globalThis.fetch = saved;
   }

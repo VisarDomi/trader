@@ -38,12 +38,16 @@ test('shorts, funding and broker adjustments are compared at paper size', () => 
   expect(t.fundingGapUsd).toBeCloseTo(0.2, 6); // −0.06 × 5 − (−0.5)
 });
 
-test('who closed first is decided by timing, not by the mirror note', () => {
+test('who closed first: a close that found the deal gone, else timing', () => {
   const brokerStop = twinTrade(row({ brokerCloseTime: T + 52_000, note: 'paper stop_loss; already closed at broker', exitReason: 'stop_loss' }))!;
   expect(brokerStop.closedBy).toBe(CLOSED_BY.BROKER);
   expect(brokerStop.exitLagMs).toBe(-8_000);
-  const ours = twinTrade(row({ note: 'paper position is flat; already closed at broker' }))!;
+  // Capital books its stop 300 ms after our request, which it answered "not found": the broker won the race.
+  expect(twinTrade(row({ note: 'paper stop_loss; already closed at broker' }))!.closedBy).toBe(CLOSED_BY.BROKER);
+  // Our earlier close may have gone through: timing decides.
+  const ours = twinTrade(row({ note: 'paper position is flat; not found after an unconfirmed close' }))!;
   expect(ours.closedBy).toBe(CLOSED_BY.ARENA);
+  expect(twinTrade(row({ note: 'paper signal; not found after an unconfirmed close', brokerCloseTime: T + 60_000 }))!.closedBy).toBe(CLOSED_BY.BROKER);
   // The arena's own close lands before paper's exit time, which is when the releasing quote reached us.
   const decided = twinTrade(row({ closeRequestedTime: T + 50_000, brokerCloseTime: T + 50_300, paperExitTime: T + 58_000 }))!;
   expect(decided.closedBy).toBe(CLOSED_BY.ARENA);
@@ -60,6 +64,7 @@ test('a deal the lifecycle closed while the paper trade went on has no twin; one
   expect(twinTrade(row({ note: 'demoted to virtual: losing virtual trade evidence' }))).toBeNull();
   expect(twinTrade(row({ note: 'run no longer mirrored' }))).toBeNull();
   expect(twinTrade(row({ note: 'run no longer mirrored; already closed at broker' }))).not.toBeNull();
+  expect(twinTrade(row({ note: 'demoted to virtual; not found after an unconfirmed close' }))).toBeNull();
   const r = buildTwinReport([row(), row({ note: 'demoted to virtual: losing virtual trade evidence' })], T - DAY, T + DAY, T);
   expect(r.overall.pairs).toBe(1);
   expect(r.unpaired.closedByLifecycle).toBe(1);
