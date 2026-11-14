@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { BrokerMirror, BROKER_SETTINGS, type MirrorCandidate } from './broker.ts';
+import { BrokerMirror, BROKER_SETTINGS, NOTE_CLOSE_UNCONFIRMED, type MirrorCandidate } from './broker.ts';
 import { ArenaDB, DEAL_STATUS } from './db.ts';
-import type { CapitalClient } from '../capital/client.ts';
+import { CapitalApiError, type CapitalClient } from '../capital/client.ts';
 const RUN = 'demo:fixture:EURUSD:x1:hash';
 const EPIC = 'EURUSD';
 const ACCOUNT = 'arena-owned';
@@ -52,7 +52,8 @@ test('Capital hourly request budget survives a process restart', () => {
 });
 
 /** No network: an owned, already-configured demo account and an inert Capital client. */
-function fixture(candidates: MirrorCandidate[], current: Record<string, string>, postDelayMs = 0, confirmations: object[] = []) {
+function fixture(candidates: MirrorCandidate[], current: Record<string, string>, postDelayMs = 0, confirmations: object[] = [],
+  deleteErrors: (Error | null)[] = []) {
   const db = new ArenaDB(':memory:');
   db.setSetting(BROKER_SETTINGS.ENABLED, true);
   db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, current);
@@ -77,7 +78,13 @@ function fixture(candidates: MirrorCandidate[], current: Record<string, string>,
       lastOrder = 'BUY';
       return { dealReference: 'fixture' };
     },
-    delete: async () => { deletes++; lastOrder = 'SELL'; return { dealReference: 'fixture' }; },
+    delete: async () => {
+      deletes++;
+      const err = deleteErrors.shift();
+      if (err) throw err;
+      lastOrder = 'SELL';
+      return { dealReference: 'fixture' };
+    },
   } as unknown as CapitalClient;
   const mirror = new BrokerMirror(client, db, { prefix: 'Arena', accountTiers: { [NAME]: 1 } });
   mirror.setCandidateSource(() => candidates);
@@ -476,4 +483,34 @@ test('an order Capital refuses without a reason goes out once more a second late
       if (posts === 2 && statuses[1] === DEAL_STATUS.OPEN) expect(db.dealsForRun(RUN)[1]).toMatchObject({ deal_id: 'ours', decision_time: now });
     } finally { mirror.stop(); db.db.close(); }
   }
+});
+
+test('a close that finds the deal gone is the broker\'s, unless an earlier close of it went out unconfirmed', async () => {
+  const now = Date.now();
+  const candidate: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: 0, side: LONG,
+    entry: { size: 500, price: 1.12, time: now - 60_000, stopLoss: null, takeProfit: null } };
+  const gone = () => new CapitalApiError(404, '{"errorCode":"error.not-found.dealId"}', '/api/v1/positions/ours');
+  const other = { dealStatus: 'ACCEPTED', epic: 'AUDUSD', direction: 'SELL', size: 100, dealId: 'theirs', level: 0.65 };
+  const { db, mirror, counts } = fixture([candidate], { [RUN]: ACCOUNT }, 0, [other], [null, gone(), gone()]);
+  const open = () => db.insertDeal({ account: NAME, account_id: ACCOUNT, run_id: RUN, epic: EPIC, side: LONG, size: 100, paper_size: 500,
+    deal_id: 'ours', status: DEAL_STATUS.OPEN, open_time: now - 60_000, open_price: 1.12, paper_open_price: 1.12, close_time: null,
+    close_price: null, paper_close_price: null, pnl: null, note: null });
+  const close = () => mirror.onRunEvent({ type: 'order', kind: 'close', runId: RUN, time: Date.now(), side: LONG, reason: 'stop_loss' });
+  try {
+    await mirror.start();
+    await settled(mirror);
+    open();
+    close(); // its confirmation names another deal: the deal stays open, marked
+    for (let i = 0; i < 100 && counts().deletes < 1; i++) await Bun.sleep(10);
+    await settled(mirror);
+    expect(db.openDeals()[0]?.note).toBe(NOTE_CLOSE_UNCONFIRMED);
+    close(); // not found: our first close may have done it
+    for (let i = 0; i < 100 && db.openDeals().length; i++) await Bun.sleep(10);
+    expect(db.dealsForRun(RUN)[0]?.note).toBe('paper stop_loss decided; not found after an unconfirmed close');
+    open();
+    close(); // not found at the first attempt: Capital's own stop closed it
+    for (let i = 0; i < 100 && db.openDeals().length; i++) await Bun.sleep(10);
+    expect(db.dealsForRun(RUN).map(d => d.note)).toContain('paper stop_loss decided; already closed at broker');
+    expect(counts().deletes).toBe(3);
+  } finally { mirror.stop(); db.db.close(); }
 });

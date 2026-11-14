@@ -1,7 +1,15 @@
 /** Bounded, payload-only telemetry. No credentials, bodies, account IDs or deal IDs are retained. */
 const WINDOW = 2048;
 const TIMEOUT_MS = 30_000;
-const samples: { ms: number; status: number }[] = [];
+const samples: { ms: number; status: number; route: string }[] = [];
+/**
+ * "METHOD /path" with the query dropped and every segment holding a digit (deal ids, references, epics) as ":id",
+ * so failures can be told apart without retaining identifiers.
+ */
+export function route(method: string | undefined, url: string): string {
+  const path = new URL(url).pathname.split('/').map(s => (/\d/.test(s) && !/^v\d+$/.test(s) ? ':id' : s)).join('/');
+  return `${method ?? 'GET'} ${path}`;
+}
 let requests = 0,
   sentBytes = 0,
   receivedBytes = 0,
@@ -37,7 +45,7 @@ export async function measuredFetch(url: string, init: RequestInit): Promise<Res
       headers: response.headers,
     });
   } finally {
-    samples.push({ ms: performance.now() - started, status });
+    samples.push({ ms: performance.now() - started, status, route: route(init.method, url) });
     if (samples.length > WINDOW) samples.shift();
   }
 }
@@ -58,5 +66,9 @@ export function networkStats() {
       0.95,
     ),
     errorsInWindow: samples.filter(s => s.status === 0 || s.status >= 400).length,
+    /** Failed requests in the window by "route status" (status 0: no response), most frequent first. */
+    errorsByRoute: Object.fromEntries(
+      [...Map.groupBy(samples.filter(s => s.status === 0 || s.status >= 400), s => `${s.route} ${s.status}`)]
+        .map(([k, v]) => [k, v.length] as const).sort((a, b) => b[1] - a[1])),
   };
 }

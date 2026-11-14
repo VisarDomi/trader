@@ -43,6 +43,11 @@ for (const e of fortnight.byExit.slice(0, 6))
   out.push(`  exit ${e.exitReason}, closed by ${e.closedBy}: ${e.pairs} pairs, ${share(e.agreeShare)} agree, mean ${bp(e.meanGapBps)}, exit lag p50 ${e.exitLagP50Ms ?? '—'} ms`);
 const feed = execution.virtual.feed;
 out.push(`Capital quote stream: median delay ${feed?.medianDelayMs ?? '—'} ms behind quote timestamps`);
+const net = execution.network;
+if (net) {
+  const top = Object.entries((net.errorsByRoute ?? {}) as Record<string, number>).slice(0, 4).map(([k, n]) => `${k} ×${n}`).join(', ');
+  out.push(`Capital HTTP: ${net.errorsInWindow} of the last ${net.sampleSize} requests failed${top ? ` (${top})` : ''}; latency p50/p95 ${net.requestP50Ms}/${net.requestP95Ms} ms`);
+}
 const cpu = execution.virtual.cpuParts;
 out.push(
   `arena CPU since start (${Math.round(cpu.sinceMs / 3_600_000)} h): ${execution.virtual.cpuCorePercent}% of a core in total; ` +

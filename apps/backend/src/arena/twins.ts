@@ -161,12 +161,16 @@ export function closedByLifecycle(note: string | null): boolean {
 }
 
 /**
- * Who closed the deal: Capital (its stop or target) when its close came before the arena asked for one, or when the
- * arena never asked. Timing decides, not the note, which can say "already closed at broker" after the arena's own close
- * went through with a mismatched confirmation. Paper's exit time cannot decide: it is when the releasing quote reached
- * us, seconds after the arena sent the close it decided (2026-11-12: all 73 signal exits looked broker-closed).
+ * Who closed the deal. "already closed at broker" means the arena's close found the deal gone: Capital's stop or target
+ * filled first, even when Capital books it later than our request. With quotes ~0.1 s behind, both legs react to the
+ * same quote and Capital settles the race (2026-11-14: 114 of 411 such closes since 11-10 were booked 0–400 ms after
+ * our request, 7 up to 9.6 s after). A "not found" after an earlier close that may have gone through is noted
+ * differently since 2026-11-14 (before, such deals, 1–2 a day since 11-10, read as broker closes).
+ * Otherwise timing decides: Capital's close before the arena asked, or the arena never asked. Paper's exit time cannot
+ * decide: it comes after the modelled 500 ms order latency, while the arena sends a close it decided at once (2026-11-12).
  */
 function closedFirstBy(r: TwinRow): ClosedBy {
+  if (/already closed at broker/.test(r.note ?? '')) return CLOSED_BY.BROKER;
   if (r.brokerCloseTime === null) return closedByBroker(r.note) ? CLOSED_BY.BROKER : CLOSED_BY.ARENA;
   return r.closeRequestedTime === null || r.brokerCloseTime < r.closeRequestedTime ? CLOSED_BY.BROKER : CLOSED_BY.ARENA;
 }
