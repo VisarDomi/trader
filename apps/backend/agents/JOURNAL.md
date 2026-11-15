@@ -1803,6 +1803,7 @@ Visit 2026-11-12: no new agent, retirement or tuning; engine (orders fill at the
 Check 2026-11-12 (evening): no new agent, retirement or tuning; cost evidence for targets filled at their level only.
 Visit 2026-11-13: no new agent, retirement or tuning; engine (a stream stall no longer makes the price in effect stale) and twin-report (closed-by from the close request) fixes only.
 Visit 2026-11-14: no new agent, retirement or tuning; twin-report (a close that finds the deal gone is Capital's) and request-telemetry fixes only.
+Visit 2026-11-15: no new agent, retirement, tuning or code change; power-loss recovery and the memory peak checked.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
