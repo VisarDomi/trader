@@ -5,6 +5,28 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-15 (Sun) — daily visit: a power loss recovered cleanly; the memory peak is the nightly backtest push
+
+- Twins under `2026-11-arrival-stall`: 104 pairs, 100% agree, mean +0.21 bp, p95 2.4 bp; 3 agents converged, none watch
+  or diverged; no CHECK. Capital's own stops and targets now read as broker closes (48 stop-loss, 28 take-profit, 2
+  trailing; exit lag p50 ~65 ms); 25 arena closes. Stream 70 ms behind its stamps.
+- Power loss: the PC went down abruptly at 11:03:02 CET (no shutdown in the log) and booted at 11:04. The arena's first
+  start failed after 60 s: its candle backfill could not reach Capital yet ("Unable to connect", exit 1). systemd
+  restarted it 10 s later and it came up at 11:06 (85 agents, 4,640 runs). The unit has `Restart=always` and no start
+  limit, so a longer outage also recovers by itself; no code change. `quick_check` ok on arena.db and ticks.db; the
+  archive resumed with rows = sequence (61,647,422, no holes); 0 dropped. The capture gap (~3 min, crypto only on a
+  Sunday) stays recorded as a gap. One ETHUSD demo short was open through it; Capital's stop closed it and the pair agrees.
+- Memory peak found: the nightly push of all 556 cached backtest results (135 MB of JSON in 70 POSTs, 03:40:36–59 CET)
+  lifts the arena's anon memory from 0.44 to 1.9 GB until a full collection at 03:45 (cgroup peak 2.75 GB, 96 MB swap).
+  Transient parse garbage, inside trader.slice's 15 GB; left as is. The sampler stopped with the reboot and is removed.
+- Health otherwise green: storage 16.4 GB (two-year 36.4, 4× stress 76.8 of 100); nightly lab 03:37–03:45 (backtests
+  cached for the current engine, grid built 03:45); 0 errors in 3 days. Failed requests are the weekend's closed-market
+  candle polls (`GET /prices/<epic>` 404). Cost evidence on every exit since yesterday except 11 signal exits of
+  positions entered before evidence existed; backfill 12/0 as before.
+- Verdicts: control 148, early 385, keep 18, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no additions
+  (Sunday).
+- Next (Monday): `errorsByRoute` on a weekday (expect ~0), stale-quote rejections (expect 11–23), additions are due.
+
 ## 2026-11-14 (Sat) — daily visit: Capital's own stops labelled correctly; failed requests broken down by route
 
 - Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 44 pairs, 100% agree, mean +0.46 bp, p95 2.1 bp;
