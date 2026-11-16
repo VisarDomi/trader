@@ -5,6 +5,46 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-16 (Mon) — daily visit: first weekday under arrival-stall; the FX fixing reversal fails the gate
+
+- Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 224 pairs, 91% agree, mean +0.25 bp, p95 2.4 bp;
+  3 agents converged, 1 watch, 0 diverged; no CHECK. The last day, the first full weekday under this engine: 120 pairs,
+  83% agree, mean +0.28 bp. Capital's stream ran up to 12 s behind its timestamps for most instruments
+  today (median 4.8 s; 70 ms on Sunday). The 20 disagreeing pairs come from known sources, with gaps of both signs:
+  - Signal exits in a burst. At 21:00 UTC (16:00 New York), 10 closes and 6 opens left 6.8–11.7 s after the hour.
+    noise-area-momentum/voltarget US500's close went out about 2.6 s after paper's decision time (paper assumes
+    0.5 s). The ask fell 1.8 points in between: exit +2.4 bp.
+  - A hole in the stream in a fast market. noise-area-momentum/base US100 18:30 entry: no stamps from 18:30:07.9 to
+    10.1 while the bid fell 5 points. The demo filled inside the hole, 0.67 s after the decision: −2.2 bp.
+  - Capital's own stops fill near the level, and paper's at the next quote. 95 broker stop-loss pairs: 93% agree,
+    mean +0.18 bp. The one watch agent is swing-reversal/p10 BTCUSD (+13 bp on one stop).
+  Mean gaps by exit stay within ±0.7 bp. The PC clock is in sync (NTP offset 1 ms). Nothing unexplained.
+- Health: green. 0 errors in 3 days.
+  - `errorsByRoute` on a weekday: 4 failures in 2,048 requests: 2 `DELETE /positions/:id` 404 (Capital's stop had
+    already closed the deal) and 2 `GET /prices/NATURALGAS` 404.
+  - Stale-quote rejections: 1 today (a NATURALGAS delay comparison at 03:00), 0 at the weekend.
+  - Six close confirmations named another deal ("left to reconcile"); the deals were marked unconfirmed as designed.
+  - Tick journal 64.55M received, 0 dropped. Storage 16.4 GB (two-year 36.6, 4× stress 77.5 of 100).
+  - Nightly lab 03:37–03:51; night grid built 03:51 (US500 186 / US100 156 of 336 traded). Cost backfill 12/0, as
+    before. The user's hold covers only the video pipeline.
+- Demotions by the engine: timesfm-drift/h8 ETHUSD 1:50 lost its Capital slot (losing actual execution results). The
+  seven delay comparisons of ema-cross/9-21 US30 1:10 went back to backtest (losing virtual trade evidence).
+- Verdicts: control 148, early 382, keep 21, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire.
+- Addition tried: `fx-fix-reversal`, from Krohn, Mueller & Whelan, "Foreign Exchange Fixings and Returns Around the
+  Clock" (Journal of Finance 2024). Dealers hedge a regular demand for dollars at the benchmark fixes, so the dollar
+  has risen into the fixes and fallen after them. The rule is the paper's: long the dollar from 08:00 Frankfurt to
+  the ECB fix (14:15), short it from the London fix (16:00) to the New York close. It ran on EURUSD and GBPUSD (the
+  pairs the paper trades), 15m, 1× notional, intraday only, at the 1:3 tier.
+  - In 1999–2019 the euro earned 15.8% a year before costs (Table IX), but the 2014–19 subsample had already
+    weakened to about 1 bp a leg (Table I).
+  - check-agent passed. Backtest 2024-01 → 2026-09: Sharpe −0.82 (EURUSD) and −1.22 (GBPUSD), 1,426 trades each.
+    That is below the −0.5 gate, so it is rejected.
+  - Before costs the legs averaged +0.19 / −0.50 bp (EUR) and −0.70 / +0.49 bp (GBP) a trade, against spreads of
+    0.5 and 1 bp: the pattern is absent here.
+  - Not deployed, and the file is not kept (as with intraday-momentum). Virtual runs unchanged at 4,633 of 5,000.
+- Next: twins on a second weekday with the stream several seconds late; a reasonless refusal's 1 s resend when one
+  comes.
+
 ## 2026-11-15 (Sun) — daily visit: a power loss recovered cleanly; the memory peak is the nightly backtest push
 
 - Twins under `2026-11-arrival-stall`: 104 pairs, 100% agree, mean +0.21 bp, p95 2.4 bp; 3 agents converged, none watch
@@ -1804,6 +1844,7 @@ Check 2026-11-12 (evening): no new agent, retirement or tuning; cost evidence fo
 Visit 2026-11-13: no new agent, retirement or tuning; engine (a stream stall no longer makes the price in effect stale) and twin-report (closed-by from the close request) fixes only.
 Visit 2026-11-14: no new agent, retirement or tuning; twin-report (a close that finds the deal gone is Capital's) and request-telemetry fixes only.
 Visit 2026-11-15: no new agent, retirement, tuning or code change; power-loss recovery and the memory peak checked.
+Visit 2026-11-16: one addition tried (fx-fix-reversal), rejected at the backtest gate; no retirement, tuning or code change.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
@@ -1872,6 +1913,7 @@ versions and their evidence; it does not turn platform migrations into strategy 
 - donchian-breakout (turtle-20, turtle-55) — channel breakouts, 4h — live (2026-10-06)
 - donchian-ensemble — five breakout systems (10–200 days) averaged, volatility-scaled, long-only BTC/ETH at 1:1 — live (2026-10-14)
 - ema-cross (9-21, 20-50) — moving-average crossover, 1h — live (2026-10-06)
+- fx-fix-reversal — long the dollar 08:00 Frankfurt → ECB fix, short it London fix → New York close (Krohn, Mueller & Whelan 2024: dealer hedging of fix demand), EURUSD/GBPUSD 15m, 1× at 1:3 — rejected (2026-11-16): backtest Sharpe −0.82 / −1.22; before costs −0.7 to +0.5 bp a leg against 0.5–1 bp spreads, already fading in the paper's 2014–19 data
 - gold-session (overnight, both) — long gold from the London afternoon fix to the next morning fix, 1:1 — live (2026-10-14)
 - hma-slope — Hull MA slope turns, 1h — live (2026-10-06)
 - ibs-dip (pagonidis, composite) — buy US indices closing near the session low above the 200-day average, 30m — live (2026-10-14)

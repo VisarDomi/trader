@@ -162,6 +162,9 @@ profits above a floor) are good experiments too, but slower to read.
 
 - Standalone pre-holiday, Monday, OPEX-week and pre-FOMC agents: decayed, and our 2024–26 data shows nothing.
 - The BTC 21:00–23:00 UTC effect: real out of sample, but the edge (about 6.6 bp) equals the spread.
+- The FX fixing reversal (dollar up into the ECB fix, down after the London fix; Krohn, Mueller & Whelan 2024):
+  already fading in 2014–19 and absent in our 2024–26 data before costs (−0.7 to +0.5 bp a leg). Tried and
+  rejected at the gate on 2026-11-16.
 - Dividend capture, post-earnings drift and earnings-month effects on our mega caps: gone since about 2004–2006, or smaller than one spread.
 - Pairs on our list (gold/silver, oil/gas, US100/US500, ETH/BTC): they don't behave like pairs, and one leg pays funding.
 - Textbook tactical allocation (GTAA, dual momentum, Keller's models) as published: it needs bonds, which we don't have.
