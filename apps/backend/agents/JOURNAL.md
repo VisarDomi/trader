@@ -5,6 +5,51 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-17 (Tue) — daily visit: the diverged agents trade inside the stream's holes; trailing-stop gaps explained
+
+- Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 395 pairs, 86% agree, mean +0.10 bp, p95 4 bp;
+  6 converged, 0 watch, 6 diverged: CHECK. The last day: 162 pairs, 79% agree, mean −0.06 bp. Crypto, gold and FX
+  agree 93–100%, the US indices 44–47%.
+  - The six are the five noise-area-momentum runs (US100, US500, US30) and swing-reversal/p05 US100. They enter only at
+    bar closes on the US indices, where two known sources meet:
+    - Holes in the stream. In busy hours Capital's quotes reach us 7–10 s after their stamps, the same delay on all
+      20 instruments, in bursts of 0.5–0.9 s with holes of 1.4–3.5 s between. US100 at 16:00 UTC had no stamps from
+      16:00:07.9 to 11.3 while the bid rose 18 points. Paper filled at 26835.8 (the last price before decision +
+      500 ms), and Capital filled our orders at 26845–26855 inside the hole.
+    - The order queue at bar closes. 16:00 UTC sent 26 orders, the last 9.5 s after the decision. The noise-area
+      entries went out 1.8–5.9 s after it (paper assumes 0.5 s, by design).
+  - Today all five noise-area 16:00 entries went in demo's favour (+3 to +7 bp, one bounce). The same agents' 11-16
+    entries mostly agreed (within ±0.4 bp). Capital's fills match our quotes by stamp (18:00 UTC: within 0.1–0.4 s),
+    so the stamps are right and the gap is what our stream does not show. Not an engine bug; no code change.
+  - Where the delay comes from: on 10-20 at 16:00 UTC the arena took in 51 quotes/s at 0.14 s. The delay started on
+    10-22 (2.9 s) and has held in busy hours since: 08:00–21:00 UTC and around 01:00, 5–13 s. Some connections and
+    days are exempt (10-28: 0.18 s). Nothing in our stream code changed then; the arena's event loop p95 is 1 ms and a
+    quote costs 0.2 ms.
+  - New: `bun run stream-probe` opens fresh connections side by side (US100 alone, the three indices, the arena's 20
+    instruments) and records their delay and holes. One-off runs are scheduled for 11-18 09:05 and 14:35 UTC
+    (transient timers in trader.slice), writing to `~/.local/state/trader-diag/`. If a fresh or smaller connection
+    is on time, the arena's stream can be split or reconnected when it falls behind.
+  - Trailing stops (no CHECK): the timesfm-vol-breakout US30 short closed at Capital 14:55 UTC and on paper 17:19, a
+    −87 bp gap. I replayed all 85 trailing pairs since 11-02:
+    - Paper's rule (anchor and trigger on the closing side) matches Capital's close within about 1 s in most pairs.
+      Anchoring on the opening side or the mid does not fit.
+    - In 8 pairs Capital closed first, by 70 s to 8.7 h. Each needed an anchor at most ~0.9 spread beyond the extreme
+      we recorded (US30: 0.0).
+    - Capital trails on its full price path, and ours is a sample of it. This is a known source with gaps of either
+      sign, now listed in LIFECYCLE.md.
+- Health: green. 0 errors in 3 days.
+  - `errorsByRoute` (after hours): 21 failures in 2,048 requests, mostly candle polls of closed stock markets
+    (`GET /prices/<stock>` 404) and 4 `DELETE /positions/:id` 404 (Capital's stop came first).
+  - Stale-quote rejections: tsmom/5d NATURALGAS at 04:00 (1 standard run and its 10 delay comparisons), as yesterday.
+  - Unconfirmed closes: 0.
+  - Tick journal 67.24M received, 0 dropped. Storage 16.5 GB (two-year 36.7, 4× stress 77.9 of 100).
+  - Nightly lab 03:37–03:45; night grid built 03:45 (US500 186 / US100 156 of 336 traded). Cost backfill 12/0. The
+    user's hold covers only the video pipeline.
+- Verdicts: control 148, early 380, keep 23, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no additions
+  (Tuesday).
+- Next: read the two probe reports against the arena's own delay in the same windows, and decide whether to split or
+  reconnect the stream; a reasonless refusal's 1 s resend when one comes.
+
 ## 2026-11-16 (Mon) — daily visit: first weekday under arrival-stall; the FX fixing reversal fails the gate
 
 - Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 224 pairs, 91% agree, mean +0.25 bp, p95 2.4 bp;
@@ -1845,6 +1890,7 @@ Visit 2026-11-13: no new agent, retirement or tuning; engine (a stream stall no 
 Visit 2026-11-14: no new agent, retirement or tuning; twin-report (a close that finds the deal gone is Capital's) and request-telemetry fixes only.
 Visit 2026-11-15: no new agent, retirement, tuning or code change; power-loss recovery and the memory peak checked.
 Visit 2026-11-16: one addition tried (fx-fix-reversal), rejected at the backtest gate; no retirement, tuning or code change.
+Visit 2026-11-17: no new agent, retirement or tuning; a stream-delay probe (lab tool) only.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
