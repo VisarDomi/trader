@@ -186,7 +186,14 @@ per account without a deal id, so the twins cannot compare funding per trade; at
 (−$3.5k) exceeded the paper funding on paired trades (−$1.8k, closed trades only). In fast markets the stream
 also arrives in bursts with holes of seconds: Capital's targets fill at their level (paper too since engine
 `2026-11-tp-level`), while its stops fill near the level and paper's at the next quote we receive, so broker-closed
-stops can agree less and favour demo (conservative paper; 60 of 845 pairs over 14 days). Top-of-hour bursts
+stops can agree less and favour demo (conservative paper; 60 of 845 pairs over 14 days). Capital's trailing stops
+follow paper's rule (anchored and triggered on the closing side) but on Capital's full price path, of which our stream
+is a sample. When the price turns within about a spread of the trail level, Capital closes and paper stays in: 8 of 85
+trailing pairs to 2026-11-17, Capital first by 70 s to 8.7 h, with gaps of either sign (−87 bp at worst). Since
+2026-10-22 the busy-hours delay (08:00–21:00 UTC) is 5–13 s on every instrument at once, with holes of 1.5–3.5 s; on
+10-20 it was 0.14 s at 51 quotes/s. Agents that enter only at bar closes on the US indices (noise-area-momentum) trade
+inside those holes and the burst queue, so they diverge in fast markets (2026-11-17: +3 to +7 bp for demo on one 16:00
+UTC bounce). `bun run stream-probe` compares fresh connections with the arena's. Top-of-hour bursts
 take about 0.35 s per order on Capital's side of the mirror (since 2026-11-11): an order and its confirmation at
 the arena's ~6 requests/s, shared by all accounts, each order needing its confirmation before the account's next one;
 2026-11-12 had bursts of 16–26 orders (opens and closes) whose last order went out 5–8 s after the decision. Capital sometimes refuses an order without a reason
