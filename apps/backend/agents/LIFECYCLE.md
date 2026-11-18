@@ -193,7 +193,10 @@ trailing pairs to 2026-11-17, Capital first by 70 s to 8.7 h, with gaps of eithe
 2026-10-22 the busy-hours delay (08:00–21:00 UTC) is 5–13 s on every instrument at once, with holes of 1.5–3.5 s; on
 10-20 it was 0.14 s at 51 quotes/s. Agents that enter only at bar closes on the US indices (noise-area-momentum) trade
 inside those holes and the burst queue, so they diverge in fast markets (2026-11-17: +3 to +7 bp for demo on one 16:00
-UTC bounce). `bun run stream-probe` compares fresh connections with the arena's. Top-of-hour bursts
+UTC bounce). The delay is Capital's, not one connection's: on 2026-11-18 (`bun run stream-probe`) three fresh
+sessions (US100 alone, the three indices, all 20) ran 10.7 s behind with the same holes as the arena, on the host the
+session names, and at the 23:00 UTC reopen every instrument went from 0.1 to 8 s behind within 6 s. Splitting or
+reconnecting the stream cannot help; paper's stamp rules already account for it. Top-of-hour bursts
 take about 0.35 s per order on Capital's side of the mirror (since 2026-11-11): an order and its confirmation at
 the arena's ~6 requests/s, shared by all accounts, each order needing its confirmation before the account's next one;
 2026-11-12 had bursts of 16–26 orders (opens and closes) whose last order went out 5–8 s after the decision. Capital sometimes refuses an order without a reason
