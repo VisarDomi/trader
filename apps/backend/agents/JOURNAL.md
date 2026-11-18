@@ -5,6 +5,53 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-18 (Wed) — daily visit: the stream delay is Capital's, not our connection's; the reasonless refusal's resend fired
+
+- Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 557 pairs, 84% agree, mean +0.21 bp, p95 4.2 bp;
+  12 converged, 0 watch, 8 diverged: CHECK. The last day: 162 pairs, 78% agree, mean +0.50 bp.
+  - The eight are yesterday's six (five noise-area-momentum runs and swing-reversal/p05 US100) plus hma-slope US100
+    1:50 and swing-reversal/p10 US100. Both of the new ones entered on the same 11-17 16:00 UTC US100 bounce (demo +3.5
+    and +4.5 bp), with 5 pairs each. All eight have demo ahead (+0.4 to +2.0 bp mean, $73 together).
+  - Today's pairs for these agents mostly agree. The four that do not are 0.7–1.95 bp, demo ahead, at US index bar
+    closes. These are the known sources: holes in the stream and the order queue at bar closes. No engine change.
+- The probe settled where the delay comes from. At 09:05 UTC (`bun run stream-probe 10`), three fresh sessions ran
+  side by side with the arena: US100 alone, the three indices, and all 20 instruments. All three were 10.7 s
+  behind (p95 12.5 s), the same as the arena (10.3–11.9 s). US100 had the same 92 holes over 1 s and the same 3.0 s
+  maximum hole on every session.
+  - The 14:35 run did not start: Capital answered the login with `500 error.internal`.
+  - The session reply names `wss://api-streaming-capital.backend-capital.com/` as the stream host, the one we use.
+  - At the 23:00 UTC reopen on 11-17, every instrument went from 0.1 s to 8 s behind within 6 s: BTCUSD, EURUSD,
+    GOLD and US500 alike. The queue is upstream of us.
+  - Splitting or reconnecting the stream cannot help, so the idea is dropped. Paper already fills by Capital's stamps.
+  - Capital's documentation says nothing about stream delay or throttling. Whether the delay is per account or per IP
+    cannot be tested without a second account or host.
+  - LIFECYCLE.md "Known sources of gaps" is updated.
+- First reasonless refusal since the 1 s resend shipped (11-12): rsi2-reversion/both US500 1:10 on Arena 05 at
+  23:00:02 UTC on 11-17. The resend went out at 23:00:03 and was refused again without a reason. The regular retry
+  (attempt 3 of 5) filled at 23:05:35, at 7399.2 against paper's 7385.5.
+  - US500 had no stamps from 22:59:54 to 23:00:06, when the futures reopen began. The same account's US100 order at
+    23:00:02 was accepted. The refusals came during the reopen, and the resend was 1 s too early to clear it.
+  - The catch-up deal is not a twin pair. One case only, so the resend rule is unchanged.
+- Health: green. 0 errors in 3 days.
+  - `errorsByRoute`: 77 failures in 2,048 requests, all expected:
+    - candle polls of closed markets (`GET /prices/<epic>` 404) after 22:00;
+    - 1 `POST /positions` 400 for OIL_CRUDE at 22:00:00, which Capital called "currently closed" (paper rejected the
+      same open);
+    - 2 `DELETE /positions/:id` 400.
+  - Rejections follow the daily pattern:
+    - opens that expired at the 22:00–22:05 break (45, mostly delay comparisons);
+    - tsmom/5d NATURALGAS at 00:00 (12);
+    - market closed at 22:00 (20 comparisons);
+    - leverage-ladder/hold US100 1:200, wiped out to equity 1.01, size 0 every 4 h (6, since June).
+  - Tick journal 69.69M received = archived, 0 dropped. Storage 16.5 GB (two-year 36.8, 4× stress 78.3 of 100).
+  - Nightly lab 03:37–03:46: 556 results cached, 0 to run. Night grid built 03:46 (US500 198 / US100 156 of 336
+    traded). Cost backfill 12/0, as before. The user's hold covers only the video pipeline. The failed one-off probe
+    unit is cleared; its timers are gone.
+- Verdicts: control 148, early 374, keep 29, leader 0, retire 0; monkey sanity 0 of 36. Nothing to retire; no additions
+  (Wednesday).
+- Next: twins on the current engine as more pairs build up past the 16:00 bounce; the next reasonless refusal (does a
+  second refusal again fall in a reopen?).
+
 ## 2026-11-17 (Tue) — daily visit: the diverged agents trade inside the stream's holes; trailing-stop gaps explained
 
 - Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 395 pairs, 86% agree, mean +0.10 bp, p95 4 bp;
@@ -1891,6 +1938,7 @@ Visit 2026-11-14: no new agent, retirement or tuning; twin-report (a close that 
 Visit 2026-11-15: no new agent, retirement, tuning or code change; power-loss recovery and the memory peak checked.
 Visit 2026-11-16: one addition tried (fx-fix-reversal), rejected at the backtest gate; no retirement, tuning or code change.
 Visit 2026-11-17: no new agent, retirement or tuning; a stream-delay probe (lab tool) only.
+Visit 2026-11-18: no new agent, retirement or tuning; the stream delay is traced to Capital (no code change).
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
