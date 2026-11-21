@@ -29,6 +29,12 @@
     "extra": [],
     "description": "Control: holds half the account leverage as a constant multiple of equity (1×, 2.5×, 10×), rebalanced like a leveraged ETF."
   },
+  "cppi": {
+    "hash": "79472b576f32",
+    "timeframe": "1d",
+    "extra": [],
+    "description": "Long at 5× the equity above a protected floor (80% of the start, or of the peak for TIPP), up to 4× equity."
+  },
   "crypto-sunday-asia": {
     "hash": "b18ac4ad918d",
     "timeframe": "1h",

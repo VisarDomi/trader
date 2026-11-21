@@ -1,7 +1,7 @@
 # Strategy context
 
-`evidence.ts` is a pure, version-pinned presentation adapter for the 46 current strategy families
-(66 variants). It receives the same closed bars, cached SDK indicators, parameters, state and
+`evidence.ts` is a pure, version-pinned presentation adapter for the 51 current strategy families
+(87 variants). It receives the same closed bars, cached SDK indicators, parameters, state and
 forecast seen when a standard run requests entry. It returns pre-entry panels, thresholds, exact
 operators, signed headroom, an exit plan and initial protections. Random and passive controls are
 explicitly described. OR conditions are not displayed as mandatory AND conditions.
