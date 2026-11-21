@@ -22,8 +22,21 @@ const HOUR_MS = 60 * MINUTE_MS;
 const RENOTIFY_MS = 12 * HOUR_MS;
 /** Consecutive failed checks (10 minutes apart) before an alert fires, so blips stay quiet. */
 const STREAK_TO_ALERT = 3;
-/** Crypto trades around the clock, so its candles are always fresh unless the feed is broken. */
+/**
+ * Crypto trades around the clock, so its candles are fresh unless the feed is broken, except while Capital.com
+ * itself closes the market (its weekly maintenance, Saturday 06:00–08:00 UTC): the arena's market snapshot then
+ * says so and the stale candles are expected.
+ */
 const ALWAYS_OPEN_EPICS = ['BTCUSD', 'ETHUSD'];
+const MARKET_TRADEABLE = 'TRADEABLE';
+
+interface MarketState { epic: string; updatedAt: number; marketStatus: string }
+
+/** Capital.com reports the market closed, in a snapshot fresh enough to trust. */
+function closedByCapital(markets: MarketState[], epic: string, now: number): boolean {
+  const m = markets.find(x => x.epic === epic);
+  return !!m && m.marketStatus !== MARKET_TRADEABLE && m.marketStatus !== 'UNKNOWN' && now - m.updatedAt < STALE_CANDLE_MS;
+}
 const STALE_CANDLE_MS = 20 * MINUTE_MS;
 const FORECASTER_DOWN_MS = HOUR_MS;
 const STORAGE_REPORT_MAX_AGE_MS = 6 * HOUR_MS;
@@ -119,9 +132,12 @@ export async function check(state: State, now: number, heavyResourcesPaused?:boo
   if(status.tickStorage?.warning)alerts.push({key:'storage-budget',title:'Trader storage growth exceeds its budget forecast',body:`Whole project ${(status.tickStorage.totalBytes/1e9).toFixed(1)} GB; two-year stress estimate ${(status.tickStorage.stressTwoYearBytes/1e9).toFixed(1)} GB against 100 GB. ${ASK_CLAUDE}`,userAction:false});
   if (now - (status.tickStorage?.at ?? status.startedAt) > STORAGE_REPORT_MAX_AGE_MS)
     alerts.push({key:'storage-stale',title:'Trader storage estimate is stale',body:`The storage report has not refreshed for over six hours. Run bun run storage --refresh and inspect the archive job. ${ASK_CLAUDE}`,userAction:false,needsStreak:true});
+  const markets = await get<{ virtual?: { markets?: MarketState[] } }>('/api/execution')
+    .then(x => x.virtual?.markets ?? [])
+    .catch(() => [] as MarketState[]);
   for (const epic of ALWAYS_OPEN_EPICS) {
     const last = status.quotes[epic]?.lastCandle ?? 0;
-    if (now - last > STALE_CANDLE_MS) {
+    if (now - last > STALE_CANDLE_MS && !closedByCapital(markets, epic, now)) {
       alerts.push({ key: `candles:${epic}`, title: `No new ${epic} candles`, body: `The arena's last ${epic} candle is ${Math.round((now - last) / MINUTE_MS)} minutes old. ${ASK_CLAUDE}`, userAction: false, needsStreak: true });
     }
   }

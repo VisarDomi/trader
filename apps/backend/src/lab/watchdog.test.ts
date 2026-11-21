@@ -6,14 +6,15 @@ const FETCH = spyOn(globalThis, 'fetch');
 afterEach(() => FETCH.mockReset());
 afterAll(() => FETCH.mockRestore());
 
-function fixture(startedAt: number, ready: boolean, reportAt = NOW) {
+function fixture(startedAt: number, ready: boolean, reportAt = NOW, crypto = {lastCandle: NOW, marketStatus: 'TRADEABLE'}) {
   const response = async (input: Parameters<typeof fetch>[0]) => {
     const path = new URL(String(input)).pathname;
     const data = path === '/api/status' ? {
       startedAt, execution: {ready}, stream: {connected:true},
-      quotes: {BTCUSD:{lastCandle:NOW}, ETHUSD:{lastCandle:NOW}},
+      quotes: {BTCUSD:{lastCandle:crypto.lastCandle}, ETHUSD:{lastCandle:crypto.lastCandle}},
       forecaster: {reachable:false, lastSuccessAt:0}, loadErrors:[], tickStorage:{at:reportAt,warning:false},
-    } : path === '/api/broker' ? {status:{accounts:[],prefix:'Arena'}} : [];
+    } : path === '/api/broker' ? {status:{accounts:[],prefix:'Arena'}}
+      : path === '/api/execution' ? {virtual:{markets:['BTCUSD','ETHUSD'].map(epic => ({epic, updatedAt:NOW - 60_000, marketStatus:crypto.marketStatus}))}} : [];
     return Response.json(data);
   };
   FETCH.mockImplementation(Object.assign(response, {preconnect: () => {}}));
@@ -44,4 +45,12 @@ test('an explicit heavy-resource pause suppresses model/lab alarms while account
   expect(alerts.some(a => a.key === 'forecaster' || a.key === 'unit:trader-forecaster.service' || a.key === 'nightly')).toBeFalse();
   expect(alerts.some(a => a.key === 'accounts-missing')).toBeTrue();
   expect(alerts.some(a => a.key === 'storage-stale')).toBeTrue();
+});
+
+test("stale crypto candles alert unless Capital itself reports the market closed (Saturday's maintenance)", async () => {
+  const stale = NOW - HOUR;
+  const open = await check(fixture(NOW - 8 * HOUR, true, NOW, {lastCandle: stale, marketStatus: 'TRADEABLE'}), NOW, false);
+  expect(open.filter(a => a.key.startsWith('candles:')).length).toBe(2);
+  const closed = await check(fixture(NOW - 8 * HOUR, true, NOW, {lastCandle: stale, marketStatus: 'CLOSED'}), NOW, false);
+  expect(closed.some(a => a.key.startsWith('candles:'))).toBeFalse();
 });
