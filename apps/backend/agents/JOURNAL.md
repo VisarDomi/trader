@@ -5,6 +5,56 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
+
+Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 22:00 to 11-21 22:00 UTC.
+
+- Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 973 pairs, 81% agree, mean +0.16 bp, p95 3.75
+  bp; 31 converged, 9 watch, 27 diverged. 26 of the 27 trade the US indices.
+  - By instrument: US100 45%, US500 53%, US30 60% agree. Everything else agrees 84–100%. Outside the US indices, 1
+    of 43 runs with 5+ pairs diverged, against 28 of 32 on them.
+  - The cause is resolution, not a bias. Paper fills at the price 500 ms after the decision, while the demo is
+    accepted in about 200–300 ms. US index prices move about one spread (0.6–0.8 bp) in that difference, and the
+    stream's holes add more. Entries accepted within 1 s are unbiased (mean −0.02 and +0.06 bp, median size 0.28 bp).
+    Entries that waited over 3 s in a bar-close burst lean to the demo (+1.42 bp, 28 pairs).
+  - By direction: 6 diverged with the demo behind paper, none by two standard errors. 21 with the demo ahead, 8 of
+    them by two or more (swing-reversal/p05 US100 +0.41 ± 0.14 bp over 47 pairs; orb-ny/30min US500 +1.22 ± 0.44;
+    noise-area-momentum/voltarget US30 +0.84 ± 0.34). So paper is conservative on the US indices; it does not flatter
+    them.
+  - Change (e7a1591): `twinStats` carries the mean gap's standard error. `bun run twins` raises the agents CHECK only
+    for a diverged agent whose demo trails paper by two standard errors or more (paper optimistic, which would
+    overrate it). The other diverged agents are listed with their direction and error. The overall checks (agreement
+    falling within a day, a mean gap over 1 bp) are unchanged. Rule and evidence are in LIFECYCLE.md. Today: no CHECK.
+- Health: green, 0 errors in 3 days.
+  - The PC shut down cleanly on 11-20 at 19:11 CET for a kernel update (7.0.0-28 → 7.0.0-43). The arena was live again
+    at 19:14 with 4,612 runs; every unit came back by itself.
+  - Nightly lab on 11-19, 11-20 and 11-21: 556 results cached, 0 to run. Night grid built each night (US500 198 / US100
+    156 of 336 traded). Cost backfill 12/0, as before. The user's hold covers only the video pipeline, and
+    `lab-control check` exits 0.
+  - Tick journal 76.84M received, archive current, 0 dropped. Storage 16.6 GB (two-year 37.0, 4× stress 78.7 of 100).
+- Watchdog false alarm, fixed (e980f51). Capital closes BTCUSD and ETHUSD every Saturday 06:00–08:00 UTC; the engine
+  logged "market closed" for ETHUSD then, and the stream dropped and reconnected 116 times (code 1006) on 11-14 and
+  again on 11-21. The watchdog treats crypto as always open, so it notified "No new BTCUSD/ETHUSD candles" from 06:40
+  to 08:00 UTC on both Saturdays. It now skips an instrument whose fresh market snapshot (`/api/execution`) is not
+  `TRADEABLE`, with a test. The real check comes on 11-28 at 06:00 UTC.
+- Weekend `errorsByRoute`: about half of the requests at the visit were candle polls of closed markets (404).
+- Verdicts after the deploy: control 148, early 370, keep 38, leader 0, retire 0; monkey sanity 0 of 36. Nothing to
+  retire. swing-reversal/p05 ETHUSD 1:2 is closest to its verdict (76 trades in 4.6 days, −17.3%).
+- Added: `cppi`, from Black & Perold, "Theory of Constant Proportion Portfolio Insurance" (JEDC 1992). Long
+  exposure = m × the equity above a floor, so leverage comes only out of profits and losses de-lever towards cash.
+  - Parameters as planned in research/topics/leverage.md #5 before any backtest: floor 80%, m = 5, at most 4× equity,
+    rebalanced at the daily close when actual ÷ target leaves 0.8–1.2, flat under a 2% cushion.
+  - Instruments US500, US100, GOLD at 1:5. Variants: `cppi` (fixed floor) and `tipp` (Estep & Kritzman 1988: floor
+    at 80% of the peak).
+  - check-agent passed. Backtest 2024-01 → 2026-09: Sharpe 0.39–0.53 (cppi) and 0.48–1.35 (tipp), 15–32 trades. The
+    gate is the slow-agent one (5 trades); CPPI was already on that list.
+  - The fixed floor shows CPPI's known flaw: GOLD gave back 79.8% from its peak while staying above the starting
+    floor. TIPP's maximum drawdown stayed under 20%.
+  - A context adapter and version pin were added for the strategy page (c9425fe), since the deploy tests require
+    one per agent. Deployed c9425fe: 87 agents, 6 new standard runs (556) and 4,672 virtual runs of 5,000.
+- Next (11-28): the watchdog over Saturday's maintenance window; CPPI's first rebalances; the twins split by direction
+  (a CHECK means the demo trails paper); the reasonless-refusal resend when one comes.
+
 ## 2026-11-18 (Wed) — daily visit: the stream delay is Capital's, not our connection's; the reasonless refusal's resend fired
 
 - Twins under `2026-11-arrival-stall` (since 2026-11-13 21:07 UTC): 557 pairs, 84% agree, mean +0.21 bp, p95 4.2 bp;
@@ -1939,6 +1989,7 @@ Visit 2026-11-15: no new agent, retirement, tuning or code change; power-loss re
 Visit 2026-11-16: one addition tried (fx-fix-reversal), rejected at the backtest gate; no retirement, tuning or code change.
 Visit 2026-11-17: no new agent, retirement or tuning; a stream-delay probe (lab tool) only.
 Visit 2026-11-18: no new agent, retirement or tuning; the stream delay is traced to Capital (no code change).
+Visit 2026-11-21 (weekly): cppi added (cppi, tipp); twins CHECK made direction-aware; watchdog skips Capital's Saturday crypto maintenance.
 
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
@@ -2003,6 +2054,7 @@ versions and their evidence; it does not turn platform migrations into strategy 
 - bollinger-fade — fade closes outside Bollinger bands, 15m — live (2026-10-06)
 - buy-hold — passive benchmark, funding included; on 1:1 with the 8-share Nasdaq basket (fee-free) — control
 - constant-leverage — control: half the account leverage as a constant multiple of equity, rebalanced daily (volatility drag) — control (2026-10-14)
+- cppi (cppi, tipp) — constant proportion portfolio insurance: long 5× the equity above an 80% floor (fixed, or ratcheted to the peak for TIPP), at most 4×, US500/US100/GOLD 1d at 1:5 — live (2026-11-21)
 - crypto-sunday-asia — long BTC and ETH Sunday 19:00 → Monday 19:00 New York, 1:1 — live (2026-10-14)
 - donchian-breakout (turtle-20, turtle-55) — channel breakouts, 4h — live (2026-10-06)
 - donchian-ensemble — five breakout systems (10–200 days) averaged, volatility-scaled, long-only BTC/ETH at 1:1 — live (2026-10-14)
