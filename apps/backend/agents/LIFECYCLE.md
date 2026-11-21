@@ -136,7 +136,7 @@ agents that size with `marginPct` use the high leverage.
 
 ## Adding agents
 
-- **When:** at most every 7 days (Monday visits), and only while total virtual runs plus new ones stay ≤5,000
+- **When:** at most every 7 days (the weekly visit), and only while total virtual runs plus new ones stay ≤5,000
   (measured capacity; `review` shows standard and comparison counts). New strategies take priority over
   replaceable execution comparisons at the next deploy. The initial pool leaves roughly 400 slots free.
 - **How many:** 1–3 agents per addition, each with at most 3 variants that differ meaningfully.
@@ -169,6 +169,13 @@ paper carry the agents that never get one of the 450 demo slots. A divergence is
 until shown otherwise. The dashboard shows it under More → Paper vs demo (`/api/twins`); `bun run twins`
 prints the daily check. Agent verdicts over a window: converged (≥90% agree, mean gap within half a
 spread), diverged (<75% agree or mean gap beyond a spread), watch in between, too few under 5 pairs.
+
+`CHECK` on agents fires only for diverged agents whose demo earns less than paper by two standard errors or more
+(paper optimistic: it would overrate them). Diverged agents with the demo ahead (paper conservative) are listed with
+their standard error but raise no CHECK. On the US indices a pair's two fills lie about half a second apart (paper
+assumes 500 ms, the demo is accepted in ~200–300 ms) in a market that moves about one spread in that time, so their
+pairs often miss by noise alone: on 2026-11-21, 28 of 32 US index runs with 5+ pairs were "diverged", 22 of them
+with the demo ahead and none with the demo significantly behind; elsewhere 1 of 43 (since 2026-11-21).
 
 The checks judge the current engine: `bun run twins` and the page's default view use only trades decided
 since the running engine version started (the arena records it as `engine.since`; a version bump restarts the
@@ -208,9 +215,10 @@ deal (fixed 2026-11-10).
 
 ## Each visit (runbook)
 
-Visits are daily (22:00 Tirana, since November 12; 09:30 before). Steps 2–3 every day; retirements, additions and the full journal entry as
-the steps below say. A quiet day with nothing to fix gets a one-line journal note only when the twin check
-or health changed.
+Visits are weekly: Saturdays at 23:00 Tirana (the T3 task "Trader", "do the weekly check"; since November 21,
+daily before). Each visit covers the week since the last one: twins over the current engine's window, health
+since the last visit (reboots, the lab's nights, watchdog alerts in `journalctl --user -u trader-watchdog`),
+retirements and additions, and one journal entry for the week.
 
 1. Read `../../../setup.md` (hard rules), this file, and the three newest entries of `JOURNAL.md`.
 2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*' 'pc-server-trader*'` and, if last night's
