@@ -70,6 +70,9 @@
       "noise-area-momentum/voltarget": [
         5
       ],
+      "cppi": [
+        5
+      ],
       "lrs-sma200/x3": [
         5
       ],
