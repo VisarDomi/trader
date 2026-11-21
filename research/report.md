@@ -122,7 +122,8 @@ daily history before 2024) and #15 (a process to set up). Watch them on the lead
 | 15 | LLM strategy writers | A process, not an agent: each week several frontier models write one agent from the same brief; authors are compared by demo t-statistics. Forward testing removes the memorisation problem | Any | [ai-trading](topics/ai-trading.md) |
 
 **Kelly ladder** (half, full and double Kelly on a trailing estimate) and **CPPI** (leverage only out of
-profits above a floor) are good experiments too, but slower to read.
+profits above a floor) are good experiments too, but slower to read. CPPI is live since 2026-11-21 as `cppi` (with
+TIPP's ratcheting floor), at 1:5 on US500, US100 and GOLD.
 
 ## Studies that need no new agent
 
