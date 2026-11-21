@@ -95,6 +95,8 @@ export interface TwinStats {
   agree: number;
   agreeShare: number | null;
   meanGapBps: number | null;
+  /** Standard error of the mean gap (sample sd / √pairs): how far the mean could move by chance alone. */
+  seGapBps: number | null;
   medianAbsGapBps: number | null;
   p95AbsGapBps: number | null;
   paperUsd: number;
@@ -225,6 +227,7 @@ export function twinStats(trades: readonly TwinTrade[]): TwinStats {
   const exitLags = trades.flatMap(t => (t.closedBy === CLOSED_BY.BROKER && t.exitLagMs !== null ? [t.exitLagMs] : []));
   const sum = (f: (t: TwinTrade) => number) => round(trades.reduce((n, t) => n + f(t), 0));
   const agree = trades.filter(t => t.agrees).length;
+  const mean = trades.length ? gaps.reduce((a, b) => a + b, 0) / trades.length : 0;
   const q = (v: number[], p: number) => {
     const x = quantile(v, p);
     return x === null ? null : round(x);
@@ -233,7 +236,8 @@ export function twinStats(trades: readonly TwinTrade[]): TwinStats {
     pairs: trades.length,
     agree,
     agreeShare: trades.length ? round(agree / trades.length, 4) : null,
-    meanGapBps: trades.length ? round(gaps.reduce((a, b) => a + b, 0) / trades.length) : null,
+    meanGapBps: trades.length ? round(mean) : null,
+    seGapBps: trades.length > 1 ? round(Math.sqrt(gaps.reduce((a, g) => a + (g - mean) ** 2, 0) / (trades.length - 1) / trades.length)) : null,
     medianAbsGapBps: q(abs, 0.5),
     p95AbsGapBps: q(abs, 0.95),
     paperUsd: sum(t => t.paperUsd),

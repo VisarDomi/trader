@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { buildTwinReport, CLOSED_BY, twinReport, twinTrade, twinVerdict, twinStats, TWIN_VERDICT, type TwinRow } from './twins.ts';
+import { buildTwinReport, CLOSED_BY, twinReport, twinTrade, twinVerdict, twinStats, TWIN_VERDICT, type TwinRow, type TwinTrade } from './twins.ts';
 import { ArenaDB, DEAL_STATUS } from './db.ts';
 
 const T = Date.UTC(2026, 10, 5, 14);
@@ -110,4 +110,12 @@ test('since the current engine: only trades decided from then on are paired', ()
     expect(current.overall.pairs).toBe(1);
     expect(current.since).toBe(T);
   } finally { db.db.close(); }
+});
+
+test('the mean gap carries its standard error, so chance can be told from a bias', () => {
+  const trade = (gapBps: number) => ({ gapBps, agrees: true, entryLagMs: null, exitLagMs: null, closedBy: 'arena', paperUsd: 0, demoUsd: 0, gapUsd: 0, fundingGapUsd: 0, paperFundingUsd: 0 }) as unknown as TwinTrade;
+  const s = twinStats([1, 2, 3, 4].map(trade));
+  expect(s.meanGapBps).toBe(2.5);
+  expect(s.seGapBps).toBeCloseTo(Math.sqrt(5 / 3 / 4), 2);
+  expect(twinStats([trade(1)]).seGapBps).toBeNull();
 });

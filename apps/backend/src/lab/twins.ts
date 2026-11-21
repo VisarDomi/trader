@@ -1,5 +1,5 @@
 /**
- * Daily paper–demo twin check for the babysitter visit (see agents/LIFECYCLE.md).
+ * Paper–demo twin check for the babysitter visit (see agents/LIFECYCLE.md).
  *
  *   bun run twins [--json]
  *
@@ -37,8 +37,17 @@ out.push(`all trades, agents (14 days): ${verdicts(allFortnight)}`);
 out.push(`current engine ${fortnight.engine.version} (trades decided since ${since} UTC; the checks below use these):`);
 out.push(line('  last day', day.overall), line('  last 14 days', fortnight.overall));
 out.push(`  agents: ${verdicts(fortnight)}`);
-for (const r of fortnight.runs.filter((r: any) => r.verdict === 'diverged').slice(0, 10))
-  out.push(`  diverged ${r.runId}: ${r.pairs} pairs, ${share(r.agreeShare)} agree, mean gap ${bp(r.meanGapBps)} (spread ${r.toleranceBps} bp), ${usd(r.gapUsd)}`);
+// A diverged agent matters most when paper is optimistic: the demo earns less than paper, so paper verdicts
+// overrate it. Demo ahead (paper conservative) is listed too; fast tight-spread markets (the US indices) move about a
+// spread in the half second between paper's assumed and the demo's real fill, so their pairs often miss by noise alone.
+const tStat = (r: any) => (r.seGapBps ? r.meanGapBps / r.seGapBps : 0);
+const diverged = fortnight.runs.filter((r: any) => r.verdict === 'diverged');
+const behind = diverged.filter((r: any) => r.meanGapBps < 0), ahead = diverged.filter((r: any) => r.meanGapBps >= 0);
+const significantlyBehind = behind.filter((r: any) => tStat(r) <= -2);
+if (diverged.length)
+  out.push(`  diverged: ${behind.length} with the demo behind paper (${significantlyBehind.length} by ≥2 standard errors), ${ahead.length} with the demo ahead (${ahead.filter((r: any) => tStat(r) >= 2).length} by ≥2 standard errors)`);
+for (const r of [...significantlyBehind, ...diverged.filter((r: any) => !significantlyBehind.includes(r))].slice(0, 10))
+  out.push(`  diverged ${r.runId}: ${r.pairs} pairs, ${share(r.agreeShare)} agree, mean gap ${bp(r.meanGapBps)} ± ${r.seGapBps ?? '—'} (spread ${r.toleranceBps} bp), ${usd(r.gapUsd)}`);
 for (const e of fortnight.byExit.slice(0, 6))
   out.push(`  exit ${e.exitReason}, closed by ${e.closedBy}: ${e.pairs} pairs, ${share(e.agreeShare)} agree, mean ${bp(e.meanGapBps)}, exit lag p50 ${e.exitLagP50Ms ?? '—'} ms`);
 const feed = execution.virtual.feed;
@@ -58,7 +67,8 @@ out.push(`runs: ${execution.virtual.standardRuns} standard + ${execution.virtual
 if (day.overall.pairs >= 30 && day.overall.agreeShare !== null && fortnight.overall.agreeShare !== null && day.overall.agreeShare < fortnight.overall.agreeShare - 0.1)
   check(`agreement fell to ${share(day.overall.agreeShare)} in the last day (current engine: ${share(fortnight.overall.agreeShare)})`);
 if (fortnight.overall.meanGapBps !== null && Math.abs(fortnight.overall.meanGapBps) > 1) check(`mean gap ${bp(fortnight.overall.meanGapBps)} over ${fortnight.overall.pairs} current-engine pairs: a systematic bias, or one outlier among few pairs`);
-if (fortnight.verdicts.diverged > 0) check(`${fortnight.verdicts.diverged} agents diverged under the current engine`);
+if (significantlyBehind.length > 0)
+  check(`${significantlyBehind.length} agents diverged with the demo behind paper by ≥2 standard errors (paper optimistic) under the current engine`);
 if (feed?.medianDelayMs > 20_000) check(`quote stream ${feed.medianDelayMs} ms late: close to the 30 s cut-off for usable quotes`);
 if (execution.virtual.cpuCorePercent > 50) check(`arena uses ${execution.virtual.cpuCorePercent}% of a core`);
 // Capital answers an order in ~0.12 s; more than a second from decision to acceptance is our queue.
