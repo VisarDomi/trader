@@ -26,7 +26,7 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	let badge = '';
 	if (r.status === 'retired') badge = 'Archived';
 	else if (r.comparisonOnly) badge = r.control ? 'Control · comparison' : 'Execution comparison';
-	else if (r.control) badge = 'Control';
+	else if (r.control) badge = stage === 'capital' && !r.mirrored ? 'Control · past assignment' : 'Control';
 	else if (r.demoAdmission) badge = 'User experiment';
 	else if (stage === 'capital') badge = r.mirrored ? '' : 'Past assignment';
 	else if (stage === 'virtual' && r.forwardVerdict) badge = r.forwardVerdict[0].toUpperCase() + r.forwardVerdict.slice(1);
@@ -36,18 +36,21 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	const dependency = r.dependency ?? e.dependency;
 	if (dependency && dependency.state !== 'available' && stage === 'virtual' && r.status !== 'retired') badge = 'Forecast paused';
 	const period = stage === 'backtest' ? r.windowId || id.split(':')[1] || '' : r.timeframe || '';
-	const stats: Stat[] = [{ label: 'Return', value: pct(m.totalReturn), tone: tone(m.totalReturn) }, { label: 'Closed trades', value: num(m.trades, 0) }, { label: 'Sharpe', value: num(m.sharpe) }];
-	if (stage === 'capital') stats[2] = { label: 'Cash drawdown', value: pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown) };
-	else if (b.status === 'matched') stats[2] = { label: 'Excess vs hold', value: pp(b.excessReturn), tone: tone(b.excessReturn) };
+	// Every stage compares with holding the instrument 1:1 over the same dates: Return − hold = excess.
+	const hold = b.status === 'matched', dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
+	const stats: Stat[] = [{ label: 'Return', value: pct(m.totalReturn), tone: tone(m.totalReturn) }, { label: 'Closed trades', value: num(m.trades, 0) },
+		hold ? { label: 'Excess vs hold', value: pp(b.excessReturn), tone: tone(b.excessReturn) } : stage === 'capital' ? { label: 'Cash drawdown', value: dd } : { label: 'Sharpe', value: num(m.sharpe) }];
+	const facts = [hold ? `Hold ${pct(b.benchmarkReturn)}` : '', stage === 'capital' ? (hold ? `cash drawdown ${dd}` : '') : `${hold ? 'Sharpe ' + num(m.sharpe) + ' · ' : ''}drawdown ${dd}`,
+		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
 	return compact({
 		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period].filter(Boolean).join(' · '),
-		body: e.exposure != null ? `Exposure ${num(e.exposure)}× equity.` : '', badge, stats, route: runRoute(id, stage),
+		body: facts, badge, stats, route: runRoute(id, stage),
 		keys: [m.totalReturn ?? null, m.sharpe ?? null, m.trades ?? null, b.status === 'matched' ? b.excessReturn : null],
 	});
 }
 export function rankingsScreen(rows: RankingRow[], stage: string, scenario?: string | null): Screen {
 	const name = stage === 'capital' ? 'Capital demo' : stage === 'virtual' ? 'Virtual engine' : 'Backtests';
-	return compact({ v: 2 as const, title: 'Rankings', subtitle: scenario && scenario !== 'standard' ? scenario : '', sort: stage === 'capital' ? RANKING_SORT.slice(0, 3) : RANKING_SORT,
+	return compact({ v: 2 as const, title: 'Rankings', subtitle: scenario && scenario !== 'standard' ? scenario : '', sort: RANKING_SORT,
 		sections: [{ title: `${name} · ${rows.length} records`, rows: rows.map(r => rankingRow(r, stage)) }] });
 }
 
@@ -125,8 +128,10 @@ export function tradeRow(t: TradeItem, withMarket: boolean): Row {
 
 // ---------------------------------------------------------------- agent
 
-export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow> }
-export function agentScreen({ agent, runs, sparks, capital }: AgentInputs): Screen {
+export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow> }
+/** "+130.48 pp vs hold (hold −8.3%)": the strategy's lead over holding the instrument 1:1 over the same dates. */
+const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${pp(b.excessReturn)} vs hold (hold ${pct(b.benchmarkReturn)})` : '');
+export function agentScreen({ agent, runs, sparks, capital, backtests: board }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
 	if (records.length) sections.push({ title: 'Live records', rows: records.map(r => {
@@ -134,6 +139,7 @@ export function agentScreen({ agent, runs, sparks, capital }: AgentInputs): Scre
 		return compact({ id: r.id, title: `${r.epic} · ${tier(r.leverage)}`, subtitle: `Virtual ${usd(r.equity)}${c ? ` · Demo ${c.mirrored ? 'mirrored' : 'past assignment'}` : ''} · since ${day(r.startedAt)}`,
 			badge: (r.extra as Json | null)?.demoAdmission ? 'User experiment' : CONTROL_SLUGS.has(agent.slug) ? 'Control' : '',
 			stats: [{ label: 'Virtual return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, { label: 'Demo return', value: cm ? pct(cm.totalReturn) : '—', tone: tone(cm?.totalReturn) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
+			body: [versusHold((r.evidence as Json | undefined)?.benchmark, 'Virtual '), versusHold((c?.evidence as Json | undefined)?.benchmark, 'Demo ')].filter(Boolean).join('\n'),
 			route: runRoute(r.id) });
 	}) });
 	if (records.length >= 3) sections.push({ title: '', rows: [{ id: 'markets-chart', title: 'Virtual return by market', chart: { kind: 'bars', unit: '%', height: Math.max(120, records.length * 24 + 20),
@@ -142,7 +148,7 @@ export function agentScreen({ agent, runs, sparks, capital }: AgentInputs): Scre
 	const many = new Set(records.map(r => r.id)).size > 1;
 	sections.push({ title: trades.length ? `Trades · ${trades.length}` : 'Trades', rows: trades.length ? trades.map(t => tradeRow(t, many)) : [{ id: 'no-trades', title: 'No trades yet' }] });
 	const backtests = agent.runs.filter(r => r.kind === 'backtest' && r.status !== 'retired');
-	if (backtests.length) sections.push({ title: 'Backtests', rows: backtests.map(r => rankingRow(summaryRow(r, agent), 'backtest')) });
+	if (backtests.length) sections.push({ title: 'Backtests', rows: backtests.map(r => rankingRow(board?.get(r.id) ? { ...board.get(r.id)!, name: r.epic } : summaryRow(r, agent), 'backtest')) });
 	const archived = agent.runs.filter(r => r.status === 'retired' && !r.id.includes(':delay=') && !(r.kind === 'backtest' && r.codeHash === agent.codeHash));
 	if (archived.length) sections.push({ title: 'Archived records', rows: archived.map(r => rankingRow(summaryRow(r, agent), r.kind === 'backtest' ? 'backtest' : 'virtual')) });
 	sections.push({ title: '', rows: [{ id: 'source', title: 'Source and parameters', subtitle: agent.codeHash, route: { screen: 'source', id: agent.id, version: agent.codeHash } }] });
@@ -157,12 +163,14 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	const historical = run.kind === 'backtest', m = run.metrics, e = run.evidence as AgentEvidence | undefined, extra = (run.extra ?? {}) as Json;
 	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`, subtitle: `${tier(run.leverage)} · ${date(run.startedAt)}`,
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
-		stats: [{ label: 'Return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, { label: 'Max drawdown', value: pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown) }, { label: 'Closed trades', value: num(m?.trades, 0) }] })];
+		stats: [{ label: 'Return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, e?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp(e.benchmark.excessReturn), tone: tone(e.benchmark.excessReturn) } : { label: 'Max drawdown', value: pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
+		body: [e?.benchmark?.status === 'matched' ? `Hold ${pct(e.benchmark.benchmarkReturn)} over the same dates · drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}` : '', m ? `Sharpe ${num(m.sharpe)}` : ''].filter(Boolean).join(' · ') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
 		const cm = capital?.metrics, cash = deals.reduce((n, d) => n + (d.status === 'closed' ? (d.pnl ?? 0) : 0), 0);
 		summary.push(compact({ id: 'capital', title: `Capital demo · ${signedUsd(cash)}`, subtitle: capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', badge: excluded ? 'Excluded' : '',
-			stats: [{ label: 'Cash return', value: pct(cm?.totalReturn), tone: tone(cm?.totalReturn) }, { label: 'Cash drawdown', value: pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown) }, { label: 'Closed deals', value: num(deals.filter(d => d.status === 'closed').length, 0) }] }));
+			stats: [{ label: 'Cash return', value: pct(cm?.totalReturn), tone: tone(cm?.totalReturn) }, (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp((capital!.evidence as Json).benchmark.excessReturn), tone: tone((capital!.evidence as Json).benchmark.excessReturn) } : { label: 'Cash drawdown', value: pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown) }, { label: 'Closed deals', value: num(deals.filter(d => d.status === 'closed').length, 0) }],
+			body: (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? `Hold ${pct((capital!.evidence as Json).benchmark.benchmarkReturn)} since the first deal · cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}` : '' }));
 	}
 	if (extra.retirement) summary.push({ id: 'retirement', title: 'Retired', subtitle: date(extra.retirement.at), body: extra.retirement.reason });
 	const sections: Section[] = [{ title: '', rows: summary }];

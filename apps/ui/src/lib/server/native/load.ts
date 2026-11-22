@@ -22,6 +22,7 @@ const capitalBoard = kept(30_000, () => arena.leaderboard('demo', true, 'demo', 
 const broker = kept(15_000, () => arena.broker());
 const agentList = kept(60_000, () => arena.agents());
 const graveyard = kept(300_000, () => arena.graveyard());
+const backtestBoard = kept(300_000, () => arena.leaderboard('backtest'));
 const sparks = (id: string): Promise<Sparks | null> => inspection.sparks(id).catch(() => null);
 
 import type { NativeScreen as ScreenName } from '../native-contract';
@@ -38,8 +39,8 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 		case 'agent': {
 			const agent = await arena.agent(id);
 			const liveRuns = agent.runs.filter(r => r.kind === 'demo' && r.status !== 'retired' && !r.id.includes(':delay='));
-			const [runs, board, lines] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id)))]);
-			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))) });
+			const [runs, board, lines, tested] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id))), backtestBoard().catch((): LeaderboardRow[] => [])]);
+			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))) });
 		}
 		case 'run': {
 			const run: RunDetail = await arena.run(id, 2000);

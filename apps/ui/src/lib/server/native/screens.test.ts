@@ -36,7 +36,21 @@ test('rankings rows carry sort keys and the capital stage reads cash drawdown as
 	const row = rankingRow({ runId: 'demo:a', name: 'A', epic: 'US500', leverage: 20, status: 'running', mirrored: true, metrics: { totalReturn: 0.1, sharpe: 1, trades: 3, maxDrawdown: 0.05 } }, 'capital');
 	expect(row.keys).toEqual([0.1, 1, 3, null]);
 	expect(row.stats?.[2]).toEqual({ label: 'Cash drawdown', value: '−5.0%' });
-	expect(rankingsScreen([], 'capital').sort).toEqual(['Return', 'Sharpe', 'Closed trades']);
+	expect(rankingsScreen([], 'capital').sort).toEqual(['Return', 'Sharpe', 'Closed trades', 'Excess vs hold']);
+});
+test('every stage shows the hold comparison when it exists, with the hold and drawdown beside it', () => {
+	const benchmark = { status: 'matched', strategyReturn: 1.681, benchmarkReturn: -0.083, excessReturn: 1.764 };
+	for (const stage of ['virtual', 'backtest', 'capital']) {
+		const row = rankingRow({ runId: 'demo:visar-night-trading:US500:x200:h', name: 'visar-night-trading', epic: 'US500', leverage: 200, status: 'running', mirrored: true,
+			metrics: { totalReturn: 1.681, sharpe: 5.14, trades: 3, maxDrawdown: 0.354 }, evidence: { benchmark, exposure: 0 } }, stage);
+		expect(row.stats?.[2]).toEqual({ label: 'Excess vs hold', value: '+176.40 pp', tone: 1 });
+		expect(row.body).toStartWith('Hold −8.3% · ');
+		expect(row.body).not.toContain('exposure');   // flat: no "Exposure 0.00×"
+	}
+	const flat = rankingRow({ runId: 'demo:a', name: 'A', epic: 'GOLD', leverage: 1, status: 'running', mirrored: false, control: true, metrics: { totalReturn: -0.5, trades: 2, maxDrawdown: 0.6 }, evidence: { exposure: 1.2 } }, 'capital');
+	expect(flat.badge).toBe('Control · past assignment');
+	expect(flat.stats?.[2]?.label).toBe('Cash drawdown');
+	expect(flat.body).toBe('exposure 1.20×');
 });
 test('thinning keeps extremes and packing round-trips', () => {
 	const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, value: i === 2500 ? 99 : Math.sin(i / 50) }));
