@@ -3,6 +3,7 @@ import { ArenaDB,RUN_KIND } from './db.ts';
 import { AgentEvidenceService } from './evidence.ts';
 import { ingestCosts,costFingerprint } from './cost-ingest.ts';
 import { ForecastAvailability } from './dependency.ts';
+import { BILLS,CPI,Rates,billYield } from './rates.ts';
 import { defineAgent,EXIT_REASON } from '../sdk/index.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import type { Arena } from './arena.ts';
@@ -61,6 +62,22 @@ test('Capital cash return is compared with holding since the first deal; backtes
   const old=service.forRun(db.run('bt:w:fixture:US500:x1')!,T+2*DAY).benchmark;
   expect(old).toMatchObject({status:'matched',basis:'same-backtest-window'});expect(old.excessReturn).toBeCloseTo(.3,12);
   expect(old.note).toContain('engine old');
+  db.db.close();
+});
+test('every matched comparison carries Treasury bills and CPI over its own dates; none without stored rates',()=>{
+  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);add(db,RUN,'fixture',T);
+  for(const [at,s,b]of [[T,10000,10000],[T+30*DAY,11000,10200]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
+  expect(new AgentEvidenceService({db,tracked:new Map(),rates:new Rates(db)}as unknown as Arena).forRun(db.run(RUN)!,T+31*DAY).benchmark.hurdles).toBeUndefined();
+  db.saveMacroSeries(BILLS,[{t:Date.UTC(2026,0,2),value:4}]);
+  db.saveMacroSeries(CPI,Array.from({length:13},(_,i)=>({t:Date.UTC(2025,10+i,1),value:300*1.002**i})));
+  const rates=new Rates(db),service=new AgentEvidenceService({db,tracked:new Map(),rates}as unknown as Arena);
+  const b=service.forRun(db.run(RUN)!,T+31*DAY).benchmark;
+  expect(b.hurdles).toEqual(rates.over(T,T+30*DAY)!);
+  expect(b.hurdles!.cash).toBeCloseTo((1+billYield(4)/365)**30-1,12);
+  expect(b.hurdles!.inflation).toBeGreaterThan(.0015);expect(b.hurdles!.inflation).toBeLessThan(.0025);
+  db.upsertEquity(BASE,T+2*DAY,10100);
+  const cash=(service as any).cashComparison({epic:EPIC,metrics:{startTime:T+DAY,totalReturn:.1}} as LeaderboardRow);
+  expect(cash.hurdles).toEqual(rates.over(T+DAY,T+30*DAY)!);
   db.db.close();
 });
 test('forward evidence avoids historical trade scans and historical reads stay cached until invalidation',()=>{

@@ -45,6 +45,7 @@ import type { Candle } from '../engine/series.ts';
 import type { BrokerMirror, MirrorCandidate } from './broker.ts';
 import type { ArenaDB } from './db.ts';
 import { RUN_KIND } from './db.ts';
+import { Rates } from './rates.ts';
 import { LiveForecastProvider } from './forecast-client.ts';
 import { QuoteStream } from './stream.ts';
 import type { TickJournal } from './tick-journal.ts';
@@ -93,6 +94,8 @@ export class Arena {
   private readonly client: CapitalClient;
   readonly forecasts: LiveForecastProvider;
   readonly forecastAvailability: ForecastAvailability;
+  /** Treasury bill and CPI series for the cash and inflation comparisons. */
+  readonly rates: Rates;
   readonly broker: BrokerMirror | null;
   private readonly agentsDir?: string;
   private readonly liveMode: boolean;
@@ -135,6 +138,7 @@ export class Arena {
     this.client = opts.dataClient;
     this.forecasts = new LiveForecastProvider(opts.forecasterUrl);
     this.forecastAvailability = new ForecastAvailability(opts.db);
+    this.rates = new Rates(opts.db);
     this.broker = opts.broker;
     this.agentsDir = opts.agentsDir;
     this.liveMode = opts.live !== false;
@@ -210,6 +214,7 @@ export class Arena {
         this.saveStreamCandles(epic,engine);
       }
     }, 1000);
+    this.rates.start();
     void this.forecasts.probe();
     this.probeTimer = setInterval(() => void this.forecasts.probe(), FORECASTER_PROBE_MS);
   }
@@ -219,6 +224,7 @@ export class Arena {
     if (this.pollTimer) clearTimeout(this.pollTimer);
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.probeTimer) clearInterval(this.probeTimer);
+    this.rates.stop();
     this.stream?.stop();
     this.loopDelay.disable();
     this.persistAll(true);

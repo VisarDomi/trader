@@ -4,11 +4,13 @@
  import StatTile from'./StatTile.svelte';
  import ValueBars from'./ValueBars.svelte';
  let{evidence:e}:{evidence:AgentEvidence}=$props();
- const b=$derived(e.benchmark),c=$derived(e.costs);
+ const b=$derived(e.benchmark),c=$derived(e.costs),h=$derived(b.hurdles);
+ // The return in today's purchasing power: (1 + return) / (1 + inflation) − 1.
+ const real=$derived(h?(1+(b.strategyReturn??0))/(1+h.inflation)-1:null);
 </script>
 <section class="stack">
  {#if e.dependency&&e.dependency.state!=='available'}<span class="badge">Forecast {e.dependency.state==='user-paused'?'paused':'offline'}</span>{/if}
- {#if b.status==='matched'}<div class="row"><h3>Benchmark</h3><span class="muted small">{utc(b.from)} → {utc(b.through)}</span></div><ValueBars items={[{label:'Strategy',value:(b.strategyReturn??0)*100},{label:'1:1 hold',value:(b.benchmarkReturn??0)*100}]}/><strong class={sign(b.excessReturn)}>{num((b.excessReturn??0)*100,2)} pp excess</strong>{/if}
+ {#if b.status==='matched'}<div class="row"><h3>Benchmark</h3><span class="muted small">{utc(b.from)} → {utc(b.through)}</span></div><ValueBars items={[{label:'Strategy',value:(b.strategyReturn??0)*100},{label:'1:1 hold',value:(b.benchmarkReturn??0)*100},...(h?[{label:'T-bills',note:'3-month, rolled',value:h.cash*100},{label:'Inflation',note:`US CPI-U through ${h.cpiThrough}`,value:h.inflation*100}]:[])]}/><strong class={sign(b.excessReturn)}>{num((b.excessReturn??0)*100,2)} pp excess</strong>{#if h}<span class="muted small">After inflation {pct(real)} · {num(((b.strategyReturn??0)-h.cash)*100,2)} pp over T-bills{h.estimated?' · CPI after its latest release continues the 12-month pace':''}</span>{/if}{/if}
  <div class="row"><StatTile label="Exposure" value={e.exposure==null?'—':`${num(e.exposure)}×`}/><StatTile label="Stop downside" value={pctPlain(e.stopRisk)}/><StatTile label="Open P&L" value={usd(e.unrealizedPnl)} tone={sign(e.unrealizedPnl)}/><StatTile label="Funding" value={usd(e.openFunding)} tone={sign(e.openFunding)}/></div>
  {#if c}<div class="row"><h3>Costs</h3><span class="muted small">Quotes {c.measuredTrades}/{c.closedTrades}{#if !c.historyComplete} · Trades {c.closedTrades}/{c.reportedTrades}{/if}</span></div>
  <div class="row"><StatTile label="Price P&L" value={usd(c.beforeFundingPnl)} tone={sign(c.beforeFundingPnl)}/><StatTile label="Funding" value={usd(c.closedFunding)} tone={sign(c.closedFunding)}/><StatTile label="Net" value={usd(c.closedNetPnl)} tone={sign(c.closedNetPnl)}/></div>

@@ -91,7 +91,14 @@ export class AgentEvidenceService {
           note:'From the run\'s start: its return on starting capital against the 1:1 buy-and-hold run of the same instrument over the same stored hourly observations. Sizing differs; excess return is not risk-adjusted alpha.'};
       }
     }
+    result=this.withHurdles(result);
     this.comparisons.set(row.id,result);return result;
+  }
+  /** Adds what Treasury bills earned and what CPI inflation took over the comparison's own dates (rates.ts). */
+  private withHurdles(b:BenchmarkComparison):BenchmarkComparison {
+    if(b.status!=='matched'||b.from===undefined||b.through===undefined)return b;
+    const hurdles=this.arena.rates?.over(b.from,b.through);
+    return hurdles?{...b,hurdles}:b;
   }
   forRun(row:RunRow,now=Date.now()):AgentEvidence {
     this.refresh(now);
@@ -144,9 +151,9 @@ export class AgentEvidenceService {
     const {first,last}=this.arena.db.matchedEquity(baseline.id,baseline.id,Math.ceil(m.startTime/HOUR_MS)*HOUR_MS);
     if(!first||!last||last.t<=first.t||first.benchmark<=0)return unavailable('Waiting for two hourly hold observations since the first deal.');
     const benchmarkReturn=last.benchmark/first.benchmark-1;
-    return {status:'matched',basis:'cash-vs-hold',benchmarkRunId:baseline.id,from:m.startTime,through:last.t,
+    return this.withHurdles({status:'matched',basis:'cash-vs-hold',benchmarkRunId:baseline.id,from:m.startTime,through:last.t,
       strategyReturn:m.totalReturn,benchmarkReturn,excessReturn:m.totalReturn-benchmarkReturn,
-      note:'Realized cash on the run\'s Capital allocation since its first deal, against holding the instrument 1:1 over the same dates. Open positions count only once closed; sizing differs; not risk-adjusted.'};
+      note:'Realized cash on the run\'s Capital allocation since its first deal, against holding the instrument 1:1 over the same dates. Open positions count only once closed; sizing differs; not risk-adjusted.'});
   }
   forCapital(row:LeaderboardRow,unrealizedPnl:number|null,openPosition:boolean):AgentEvidence|undefined {
     this.refresh(Date.now());

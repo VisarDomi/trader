@@ -23,6 +23,25 @@ No interpolation or future prices; exact timestamps are returned. Sizes differ: 
 excess return, not risk-adjusted alpha. Missing controls or fewer than two shared points return unavailable, never
 zero. Virtual corporate-action/funding limits apply.
 
+## Cash and inflation
+
+Every matched comparison also carries what the same dates paid elsewhere (`hurdles`, `src/arena/rates.ts`):
+
+- **T-bills, the opportunity cost.** Rolling 3-month US Treasury bills: money that stays available earns this with no
+  price risk. FRED `DTB3` (secondary market, bank-discount basis) is converted to the bond-equivalent yield the bill
+  pays and accrued every calendar day at the latest published rate. Longer Treasuries are not the floor: their prices
+  move with interest rates, so holding one is another play.
+- **Inflation, what idle dollars lose.** US CPI-U, all items, not seasonally adjusted (FRED `CPIAUCNS`, the index
+  TIPS pay on); the accounts are in US dollars. PPI measures producers' prices and core CPI leaves out food and
+  energy, so neither is what money buys. A month's index sits mid-month, days between interpolate geometrically, and
+  days after the latest release continue its trailing 12-month pace (`estimated`).
+- **After inflation** = (1 + return) / (1 + inflation) − 1. Inflation divides every alternative alike, so it never
+  changes which one wins or the excess over hold; it moves the line between gaining and losing purchasing power.
+
+The series are stored in the arena database (`macro_series`), refreshed every six hours (bills fall back to
+treasury.gov) and kept when a refresh fails. Dates before the stored history (2000) return no hurdles, never zeros.
+Sharpe stays the cash-free ratio the backtest gate (−0.5) was set on; it does not subtract T-bills.
+
 Current virtual exposure is notional / liquidation equity. Stop downside starts at the current mark;
 gaps/future costs can change it. Shared broker margin is never inferred by scaling virtual accounts.
 

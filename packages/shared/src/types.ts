@@ -61,7 +61,24 @@ export interface BenchmarkComparison {
   strategyReturn?: number;
   benchmarkReturn?: number;
   excessReturn?: number;
+  /** What the money could have earned, and what inflation took, over the same dates. Absent while the arena has no
+   *  stored rates for those dates. */
+  hurdles?: Hurdles;
   note: string;
+}
+/** The common floors under every play (apps/backend/src/arena/rates.ts). Inflation lowers every alternative alike,
+ *  so it never changes which one wins; it moves the line between gaining and losing purchasing power. */
+export interface Hurdles {
+  /** Rolling 3-month US Treasury bills, accrued daily: the opportunity cost of the money. */
+  cash: number;
+  /** US CPI-U (all items, not seasonally adjusted): what holding dollars lost in purchasing power. */
+  inflation: number;
+  /** Latest Treasury bill rate used (epoch ms of its day). */
+  billsThrough: number;
+  /** Latest published CPI month, e.g. "2026-10". */
+  cpiThrough: string;
+  /** The dates run past the latest CPI release; those weeks continue the trailing 12-month pace. */
+  estimated: boolean;
 }
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';

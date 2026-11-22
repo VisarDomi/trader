@@ -19,6 +19,15 @@ const runRoute = (id: string, stage?: string) => ({ screen: 'run', id, ...(stage
 
 export const RANKING_SORT = ['Return', 'Sharpe', 'Closed trades', 'Excess vs hold'];
 export type RankingRow = LeaderboardRow & { control?: boolean; forwardVerdict?: string | null };
+/** The same dates' alternatives: holding the instrument, Treasury bills, and doing nothing (inflation). */
+export function alternatives(b: Json | undefined, holdLabel = 'Hold'): string {
+	if (b?.status !== 'matched') return '';
+	const h: Json | undefined = b.hurdles;
+	return [`${holdLabel} ${pct(b.benchmarkReturn)}`, h ? `T-bills ${pct(h.cash)}` : '', h ? `inflation ${pct(h.inflation)}` : ''].filter(Boolean).join(' · ');
+}
+/** The strategy's return in today's purchasing power: (1 + return) / (1 + inflation) − 1. */
+export const afterInflation = (b: Json | undefined): number | null =>
+	b?.status === 'matched' && b.hurdles && Number.isFinite(b.strategyReturn) ? (1 + b.strategyReturn) / (1 + b.hurdles.inflation) - 1 : null;
 
 export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: string): Row {
 	const r = row as Json;
@@ -40,8 +49,11 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	const hold = b.status === 'matched', dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
 	const stats: Stat[] = [{ label: 'Return', value: pct(m.totalReturn), tone: tone(m.totalReturn) }, { label: 'Closed trades', value: num(m.trades, 0) },
 		hold ? { label: 'Excess vs hold', value: pp(b.excessReturn), tone: tone(b.excessReturn) } : stage === 'capital' ? { label: 'Cash drawdown', value: dd } : { label: 'Sharpe', value: num(m.sharpe) }];
-	const facts = [hold ? `Hold ${pct(b.benchmarkReturn)}` : '', stage === 'capital' ? (hold ? `cash drawdown ${dd}` : '') : `${hold ? 'Sharpe ' + num(m.sharpe) + ' · ' : ''}drawdown ${dd}`,
+	// Line one: what the same dates paid elsewhere. Line two: this record after inflation, then its risk.
+	const real = afterInflation(b);
+	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage === 'capital' ? (hold ? `cash drawdown ${dd}` : '') : `${hold ? 'Sharpe ' + num(m.sharpe) + ' · ' : ''}drawdown ${dd}`,
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
+	const facts = [alternatives(b), risk].filter(Boolean).join('\n');
 	return compact({
 		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
@@ -129,8 +141,9 @@ export function tradeRow(t: TradeItem, withMarket: boolean): Row {
 // ---------------------------------------------------------------- agent
 
 export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow> }
-/** "+130.48 pp vs hold (hold −8.3%)": the strategy's lead over holding the instrument 1:1 over the same dates. */
-const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${pp(b.excessReturn)} vs hold (hold ${pct(b.benchmarkReturn)})` : '');
+/** "Virtual +177.20 pp vs hold · hold −9.1% · T-bills +0.8% · inflation +0.5%": the lead over holding the instrument
+ *  1:1, then what the same dates paid elsewhere. */
+const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${pp(b.excessReturn)} vs hold · ${alternatives(b, 'hold')}` : '');
 export function agentScreen({ agent, runs, sparks, capital, backtests: board }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
@@ -164,13 +177,15 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`, subtitle: `${tier(run.leverage)} · ${date(run.startedAt)}`,
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
 		stats: [{ label: 'Return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, e?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp(e.benchmark.excessReturn), tone: tone(e.benchmark.excessReturn) } : { label: 'Max drawdown', value: pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
-		body: [e?.benchmark?.status === 'matched' ? `Hold ${pct(e.benchmark.benchmarkReturn)} over the same dates · drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}` : '', m ? `Sharpe ${num(m.sharpe)}` : ''].filter(Boolean).join(' · ') })];
+		body: [alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
+			`drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`, m ? `Sharpe ${num(m.sharpe)}` : ''].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
 		const cm = capital?.metrics, cash = deals.reduce((n, d) => n + (d.status === 'closed' ? (d.pnl ?? 0) : 0), 0);
 		summary.push(compact({ id: 'capital', title: `Capital demo · ${signedUsd(cash)}`, subtitle: capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', badge: excluded ? 'Excluded' : '',
 			stats: [{ label: 'Cash return', value: pct(cm?.totalReturn), tone: tone(cm?.totalReturn) }, (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp((capital!.evidence as Json).benchmark.excessReturn), tone: tone((capital!.evidence as Json).benchmark.excessReturn) } : { label: 'Cash drawdown', value: pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown) }, { label: 'Closed deals', value: num(deals.filter(d => d.status === 'closed').length, 0) }],
-			body: (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? `Hold ${pct((capital!.evidence as Json).benchmark.benchmarkReturn)} since the first deal · cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}` : '' }));
+			body: (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? `${alternatives((capital!.evidence as Json).benchmark)} since the first deal\n` +
+				[afterInflation((capital!.evidence as Json).benchmark) != null ? `After inflation ${pct(afterInflation((capital!.evidence as Json).benchmark))}` : '', `cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}`].filter(Boolean).join(' · ') : '' }));
 	}
 	if (extra.retirement) summary.push({ id: 'retirement', title: 'Retired', subtitle: date(extra.retirement.at), body: extra.retirement.reason });
 	const sections: Section[] = [{ title: '', rows: summary }];
@@ -188,8 +203,9 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	sections.push({ title: trades.length ? `Trades · ${trades.length}` : 'Trades', rows: trades.length ? trades.map(t => tradeRow(t, false)) : [{ id: 'no-trades', title: 'No trades yet' }] });
 	if (m?.monthly?.length) sections.push({ title: '', rows: [{ id: 'monthly', title: 'Monthly return', chart: { kind: 'bars', unit: '%', height: Math.max(120, m.monthly.length * 24 + 20), bars: m.monthly.map(x => ({ name: x.month, value: x.ret * 100, total: true })) } }] });
 	const b = e?.benchmark as Json | undefined;
-	if (b?.status === 'matched') sections.push({ title: 'Common-date benchmark', rows: [{ id: 'benchmark', title: `${day(b.from)} → ${day(b.through)}`,
-		stats: [{ label: 'Strategy', value: pct(b.strategyReturn) }, { label: '1:1 hold', value: pct(b.benchmarkReturn) }, { label: 'Excess', value: pp(b.excessReturn), tone: tone(b.excessReturn) }] }] });
+	if (b?.status === 'matched') sections.push({ title: 'Same dates, other uses of the money', rows: [{ id: 'benchmark', title: `${day(b.from)} → ${day(b.through)}`,
+		stats: [{ label: 'Strategy', value: pct(b.strategyReturn) }, { label: '1:1 hold', value: pct(b.benchmarkReturn) }, { label: 'Excess', value: pp(b.excessReturn), tone: tone(b.excessReturn) }] },
+		...(b.hurdles ? [hurdlesRow(b)] : [])] });
 	if (comparison) sections.push({ title: 'Same-code backtest', rows: [rankingRow({ ...comparison, name: 'Backtest' }, 'backtest')] });
 	sections.push(...evidenceSections(e));
 	if (!historical && run.status !== 'retired' && !run.id.includes(':delay='))
@@ -197,6 +213,15 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	sections.push({ title: '', rows: [{ id: 'params', title: 'Parameters', body: Object.entries(run.params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join('\n'), code: true }] });
 	return compact({ v: 2 as const, title: `${run.epic} · ${tier(run.leverage)}`, subtitle: agentName, sections });
 }
+/** Treasury bills (the safe alternative) and CPI (what idle dollars lost) over the comparison's dates. */
+export function hurdlesRow(b: Json): Row {
+	const h: Json = b.hurdles, real = afterInflation(b)!, holdReal = (1 + b.benchmarkReturn) / (1 + h.inflation) - 1;
+	return { id: 'hurdles', title: 'Treasury bills and inflation',
+		stats: [{ label: 'T-bills', value: pct(h.cash) }, { label: 'Inflation', value: pct(h.inflation) }, { label: 'After inflation', value: pct(real), tone: tone(real) }],
+		body: `${pp(b.strategyReturn - h.cash)} over T-bills · hold after inflation ${pct(holdReal)} · T-bills after inflation ${pct((1 + h.cash) / (1 + h.inflation) - 1)}\n` +
+			`T-bills: 3-month US Treasury bills rolled daily, rates through ${day(h.billsThrough)}. Inflation: US CPI-U through ${month(h.cpiThrough)}${h.estimated ? '; later weeks continue its 12-month pace' : ''}.` };
+}
+const month = (ym: string) => { const [y, m] = ym.split('-').map(Number); return y && m ? new Date(Date.UTC(y, m - 1, 15)).toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ym; };
 export function evidenceSections(e: AgentEvidence | undefined): Section[] {
 	if (!e) return [];
 	const out: Section[] = [], c = e.costs as Json | null, d = e.dependency as Json | undefined;

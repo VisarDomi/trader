@@ -190,6 +190,14 @@ CREATE TABLE IF NOT EXISTS kv (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Published economic series (Treasury bill rates, CPI) for the cash and inflation comparisons (rates.ts).
+CREATE TABLE IF NOT EXISTS macro_series (
+  series TEXT NOT NULL,
+  t INTEGER NOT NULL,
+  value REAL NOT NULL,
+  PRIMARY KEY (series, t)
+) WITHOUT ROWID;
 `;
 
 export interface RunRow {
@@ -854,6 +862,16 @@ export class ArenaDB {
 
   deleteSetting(key: string): void {
     this.db.query(`DELETE FROM kv WHERE key = ?`).run(key);
+  }
+
+  macroSeries(series: string): { t: number; value: number }[] {
+    return this.db.query<{ t: number; value: number }, [string]>(`SELECT t,value FROM macro_series WHERE series=? ORDER BY t`).all(series);
+  }
+
+  /** Adds or revises observations; published history is never deleted. */
+  saveMacroSeries(series: string, points: readonly { t: number; value: number }[]): void {
+    const put = this.db.query(`INSERT OR REPLACE INTO macro_series (series,t,value) VALUES (?,?,?)`);
+    this.db.transaction(() => { for (const p of points) put.run(series, p.t, p.value); })();
   }
 }
 
