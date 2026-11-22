@@ -46,9 +46,9 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   - Guarded simulator QA (shared iPhone 12 Pro Max, offline fixture of the live v2 screens) passes, including exact
     cold/warm first-frame restoration. Phone delivery `20261122T024256Z-ef4d105254` (source 1c1f8b4) is signed and
     published but **awaiting_ota**: the Mac could not reach the phone at 03:50. The queue retries by itself.
-- Next: once `ios-push status 20261122T024256Z-ef4d105254` says installed, merge branch `native-v1-removal` (removes
-  API v1, moves v2 handling into the tested contract), push, and run `python3 ops/server/native-access.py edge` so
-  the edge lists only the v2 paths. Until then the phone's old app still reads v1; do not remove it earlier.
+- The user installed that build from https://ios-apps.veron3.space/ the same night (the queue now prints that link
+  for an away delivery). API v1 was then removed (branch `native-v1-removal` merged) and the edge lists only the v2
+  paths.
 - Next: the v4 night runs' first entries (any-day and every-night trade most nights from Tuesday 03:27).
 
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed

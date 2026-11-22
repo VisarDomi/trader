@@ -124,8 +124,9 @@ on resign. Phone frame measurements are distinct from the slower Mac simulator's
   guarded simulator QA (`scripts/check-simulator.py` with a `screen-fixture.py` fixture) pass: all screens offline,
   `visar` search, portrait/landscape, the 787-trade agent list, exact cold/warm first-frame restoration. A one-sample
   blank of the bottom rows 0.5 s after relaunch was fixed (the header re-anchored the list without changing height).
-- Job `20261122T024256Z-ef4d105254`, frozen source `1c1f8b4`: signed and published, **awaiting_ota** at 03:50 (the Mac
-  could not reach the phone); direct installation retries automatically. Not yet verified installed.
+- Job `20261122T024256Z-ef4d105254`, frozen source `1c1f8b4`: signed and published as **awaiting_ota** (the Mac at the
+  office could not reach the phone at home). The owner installed it from https://ios-apps.veron3.space/ the same
+  night; the queue confirms the in-place install when the phone is next to the Mac again. API v1 was removed after.
 
 ## November 9, 2026 · Visar cohort navigation
 
