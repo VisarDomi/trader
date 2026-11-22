@@ -60,6 +60,13 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   so Return and excess covered different dates), Capital cash since the first deal (new: 468 of 498 rows; the rest
   have no deals), backtests on an earlier engine (all 637 now). Every native row shows Return, trades, excess vs hold
   with the hold, Sharpe and drawdown beneath. A demoted run returning is ranked on trades since its demotion.
+- Cash and inflation (user request, 7f3b149): every hold comparison now also carries 3-month US Treasury bills
+  (FRED DTB3, bond-equivalent, accrued daily) and US CPI-U (FRED CPIAUCNS) over the same dates, stored in the arena
+  database (6,724 bill days since 2000, CPI through Oct 2026). All matched rows have them (637/637 backtests, 556/556
+  virtual, 468/468 Capital). Backtest window 2024-01 → 2026-10: T-bills +12.8%, CPI +9.6%; 484 of 637 backtests
+  earned less than T-bills and 11 beat their hold but not T-bills (FX holds +1.8–3.7%). Since mid-October almost
+  every hold lost to T-bills (547/556 virtual), so 204 virtual runs beat the hold yet earned less than cash. Sharpe
+  stays cash-free (the −0.5 backtest gate was set on it); a T-bill Sharpe would need every backtest re-run.
 
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
 

@@ -178,7 +178,7 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
 		stats: [{ label: 'Return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, e?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp(e.benchmark.excessReturn), tone: tone(e.benchmark.excessReturn) } : { label: 'Max drawdown', value: pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
 		body: [alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
-			`drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`, m ? `Sharpe ${num(m.sharpe)}` : ''].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
+			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
 		const cm = capital?.metrics, cash = deals.reduce((n, d) => n + (d.status === 'closed' ? (d.pnl ?? 0) : 0), 0);

@@ -59,7 +59,8 @@ const TZ = 'Europe/Tirane';
 export const tone = (n: number | null | undefined): Tone => (n == null || !Number.isFinite(n) ? 0 : n > 0 ? 1 : n < 0 ? -1 : 0);
 export function num(n: number | null | undefined, digits = 2): string {
 	if (n == null || !Number.isFinite(n)) return '—';
-	return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+	// The typographic minus, like pct and pp ("Sharpe −1.24", not "-1.24").
+	return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).replace(/^-/, '−');
 }
 export const pct = (n: number | null | undefined) => (n == null || !Number.isFinite(n) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + num(Math.abs(n) * 100, 1) + '%');
 export const usd = (n: number | null | undefined) => (n == null || !Number.isFinite(n) ? '—' : (n < 0 ? '−$' : '$') + num(Math.abs(n)));
