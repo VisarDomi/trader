@@ -14,7 +14,7 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
  const root=import.meta.dir+'/../../agents/';const original=readFileSync(root+'visar-night-trading.ts','utf8');
  expect(readFileSync(root+'_retired/visar-night-lab-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'")).toBe(original);
  expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
- expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(42);
+ expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(52);
  expect(plans.filter(p=>p.agent.slug.startsWith('visar-night-v3-control-'))).toHaveLength(4);
 });
 test('sparse experiments have enough observation time while errors and ordinary silence still retire',()=>{

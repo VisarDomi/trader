@@ -27,9 +27,12 @@ export const WINDOWS=[
   {id:'central',label:'10:30–15:30 NY',params:{sessionStart:630,sessionEnd:930}},
   {id:'full',label:'09:30–16:00 NY',params:{sessionStart:570,sessionEnd:960}},
 ] as const;
-/** The standard day filter plus one stricter test each; names match the demo cohort where they overlap. */
+/** The standard day filter, one stricter test each and two looser ones (v4, 2026-11-22); names match the demo cohort
+ * where they overlap. any-day drops every quality limit: any up or down session with enough observed minutes. */
 export const DAY_FILTERS=[
   {id:'standard',label:'Standard day filter',params:{}},
+  {id:'loose-body',label:'Net move ≥30% of range',params:{minBodyShare:.3}},
+  {id:'any-day',label:'Any up or down day',params:{trendPct:0,minEfficiency:0,minDirectionalShare:0,maxRetraceShare:1,maxRangePct:100,minBodyShare:0}},
   {id:'big-move',label:'Day move ≥0.5%',params:{trendPct:.5}},
   {id:'strong-day',label:'Net move ≥80% of range',params:{minBodyShare:.8}},
   {id:'steady-day',label:'≥62% of 15-min steps agree',params:{minDirectionalShare:16/26}},
@@ -37,8 +40,10 @@ export const DAY_FILTERS=[
   {id:'small-pullback',label:'Pullback ≤50% of range',params:{maxRetraceShare:.5}},
   {id:'tiny-pullback',label:'Pullback ≤35% of range',params:{maxRetraceShare:.35}},
 ] as const;
-/** Minimum overnight counter-move at 03:27, basis points. 0 = any counter-move. */
-export const GAPS=[0,5,15,30] as const;
+/** Minimum overnight counter-move at 03:27, basis points. 0 = any counter-move; null = no counter-move needed
+ * (v4 `pullback: 0`: the night trades the day's direction whatever the price did since 22:00). */
+export const GAPS=[null,0,5,15,30] as const;
+export const gapId=(gapBp:number|null)=>gapBp===null?'no-pullback':`gap-${gapBp}bp`;
 /** 1:20 (the 50% loss limit is out of reach) and 1:200 (it binds at about a 0.28% adverse move). */
 export const LEVERAGE=[20,200] as const;
 /** rule = the agent's own side; long = always buy; random = fair coin. Same eligible nights for all three. */
@@ -46,14 +51,14 @@ export const SIDES=['rule','long','random'] as const;
 export type Side=typeof SIDES[number];
 
 export interface GridCell {
-  id:string;epic:string;window:string;day:string;gapBp:number;leverage:number;side:Side;
+  id:string;epic:string;window:string;day:string;gapBp:number|null;leverage:number;side:Side;
   params:Record<string,unknown>;
 }
 
 export function gridCells(epic:string):GridCell[] {
   return WINDOWS.flatMap(w=>DAY_FILTERS.flatMap(d=>GAPS.flatMap(gapBp=>LEVERAGE.flatMap(leverage=>SIDES.map(side=>({
-    id:`${w.id}/${d.id}/gap-${gapBp}bp/x${leverage}/${side}`,epic,window:w.id,day:d.id,gapBp,leverage,side,
-    params:{...w.params,...d.params,minPullbackBp:gapBp,lossPct:50,profitPct:0,marginPct:90,...(side==='rule'?{}:{direction:side})},
+    id:`${w.id}/${d.id}/${gapId(gapBp)}/x${leverage}/${side}`,epic,window:w.id,day:d.id,gapBp,leverage,side,
+    params:{...w.params,...d.params,minPullbackBp:gapBp??0,pullback:gapBp===null?0:1,lossPct:50,profitPct:0,marginPct:90,direction:side},
   }))))));
 }
 
@@ -67,18 +72,20 @@ export function periodReturn(trades:readonly {entryTime:number;pnl:number}[],cap
   return {trades:n,wins,ret:growth-1};
 }
 
+/** Every cell runs the v4 source, which covers the rule, the controls and the no-pullback entry. Its default
+ * settings are the v3 base's, so cells shared with v3 trade exactly as before (forward-grid.test.ts). */
 function sourceAgents(all:LoadedAgent[],epic:string){
-  const index=epic.toLowerCase(),rule=all.find(a=>a.id===`visar-night-v3-${index}/base`),control=all.find(a=>a.id===`visar-night-v3-control-${index}/always-long`);
-  if(!rule||!control)throw Error(`v3 cohort agents for ${epic} are missing`);
-  return {rule,control};
+  const index=epic.toLowerCase(),base=all.find(a=>a.id===`visar-night-v3-${index}/base`),source=all.find(a=>a.id===`visar-night-v4-${index}/loose-body`);
+  if(!base||!source)throw Error(`night cohort agents for ${epic} are missing`);
+  return {source,params:{...base.params,direction:'rule',pullback:1}};
 }
 
 export async function runGrid(epic:string,end:number,full=false){
-  const {agents:all}=await loadAgents(),{rule,control}=sourceAgents(all,epic);
+  const {agents:all}=await loadAgents(),{source:src,params:baseParams}=sourceAgents(all,epic);
   const window:BacktestWindow={id:'night-grid',start:GRID_START,end};
   const cells=gridCells(epic);
   const specs=cells.map(c=>{
-    const src=c.side==='rule'?rule:control,params={...src.params,...c.params};
+    const params={...baseParams,...c.params};
     const agent:LoadedAgent={...src,id:`night-grid/${epic}/${c.id}`,slug:'night-grid',variant:c.id,params,
       codeHash:createHash('sha256').update(src.codeHash+JSON.stringify(params)).digest('hex').slice(0,12)};
     return {agent,leverage:c.leverage};
@@ -94,7 +101,7 @@ export async function runGrid(epic:string,end:number,full=false){
   return {
     schema:1,epic,engineVersion:ENGINE_VERSION,generatedAt:Date.now(),durationMs:Date.now()-began,idleQuotes:full?'all':'ohlc',
     window:{start:window.start,end:window.end,cohortDefined:COHORT_DEFINED},
-    sources:{rule:{id:rule.id,codeHash:rule.codeHash},control:{id:control.id,codeHash:control.codeHash}},
+    sources:{rule:{id:`visar-night-v4-${epic.toLowerCase()}`,codeHash:src.codeHash},control:{id:`visar-night-v4-${epic.toLowerCase()}`,codeHash:src.codeHash}},
     data:data?{mode:data.mode,recordedTicks:data.recordedTicks,syntheticTicks:data.syntheticTicks,recordedMinutes:(data as any).recordedMinutes??null,candleMinutes:(data as any).candleMinutes??null}:null,
     dimensions:{windows:WINDOWS,dayFilters:DAY_FILTERS,gapsBp:GAPS,leverage:LEVERAGE,sides:SIDES},
     cells:cells.map((c,i)=>{

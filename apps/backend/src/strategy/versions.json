@@ -344,5 +344,17 @@
     "timeframe": "1m",
     "extra": [],
     "description": "US100 v3 direction control: the base agent's eligible nights, always long or a random side, same exits."
+  },
+  "visar-night-v4-us500": {
+    "hash": "1fe3ef5a7662",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US500 night v4: the v3 base loosened one step per variant (day shape, no pullback, any day, every night, full NY day), 1:20, 50% loss limit, 08:27."
+  },
+  "visar-night-v4-us100": {
+    "hash": "fdbba74775a7",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "US100 night v4: the v3 base loosened one step per variant (day shape, no pullback, any day, every night, full NY day), 1:20, 50% loss limit, 08:27."
   }
 }

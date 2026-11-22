@@ -87,6 +87,15 @@ a rare entry. Error/ruin exits, maturity, losing-evidence demotion and source-sp
 rules are unchanged. The short normal timeout would otherwise eliminate a deliberate frequency
 experiment before its declared cadence could reasonably produce an observation.
 
+On November 22 the user replaced those stricter v3 variants (`big-move`, `strong-day`, `steady-day`, `gap-5bp`,
+`gap-15bp` on both indices, retired in the roster) with the looser v4 cohort (`visar-night-v4-us500/us100`:
+`loose-body`, `no-pullback`, `any-day`, `every-night`, `full-day`, all at 1:20). A stricter subset of the base can
+trade only on the base's nights, so at 1:20 it added no observations; looser variants trade more nights where
+the 50% loss limit (about 2.8% away at 1:20) is out of the night's reach. The v4 source is the v3 rule plus two
+switches (`direction`, `pullback`); with its defaults it trades exactly like v3 base, and the paper grid runs
+every cell on it. The two agents that had traded (`visar-night-trading`, `visar-night-v3-us100/full-day-200`),
+the v3 base, the 1:200 points and the direction controls continue. The v4 variants use the normal 60-day timeout.
+
 ## Retiring
 
 - **One run:** add `"<agentId>:<EPIC>@<tier>": { "date": "YYYY-MM-DD", "reason": "<review reason>" }` to
@@ -249,7 +258,7 @@ retirements and additions, and one journal entry for the week.
    still defer additions/backtests. Check the relevant service entry rather than only file existence.
    The user resumed the nightly lab alone on November 9 (`ops/lab/lab-control.py resume`); the video
    pipeline stays held and is not ours. `lab-control.py check` exits 0 when the lab may run.
-   The nightly job ends with the Visar night paper grid (672 settings, Night Lab → Paper grid). Check its
+   The nightly job ends with the Visar night paper grid (1,080 settings, Night Lab → Paper grid). Check its
    "Built" time; a stale grid means `night grid failed` in `journalctl --user -u trader-lab`. The grid is
    a map of shape on shared nights, not a selector: do not promote cells to demo from it.
    Fix what is broken and within scope (services, agent bugs, platform bugs; follow

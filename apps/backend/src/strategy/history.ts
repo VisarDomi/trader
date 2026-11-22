@@ -42,7 +42,7 @@ const view=(bars:Bar[])=>({bars,ta:makeIndicators(new IndicatorCache(bars))});
 
 export function reconstructedState(slug:string,b:readonly Bar[],at:number,p:Record<string,any>):Record<string,any>{
   const state:Record<string,any>={};
-  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'||/^visar-night-v[23]-/.test(slug)){
+  if(slug==='visar-night-trading'||slug==='night-risk-twin'||slug==='visar-night-lab'||slug==='visar-night-us100'||/^visar-night-v[234]-/.test(slug)){
     const start=p.sessionStart??570,end=p.sessionEnd??960,minutes=end-start;
     let day:any=null;
     for(const bar of b){
@@ -52,7 +52,7 @@ export function reconstructedState(slug:string,b:readonly Bar[],at:number,p:Reco
         day.minutes++;day.high=Math.max(day.high,bar.high);day.low=Math.min(day.low,bar.low);
         day.maxDrawdown=Math.max(day.maxDrawdown,day.high-bar.low);day.maxRebound=Math.max(day.maxRebound,bar.high-day.low);
         if((ny.minuteOfDay+1-start)%15===0)day.points.push(bar.close);
-        if(ny.minuteOfDay+1===end)day.direction=/^visar-night-v[23]-/.test(slug)?windowClassify(windowFeatures(day,minutes),p as any,minutes):classifyNightSession(nightSessionFeatures(day),p as any);
+        if(ny.minuteOfDay+1===end)day.direction=/^visar-night-v[234]-/.test(slug)?windowClassify(windowFeatures(day,minutes),p as any,minutes):classifyNightSession(nightSessionFeatures(day),p as any);
       }
       if(local.minuteOfDay===1320){state.reference=bar.close;state.referenceDate=local.date;}
     }
