@@ -139,7 +139,8 @@ export class AgentEvidenceService {
   private cashComparison(row:LeaderboardRow):BenchmarkComparison {
     this.refresh(Date.now());
     const m=row.metrics,baseline=this.benchmarks.get(`${RUN_KIND.DEMO}:${row.epic}:`);
-    if(!m||!m.startTime||!baseline)return unavailable('No 1:1 buy-and-hold control for this instrument.');
+    if(!m||!m.startTime)return unavailable('No priced Capital deals yet.');
+    if(!baseline)return unavailable('No 1:1 buy-and-hold control for this instrument.');
     const {first,last}=this.arena.db.matchedEquity(baseline.id,baseline.id,Math.ceil(m.startTime/HOUR_MS)*HOUR_MS);
     if(!first||!last||last.t<=first.t||first.benchmark<=0)return unavailable('Waiting for two hourly hold observations since the first deal.');
     const benchmarkReturn=last.benchmark/first.benchmark-1;

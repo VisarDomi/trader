@@ -50,6 +50,16 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   for an away delivery). API v1 was then removed (branch `native-v1-removal` merged) and the edge lists only the v2
   paths.
 - Next: the v4 night runs' first entries (any-day and every-night trade most nights from Tuesday 03:27).
+- Pipeline audit (user asked whether promotion/demotion works as intended): it does. Since Nov 9 it demoted 15 runs
+  from Capital to virtual and archived 33 losing virtual runs; replaying the rules found no losing Capital run left
+  mirrored. No promotion has fired from evidence because none qualifies (30 trades/28 days or 10/90, t ≥ 2, above
+  the monkeys); 37 slots wait. Closest: timesfm-band AUDUSD 1:20 (t 6.25, 10 trades in 10 days), volatility-breakout/k08
+  GOLD 1:2 (t 2.52, judged ~Jan 5). 278 non-control Capital runs, 31 with judged Capital evidence; controls hold 135
+  slots and are exempt from demotion by design.
+- Hold comparisons fixed (6f4115f, e2f3d7c, d09e906): virtual from the run's start (they began at the tick-feed epoch,
+  so Return and excess covered different dates), Capital cash since the first deal (new: 468 of 498 rows; the rest
+  have no deals), backtests on an earlier engine (all 637 now). Every native row shows Return, trades, excess vs hold
+  with the hold, Sharpe and drawdown beneath. A demoted run returning is ranked on trades since its demotion.
 
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
 
