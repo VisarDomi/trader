@@ -16,6 +16,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private var configuringSearch=true
     private var restoringScroll=false
     private var lastSave:CFTimeInterval=0
+    private var renderKey=""
     private let search=UISearchController(searchResultsController:nil)
     private let header=UIStackView(),notice=UILabel(),descriptionLabel=UILabel()
     private var stages:UISegmentedControl?
@@ -26,6 +27,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         statusText=(state.notice?.hasPrefix("Offline") == true) ? "Offline":(state.notice?.hasPrefix("Pair ") == true) ? "Connection required":state.notice ?? ""
         content=prepared ?? Content(title:route.title.isEmpty ? route.screen.rawValue.capitalized:route.title,sections:[])
         super.init(style:.insetGrouped)
+        // The restored first frame already shows this version: the same copy arriving again must not reload the table.
+        if prepared != nil {renderKey=keyFor(content)}
         title=content.title
     }
     required init?(coder:NSCoder){fatalError("init(coder:)")}
@@ -96,7 +99,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         load(refresh:true);stateChanged()
     }
     private func updateSortingMenu(){
-        let labels=["Return","Sharpe","Closed trades"]+(place.stage=="capital" ? []:["Excess vs hold"])
+        guard place.screen == .rankings else{return}
+        let labels=content.sort.isEmpty ? ["Return","Sharpe","Closed trades"]+(place.stage=="capital" ? []:["Excess vs hold"]):content.sort
         let actions=labels.enumerated().map { i,label in UIAction(title:label,state:state.sort==i ? .on:.off){[weak self] _ in self?.changeSort(i)} }
         navigationItem.rightBarButtonItem=UIBarButtonItem(title:"Sort",image:UIImage(systemName:"arrow.up.arrow.down"),menu:UIMenu(children:actions))
     }
@@ -152,8 +156,13 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         FrameMonitor.shared.measure("trader.list.apply") {
             let resetTop=state.atTop
             let anchor=resetTop ? nil:currentAnchor()
-            let changed=next.renderID != content.renderID
+            // A confirmation of the same version (304) changes nothing on screen.
+            let key=keyFor(next)
+            let changed=key != renderKey || next.sections.isEmpty != content.sections.isEmpty
+            renderKey=key
+            let sortsChanged=next.sort != content.sort
             content=next;title=next.title;updateHeader();if changed{tableView.reloadData()}
+            if sortsChanged{updateSortingMenu()}
             AppDiagnostics.save(route:place,content:next,phase:next.refreshed>0 ? "live":"local")
             if changed,restored {
                 if resetTop {tableView.setContentOffset(CGPoint(x:0,y:-tableView.adjustedContentInset.top),animated:false)}
@@ -161,14 +170,18 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
             }
         }
     }
+    /** What the table shows: the screen's version plus the search and sort applied to it. */
+    private func keyFor(_ c:Content)->String {"\(c.rev)|\(state.query)|\(state.sort)|\(c.sections.reduce(0){$0+$1.rows.count})"}
     private func updateHeader() {
         let anchor=restored && visible && !state.atTop ? currentAnchor():nil
         guard isViewLoaded else{return}
         descriptionLabel.text=content.subtitle
         notice.text=statusText.isEmpty ? "":statusText
         descriptionLabel.isHidden=content.subtitle.isEmpty;notice.isHidden=(notice.text ?? "").isEmpty
+        let height=tableView.tableHeaderView?.frame.height ?? 0
         layoutHeader()
-        if let anchor {tableView.layoutIfNeeded();restore(anchor)}
+        // Only a header that changed height moves the rows; re-anchoring otherwise would relayout them for nothing.
+        if let anchor,abs((tableView.tableHeaderView?.frame.height ?? 0)-height)>0.5 {tableView.layoutIfNeeded();restore(anchor)}
         if content.sections.isEmpty && content.refreshed>0 {
             let label=UILabel();label.text=state.query.isEmpty ? "No records yet.":"No matching records.";label.textColor = .secondaryLabel;label.textAlignment = .center;tableView.backgroundView=label
         } else {tableView.backgroundView=nil}

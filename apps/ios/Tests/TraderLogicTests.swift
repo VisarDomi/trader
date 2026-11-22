@@ -2,118 +2,65 @@ import Foundation
 import Testing
 @testable import TraderLogic
 
-func json(_ text:String) throws -> JSON {try JSONDecoder().decode(JSON.self,from:Data(text.utf8))}
-@Test func visarSearchKeepsTheTwentyMemberCohortAcrossStages() throws {
-    let ids=["visar-night-trading"]+(0..<9).map{"visar-night-lab/v\($0)"}+(0..<10).map{"visar-night-us100/v\($0)"}+["night-risk-twin"]
-    let data=JSON.array(ids.map{JSON.object(["runId":.string("demo:\($0):US500:x20:hash"),"agentId":.string($0),"name":.string("Visar night \($0)"),"epic":.string("US500")])})
-    for stage in ["capital","virtual","backtest"] {
-        let content=Presentation.make(Route(screen:.rankings,stage:stage),data:data,query:" VISAR ",sort:2)
-        #expect(content.sections[0].rows.count==20)
-        #expect(content.sections[0].title.contains("20 records"))
-        #expect(content.sections[0].rows.allSatisfy{$0.route?.stage==stage})
-    }
-    #expect(Presentation.matches(Row(id:"old",title:"Visar small-risk twin",route:Route(screen:.agent,id:"night-risk-twin")),query:"small-risk"))
-}
-@Test func rankingsKeepActualDemoEvidenceSeparate() throws {
-    let data=try json("""
-    [{"runId":"demo:fixture","name":"Fixture","epic":"US500","leverage":200,"metrics":{"totalReturn":0.12,"trades":3,"sharpe":1.2},"demoAdmission":{"reason":"user requested"}}]
-    """)
-    let c=Presentation.make(Route(screen:.rankings),data:data)
-    #expect(c.sections[0].rows[0].badge=="User experiment")
-    #expect(c.sections[0].rows[0].route?.stage=="capital")
-    #expect(c.sections[0].rows[0].stats[0].value.contains("12"))
-}
-@Test func capitalRunNeverLabelsVirtualEquityAsActualCash() throws {
-    let data=try json("""
-    {"id":"demo:fixture","kind":"demo","epic":"US500","capital":10000,"equity":9999,"metrics":{"totalReturn":-0.1},"capitalDemo":{"metrics":{"totalReturn":0.25}},"equityCurve":[{"t":1,"equity":10000},{"t":2,"equity":9999}]}
-    """)
-    let c=Presentation.make(Route(screen:.run,id:"demo:fixture"),data:data)
-    #expect(c.sections[0].title.contains("Capital demo"))
-    #expect(c.sections[0].rows[0].stats[0].value.contains("25"))
-    #expect(!c.sections.contains{$0.rows.contains{$0.id=="chart"}})
-}
-@Test func archiveSelectsExactSourceAndPreservesUnknownMetrics() throws {
-    let data=try json("""
-    {"name":"Fixture","versions":[{"code_hash":"new","source":"new source"},{"code_hash":"old","source":"old source"}]}
-    """)
-    let c=Presentation.make(Route(screen:.source,id:"fixture",version:"old"),data:data)
-    #expect(c.sections[0].rows[0].body=="old source")
-    #expect(Presentation.percent(nil)=="—")
-}
-@Test func routeIdentitiesCannotBecomeQueryParameters() {
-    let r=Route(screen:.run,id:"demo:agent/x&stage=backtest#bad")
-    let c=URLComponents(string:"https://trader.invalid/api/native/v1/"+r.cacheKey)!
-    #expect(c.queryItems?.filter{$0.name=="stage"}.count==1)
-    #expect(c.queryItems?.first{$0.name=="id"}?.value==r.id)
-}
-@Test func evidenceDistinguishesMatchedWindowAndUnknownCosts() throws {
-    let e=try json("""
-    {"basis":"virtual-equity","admission":"calibration","benchmark":{"status":"matched","from":1000,"through":2000,"strategyReturn":0.02,"benchmarkReturn":0.01,"excessReturn":0.01,"note":"Sizing differs"},"exposure":0.9,"costs":{"closedTrades":3,"reportedTrades":3,"historyComplete":true,"measuredTrades":0,"capturedTrades":0,"reconstructedTrades":0,"closedNetPnl":-10,"beforeFundingPnl":-8,"closedFunding":-2},"dependency":{"state":"user-paused","note":"Model held"}}
-    """)
-    let sections=Presentation.evidenceSections(e)
-    #expect(sections.contains{$0.title=="Forecast dependency"})
-    let rows=sections.flatMap(\.rows)
-    #expect(rows.contains{$0.stats.contains{$0.label=="Excess" && $0.value.contains("pp")}})
-    #expect(rows.contains{$0.body.contains("unknown, not zero")})
-}
-@Test func rankingShowsClosedTradesAndUsesDependencyState() throws {
-    let data=try json("""
-    [{"runId":"demo:fixture","name":"Fixture","epic":"US500","leverage":20,"metrics":{"totalReturn":0.02,"trades":0},"dependency":{"state":"user-paused","note":"Model held"},"evidence":{"exposure":0.5,"benchmark":{"status":"matched","excessReturn":-0.01,"from":1000,"through":2000}}}]
-    """)
-    let c=Presentation.make(Route(screen:.rankings,stage:"virtual"),data:data)
-    let row=c.sections[0].rows[0]
-    #expect(row.badge=="Forecast paused")
-    #expect(row.stats[1].label=="Closed trades")
-    #expect(row.stats[2].value.contains("pp"))
-    #expect(row.body.contains("Exposure") && row.body.contains("×"))
-}
+private func screen(_ text:String) throws -> Content {try JSONDecoder().decode(Content.self,from:Data(text.utf8))}
+private func packed64(_ xs:[Double])->String {xs.withUnsafeBytes{Data($0)}.base64EncodedString()}
+private func packed32(_ xs:[Float])->String {xs.withUnsafeBytes{Data($0)}.base64EncodedString()}
 
-@Test func tradeRoutesEscapeTheIndexAndRetainStage() {
-    let route=Route(screen:.trade,id:"demo:fixture:US500:x200:hash",stage:"virtual",version:"1&stage=capital")
-    let u=URLComponents(string:"https://trader.invalid/api/native/v1/"+route.cacheKey)!
-    #expect(u.queryItems?.filter{$0.name=="stage"}.count==1)
-    #expect(u.queryItems?.first{$0.name=="trade"}?.value==route.version)
-}
-@Test func virtualRunMapsEquityFieldsWithoutLosingTheCurve() throws {
-    let data=try json("""
-    {"kind":"demo","capital":10000,"equity":10020,"equityCurve":[{"t":1000,"equity":10000},{"t":2000,"equity":10020}],"metrics":{"trades":0}}
+@Test func packedSeriesDecodeExactly() throws {
+    let t:[Double]=[1794882420703,1794882421391,1794883105528],v:[Float]=[27272.5,27349.1,.nan]
+    let c=try screen("""
+    {"v":2,"title":"T","sections":[{"title":"","rows":[{"id":"c","title":"Trade","chart":{"kind":"price","series":[{"name":"Bid","t":"\(packed64(t))","v":"\(packed32(v))"}],
+     "guides":[{"label":"Stop","value":27350,"tone":-1}],"markers":[{"t":1794882420703,"value":null,"label":"DEMO CLOSE"}]}}]}]}
     """)
-    let c=Presentation.make(Route(screen:.run,id:"demo:fixture",stage:"virtual"),data:data)
-    let row=c.sections.flatMap(\.rows).first{$0.id=="chart"}
-    #expect(row?.points.map(\.value)==[10000,10020])
-    #expect(c.sections.flatMap(\.rows).first{$0.id=="equity-dd"}?.chart?.series.first?.points.count==2)
+    let g=try #require(c.sections[0].rows[0].chart)
+    #expect(g.series[0].t==t)
+    #expect(g.series[0].v[0]==27272.5 && abs(g.series[0].v[1]-27349.1)<0.01 && g.series[0].v[2].isNaN)
+    #expect(g.guides[0].tone == -1 && g.markers[0].value==nil && g.height==220 && g.precision==2)
 }
-@Test func inspectionChartsRetainMarkersReasonsAndUnknownCosts() throws {
-    let data=try json("""
-    {"subject":{"runId":"demo:fixture","key":"7","stage":"virtual","epic":"US500","side":"short","size":10,"entryTime":1000,"exitTime":4000,"entryPrice":100,"exitPrice":95,"entryReason":"bearish day, bounce","exitReason":"scheduled exit","timeline":[]},"window":{"from":1000,"through":4000},"price":{"bid":[{"t":1000,"value":100},{"t":4000,"value":94}],"ask":[{"t":1000,"value":101},{"t":4000,"value":95}],"candles":[]},"coverage":{"complete":false,"ticks":2,"candles":0,"gaps":[{"from":2000,"through":3000}]},"risk":{"maxDrawdown":30,"drawdownFraction":0.03,"mae":-30,"mfe":60,"fullTrade":false},"costs":{"net":48,"funding":-2,"spread":null,"timing":null,"midpoint":null},"pnl":[{"t":1000,"value":-10},{"t":4000,"value":50}],"drawdown":[{"t":1000,"value":-10},{"t":4000,"value":-30}],"spread":[{"t":1000,"value":1},{"t":4000,"value":1}],"checks":[]}
-    """)
-    let sections=Presentation.inspectionSections(data),rows=sections.flatMap(\.rows)
-    #expect(rows.first?.chart?.markers.map(\.label)==["OPEN","CLOSE"])
-    #expect(rows.first?.chart?.gaps.count==1)
-    #expect(rows.contains{$0.body=="bearish day, bounce"})
-    #expect(rows.contains{$0.body=="scheduled exit"})
-    #expect(rows.first?.stats[1].value.contains("≥")==true)
-    #expect(rows.first?.stats[2].value=="—")
-    let card=Presentation.tradeCard(data,runId:"demo:fixture",stage:"virtual")
-    #expect(card.route?.screen == .trade && card.route?.version=="7")
-    #expect(card.chart?.series.count==2)
+@Test func theLiveTradeScreenDecodesWithItsThreePriceCharts() throws {
+    let url=URL(fileURLWithPath:#filePath).deletingLastPathComponent().appendingPathComponent("Fixtures/trade.json")
+    let c=try JSONDecoder().decode(Content.self,from:Data(contentsOf:url))
+    let charts=c.sections.flatMap(\.rows).compactMap(\.chart).filter{$0.kind=="line" || $0.kind=="price"}
+    // The previous NY session, 22:00 → 03:27, then the trade with its stop and equity-loss lines.
+    #expect(charts.count>=3)
+    let trade=try #require(c.sections.flatMap(\.rows).first{$0.id=="trade-chart"}?.chart)
+    #expect(trade.kind=="price" && trade.series.count==2 && trade.series[0].t.count==trade.series[0].v.count && !trade.series[0].v.isEmpty)
+    #expect(trade.guides.contains{$0.label.hasPrefix("Stop")})
+    #expect(trade.markers.contains{$0.label=="DEMO OPEN"})
 }
-@Test func unpricedBrokerCloseRetainsItsTimeWithoutInventingAFillPrice() throws {
-    let data=try json("""
-    {"subject":{"stage":"capital","entryTime":1000,"entryPrice":100,"exitTime":4000,"exitPrice":null},"price":{},"window":{"from":1000,"through":4000}}
-    """)
-    let markers=Presentation.tradeGraph(data).markers
-    #expect(markers.count==2)
-    #expect(markers[1].label=="CLOSE" && markers[1].t==4000 && markers[1].value==nil)
+@Test func unknownVersionsAreRejectedNotHalfShown() {
+    #expect(throws:(any Error).self){try screen(#"{"v":1,"title":"Old","sections":[]}"#)}
 }
-@Test func strategyContextShowsThresholdMarginsAndSourceBasis() throws {
-    let data=try json("""
-    {"basis":"reconstructed","title":"Directional NY day","note":"Original inputs not saved","panels":[{"title":"Previous session","unit":"Price","note":"09:30–16:00 New York","series":[{"name":"Price","points":[{"t":1000,"value":100},{"t":2000,"value":101}]}],"guides":[{"label":"Minimum bullish close","value":100.25}],"markers":[]}],"gates":[{"label":"Directional move","value":0.3,"op":">=","limit":0.25,"unit":"%","margin":0.05,"state":"pass"},{"label":"Forecast","value":null,"op":">","limit":0,"unit":"","margin":null,"state":"unknown"}],"exitRule":"08:27 close","protections":{}}
+@Test func rankingsSortByTheChosenKeyWithMissingValuesLast() throws {
+    let c=try screen("""
+    {"v":2,"title":"Rankings","sort":["Return","Sharpe","Closed trades"],"sections":[{"title":"Capital demo · 3 records","rows":[
+     {"id":"a","title":"A","keys":[0.1,null,5]},{"id":"b","title":"B","keys":[0.3,1.0,2]},{"id":"c","title":"C","keys":[null,2.0,9]}]}]}
     """)
-    let rows=Presentation.strategySections(data).flatMap(\.rows)
-    #expect(rows.first?.badge=="Recomputed")
-    #expect(rows.first{$0.id=="strategy-panel-0"}?.chart?.guides?.first?.value==100.25)
-    #expect(rows.first{$0.id=="strategy-gate-0"}?.subtitle.contains("pp")==true)
-    #expect(rows.first{$0.id=="strategy-gate-1"}?.subtitle.contains("—")==true)
-    #expect(rows.first{$0.id=="strategy-gate-0"}?.chart?.meter?.limit==0.25)
+    let route=Route(screen:.rankings)
+    #expect(Presentation.view(c,route:route,query:"",sort:0).sections[0].rows.map(\.id)==["b","a","c"])
+    #expect(Presentation.view(c,route:route,query:"",sort:1).sections[0].rows.map(\.id)==["c","b","a"])
+    #expect(Presentation.view(c,route:route,query:"",sort:2).sections[0].rows.map(\.id)==["c","a","b"])
+    let found=Presentation.view(c,route:route,query:"b",sort:0)
+    #expect(found.sections[0].rows.map(\.id)==["b"] && found.sections[0].title=="Capital demo · 1 records")
+}
+@Test func visarSearchKeepsTheNightCohort() throws {
+    let rows=["demo:visar-night-trading:US500:x200:h","demo:visar-night-v4-us100/no-pullback:US100:x20:h","demo:ema-cross/fast:US500:x20:h"].map{
+        #"{"id":"\#($0)","title":"\#($0)","route":{"screen":"run","id":"\#($0)"}}"#}.joined(separator:",")
+    let c=try screen(#"{"v":2,"title":"Rankings","sort":["Return"],"sections":[{"title":"Virtual engine · 3 records","rows":[\#(rows)]}]}"#)
+    #expect(Presentation.view(c,route:Route(screen:.rankings),query:" VISAR ",sort:0).sections[0].rows.count==2)
+}
+@Test func routesMapToServerPathsAndRunsShareOneCopy() {
+    let id="demo:visar-night-v3-us100/full-day-200:US100:x200:6d175db7dd11"
+    #expect(Route(screen:.run,id:id,stage:"capital").cacheKey==Route(screen:.run,id:id,stage:"virtual").cacheKey)
+    #expect(Route(screen:.run,id:id).cacheKey=="run?id=demo%3Avisar-night-v3-us100%2Ffull-day-200%3AUS100%3Ax200%3A6d175db7dd11")
+    #expect(Route(screen:.trade,id:"demo:x",stage:"capital",version:"6706").cacheKey=="trade?id=demo%3Ax&trade=6706&stage=capital")
+    #expect(Route(screen:.rankings,stage:"virtual",scenario:"delay=500").cacheKey=="rankings?stage=virtual&scenario=delay%3D500")
+    #expect(Route(screen:.more).cacheKey.isEmpty && Presentation.local(Route(screen:.more)) != nil)
+}
+@Test func savedNavigationRoutesStillDecode() throws {
+    // Routes written by the previous app version (every key present) and routes sent by the server (only some).
+    let old=try JSONDecoder().decode(Route.self,from:Data(#"{"screen":"run","id":"demo:a","stage":"capital","version":"","title":""}"#.utf8))
+    let sent=try JSONDecoder().decode(Route.self,from:Data(#"{"screen":"trade","id":"demo:a","version":"3"}"#.utf8))
+    #expect(old.screen == .run && old.stage=="capital" && sent.stage=="capital" && sent.version=="3")
+    #expect(try JSONDecoder().decode(Route.self,from:JSONEncoder().encode(sent))==sent)
 }

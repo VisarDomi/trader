@@ -15,7 +15,9 @@ enum TraderFonts {
 @MainActor
 final class TraderCell:UITableViewCell {
     private let stack=UIStackView(), titleLabel=UILabel(),subtitleLabel=UILabel(),bodyLabel=UILabel(),badgeLabel=UILabel(),stats=UIStackView()
-    private var chart:TraderGraphView?
+    /** One reused chart per cell: scrolling a long trade list configures views instead of creating them. */
+    private let chart=TraderGraphView()
+    private lazy var chartHeight=chart.heightAnchor.constraint(equalToConstant:0)
     private let roundingSpace=UIView()
     private var statValues:[UILabel]=[],statNames:[UILabel]=[]
     override init(style:UITableViewCell.CellStyle,reuseIdentifier:String?) {
@@ -24,7 +26,8 @@ final class TraderCell:UITableViewCell {
         stack.axis = .vertical;stack.spacing=7;stack.translatesAutoresizingMaskIntoConstraints=false
         contentView.addSubview(stack)
         NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo:contentView.layoutMarginsGuide.leadingAnchor),stack.trailingAnchor.constraint(equalTo:contentView.layoutMarginsGuide.trailingAnchor),stack.topAnchor.constraint(equalTo:contentView.topAnchor,constant:14),stack.bottomAnchor.constraint(equalTo:contentView.bottomAnchor,constant:-14)])
-        for label in [titleLabel,subtitleLabel,bodyLabel,badgeLabel]{label.numberOfLines=0;stack.addArrangedSubview(label)}
+        for label in [titleLabel,subtitleLabel,badgeLabel]{label.numberOfLines=0;stack.addArrangedSubview(label)}
+
         titleLabel.font = TraderFonts.headline
         subtitleLabel.font = TraderFonts.caption;subtitleLabel.textColor = .secondaryLabel
         bodyLabel.font = TraderFonts.body;bodyLabel.textColor = .secondaryLabel
@@ -44,6 +47,9 @@ final class TraderCell:UITableViewCell {
             column.addArrangedSubview(value);column.addArrangedSubview(label);stats.addArrangedSubview(column)
             statValues.append(value);statNames.append(label)
         }
+        // Numbers first, then the chart, then the recorded reasons.
+        chartHeight.priority = .init(999);chartHeight.isActive=true;stack.addArrangedSubview(chart)
+        bodyLabel.numberOfLines=0;stack.addArrangedSubview(bodyLabel)
         // UITableView rounds automatic row heights. Keep that spare fraction in a
         // spacer instead of letting equal-priority labels trade a point of height.
         roundingSpace.setContentHuggingPriority(.init(1),for:.vertical)
@@ -72,14 +78,8 @@ final class TraderCell:UITableViewCell {
                 value.textColor=stat.tone>0 ? .systemGreen:stat.tone<0 ? .systemRed:.label
                 statNames[i].text=stat.label
             }
-            chart?.removeFromSuperview();chart=nil
-            if let graph=row.chart {
-                let v=TraderGraphView();v.graph=graph;v.heightAnchor.constraint(equalToConstant:graph.height).isActive=true
-                stack.insertArrangedSubview(v,at:2);chart=v
-            } else if !row.points.isEmpty {
-                let v=TraderGraphView();v.graph=Graph(series:[GraphSeries(name:"Equity",points:row.points)],height:200);v.heightAnchor.constraint(equalToConstant:200).isActive=true
-                stack.insertArrangedSubview(v,at:stack.arrangedSubviews.count-1);chart=v
-            }
+            if let graph=row.chart {chart.graph=graph;chartHeight.constant=graph.height;chart.isHidden=false}
+            else {chart.isHidden=true;chartHeight.constant=0}
             let visible=stack.arrangedSubviews.filter{!$0.isHidden && $0 !== roundingSpace}
             for v in visible{stack.setCustomSpacing(v === visible.last ? 0:7,after:v)}
             accessoryType=row.route != nil ? .disclosureIndicator:.none

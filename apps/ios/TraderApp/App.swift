@@ -14,7 +14,6 @@ final class AppDelegate:UIResponder,UIApplicationDelegate {
 
 @MainActor
 final class TraderTabs:UITabBarController,UITabBarControllerDelegate {
-    private let writer=BackgroundWriter(url:AppFiles.root.appendingPathComponent("app-state.json"),label:"trader-ui-state")
     init(startup:Startup) {
         super.init(nibName:nil,bundle:nil)
         let labels=["Rankings","Agents","Accounts","Explore"],icons=["chart.bar.xaxis","person.3.sequence","building.columns","square.grid.2x2"]
@@ -34,9 +33,10 @@ final class TraderTabs:UITabBarController,UITabBarControllerDelegate {
     }
     required init?(coder:NSCoder){fatalError("init(coder:)")}
     var current:ScreenController?{(selectedViewController as? UINavigationController)?.topViewController as? ScreenController}
-    func tabBarController(_ tabBarController:UITabBarController,didSelect viewController:UIViewController){writer.save(json:AppState(selectedTab:selectedIndex))}
-    func choose(_ index:Int){guard (0..<4).contains(index) else{return};selectedIndex=index;writer.save(json:AppState(selectedTab:index))}
-    func flush(){for nav in viewControllers ?? []{(nav as? LiveNavigationController)?.flush()};writer.save(json:AppState(selectedTab:selectedIndex));writer.flush()}
+    private func saveTab(){let i=selectedIndex;Task{await TraderStore.shared.saveTab(i)}}
+    func tabBarController(_ tabBarController:UITabBarController,didSelect viewController:UIViewController){saveTab()}
+    func choose(_ index:Int){guard (0..<4).contains(index) else{return};selectedIndex=index;saveTab()}
+    func flush(){for nav in viewControllers ?? []{(nav as? LiveNavigationController)?.flush()};saveTab()}
     func pause(){current?.pause()}
     func resume(){current?.resumed()}
 }

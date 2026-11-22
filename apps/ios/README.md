@@ -7,6 +7,10 @@ Generic guidance, repeated success badges and methodology prose stay out of the 
 iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 
 - Rankings, sort/search, independent virtual evidence, historical backtests and actual demo cashflows.
+- An agent shows every live record and every trade at once: paper P&L beside its Capital demo twin, the share of
+  equity, the recorded reasons and a mini price path per trade. A record shows paper and demo together.
+- A trade shows the strategy's setup charts (for the night rule: the NY session, then 22:00 → 03:27) followed by the
+  trade's own price chart with both fills, the stop and the −50% / −100% equity lines (listed as numbers when far).
 - Common-date benchmark excess, exposure/stop downside, quote-supported cost breakdowns and paused
   dependencies. Realized cash drawdown is labeled separately from virtual position risk.
 - Inline trade charts and a native inspector: bid/ask, open/close, recorded decisions, executable
@@ -19,9 +23,15 @@ iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 - Platform status, resource hold, tick/storage health, Graveyard, journal and research.
 - Portrait/landscape, Dynamic Type, cached first-frame navigation/scroll restoration and foreground refresh.
 
-The app displays the phone's saved copy immediately. Networking, JSON parsing, sorting, formatting and
-cache encoding run on an actor/background writer. Refreshes wait while a list is dragged or decelerates.
-Cached data is bounded; backgrounding saves state and stops polling. External research links open the
+Screens are built on the server (`apps/ui/src/lib/server/native`, API `/api/native/v2/<screen>`) and arrive ready
+to draw: rows, numbers, charts as packed binary series. The phone keeps each screen as one row of
+`Library/Application Support/Trader/trader.sqlite` (the server's bytes, their ETag and when they were confirmed),
+shows that copy at once and revalidates it with If-None-Match: an unchanged screen is a 304 with no body, no decoding
+and no redraw. A changed screen rewrites only its row. Decoding, sorting and search filtering run on the store's actor.
+Refreshes wait while a list is dragged or decelerates. Up to 400 screens are kept; backgrounding stops polling.
+Changing what a screen shows is a server change (push `main`); the app needs a build only when the wire format changes.
+Until November 22 the app fetched raw arena records (1.6 MB for the Capital rankings), reshaped them on the phone
+and rewrote one `responses.json` holding every response on each refresh; that file is deleted on first launch. External research links open the
 system browser; platform screens are native views.
 
 ## Build and delivery
@@ -82,7 +92,8 @@ bun test apps/ui/src/lib/server/native-contract.test.ts
 bash apps/ios/scripts/test.sh   # TraderLogic tests on this PC (Swift for Linux); ios-push runs them first
 # Run native compilation/domain checks through mac-workload in the logged-in GUI session.
 # In a guarded session on the explicit shared guest, with a private derived-response fixture:
-python3 scripts/check-simulator.py --device UUID --fixture /tmp/trader-fixture.json --strategy
+python3 apps/ios/scripts/screen-fixture.py /tmp/trader-v2-fixture.json      # on the PC: live v2 screens, private, outside git
+python3 scripts/check-simulator.py --device UUID --fixture /tmp/trader-v2-fixture.json
 ```
 
 The simulator uses the isolated `com.visar.Trader.qa` bundle and x86_64-only compilation.

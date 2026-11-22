@@ -5,6 +5,45 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-22 (Sun, user-requested) — looser night cohort (v4) at 1:20; the iPhone app gets screens built by the server
+
+- Night check (the user asked whether the setup works after `visar-night-trading` went 3 for 3 and the only other
+  night trade lost 50%). It works. All 20 night runs were live on Capital demo; the paper grid replays them
+  identically, and an independent re-classification of every NY session since Oct 1 matches both.
+  - 18 of the 19 v3 agents read the 10:30–15:30 window, and each variant is the base plus a stricter condition, so
+    none can trade on a night the base skips. No 10:30–15:30 session qualified since Nov 10 on either index:
+    Nov 10–18 were choppy (net move under 60% of the range, large pullbacks) and Nov 19–20 fell 1.9–3.2% with
+    ranges over the 2% cap. At the backtest cadence (29 and 24 a year) nine sessions without an entry happen
+    33–40% of the time.
+  - Only `visar-night-v3-us100/full-day-200` shares the original's 09:30–16:00 window. Both shorted on Nov 17: US500
+    won (+$7,119 paper, +$1,376 demo); US100 bounced 28 bp in 11 minutes onto its 50% loss limit at 1:200
+    (−$5,055 paper, −$998 demo). At 1:20 the same US100 trade finished +2.1%.
+  - The 03:27–08:27 window: over Jul 21–Nov 19 a random-direction position would have reached the 1:200 loss limit
+    (0.28% away) on 16% of US500 nights and 45% of US100 nights; at 1:50, 0% and 1.5%; at 1:20, never. US100's
+    overnight range is about twice US500's (median 0.5% against 0.2%).
+- The v4 cohort (2ed628e, deployed 9bac3d3): the user replaced the stricter v3 variants (`big-move`, `strong-day`,
+  `steady-day`, `gap-5bp`, `gap-15bp` on both indices, retired with history kept) with looser ones at 1:20:
+  `loose-body` (net move ≥30% of range), `no-pullback` (no overnight counter-move needed), `any-day` (any up or down
+  session), `every-night` (both) and `full-day` (09:30–16:00 at 1:20). Kept: the original, US100 full-day-200 (the
+  two that have traded), v3 base, the 1:200 points and the direction controls. Chosen on design and entry
+  frequency (about 2.5, 3.5, 8, 15 and 1.5 entries a month on the last four months), before looking at returns.
+  - The v4 source is the v3 rule plus `direction` and `pullback`; at its defaults it takes exactly v3's decisions
+    (tested against base and the controls).
+  - Backtests seen after the choice (2024-01 to 2026-09, 1:20): no-pullback +70% / +243% (US500 / US100), loose-body
+    about flat, full-day −34% / −50%, any-day −62% / −80%, every-night −78% / −89%. Admitted as planned.
+  - The ten runs started 02:11 UTC and are mirrored on Arena 06 (47/50).
+- Paper grid: two looser day filters and the no-pullback entry, 540 settings per index (1,080), all on the v4
+  source. Re-run through Nov 21, all 336 earlier settings per index replay identically. Night Lab shows the v4 cohort.
+- iPhone app (user: too slow, paper trades missing, trades behind clicks, the trade's third chart a drawdown).
+  - The server now builds every screen (`/api/native/v2`, c025b64) and the phone only stores and draws it: one SQLite
+    row per screen, revalidated by ETag (an unchanged screen is a 304 with no body). The Capital rankings went from
+    1.6 MB of raw JSON per 30-second refresh to 17 KB compressed. The `responses.json` cache is gone.
+  - An agent shows every live record and every trade at once, paper P&L beside its demo twin, with a mini price path;
+    a record shows paper and demo together; a trade shows the strategy's charts (NY session, 22:00 → 03:27) and then
+    the trade's own price chart with both fills, the stop and the −50% / −100% equity lines.
+  - The inspector adds mini paths (`/sparks`) and the twin of each trade (382c460). The edge allows the v2 paths with
+    the device key only.
+
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
 
 Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 22:00 to 11-21 22:00 UTC.
@@ -1990,7 +2029,10 @@ Visit 2026-11-16: one addition tried (fx-fix-reversal), rejected at the backtest
 Visit 2026-11-17: no new agent, retirement or tuning; a stream-delay probe (lab tool) only.
 Visit 2026-11-18: no new agent, retirement or tuning; the stream delay is traced to Capital (no code change).
 Visit 2026-11-21 (weekly): cppi added (cppi, tipp); twins CHECK made direction-aware; watchdog skips Capital's Saturday crypto maintenance.
+2026-11-22 (user request): visar-night v4 looser cohort replaces the strict v3 variants; native app v2.
 
+- visar-night-v4-us500/us100 (loose-body, no-pullback, any-day, every-night, full-day) — the v3 night rule loosened one
+  step per variant at 1:20, user-requested replacement of the strict v3 variants — live (2026-11-22).
 - visar-night-lab (nine variants) and visar-night-us100 (ten) — user-requested night frequency/risk
   cohort; 10 US500 including original, 10 US100, source-pinned special demo experiments (2026-11-09).
   Selected on inspected history; explicit low-exposure classifier references and sparse endpoints,
