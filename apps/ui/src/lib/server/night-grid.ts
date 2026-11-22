@@ -10,7 +10,7 @@ import {prepare,type Prepared} from './night-lab';
 import {join,resolve} from 'node:path';
 
 export const GRID_EPICS=['US500','US100'] as const;
-export const GRID_CELLS=336;
+export const GRID_CELLS=540;
 const SIDES=new Set(['rule','long','random']);
 
 export function nightGridDir(configured?:string):string{
@@ -20,7 +20,7 @@ export function nightGridDir(configured?:string):string{
 }
 
 interface Period{trades:number;wins:number;ret:number}
-interface Cell{id:string;window:string;day:string;gapBp:number;leverage:number;side:string;status:string;trades:number;wins:number;totalReturn:number;maxDrawdown:number;holdout:Period;forward:Period;nights?:unknown[]}
+interface Cell{id:string;window:string;day:string;gapBp:number|null;leverage:number;side:string;status:string;trades:number;wins:number;totalReturn:number;maxDrawdown:number;holdout:Period;forward:Period;nights?:unknown[]}
 interface GridFile{schema:number;epic:string;generatedAt:number;window:{start:number;end:number;cohortDefined:number};data:unknown;dimensions:unknown;sources:unknown;cells:Cell[]}
 
 /** Validates one index file; anything unexpected is rejected rather than shown half-right. */

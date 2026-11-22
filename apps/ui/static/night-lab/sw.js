@@ -3,12 +3,12 @@
 // served from the cache first; a newer summary removes sections of older versions. Downloads
 // (report.json, CSVs) are never stored on the device. Earlier workers' caches, including the
 // full-report copy they kept, are removed on activation.
-const SHELL='night-lab-shell-v1',DATA='night-lab-data-v1',LIVE='night-lab-forward-v4',GRID='night-lab-grid-v2';
+const SHELL='night-lab-shell-v1',DATA='night-lab-data-v1',LIVE='night-lab-forward-v4',GRID='night-lab-grid-v3';
 const KEEP=new Set([SHELL,DATA,LIVE,GRID]);
 const FILES=['./index.html','./night-lab.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const SECTION=/\/night-lab\/data\/([0-9a-f]{16})\//;
 const scoped=path=>new URL(path,self.registration.scope);
-function gridComplete(data){return data.schema===1&&data.epics?.length===2&&data.epics.every(e=>e.cells?.length===336)}
+function gridComplete(data){return data.schema===1&&data.epics?.length===2&&data.epics.every(e=>e.cells?.length===540)}
 async function cohort(){
  const saved=await (await caches.open(DATA)).match(scoped('./data/summary.json').href);
  try{return saved?(await saved.json()).cohort:null}catch{return null}
