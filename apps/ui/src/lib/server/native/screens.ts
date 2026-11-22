@@ -233,7 +233,7 @@ export function tradeScreen(d: Inspection, agentName: string): Screen {
 	const head: Row = compact({ id: 'head', title: `${s.side === 'long' ? 'Long' : 'Short'} · ${num(s.size, 3)} units`, subtitle: `${moment(s.entryTime)} → ${s.exitTime ? moment(s.exitTime) : 'open'}${s.exitTime ? ' · ' + span(s.exitTime - s.entryTime) : ''}`,
 		badge: d.coverage.complete ? '' : 'Tick gaps', badgeTone: 0 as const,
 		stats: [{ label: 'Paper P&L', value: signedUsd(paperPnl), tone: tone(paperPnl) }, { label: s.stage === 'capital' ? 'Demo P&L' : 'Demo P&L (0.2×)', value: twin || s.stage === 'capital' ? signedUsd(demoPnl) : 'Not mirrored', tone: tone(demoPnl) },
-			{ label: risk.fullTrade ? 'Worst adverse' : 'Observed adverse', value: signedUsd(risk.mae), tone: -1 as const }],
+			{ label: risk.fullTrade ? 'Worst adverse' : 'Observed adverse', value: signedUsd(risk.mae), tone: tone(risk.mae) }],
 		body: [`Open: ${s.entryReason ?? 'reason not recorded'}`, `Close: ${s.exitTime ? (s.exitReason ?? 'reason not recorded') : 'still open'}`].join('\n') });
 	sections.push({ title: '', rows: [head] });
 	// The setup: the strategy's own charts (for the night rule: the NY session, then 22:00 → 03:27).
@@ -256,14 +256,15 @@ export function tradeScreen(d: Inspection, agentName: string): Screen {
 	if (s.exitTime) markers.push({ t: s.exitTime, value: s.exitPrice, label: s.stage === 'capital' ? 'DEMO CLOSE' : 'CLOSE', detail: s.exitReason ?? '', tone: s.exitPrice != null ? toneOfSide(s.side, s.entryPrice, s.exitPrice) : 0 });
 	if (twin && twin.entryPrice != null) markers.push({ t: twin.entryTime, value: twin.entryPrice, label: twin.stage === 'capital' ? 'DEMO OPEN' : 'OPEN' });
 	if (twin?.exitTime) markers.push({ t: twin.exitTime, value: twin.exitPrice, label: twin.stage === 'capital' ? 'DEMO CLOSE' : 'CLOSE', detail: twin.exitPrice == null ? 'Close price not recorded (closed by Capital)' : '' });
-	const tradeChart: Graph = compact({ kind: 'price' as const, unit: 'Price', precision: prec, height: 280, from: d.window.from, through: d.window.through,
+	const from = Math.min(d.window.from, twin?.entryTime ?? Infinity), through = Math.max(d.window.through, twin?.exitTime ?? -Infinity);
+	const tradeChart: Graph = compact({ kind: 'price' as const, unit: 'Price', precision: prec, height: 280, from, through,
 		series: [series('Bid', bid, 600), series('Ask', ask, 600)], candles: d.price.candles.length ? packCandles(d.price.candles) : undefined, gaps: d.coverage.gaps, markers, guides });
 	panels.push(compact({ id: 'trade-chart', title: `Trade · ${clock(s.entryTime)} → ${s.exitTime ? clock(s.exitTime) : 'now'}`, chart: tradeChart,
 		stats: far.slice(0, 3) }));
 	sections.push({ title: '', rows: panels });
 	const notional = s.size * s.entryPrice;
 	sections.push({ title: 'Sizing', rows: [{ id: 'sizing', title: `${s.epic} · ${tier(s.leverage)} · ${agentName}`, stats: [{ label: 'Notional', value: usd(notional) }, { label: 'Entry equity', value: usd(s.entryEquity) }, { label: 'Exposure', value: s.entryEquity ? num(notional / s.entryEquity) + '×' : '—' }] },
-		{ id: 'risk', title: 'Price path', stats: [{ label: risk.fullTrade ? 'Max decline' : 'Observed decline', value: risk.maxDrawdown == null ? '—' : (risk.fullTrade ? '' : '≥') + usd(risk.maxDrawdown), tone: -1 }, { label: 'Best favorable', value: signedUsd(risk.mfe), tone: 1 }, { label: 'Decline of equity', value: risk.drawdownFraction == null ? '—' : pct(-risk.drawdownFraction), tone: -1 }] }] });
+		{ id: 'risk', title: 'Price path', stats: [{ label: risk.fullTrade ? 'Max decline' : 'Observed decline', value: risk.maxDrawdown == null ? '—' : (risk.fullTrade ? '' : '≥') + signedUsd(-risk.maxDrawdown), tone: tone(-(risk.maxDrawdown ?? 0)) }, { label: 'Best favorable', value: signedUsd(risk.mfe), tone: tone(risk.mfe) }, { label: 'Decline of equity', value: risk.drawdownFraction == null ? '—' : pct(-risk.drawdownFraction), tone: -1 }] }] });
 	const gates = gateRows(d.strategy?.gates ?? []);
 	if (gates.length) sections.push({ title: 'Entry limits', rows: gates });
 	const costs: Row[] = [{ id: 'costs', title: 'Costs', stats: [{ label: 'Spread cost', value: usd(c.spread) }, { label: 'Funding', value: signedUsd(c.funding) }, { label: 'Timing', value: signedUsd(c.timing) }] }];
