@@ -23,6 +23,12 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 - Trade inspection reads use `$lib/server/inspection.ts` → loopback `trader-inspector:4140`,
   a separate bounded, read-only archive worker. Native and web share its stable trade keys, costs
   and coverage; missing quotes never become an exact intratrade risk claim.
+- The native iPhone app reads `/api/native/v2/<screen>` (`src/routes/api/native/v2/[screen]`): each screen is built here
+  (`$lib/server/native/screens.ts`, loaded by `load.ts`) in the format of `wire.ts`, gzip-compressed, with an ETag so
+  an unchanged screen costs a 304. Chart series are packed base64 arrays. The device key, not the website login,
+  authorizes these exact paths; `ops/server/native-access.py edge` lists them at the edge. Change a native screen
+  here and push: no app build is needed unless the wire format changes. v1 (`api/native/v1`) served raw arena
+  records for the app to reshape; it stays until the v2 app is installed.
 - API types come from `@trader/shared` (`packages/shared/src/types.ts`); change them together with
   `apps/backend/src/arena/api.ts`.
 - The leaderboard refreshes visible tabs every 30 seconds and retries failed loads after five seconds,

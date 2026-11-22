@@ -7,6 +7,8 @@ PRIVATE=ROOT/'apps/ios/Private'
 PAIRING=PRIVATE/'primary-phone.json'
 UI=Path.home()/'.local/share/hetzner-pc/mirror/home/<server-user>/trader-ui'
 RESOURCES=['leaderboard','agents','agent','run','inspection','broker','status','graveyard','journal','research','mirror','exclude']
+# v2 (2026-11-22): screens built on the server, revalidated by ETag. Keep the list in step with apps/ui/src/lib/server/native/load.ts.
+SCREENS=['rankings','agents','agent','run','trade','accounts','account','status','scenarios','graveyard','archive','journal','research','document','source','mirror','exclude']
 SITE='trader.veron3.space'
 
 def private_write(path,data):
@@ -33,7 +35,7 @@ def prepare():
 
 def edge():
  value=credentials()
- req=urllib.request.Request('http://127.0.0.1:10003/api/native/v1/agents',headers={'Authorization':'Bearer '+value['token']})
+ req=urllib.request.Request('http://127.0.0.1:10003/api/native/v2/agents',headers={'Authorization':'Bearer '+value['token']})
  with urllib.request.urlopen(req,timeout=25) as response:
   if response.status!=200:raise SystemExit('Native API must pass its local authenticated check first')
  before=subprocess.run(['ssh','<server-user>@<server-ip>','sudo -n cat /etc/caddy/Caddyfile'],check=True,capture_output=True).stdout
@@ -46,7 +48,7 @@ def edge():
  if end is None:raise SystemExit('Unbalanced Trader block')
  old=text[start:end]
  if '127.0.0.1:18080' not in old or 'import authelia' not in old:raise SystemExit('Unexpected Trader edge routing; nothing changed')
- paths=' '.join('/api/native/v1/'+r for r in RESOURCES)
+ paths=' '.join(['/api/native/v1/'+r for r in RESOURCES]+['/api/native/v2/'+r for r in SCREENS])
  new=f'''{SITE} {{
     route {{
         # Native access is authenticated by Trader's dedicated device key, never by a public bypass.
