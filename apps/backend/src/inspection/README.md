@@ -7,7 +7,11 @@ SQLite connections open read-only. No raw quote files or second archive are crea
 
 `trader-inspector.service` runs in trader.slice. GET /inspection?id=<run>&trade=<idx|open>&stage=
 <virtual|capital|backtest> returns bid/ask, minute fallback candles, executable-price P&L, spread,
-drawdown, costs, recorded decisions and coverage. GET /preview returns the latest two closed trades.
+drawdown, costs, recorded decisions and coverage, plus the trade's twin: the Capital demo deal of a paper trade
+(same run, side and paper fill time) or the paper trade of a deal. GET /preview returns the latest two closed trades.
+GET /sparks?id=<run> returns each trade's and deal's mini price path for the native trade lists: the minute close
+at 40 evenly spaced moments from entry to exit, one index seek each in the arena's candle table. Closed trades'
+paths are kept in memory (20,000 at most); an open position's path is recomputed.
 The UI proxies these reads; native access retains the dedicated device-key allowlist.
 
 Calculations use all valid scanned quotes; only rendered series are thinned while preserving extrema.

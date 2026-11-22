@@ -27,6 +27,28 @@ async function inspection(id:string,key:string,stage:string){
   const work=serial.then(()=>load(id,key,stage));serial=work.then(()=>{},()=>{});pending.set(k,work);
   try{return await work;}finally{pending.delete(k);}
 }
+// Mini price paths for trade lists: the minute close at evenly spaced moments from entry to exit, one index seek each.
+// Closed trades never change, so their paths are kept (bounded); an open position's path is recomputed.
+const closeAt=db.query<{c:number},[string,number]>('SELECT c FROM candles WHERE epic=? AND t<=? ORDER BY t DESC LIMIT 1');
+const sparkCache=new Map<string,number[]>();
+function spark(epic:string,from:number,to:number,cacheKey?:string):number[]{
+  const cached=cacheKey?sparkCache.get(cacheKey):undefined;if(cached)return cached;
+  const n=INSPECTION_LIMITS.sparkPoints,out:number[]=[];
+  if(to>from)for(let i=0;i<n;i++){const c=closeAt.get(epic,from+(to-from)*i/(n-1))?.c;out.push(c??NaN);}
+  if(cacheKey){sparkCache.set(cacheKey,out);if(sparkCache.size>INSPECTION_LIMITS.sparkCache)sparkCache.delete(sparkCache.keys().next().value!);}
+  return out;
+}
+function sparks(runId:string){
+  const run=db.query<any,[string]>('SELECT epic,snapshot FROM runs WHERE id=?').get(runId);if(!run)throw Error('Run not found');
+  const trades=db.query<any,[string,number]>('SELECT idx,entry_time,exit_time FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT ?').all(runId,INSPECTION_LIMITS.sparkTrades);
+  const deals=db.query<any,[string]>("SELECT id,open_time,confirmed_time,close_time,status FROM broker_deals WHERE run_id=? AND account LIKE 'Arena%' AND status!='failed' AND open_price IS NOT NULL ORDER BY id DESC LIMIT 2000").all(runId);
+  const position=run.snapshot?JSON.parse(run.snapshot).position:null,now=Date.now();
+  const round=(v:number[])=>v.map(x=>Number.isFinite(x)?x:null);
+  return {epic:run.epic,points:INSPECTION_LIMITS.sparkPoints,
+    trades:trades.map(t=>[String(t.idx),round(spark(run.epic,t.entry_time,t.exit_time,`${runId}|t|${t.idx}|${t.exit_time}`))]),
+    deals:deals.map(d=>{const from=d.confirmed_time??d.open_time,to=d.status==='closed'?d.close_time:now;return [String(d.id),round(spark(run.epic,from,to,d.status==='closed'?`${runId}|d|${d.id}`:undefined))]}),
+    open:position?round(spark(run.epic,position.entryTime,now)):null};
+}
 const headers={'Content-Type':'application/json','Cache-Control':'private, no-store'};
 const server=Bun.serve({hostname:'127.0.0.1',port:Number(process.env.INSPECTION_PORT??4140),idleTimeout:60,async fetch(req){
   const url=new URL(req.url);if(req.method!=='GET')return Response.json({error:'Read only'},{status:405});
@@ -34,6 +56,10 @@ const server=Bun.serve({hostname:'127.0.0.1',port:Number(process.env.INSPECTION_
   const id=url.searchParams.get('id')??'',stage=url.searchParams.get('stage')??'virtual';
   try{
     if(url.pathname==='/inspection')return new Response(await inspection(id,url.searchParams.get('trade')??'',stage),{headers});
+    if(url.pathname==='/sparks'){
+      if(!/^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/.test(id))return Response.json({error:'Invalid selection'},{status:400});
+      return new Response(JSON.stringify(sparks(id)),{headers});
+    }
     if(url.pathname==='/preview'){
       if(!/^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/.test(id)||!['virtual','capital','backtest'].includes(stage))return Response.json({error:'Invalid selection'},{status:400});
       const ids=stage==='capital'?db.query<any,[string]>("SELECT id key FROM broker_deals WHERE run_id=? AND account LIKE 'Arena%' AND status='closed' ORDER BY close_time DESC LIMIT 2").all(id):db.query<any,[string]>('SELECT idx key FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT 2').all(id);

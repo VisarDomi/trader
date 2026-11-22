@@ -10,8 +10,11 @@ export interface Subject {
   agentId?:string;codeHash?:string;timeframe?:string;params?:Record<string,unknown>;intentEntryTime?:number;decisionTime?:number;
   execution?:ExecutionCostEvidence;stopLoss?:number|null;takeProfit?:number|null;
   timeline:{label:string;t:number}[];
+  /** The same trade on the other side: the Capital demo deal of a paper trade, or the paper trade of a deal. */
+  twin?:Twin|null;
 }
-export const INSPECTION_LIMITS={windowMs:7*86400000,points:600,scanTicks:250_000,chunks:1600,cacheBytes:16*1024*1024,cacheEntries:12};
+export interface Twin {stage:'virtual'|'capital';key:string;side:'long'|'short';size:number;entryTime:number;exitTime:number|null;entryPrice:number|null;exitPrice:number|null;pnl:number|null;note:string|null;timeline:{label:string;t:number}[]}
+export const INSPECTION_LIMITS={windowMs:7*86400000,points:600,scanTicks:250_000,chunks:1600,cacheBytes:16*1024*1024,cacheEntries:12,sparkPoints:40,sparkTrades:2000,sparkCache:20000};
 export function mergedIntervals(intervals:Interval[]):Interval[]{
   const out:Interval[]=[];
   for(const i of intervals.filter(i=>i.through>i.from).sort((a,b)=>a.from-b.from)){

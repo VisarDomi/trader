@@ -1,5 +1,11 @@
 import type { Database } from 'bun:sqlite';
-import type { Subject } from './model';
+import type { Subject,Twin } from './model';
+const timeline=(d:any)=>[['Signal',d.decision_time],['Virtual fill',d.virtual_fill_time],['Sent to Capital',d.sent_time],['Accepted',d.accepted_time],['Confirmed entry',d.confirmed_time],['Close requested',d.close_requested_time],['Closed',d.close_time]].filter(([,t])=>typeof t==='number').map(([label,t])=>({label:String(label),t:Number(t)}));
+/** The Capital demo deal that mirrored a paper trade (same run, side and paper fill time). */
+export function dealTwin(db:Database,runId:string,entryTime:number,side:string):Twin|null{
+  const d=db.query<any,[string,number,string]>("SELECT * FROM broker_deals WHERE run_id=? AND virtual_fill_time=? AND side=? AND account LIKE 'Arena%' AND status!='failed' ORDER BY id LIMIT 1").get(runId,entryTime,side);
+  return d?{stage:'capital',key:String(d.id),side:d.side,size:d.size,entryTime:d.confirmed_time??d.open_time,exitTime:d.status==='closed'?d.close_time:null,entryPrice:d.open_price,exitPrice:d.close_price,pnl:d.pnl,note:d.note,timeline:timeline(d)}:null;
+}
 const exits:Record<string,string>={session_end:'Scheduled session close',signal:'Agent close signal',stop_loss:'Stop loss reached',take_profit:'Take profit reached',trailing_stop:'Trailing stop reached',margin_call:'Margin close-out',margin:'Margin close-out',busted:'Account protection',stopped:'Run stopped',reverse:'Direction reversed',deadline:'Scheduled exit'};
 export function subject(db:Database,runId:string,key:string,stage:string,now=Date.now()):Subject{
   if(!/^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/.test(runId)||!['virtual','backtest','capital'].includes(stage)||!(key==='open'||/^\d{1,9}$/.test(key)))throw Error('Invalid trade selection');
@@ -14,15 +20,16 @@ export function subject(db:Database,runId:string,key:string,stage:string,now=Dat
     const pos=run.snapshot?JSON.parse(run.snapshot).position:null;
     const entryReason=intent?.entry_reason??(pos?.entryTime===d.virtual_fill_time?pos.entryReason:null);
     const linkedExit=intent&&d.close_requested_time&&Math.abs(d.close_requested_time-intent.exit_time)<60000;
-    const timeline=[['Signal',d.decision_time],['Virtual fill',d.virtual_fill_time],['Sent to Capital',d.sent_time],['Accepted',d.accepted_time],['Confirmed entry',d.confirmed_time],['Close requested',d.close_requested_time],['Closed',d.close_time]].filter(([,t])=>typeof t==='number').map(([label,t])=>({label:String(label),t:Number(t)}));
-    return {...base,side:d.side,size:d.size,entryTime:d.confirmed_time??d.open_time,exitTime:d.status==='closed'?d.close_time:null,entryPrice:d.open_price,exitPrice:d.close_price,
-      pnl:d.pnl,funding:null,entryEquity:null,entryReason:entryReason??null,exitReason:linkedExit?(intent.exit_note||exits[intent.exit_reason]||intent.exit_reason):(d.note||null),exitCode:linkedExit?intent.exit_reason:null,timeline,intentEntryTime:d.virtual_fill_time??undefined,decisionTime:d.decision_time??undefined};
+    const paper=d.virtual_fill_time?db.query<any,[string,number,string]>('SELECT idx,size,entry_time,exit_time,entry_price,exit_price,pnl,exit_note FROM trades WHERE run_id=? AND entry_time=? AND side=? ORDER BY idx LIMIT 1').get(runId,d.virtual_fill_time,d.side):null;
+    const twin:Twin|null=paper?{stage:'virtual',key:String(paper.idx),side:d.side,size:paper.size,entryTime:paper.entry_time,exitTime:paper.exit_time,entryPrice:paper.entry_price,exitPrice:paper.exit_price,pnl:paper.pnl,note:paper.exit_note,timeline:[]}:null;
+    return {...base,twin,timeline:timeline(d),side:d.side,size:d.size,entryTime:d.confirmed_time??d.open_time,exitTime:d.status==='closed'?d.close_time:null,entryPrice:d.open_price,exitPrice:d.close_price,
+      pnl:d.pnl,funding:null,entryEquity:null,entryReason:entryReason??null,exitReason:linkedExit?(intent.exit_note||exits[intent.exit_reason]||intent.exit_reason):(d.note||null),exitCode:linkedExit?intent.exit_reason:null,intentEntryTime:d.virtual_fill_time??undefined,decisionTime:d.decision_time??undefined};
   }
   const p=key==='open'?(run.snapshot?JSON.parse(run.snapshot).position:null):null;
   if(key==='open'){
     if(!p)throw Error('No open position');
     return {...base,side:p.side,size:p.size,entryTime:p.entryTime,exitTime:null,entryPrice:p.entryPrice,exitPrice:null,pnl:null,funding:p.funding??null,
-      entryEquity:null,entryReason:p.entryReason??null,exitReason:null,exitCode:null,stopLoss:p.stopLoss,takeProfit:p.takeProfit,timeline:[{label:'Opened',t:p.entryTime}]};
+      entryEquity:null,twin:stage==='virtual'?dealTwin(db,runId,p.entryTime,p.side):null,entryReason:p.entryReason??null,exitReason:null,exitCode:null,stopLoss:p.stopLoss,takeProfit:p.takeProfit,timeline:[{label:'Opened',t:p.entryTime}]};
   }
   const t=db.query<any,[string,number]>('SELECT * FROM trades WHERE run_id=? AND idx=?').get(runId,Number(key));if(!t)throw Error('Trade not found');
   const totals=db.query<any,[number,string]>('SELECT COUNT(*) n,MIN(idx) first,MAX(idx) last,COALESCE(SUM(CASE WHEN idx<? THEN pnl ELSE 0 END),0) prior FROM trades WHERE run_id=?').get(Number(key),runId);
@@ -31,5 +38,5 @@ export function subject(db:Database,runId:string,key:string,stage:string,now=Dat
   const complete=totals.first===0&&totals.last+1===totals.n&&totals.n>=(m?.trades??totals.n);
   return {...base,side:t.side,size:t.size,entryTime:t.entry_time,exitTime:t.exit_time,entryPrice:t.entry_price,exitPrice:t.exit_price,pnl:t.pnl,funding:t.funding,
     entryEquity:complete?run.capital+totals.prior:null,entryReason:t.entry_reason,exitReason:t.exit_note||exits[t.exit_reason]||t.exit_reason,exitCode:t.exit_reason,
-    ...(t.execution?{execution:JSON.parse(t.execution)}:{}),decisionTime:decision?.decision_time??undefined,timeline:[{label:'Opened',t:t.entry_time},{label:'Closed',t:t.exit_time}]};
+    ...(t.execution?{execution:JSON.parse(t.execution)}:{}),decisionTime:decision?.decision_time??undefined,twin:stage==='virtual'?dealTwin(db,runId,t.entry_time,t.side):null,timeline:[{label:'Opened',t:t.entry_time},{label:'Closed',t:t.exit_time}]};
 }
