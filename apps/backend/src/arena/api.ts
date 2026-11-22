@@ -443,7 +443,8 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[], evidence?:AgentEv
         startedAt: since,
         equity,
         metrics,
-        ...(evidence?{evidence:evidence.forCapital(r,unrealized,open.length>0)}:{}),
+        // The comparison uses the Capital cash metrics above, not the virtual row's.
+        ...(evidence?{evidence:evidence.forCapital({...r,startedAt:since,equity,metrics},unrealized,open.length>0)}:{}),
         brokerEvidence: {
           closed: closed.length,
           priced: priced.length,
