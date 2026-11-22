@@ -3,7 +3,7 @@ import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { CONTROL_SLUGS } from '../engine/policy.ts';
-import { HOUR_MS } from '../engine/clock.ts';
+import { outrightHold } from './hold.ts';
 import { isShadow, backtestGate } from './pipeline.ts';
 import { runKey, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 
@@ -18,7 +18,6 @@ const emptyCosts = (): CostSummary => ({reportedTrades:0,historyComplete:true,cl
 export class AgentEvidenceService {
   private refreshed = -Infinity;
   private rows = new Map<string,RunRow>();
-  private benchmarks = new Map<string,RunRow>();
   private comparisons = new Map<string,BenchmarkComparison>();
   private costs = new Map<string,CostSummary>();
   private costsRefreshed = new Map<string,number>();
@@ -30,14 +29,12 @@ export class AgentEvidenceService {
   invalidate():void { this.refreshed = -Infinity; this.costsRefreshed.clear(); }
   private refresh(now: number): void {
     if (now-this.refreshed < CACHE_MS) return;
-    this.refreshed=now; this.comparisons.clear(); this.benchmarks.clear();
+    this.refreshed=now; this.comparisons.clear();
     this.cashflows=this.arena.db.cashflowSummary();
     const rows=[...this.arena.db.listRuns(RUN_KIND.DEMO,true),...this.arena.db.listRuns(RUN_KIND.BACKTEST,true)];
     this.rows=new Map(rows.map(r=>[r.id,r])); this.agents=new Map(this.arena.db.agents().map(a=>[a.id,a]));
     this.backtests=new Map(rows.filter(r=>r.kind===RUN_KIND.BACKTEST&&!r.retired&&r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r=>[runKey(r.agent_id,r.epic,r.leverage??0),r]));
     this.variants=new Set(rows.filter(r=>r.kind===RUN_KIND.DEMO&&!r.retired&&!isShadow(r.id)&&!CONTROL_SLUGS.has(this.agents.get(r.agent_id)?.slug??r.agent_id)).map(r=>r.agent_id)).size;
-    for(const r of rows) if(r.agent_id==='buy-hold'&&r.leverage===1&&!r.retired&&!isShadow(r.id))
-      this.benchmarks.set(`${r.kind}:${r.epic}:${r.window_id??''}`,r);
   }
   private loadCosts(kind:RunRow['kind'],now:number,runId?:string):void {
     const ttl=kind===RUN_KIND.BACKTEST?HISTORICAL_COST_CACHE_MS:CACHE_MS;
@@ -60,39 +57,28 @@ export class AgentEvidenceService {
   comparison(row:RunRow,now=Date.now()):BenchmarkComparison {
     this.refresh(now);
     const cached=this.comparisons.get(row.id);if(cached)return cached;
-    const baseline=this.benchmarks.get(`${row.kind}:${row.epic}:${row.window_id??''}`);
     let result:BenchmarkComparison;
-    if(!baseline) result=unavailable('No current 1:1 buy-and-hold control for this instrument/window.');
-    else if(row.kind===RUN_KIND.BACKTEST) {
-      const m=row.metrics?JSON.parse(row.metrics):null,b=baseline.metrics?JSON.parse(baseline.metrics):null;
-      const engine=row.extra?JSON.parse(row.extra).engineVersion:null,baseEngine=baseline.extra?JSON.parse(baseline.extra).engineVersion:null;
-      // Holding an instrument over fixed dates hardly depends on the simulation engine, so a backtest left on an
-      // earlier engine (a retired run is not re-run) is still compared, and the note says which engines differ.
-      if(!m||!b||m.startTime!==b.startTime||m.endTime!==b.endTime)
-        result=unavailable('Benchmark requires the same historical dates.');
-      else result={status:'matched',basis:'same-backtest-window',benchmarkRunId:baseline.id,from:m.startTime,through:m.endTime,
-        strategyReturn:m.totalReturn,benchmarkReturn:b.totalReturn,excessReturn:m.totalReturn-b.totalReturn,
-        note:'Same historical window; 1:1 buy-and-hold sizing differs from the strategy. This is excess return, not risk-adjusted alpha.'+
-          (engine!==baseEngine?` The strategy ran on engine ${engine??'unknown'}, the hold on ${baseEngine??'unknown'}.`:'')};
+    if(row.kind===RUN_KIND.BACKTEST) {
+      const m=row.metrics?JSON.parse(row.metrics):null;
+      result=!m||!(m.endTime>m.startTime)?unavailable('No completed backtest metrics.')
+        :this.versusHold(row.epic,m.startTime,m.endTime,m.totalReturn,'same-backtest-window',
+          'Same historical window. Sizing differs; excess return is not risk-adjusted alpha.');
     } else {
-      // The run's whole life, like its Return: until 2026-11-22 the comparison began at the tick-feed epoch (Oct 16),
-      // so a row showed a lifetime Return beside an excess over other dates.
-      const since=Math.ceil(Math.max(row.started_at,baseline.started_at)/HOUR_MS)*HOUR_MS;
-      const {first,last}=this.arena.db.matchedEquity(row.id,baseline.id,since);
-      if(!first||!last||last.t<=first.t||first.strategy<=0||first.benchmark<=0)
-        result=unavailable('Waiting for two common hourly equity observations.');
-      else {
-        // A run that started with the control is measured from its starting capital; one that started earlier (the
-        // control was replaced) from the first common observation.
-        const base=row.started_at>=baseline.started_at&&row.capital>0?row.capital:first.strategy;
-        const strategyReturn=last.strategy/base-1,benchmarkReturn=last.benchmark/first.benchmark-1;
-        result={status:'matched',basis:'shared-hourly-equity',benchmarkRunId:baseline.id,from:first.t,through:last.t,
-          strategyReturn,benchmarkReturn,excessReturn:strategyReturn-benchmarkReturn,
-          note:'From the run\'s start: its return on starting capital against the 1:1 buy-and-hold run of the same instrument over the same stored hourly observations. Sizing differs; excess return is not risk-adjusted alpha.'};
-      }
+      // The run's whole life, like its Return: its latest hourly equity on its starting capital.
+      const last=this.arena.db.lastEquity(row.id);
+      result=!last||last.t<=row.started_at||!(row.capital>0)?unavailable('Waiting for the first hourly equity observation.')
+        :this.versusHold(row.epic,row.started_at,last.t,last.equity/row.capital-1,'shared-hourly-equity',
+          'From the run\'s start to its latest hourly equity, on its starting capital. Sizing differs; excess return is not risk-adjusted alpha.');
     }
-    result=this.withHurdles(result);
     this.comparisons.set(row.id,result);return result;
+  }
+  /** Holding the instrument outright over the same dates (hold.ts), then T-bills and inflation (rates.ts). */
+  private versusHold(epic:string,from:number,through:number,strategyReturn:number,basis:BenchmarkComparison['basis'],note:string):BenchmarkComparison {
+    const hold=outrightHold(this.arena.db,this.arena.rates,epic,from,through);
+    if(typeof hold==='string')return unavailable(hold);
+    const {ret,...parts}=hold;
+    return this.withHurdles({status:'matched',basis,from,through,strategyReturn,benchmarkReturn:ret,excessReturn:strategyReturn-ret,hold:parts,
+      note:note+' The hold buys the instrument outright at 1:1, pays no CFD fees and collects what owning it pays.'});
   }
   /** Adds what Treasury bills earned and what CPI inflation took over the comparison's own dates (rates.ts). */
   private withHurdles(b:BenchmarkComparison):BenchmarkComparison {
@@ -142,18 +128,13 @@ export class AgentEvidenceService {
       note:'Existing records include calibration and user experiments. Cost coverage, common-date benchmarks and paused dependencies qualify every comparison; they do not change the promotion thresholds.'};
   }
   /** Capital demo: realized cash return on the run's allocation since its first deal, against holding the instrument
-   *  1:1 over the same dates (the buy-and-hold control's stored hourly equity). */
-  private cashComparison(row:LeaderboardRow):BenchmarkComparison {
-    this.refresh(Date.now());
-    const m=row.metrics,baseline=this.benchmarks.get(`${RUN_KIND.DEMO}:${row.epic}:`);
+   *  outright over the same dates. */
+  private cashComparison(row:LeaderboardRow,now=Date.now()):BenchmarkComparison {
+    this.refresh(now);
+    const m=row.metrics;
     if(!m||!m.startTime)return unavailable('No priced Capital deals yet.');
-    if(!baseline)return unavailable('No 1:1 buy-and-hold control for this instrument.');
-    const {first,last}=this.arena.db.matchedEquity(baseline.id,baseline.id,Math.ceil(m.startTime/HOUR_MS)*HOUR_MS);
-    if(!first||!last||last.t<=first.t||first.benchmark<=0)return unavailable('Waiting for two hourly hold observations since the first deal.');
-    const benchmarkReturn=last.benchmark/first.benchmark-1;
-    return this.withHurdles({status:'matched',basis:'cash-vs-hold',benchmarkRunId:baseline.id,from:m.startTime,through:last.t,
-      strategyReturn:m.totalReturn,benchmarkReturn,excessReturn:m.totalReturn-benchmarkReturn,
-      note:'Realized cash on the run\'s Capital allocation since its first deal, against holding the instrument 1:1 over the same dates. Open positions count only once closed; sizing differs; not risk-adjusted.'});
+    return this.versusHold(row.epic,m.startTime,now,m.totalReturn,'cash-vs-hold',
+      'Realized cash on the run\'s Capital allocation since its first deal. Open positions count only once closed; sizing differs; not risk-adjusted.');
   }
   forCapital(row:LeaderboardRow,unrealizedPnl:number|null,openPosition:boolean):AgentEvidence|undefined {
     this.refresh(Date.now());

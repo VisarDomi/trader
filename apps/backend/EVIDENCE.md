@@ -8,20 +8,31 @@ diagnostics. Admission thresholds remain those in agents/LIFECYCLE.md.
 
 Every record is compared with holding its instrument 1:1 over the same dates, so Return − hold = excess:
 
-- **Virtual:** the current standard 1:1 buy-and-hold control for the same instrument, from the run's start (the first
-  common stored hourly observation after both starts) to their latest common observation. The run's return is on
-  its starting capital, like its lifetime Return; the control's on its equity at that first observation. A run that
-  started before its control (a replaced control) is rebased at the first common observation. Until 2026-11-22 the
-  window began at the tick-feed epoch (Oct 16), so rows showed a lifetime Return beside an excess over fewer dates.
-- **Backtest:** the 1:1 buy-and-hold backtest over the same historical window. A backtest left on an earlier engine
-  (its run retired, so never re-run) is still compared, with both engines named in the note: holding over fixed
-  dates hardly depends on the engine.
-- **Capital demo:** realized cash return on the run's allocation since its first deal, against the control's stored
-  hourly equity over the same dates (`cash-vs-hold`). Open positions count once closed.
+- **Virtual:** from the run's start to its latest stored hourly equity, on its starting capital (like its Return).
+- **Backtest:** the backtest's historical window.
+- **Capital demo:** realized cash return on the run's allocation since its first deal, to now (`cash-vs-hold`).
+  Open positions count once closed.
 
-No interpolation or future prices; exact timestamps are returned. Sizes differ: the percentage-point difference is
-excess return, not risk-adjusted alpha. Missing controls or fewer than two shared points return unavailable, never
-zero. Virtual corporate-action/funding limits apply.
+The hold (`src/arena/hold.ts`, since 2026-11-22) is the instrument bought outright with the same money, never sold,
+paying no CFD fees: an index can be owned through its shares, a share or coin directly, a metal as metal, a currency
+as a deposit. Return = (1 + price change) × (1 + what owning it paid) − 1:
+
+- indices: the tracker's dividends (US500 SPY, US100 QQQ, US30 DIA); shares: their own dividends (Yahoo Finance, each
+  as a fraction of the previous close on its ex-date);
+- currencies: the foreign deposit rate (EURUSD €STR, GBPUSD SONIA, AUDUSD the 3-month interbank rate; FRED);
+- gold, silver, crypto: price only;
+- oil and natural gas: price only, an upper bound, since nobody owns barrels or gas outright (storage, futures roll).
+
+Prices are the arena's own: the close of the last minute candle finished by the moment (within four days), else the
+lab's daily bars. Until 2026-11-22 the hold was the Buy & Hold control run, a CFD at 0.9× exposure with overnight
+funding and no dividends; it stays a control agent. Over the 2024-01 → 2026-10 window it trailed the outright price
+before dividends on every instrument (US500 +56.8% vs +61.0%, gold +91.2% vs +101.2%), and it fell less in a drop.
+
+No future prices; exact dates are returned. Sizes differ: the percentage-point difference is excess return, not
+risk-adjusted alpha. Missing prices, dividend history or deposit rates return unavailable, never zero.
+
+Current virtual exposure is notional / liquidation equity. Stop downside starts at the current mark;
+gaps/future costs can change it. Shared broker margin is never inferred by scaling virtual accounts.
 
 ## Cash and inflation
 
@@ -40,10 +51,13 @@ Every matched comparison also carries what the same dates paid elsewhere (`hurdl
 
 The series are stored in the arena database (`macro_series`), refreshed every six hours (bills fall back to
 treasury.gov) and kept when a refresh fails. Dates before the stored history (2000) return no hurdles, never zeros.
-Sharpe stays the cash-free ratio the backtest gate (−0.5) was set on; it does not subtract T-bills.
 
-Current virtual exposure is notional / liquidation equity. Stop downside starts at the current mark;
-gaps/future costs can change it. Shared broker margin is never inferred by scaling virtual accounts.
+**Sharpe and Sortino** measure each period's return above what T-bills paid over that period (`riskFree: 'tbills'`),
+on live runs, Capital cash and backtests alike; stored records were re-measured from their stored equity curves, which
+reproduce the earlier cash-free ratios exactly (637 of 637). The backtest admission gate (−0.5) keeps checking the
+Sharpe of the returns themselves (`cashFreeSharpe`): it filters strategies that lose on their own. On the Sharpe above
+T-bills it would also reject 127 of 637 backtests, mostly low-leverage variants rarely in the market, whose idle cash
+earns nothing in a CFD account. Promotion never used Sharpe (trade t-statistics and the monkeys).
 
 ## Costs and coverage
 

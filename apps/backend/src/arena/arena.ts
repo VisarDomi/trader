@@ -31,6 +31,7 @@ import { monitorEventLoopDelay } from 'node:perf_hooks';
 import type { CapitalClient } from '../capital/client.ts';
 import { RESOLUTION } from '../capital/client.ts';
 import { DAY_MS, HOUR_MS, MINUTE_MS } from '../engine/clock.ts';
+import { riskAdjusted, type EquityPoint, type RunMetrics } from '../engine/metrics.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import { loadAgents } from '../engine/loader.ts';
@@ -214,9 +215,46 @@ export class Arena {
         this.saveStreamCandles(epic,engine);
       }
     }, 1000);
+    // Stored Sharpe ratios are re-measured above T-bills whenever the rates change (and once now).
+    this.rates.onReload = () => this.rescoreSharpe();
+    this.rescoreSharpe();
     this.rates.start();
     void this.forecasts.probe();
     this.probeTimer = setInterval(() => void this.forecasts.probe(), FORECASTER_PROBE_MS);
+  }
+
+  /** Backtest metrics with Sharpe and Sortino measured above T-bills from their own equity curve. */
+  withRiskFree(metrics: RunMetrics, equity: readonly EquityPoint[]): RunMetrics {
+    const years = (metrics.endTime - metrics.startTime) / DAY_MS / 365.25;
+    const risk = riskAdjusted(equity, years, (a, b) => this.rates.cash(a, b));
+    return risk.riskFree ? { ...metrics, ...risk } : metrics;
+  }
+
+  private rescoring = false;
+  /**
+   * Re-measures stored Sharpe and Sortino above T-bills from each record's stored equity curve: backtests and
+   * retired runs, in batches between other work. Live runs re-measure on their next metrics pass.
+   */
+  rescoreSharpe(): void {
+    if (this.rescoring || this.rates.cash(Date.UTC(2024, 0, 1), Date.UTC(2024, 0, 2)) === null) return;
+    this.rescoring = true;
+    let after = '', updated = 0;
+    const batch = () => {
+      // Small batches with pauses: quotes and orders must not wait behind a long synchronous scan.
+      const rows = this.db.metricsWithoutRiskFree(after, 20);
+      for (const row of rows) {
+        after = row.id;
+        if (this.tracked.has(row.id)) continue;
+        const metrics = JSON.parse(row.metrics) as RunMetrics, next = this.withRiskFree(metrics, this.db.equity(row.id));
+        if (next !== metrics) { this.db.updateMetrics(row.id, next); updated++; }
+      }
+      if (rows.length) setTimeout(batch, 25);
+      else {
+        this.rescoring = false;
+        if (updated) this.db.event('info', 'rates', `Sharpe and Sortino of ${updated} stored records re-measured above T-bills`);
+      }
+    };
+    batch();
   }
 
   stop(): void {

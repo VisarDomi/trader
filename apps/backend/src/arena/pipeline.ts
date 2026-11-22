@@ -27,10 +27,14 @@ export function backtestGate(row: RunRow | undefined, hash: string, slug: string
   const m = JSON.parse(row.metrics) as RunMetrics;
   if (row.status === 'busted' || row.status === 'error' || m.finalEquity <= 0)
     return { passed: false, reason: 'backtest busted or errored' };
-  if (m.sharpe < -0.5)
+  // The gate filters strategies that lose on their own, so it checks the Sharpe of the returns themselves. The Sharpe
+  // shown everywhere is above T-bills; on it −0.5 would also reject 127 of 637 backtests (2026-11-22), mostly
+  // low-leverage variants rarely in the market, whose idle cash earns nothing in a CFD account.
+  const edge = m.cashFreeSharpe ?? m.sharpe;
+  if (edge < -0.5)
     return {
       passed: false,
-      reason: `backtest Sharpe ${m.sharpe.toFixed(2)} below -0.5`,
+      reason: `backtest Sharpe before T-bills ${edge.toFixed(2)} below -0.5`,
     };
   // Explicitly slow families retain the documented five-trade gate.
   const slow = new Set(['lrs-sma200', 'vol-managed-hold', 'turn-of-month', 'tsmom-12m', 'donchian-ensemble', 'cppi']);

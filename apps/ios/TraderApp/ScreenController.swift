@@ -90,7 +90,6 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     @objc private func pullRefresh(){load(refresh:true)}
     @objc private func stageChanged(_ sender:UISegmentedControl) {
         place.stage=["capital","virtual","backtest"][sender.selectedSegmentIndex]
-        if place.stage=="capital" && state.sort==3 {state.sort=0}
         updateSortingMenu()
         deferred=nil;deferredStatus=nil
         if place.stage != "virtual" {place.scenario=nil}
@@ -100,7 +99,7 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     }
     private func updateSortingMenu(){
         guard place.screen == .rankings else{return}
-        let labels=content.sort.isEmpty ? ["Return","Sharpe","Closed trades"]+(place.stage=="capital" ? []:["Excess vs hold"]):content.sort
+        let labels=content.sort.isEmpty ? ["Return","vs T-bills","vs hold","Sharpe","Closed trades"]:content.sort
         let actions=labels.enumerated().map { i,label in UIAction(title:label,state:state.sort==i ? .on:.off){[weak self] _ in self?.changeSort(i)} }
         navigationItem.rightBarButtonItem=UIBarButtonItem(title:"Sort",image:UIImage(systemName:"arrow.up.arrow.down"),menu:UIMenu(children:actions))
     }

@@ -26,8 +26,13 @@ export interface RunMetrics {
   totalReturn: number;
   annualReturn: number;
   maxDrawdown: number;
+  /** Annualized mean / stdev of period returns above 3-month T-bills ('tbills'); cash-free when absent. */
   sharpe: number;
   sortino: number;
+  /** 'tbills' when Sharpe and Sortino measure returns above Treasury bills (EVIDENCE.md "Cash and inflation"). */
+  riskFree?: 'tbills';
+  /** With riskFree: the Sharpe of the returns themselves, which the backtest admission gate checks (pipeline.ts). */
+  cashFreeSharpe?: number;
   calmar: number;
   trades: number;
   longTrades: number;
@@ -59,9 +64,45 @@ export interface MetricsInput {
   endTime: number;
   maxDrawdown: number;
   exposure: number;
+  /** Overrides the arena's T-bill rates (null: cash-free). */
+  riskFree?: RiskFree | null;
 }
 
 const DAYS_PER_YEAR = 365.25;
+
+/** Cash return over [from, to] (rolled 3-month T-bills, arena/rates.ts), or null when the rates do not cover it. */
+export type RiskFree = (from: number, to: number) => number | null;
+let defaultRiskFree: RiskFree | null = null;
+/** The arena sets this once its rates load; every metric computed afterwards measures Sharpe above T-bills. */
+export function useRiskFree(riskFree: RiskFree | null): void {
+  defaultRiskFree = riskFree;
+}
+
+/**
+ * Sharpe and Sortino of an equity curve: annualized mean / stdev of each period's return above what T-bills paid
+ * over that period. A curve the rates do not fully cover keeps the cash-free ratios (no `riskFree` flag).
+ */
+export function riskAdjusted(equity: readonly EquityPoint[], years: number, riskFree: RiskFree | null = defaultRiskFree):
+  { sharpe: number; sortino: number; riskFree?: 'tbills'; cashFreeSharpe?: number } {
+  const raw: number[] = [], excess: number[] = [];
+  let covered = riskFree !== null;
+  for (let i = 1; i < equity.length; i++) {
+    const prev = equity[i - 1]!.equity;
+    if (!(prev > 0)) continue;
+    const r = equity[i]!.equity / prev - 1;
+    raw.push(r);
+    if (covered) {
+      const cash = riskFree!(equity[i - 1]!.t, equity[i]!.t);
+      if (cash === null) covered = false;
+      else excess.push(r - cash);
+    }
+  }
+  const annualize = Math.sqrt(Math.max(years > 0 ? raw.length / years : 0, 1));
+  const sharpe = (xs: number[]) => { const sd = stdev(xs); return round(sd > 0 ? (mean(xs) / sd) * annualize : 0, 4); };
+  const sortino = (xs: number[]) => { const down = Math.sqrt(mean(xs.map(r => (r < 0 ? r * r : 0)))); return round(down > 0 ? (mean(xs) / down) * annualize : 0, 4); };
+  if (!covered || !excess.length) return { sharpe: sharpe(raw), sortino: sortino(raw) };
+  return { sharpe: sharpe(excess), sortino: sortino(excess), riskFree: 'tbills', cashFreeSharpe: sharpe(raw) };
+}
 
 export function computeMetrics(input: MetricsInput): RunMetrics {
   const { trades, equity, initialCapital, finalEquity, startTime, endTime } = input;
@@ -76,16 +117,7 @@ export function computeMetrics(input: MetricsInput): RunMetrics {
   const grossWin = sum(wins);
   const grossLoss = -sum(losses);
 
-  const dailyReturns: number[] = [];
-  for (let i = 1; i < equity.length; i++) {
-    const prev = equity[i - 1]!.equity;
-    if (prev > 0) dailyReturns.push(equity[i]!.equity / prev - 1);
-  }
-  const periodsPerYear = years > 0 ? dailyReturns.length / years : 0;
-  const meanR = mean(dailyReturns);
-  const sdR = stdev(dailyReturns);
-  const downside = Math.sqrt(mean(dailyReturns.map(r => (r < 0 ? r * r : 0))));
-  const annualize = Math.sqrt(Math.max(periodsPerYear, 1));
+  const risk = riskAdjusted(equity, years, input.riskFree === undefined ? defaultRiskFree : input.riskFree);
 
   const monthly = monthlyReturns(equity, initialCapital);
   const maxDrawdown = input.maxDrawdown;
@@ -100,8 +132,7 @@ export function computeMetrics(input: MetricsInput): RunMetrics {
     totalReturn: round(totalReturn, 6),
     annualReturn: round(annualReturn, 6),
     maxDrawdown: round(maxDrawdown, 6),
-    sharpe: round(sdR > 0 ? (meanR / sdR) * annualize : 0, 4),
-    sortino: round(downside > 0 ? (meanR / downside) * annualize : 0, 4),
+    ...risk,
     calmar: round(maxDrawdown > 0 ? annualReturn / maxDrawdown : 0, 4),
     trades: trades.length,
     longTrades: trades.filter(t => t.side === 'long').length,

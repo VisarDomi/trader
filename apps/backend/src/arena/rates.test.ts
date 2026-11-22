@@ -53,6 +53,11 @@ test('FRED and treasury.gov files parse, skipping missing days', () => {
 });
 
 const fredBills = 'observation_date,DTB3\n' + Array.from({ length: 200 }, (_, i) => `${new Date(day(2026, 1, 1) + i * DAY).toISOString().slice(0, 10)},4.00`).join('\n');
+const fredDeposit = 'observation_date,X\n' + Array.from({ length: 30 }, (_, i) => `${new Date(Date.UTC(2024, i, 1)).toISOString().slice(0, 10)},3.00`).join('\n');
+// A Yahoo chart: closes of 100 every day from 2026-01-01, one 0.50 dividend on 2026-03-02 (0.5%).
+const yahoo = JSON.stringify({ chart: { result: [{ timestamp: Array.from({ length: 90 }, (_, i) => (Date.UTC(2026, 0, 1) + i * DAY) / 1000 + 52200),
+  indicators: { quote: [{ close: Array.from({ length: 90 }, () => 100) }] }, events: { dividends: { x: { amount: 0.5, date: Date.UTC(2026, 2, 2) / 1000 + 52200 } } } }] } });
+const answer = (url: string) => (url.includes('yahoo') ? yahoo : url.includes(BILLS) ? fredBills : url.includes(CPI) ? fredCpi : fredDeposit);
 const fredCpi = 'observation_date,CPIAUCNS\n' + Array.from({ length: 30 }, (_, i) => `${new Date(Date.UTC(2024, i, 1)).toISOString().slice(0, 10)},${(300 + i).toFixed(3)}`).join('\n');
 
 test('a refresh stores both series; a failed one keeps them, falls back to treasury.gov for bills and warns once', async () => {
@@ -62,12 +67,18 @@ test('a refresh stores both series; a failed one keeps them, falls back to treas
   const rates = new Rates(db, async url => {
     urls.push(url);
     if (!online) throw Error('offline');
-    return url.includes(BILLS) ? fredBills : fredCpi;
-  });
+    return answer(url);
+  }, 0);
   expect(rates.over(day(2026, 2, 1), day(2026, 3, 1))).toBeNull();
   expect(await rates.refresh()).toBe(true);
   expect(db.macroSeries(BILLS)).toHaveLength(200);
   expect(db.macroSeries(CPI)).toHaveLength(30);
+  // Deposits and dividends: EURUSD earns 3% a year as a euro deposit; SPY's dividend counts for US500 once inside.
+  expect(rates.deposit('EURUSD', day(2026, 2, 1), day(2026, 3, 1))).toBeCloseTo((1 + 0.03 / 360) ** 28 - 1, 12);
+  expect(rates.dividendsOver('US500', day(2026, 2, 1), day(2026, 3, 1))).toEqual({ income: 0, count: 0 });
+  expect(rates.dividendsOver('US500', day(2026, 3, 1), day(2026, 3, 3))!.income).toBeCloseTo(0.005, 12);
+  expect(rates.dividendsOver('US500', day(2026, 3, 2) + 52_200_000, day(2026, 3, 3))!.count).toBe(0);   // from is exclusive
+  expect(urls.filter(u => u.includes('yahoo'))).toHaveLength(11);
   const before = rates.over(day(2026, 2, 1), day(2026, 3, 1))!;
   expect(before.cash).toBeGreaterThan(0.003);
   // Offline: the stored series still answer, and a restart reads them from the database.
@@ -80,7 +91,7 @@ test('a refresh stores both series; a failed one keeps them, falls back to treas
   expect(db.events(10).filter(e => e.source === 'rates')).toHaveLength(1);
   // Implausible data is not stored.
   online = true;
-  const bad = new Rates(db, async url => (url.includes(BILLS) ? fredBills.replace(/4\.00/g, '400.00') : fredCpi));
+  const bad = new Rates(db, async url => (url.includes(BILLS) ? fredBills.replace(/4\.00/g, '400.00') : answer(url)), 0);
   expect(await bad.refresh()).toBe(false);
   expect(db.macroSeries(BILLS).every(p => p.value === 4)).toBe(true);
   db.db.close();

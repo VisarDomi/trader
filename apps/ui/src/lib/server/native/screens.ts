@@ -17,13 +17,30 @@ const runRoute = (id: string, stage?: string) => ({ screen: 'run', id, ...(stage
 
 // ---------------------------------------------------------------- rankings
 
-export const RANKING_SORT = ['Return', 'Sharpe', 'Closed trades', 'Excess vs hold'];
+// Index 3 is Sharpe: app builds before 2026-11-23 reset sort 3 when switching to Capital, where it matters least.
+export const RANKING_SORT = ['Return', 'vs T-bills', 'vs hold', 'Sharpe', 'Closed trades'];
 export type RankingRow = LeaderboardRow & { control?: boolean; forwardVerdict?: string | null };
 /** The same dates' alternatives: holding the instrument, Treasury bills, and doing nothing (inflation). */
 export function alternatives(b: Json | undefined, holdLabel = 'Hold'): string {
 	if (b?.status !== 'matched') return '';
 	const h: Json | undefined = b.hurdles;
 	return [`${holdLabel} ${pct(b.benchmarkReturn)}`, h ? `T-bills ${pct(h.cash)}` : '', h ? `inflation ${pct(h.inflation)}` : ''].filter(Boolean).join(' · ');
+}
+/** The return above rolled T-bills over the same dates: is the play worth more than the safe floor? */
+export const overCash = (b: Json | undefined): number | null =>
+	b?.status === 'matched' && b.hurdles && Number.isFinite(b.strategyReturn) ? b.strategyReturn - b.hurdles.cash : null;
+/** Return, then its lead over T-bills (the safe floor) and over holding the instrument outright. */
+export function worthStats(label: string, ret: number | null | undefined, b: Json | undefined): Stat[] {
+	const cash = overCash(b), hold = b?.status === 'matched' ? (b.excessReturn as number) : null;
+	return [{ label, value: pct(ret), tone: tone(ret) }, { label: 'vs T-bills', value: pp(cash), tone: tone(cash) }, { label: 'vs hold', value: pp(hold), tone: tone(hold) }];
+}
+const count = (n: number | null | undefined, one: string, many: string) => (n == null ? '' : `${num(n, 0)} ${n === 1 ? one : many}`);
+/** "price −9.3% · SPY dividends ×1 +0.2%": the outright hold's parts. */
+export function holdParts(b: Json | undefined): string {
+	const h: Json | undefined = b?.hold;
+	if (!h) return '';
+	const parts = [`price ${pct(h.price)}`, h.kind !== 'none' ? `${h.source ?? h.kind} ${pct(h.income)}` : ''].filter(Boolean).join(' · ');
+	return `Bought outright, no CFD fees: ${parts}${h.priceOnly ? '. Nobody owns oil or gas outright, so this hold is an upper bound' : ''}.`;
 }
 /** The strategy's return in today's purchasing power: (1 + return) / (1 + inflation) − 1. */
 export const afterInflation = (b: Json | undefined): number | null =>
@@ -45,19 +62,18 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	const dependency = r.dependency ?? e.dependency;
 	if (dependency && dependency.state !== 'available' && stage === 'virtual' && r.status !== 'retired') badge = 'Forecast paused';
 	const period = stage === 'backtest' ? r.windowId || id.split(':')[1] || '' : r.timeframe || '';
-	// Every stage compares with holding the instrument 1:1 over the same dates: Return − hold = excess.
-	const hold = b.status === 'matched', dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
-	const stats: Stat[] = [{ label: 'Return', value: pct(m.totalReturn), tone: tone(m.totalReturn) }, { label: 'Closed trades', value: num(m.trades, 0) },
-		hold ? { label: 'Excess vs hold', value: pp(b.excessReturn), tone: tone(b.excessReturn) } : stage === 'capital' ? { label: 'Cash drawdown', value: dd } : { label: 'Sharpe', value: num(m.sharpe) }];
+	// Every stage compares over the same dates with T-bills (the safe floor) and with holding the instrument outright.
+	const dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
+	const stats = worthStats('Return', m.totalReturn, b);
 	// Line one: what the same dates paid elsewhere. Line two: this record after inflation, then its risk.
 	const real = afterInflation(b);
-	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage === 'capital' ? (hold ? `cash drawdown ${dd}` : '') : `${hold ? 'Sharpe ' + num(m.sharpe) + ' · ' : ''}drawdown ${dd}`,
+	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage === 'capital' ? `cash drawdown ${dd}` : `Sharpe ${num(m.sharpe)} · drawdown ${dd}`,
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
 	const facts = [alternatives(b), risk].filter(Boolean).join('\n');
 	return compact({
-		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period].filter(Boolean).join(' · '),
+		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
-		keys: [m.totalReturn ?? null, m.sharpe ?? null, m.trades ?? null, b.status === 'matched' ? b.excessReturn : null],
+		keys: [m.totalReturn ?? null, overCash(b), b.status === 'matched' ? b.excessReturn : null, m.sharpe ?? null, m.trades ?? null],
 	});
 }
 export function rankingsScreen(rows: RankingRow[], stage: string, scenario?: string | null): Screen {
@@ -141,9 +157,8 @@ export function tradeRow(t: TradeItem, withMarket: boolean): Row {
 // ---------------------------------------------------------------- agent
 
 export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow> }
-/** "Virtual +177.20 pp vs hold · hold −9.1% · T-bills +0.8% · inflation +0.5%": the lead over holding the instrument
- *  1:1, then what the same dates paid elsewhere. */
-const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${pp(b.excessReturn)} vs hold · ${alternatives(b, 'hold')}` : '');
+/** "Virtual +167.72 pp vs T-bills · +177.22 pp vs hold": the lead over the safe floor and over holding outright. */
+const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${overCash(b) != null ? pp(overCash(b)) + ' vs T-bills · ' : ''}${pp(b.excessReturn)} vs hold` : '');
 export function agentScreen({ agent, runs, sparks, capital, backtests: board }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
@@ -174,16 +189,19 @@ const summaryRow = (r: RunSummary, agent: AgentDetail): Json => ({ ...r, name: r
 export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; comparison: RunSummary | null; sparks: Sparks | null; account: string | null }
 export function runScreen({ run, agentName, capital, excluded, comparison, sparks, account }: RunInputs): Screen {
 	const historical = run.kind === 'backtest', m = run.metrics, e = run.evidence as AgentEvidence | undefined, extra = (run.extra ?? {}) as Json;
-	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`, subtitle: `${tier(run.leverage)} · ${date(run.startedAt)}`,
+	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`,
+		subtitle: [tier(run.leverage), date(run.startedAt), count(m?.trades, 'closed trade', 'closed trades')].filter(Boolean).join(' · '),
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
-		stats: [{ label: 'Return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, e?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp(e.benchmark.excessReturn), tone: tone(e.benchmark.excessReturn) } : { label: 'Max drawdown', value: pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
+		stats: worthStats('Return', m?.totalReturn, e?.benchmark as Json | undefined),
 		body: [alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
 			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
 		const cm = capital?.metrics, cash = deals.reduce((n, d) => n + (d.status === 'closed' ? (d.pnl ?? 0) : 0), 0);
-		summary.push(compact({ id: 'capital', title: `Capital demo · ${signedUsd(cash)}`, subtitle: capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', badge: excluded ? 'Excluded' : '',
-			stats: [{ label: 'Cash return', value: pct(cm?.totalReturn), tone: tone(cm?.totalReturn) }, (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? { label: 'Excess vs hold', value: pp((capital!.evidence as Json).benchmark.excessReturn), tone: tone((capital!.evidence as Json).benchmark.excessReturn) } : { label: 'Cash drawdown', value: pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown) }, { label: 'Closed deals', value: num(deals.filter(d => d.status === 'closed').length, 0) }],
+		summary.push(compact({ id: 'capital', title: `Capital demo · ${signedUsd(cash)}`,
+			subtitle: [capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', count(deals.filter(d => d.status === 'closed').length, 'closed deal', 'closed deals')].join(' · '),
+			badge: excluded ? 'Excluded' : '',
+			stats: worthStats('Cash return', cm?.totalReturn, (capital?.evidence as Json | undefined)?.benchmark),
 			body: (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? `${alternatives((capital!.evidence as Json).benchmark)} since the first deal\n` +
 				[afterInflation((capital!.evidence as Json).benchmark) != null ? `After inflation ${pct(afterInflation((capital!.evidence as Json).benchmark))}` : '', `cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}`].filter(Boolean).join(' · ') : '' }));
 	}
@@ -204,7 +222,8 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	if (m?.monthly?.length) sections.push({ title: '', rows: [{ id: 'monthly', title: 'Monthly return', chart: { kind: 'bars', unit: '%', height: Math.max(120, m.monthly.length * 24 + 20), bars: m.monthly.map(x => ({ name: x.month, value: x.ret * 100, total: true })) } }] });
 	const b = e?.benchmark as Json | undefined;
 	if (b?.status === 'matched') sections.push({ title: 'Same dates, other uses of the money', rows: [{ id: 'benchmark', title: `${day(b.from)} → ${day(b.through)}`,
-		stats: [{ label: 'Strategy', value: pct(b.strategyReturn) }, { label: '1:1 hold', value: pct(b.benchmarkReturn) }, { label: 'Excess', value: pp(b.excessReturn), tone: tone(b.excessReturn) }] },
+		stats: [{ label: 'Strategy', value: pct(b.strategyReturn) }, { label: '1:1 hold', value: pct(b.benchmarkReturn) }, { label: 'vs hold', value: pp(b.excessReturn), tone: tone(b.excessReturn) }],
+		body: holdParts(b) },
 		...(b.hurdles ? [hurdlesRow(b)] : [])] });
 	if (comparison) sections.push({ title: 'Same-code backtest', rows: [rankingRow({ ...comparison, name: 'Backtest' }, 'backtest')] });
 	sections.push(...evidenceSections(e));
@@ -219,7 +238,7 @@ export function hurdlesRow(b: Json): Row {
 	return { id: 'hurdles', title: 'Treasury bills and inflation',
 		stats: [{ label: 'T-bills', value: pct(h.cash) }, { label: 'Inflation', value: pct(h.inflation) }, { label: 'After inflation', value: pct(real), tone: tone(real) }],
 		body: `${pp(b.strategyReturn - h.cash)} over T-bills · hold after inflation ${pct(holdReal)} · T-bills after inflation ${pct((1 + h.cash) / (1 + h.inflation) - 1)}\n` +
-			`T-bills: 3-month US Treasury bills rolled daily, rates through ${day(h.billsThrough)}. Inflation: US CPI-U through ${month(h.cpiThrough)}${h.estimated ? '; later weeks continue its 12-month pace' : ''}.` };
+			`T-bills: 3-month US Treasury bills rolled daily, rates through ${day(h.billsThrough)}; Sharpe measures returns above them. Inflation: US CPI-U through ${month(h.cpiThrough)}${h.estimated ? '; later weeks continue its 12-month pace' : ''}.` };
 }
 const month = (ym: string) => { const [y, m] = ym.split('-').map(Number); return y && m ? new Date(Date.UTC(y, m - 1, 15)).toLocaleString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ym; };
 export function evidenceSections(e: AgentEvidence | undefined): Section[] {

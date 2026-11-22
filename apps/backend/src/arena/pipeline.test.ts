@@ -54,6 +54,13 @@ describe('stage gates', () => {
       ).passed,
     ).toBe(false);
   });
+  test('the gate checks the Sharpe of the returns themselves, not the one shown above T-bills', () => {
+    // A rarely invested low-leverage variant: positive on its own, far below T-bills.
+    const sparse = { ...row, metrics: JSON.stringify({ sharpe: -2.7, cashFreeSharpe: 0.3, riskFree: 'tbills', trades: 50, finalEquity: 10400 }) };
+    expect(backtestGate(sparse, HASH, SLUG).passed).toBe(true);
+    const losing = { ...row, metrics: JSON.stringify({ sharpe: -1.1, cashFreeSharpe: -0.6, riskFree: 'tbills', trades: 50, finalEquity: 9000 }) };
+    expect(backtestGate(losing, HASH, SLUG)).toEqual({ passed: false, reason: 'backtest Sharpe before T-bills -0.60 below -0.5' });
+  });
   test('a lucky early winner cannot jump straight into Capital demo', () => {
     const trades = Array.from({ length: 30 }, (_, i) => ({
       pnl: i % 2 ? 10 : 20,

@@ -3,7 +3,8 @@ import { ArenaDB,RUN_KIND } from './db.ts';
 import { AgentEvidenceService } from './evidence.ts';
 import { ingestCosts,costFingerprint } from './cost-ingest.ts';
 import { ForecastAvailability } from './dependency.ts';
-import { BILLS,CPI,Rates,billYield } from './rates.ts';
+import { BILLS,CPI,DEPOSITS,Rates,billYield } from './rates.ts';
+import { outrightHold } from './hold.ts';
 import { defineAgent,EXIT_REASON } from '../sdk/index.ts';
 import type { LoadedAgent } from '../engine/loader.ts';
 import type { Arena } from './arena.ts';
@@ -20,64 +21,88 @@ function agent(id:string):LoadedAgent {
 }
 function add(db:ArenaDB,id:string,name:string,now:number){db.upsertAgent(agent(name),now);db.createDemoRun({id,agentId:name,codeHash:'hash',epic:EPIC,leverage:1,capital:10000,params:{},now});}
 function fixtureTrade():Trade{return {side:'long',size:10,entryTime:T,exitTime:T+HOUR,entryPrice:101,exitPrice:109,pnl:78,funding:-2,exitReason:EXIT_REASON.SIGNAL,barsHeld:1};}
-test('common-date benchmark starts with the run, excludes the control\'s earlier period and keeps unavailable windows explicit',()=>{
-  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T-DAY);add(db,RUN,'fixture',T+HOUR/2);
-  db.setSetting('feed.ticksSince',T);
-  for(const [at,s,b]of [[T,10000,8000],[T+HOUR,10000,10000],[T+2*HOUR,11000,10500]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
-  const service=new AgentEvidenceService({db,tracked:new Map()}as unknown as Arena);
-  const result=service.forRun(db.run(RUN)!,T+3*HOUR);
-  expect(result.benchmark).toMatchObject({status:'matched',from:T+HOUR,through:T+2*HOUR});
-  expect(result.benchmark.strategyReturn).toBeCloseTo(.1,12);
-  expect(result.benchmark.benchmarkReturn).toBeCloseTo(.05,12);
-  expect(result.benchmark.excessReturn).toBeCloseTo(.05,12);
-  db.upsertEquity(RUN,T+3*HOUR,20000);service.invalidate();
-  expect(service.forRun(db.run(RUN)!,T+4*HOUR).benchmark.through).toBe(T+2*HOUR);
+const candle=(time:number,close:number,open=close)=>({time,open,high:Math.max(open,close),low:Math.min(open,close),close,spread:0,volume:0});
+/** Rates with bills, CPI, one US500 (SPY) dividend of 1% inside the fixture window, AMZN fetched with none, and €STR. */
+function rates(db:ArenaDB):Rates {
+  db.saveMacroSeries(BILLS,[{t:Date.UTC(2023,0,2),value:4}]);
+  db.saveMacroSeries(CPI,Array.from({length:48},(_,i)=>({t:Date.UTC(2023,i,1),value:300*1.002**i})));
+  db.saveMacroSeries('DIV:US500',[{t:T+3*HOUR,value:.01}]);db.setSetting('rates.dividends.US500',T);
+  db.setSetting('rates.dividends.AMZN',T);
+  db.saveMacroSeries(DEPOSITS.EURUSD!.series,[{t:Date.UTC(2023,0,1),value:3.6}]);
+  return new Rates(db);
+}
+const service=(db:ArenaDB,r?:Rates)=>new AgentEvidenceService({db,tracked:new Map(),rates:r??rates(db)}as unknown as Arena);
+test('virtual runs compare their whole life with holding the instrument outright: price plus dividends, no CFD fees',()=>{
+  // 2026-11-22: the hold had been the Buy & Hold CFD control (0.9× exposure, ~8%/yr index funding, no dividends).
+  const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);
+  for(const [at,s]of [[T+HOUR,9000],[T+6*HOUR,12000]])db.upsertEquity(RUN,at!,s!);
+  db.insertCandles(EPIC,[candle(T-60_000,100),candle(T+6*HOUR-60_000,90)]);
+  const b=service(db).forRun(db.run(RUN)!,T+7*HOUR).benchmark;
+  expect(b).toMatchObject({status:'matched',basis:'shared-hourly-equity',from:T,through:T+6*HOUR});
+  expect(b.strategyReturn).toBeCloseTo(.2,12);                 // 12,000 on 10,000 of starting capital
+  expect(b.hold).toMatchObject({kind:'dividends',source:'SPY dividends ×1'});
+  expect(b.hold!.price).toBeCloseTo(-.1,12);
+  expect(b.hold!.income).toBeCloseTo(.01,12);
+  expect(b.benchmarkReturn).toBeCloseTo(.9*1.01-1,12);
+  expect(b.excessReturn).toBeCloseTo(.2-(.9*1.01-1),12);
+  expect(b.hurdles!.cash).toBeGreaterThan(0);
   db.db.close();
 });
-test('a run older than the tick feed is compared over its whole life, so Return and the excess cover the same dates',()=>{
-  // 2026-11-22: rows showed a lifetime Return (+204.9%) beside an excess from the tick-feed epoch (+348.5 pp).
-  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);add(db,RUN,'fixture',T);
-  db.setSetting('feed.ticksSince',T+5*HOUR);
-  for(const [at,s,b]of [[T+HOUR,9000,10000],[T+6*HOUR,12000,9000]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
-  const service=new AgentEvidenceService({db,tracked:new Map()}as unknown as Arena);
-  const result=service.forRun(db.run(RUN)!,T+7*HOUR);
-  expect(result.benchmark).toMatchObject({status:'matched',from:T+HOUR,through:T+6*HOUR});
-  expect(result.benchmark.strategyReturn).toBeCloseTo(.2,12);    // 12,000 on 10,000 of starting capital
-  expect(result.benchmark.benchmarkReturn).toBeCloseTo(-.1,12);
-  expect(result.benchmark.excessReturn).toBeCloseTo(.3,12);
+test('a hold is unavailable, never zero, without prices, dividend history or a first equity observation',()=>{
+  const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);
+  expect(service(db).forRun(db.run(RUN)!,T+DAY).benchmark).toMatchObject({status:'unavailable',note:'Waiting for the first hourly equity observation.'});
+  db.upsertEquity(RUN,T+HOUR,10100);
+  expect(service(db).forRun(db.run(RUN)!,T+DAY).benchmark).toMatchObject({status:'unavailable',note:'No stored prices for these dates.'});
+  db.insertCandles(EPIC,[candle(T-60_000,100),candle(T+HOUR-60_000,101)]);
+  // Dividends never fetched for US500: waiting, not a price-only hold.
+  const bare=new ArenaDB(':memory:');add(bare,RUN,'fixture',T);bare.upsertEquity(RUN,T+HOUR,10100);bare.insertCandles(EPIC,[candle(T-60_000,100),candle(T+HOUR-60_000,101)]);
+  expect(service(bare,new Rates(bare)).forRun(bare.run(RUN)!,T+DAY).benchmark).toMatchObject({status:'unavailable',note:'Waiting for the dividend history.'});
+  expect(service(db).forRun(db.run(RUN)!,T+DAY).benchmark.status).toBe('matched');
+  db.db.close();bare.db.close();
+});
+test('currencies earn their deposit rate, shares without dividends and gold are price only, oil is an upper bound',()=>{
+  const db=new ArenaDB(':memory:'),r=rates(db),day=Date.UTC(2026,9,1);
+  for(const epic of ['EURUSD','AMZN','GOLD','OIL_CRUDE'])db.insertDailyBars(epic,[candle(day,1,1),candle(day+DAY,1.1,1),candle(day+30*DAY,1.2,1.1)]);
+  const hold=(epic:string)=>outrightHold(db,r,epic,day,day+31*DAY) as Exclude<ReturnType<typeof outrightHold>,string>;
+  // Open of the first bar (1.0) to the close of the last bar ended by `through` (1.2).
+  const eur=hold('EURUSD');
+  expect(eur.price).toBeCloseTo(.2,12);
+  expect(eur).toMatchObject({kind:'interest',source:'€STR on EUR'});
+  expect(eur.income).toBeCloseTo((1+.036/360)**31-1,12);
+  expect(hold('AMZN')).toMatchObject({kind:'dividends',income:0,source:'AMZN dividends ×0'});
+  expect(hold('GOLD')).toMatchObject({kind:'none',income:0});
+  expect(hold('GOLD').priceOnly).toBeUndefined();
+  expect(hold('OIL_CRUDE')).toMatchObject({kind:'none',priceOnly:true});
   db.db.close();
 });
-test('Capital cash return is compared with holding since the first deal; backtests on an earlier engine still compare',()=>{
-  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);
-  for(const [at,b]of [[T,10000],[T+2*HOUR,10000],[T+5*HOUR,10500]])db.upsertEquity(BASE,at!,b!);
-  const service=new AgentEvidenceService({db,tracked:new Map()}as unknown as Arena);
-  const cash=(service as any).cashComparison({epic:EPIC,metrics:{startTime:T+2*HOUR-1,totalReturn:.25}} as LeaderboardRow);
-  expect(cash).toMatchObject({status:'matched',basis:'cash-vs-hold',from:T+2*HOUR-1,through:T+5*HOUR});
-  expect(cash.benchmarkReturn).toBeCloseTo(.05,12);expect(cash.excessReturn).toBeCloseTo(.2,12);
-  expect((service as any).cashComparison({epic:'GOLD',metrics:{startTime:T,totalReturn:0}} as LeaderboardRow).status).toBe('unavailable');
-  const window={startTime:T,endTime:T+DAY};
-  const bt=(id:string,agentId:string,engine:string,ret:number)=>{db.createDemoRun({id,agentId,codeHash:'hash',epic:EPIC,leverage:1,capital:10000,params:{},now:T});
-    db.db.run('UPDATE runs SET kind=?,window_id=?,metrics=?,extra=? WHERE id=?',[RUN_KIND.BACKTEST,'w',JSON.stringify({...window,totalReturn:ret}),JSON.stringify({engineVersion:engine}),id]);};
-  bt('bt:w:buy-hold:US500:x1','buy-hold','new',.1);bt('bt:w:fixture:US500:x1','fixture','old',.4);service.invalidate();
-  const old=service.forRun(db.run('bt:w:fixture:US500:x1')!,T+2*DAY).benchmark;
-  expect(old).toMatchObject({status:'matched',basis:'same-backtest-window'});expect(old.excessReturn).toBeCloseTo(.3,12);
-  expect(old.note).toContain('engine old');
+test('Capital cash since the first deal and backtests over their window are compared with the outright hold',()=>{
+  const db=new ArenaDB(':memory:'),r=rates(db),svc=service(db,r);
+  db.insertCandles(EPIC,[candle(T+2*HOUR-60_000,100),candle(T+5*HOUR-60_000,105)]);
+  const cash=(svc as any).cashComparison({epic:EPIC,metrics:{startTime:T+2*HOUR,totalReturn:.25}} as LeaderboardRow,T+5*HOUR);
+  expect(cash).toMatchObject({status:'matched',basis:'cash-vs-hold',from:T+2*HOUR,through:T+5*HOUR});
+  expect(cash.benchmarkReturn).toBeCloseTo(1.05*1.01-1,12);expect(cash.excessReturn).toBeCloseTo(.25-(1.05*1.01-1),12);
+  expect((svc as any).cashComparison({epic:EPIC,metrics:{startTime:0,totalReturn:0}} as LeaderboardRow).note).toBe('No priced Capital deals yet.');
+  const start=Date.UTC(2026,0,5),end=Date.UTC(2026,0,9);
+  db.insertDailyBars('GOLD',[candle(start,2000,1990),candle(end-DAY,2100,2050)]);
+  db.createDemoRun({id:'bt:w:fixture:GOLD:x1',agentId:'fixture',codeHash:'hash',epic:'GOLD',leverage:1,capital:10000,params:{},now:T});
+  db.db.run('UPDATE runs SET kind=?,window_id=?,metrics=? WHERE id=?',[RUN_KIND.BACKTEST,'w',JSON.stringify({startTime:start,endTime:end,totalReturn:.4}),'bt:w:fixture:GOLD:x1']);
+  svc.invalidate();
+  const bt=svc.forRun(db.run('bt:w:fixture:GOLD:x1')!,T+2*DAY).benchmark;
+  expect(bt).toMatchObject({status:'matched',basis:'same-backtest-window',from:start,through:end});
+  expect(bt.benchmarkReturn).toBeCloseTo(2100/1990-1,12);
   db.db.close();
 });
 test('every matched comparison carries Treasury bills and CPI over its own dates; none without stored rates',()=>{
-  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);add(db,RUN,'fixture',T);
-  for(const [at,s,b]of [[T,10000,10000],[T+30*DAY,11000,10200]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
-  expect(new AgentEvidenceService({db,tracked:new Map(),rates:new Rates(db)}as unknown as Arena).forRun(db.run(RUN)!,T+31*DAY).benchmark.hurdles).toBeUndefined();
-  db.saveMacroSeries(BILLS,[{t:Date.UTC(2026,0,2),value:4}]);
-  db.saveMacroSeries(CPI,Array.from({length:13},(_,i)=>({t:Date.UTC(2025,10+i,1),value:300*1.002**i})));
-  const rates=new Rates(db),service=new AgentEvidenceService({db,tracked:new Map(),rates}as unknown as Arena);
-  const b=service.forRun(db.run(RUN)!,T+31*DAY).benchmark;
-  expect(b.hurdles).toEqual(rates.over(T,T+30*DAY)!);
+  const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);db.upsertEquity(RUN,T+30*DAY,11000);
+  db.insertCandles('GOLD',[]);
+  db.db.run('UPDATE runs SET epic=? WHERE id=?',['GOLD',RUN]);
+  db.insertCandles('GOLD',[candle(T-60_000,100),candle(T+30*DAY-60_000,102)]);
+  expect(service(db,new Rates(db)).forRun(db.run(RUN)!,T+31*DAY).benchmark).toMatchObject({status:'matched'});
+  expect(service(db,new Rates(db)).forRun(db.run(RUN)!,T+31*DAY).benchmark.hurdles).toBeUndefined();
+  const r=rates(db),b=service(db,r).forRun(db.run(RUN)!,T+31*DAY).benchmark;
+  expect(b.hurdles).toEqual(r.over(T,T+30*DAY)!);
   expect(b.hurdles!.cash).toBeCloseTo((1+billYield(4)/365)**30-1,12);
   expect(b.hurdles!.inflation).toBeGreaterThan(.0015);expect(b.hurdles!.inflation).toBeLessThan(.0025);
-  db.upsertEquity(BASE,T+2*DAY,10100);
-  const cash=(service as any).cashComparison({epic:EPIC,metrics:{startTime:T+DAY,totalReturn:.1}} as LeaderboardRow);
-  expect(cash.hurdles).toEqual(rates.over(T+DAY,T+30*DAY)!);
   db.db.close();
 });
 test('forward evidence avoids historical trade scans and historical reads stay cached until invalidation',()=>{

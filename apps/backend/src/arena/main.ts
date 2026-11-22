@@ -10,6 +10,7 @@
  *   BROKER_ACCOUNT_PREFIX  demo accounts whose name starts with this are used by the broker
  *                        mirror, default "Arena"; "off" disables the mirror
  */
+import { useRiskFree } from '../engine/metrics.ts';
 import { dirname, resolve } from 'node:path';
 import { CapitalClient, credentialsFromEnv, RequestPacer } from '../capital/client.ts';
 import { loadRoster } from '../engine/roster.ts';
@@ -52,6 +53,8 @@ const broker =
 const tickJournal = new TickJournal(resolve(dirname(dbPath),'ticks.db'), message => db.event('error','ticks',message));
 tickJournal.start();
 const arena = new Arena({ db, dataClient, forecasterUrl, broker, tickJournal });
+// Every Sharpe and Sortino the arena computes from here on measures returns above 3-month T-bills.
+useRiskFree((from, to) => arena.rates.cash(from, to));
 const api = startApi(arena, port, token);
 console.log(`arena api on http://127.0.0.1:${api.port} (db ${dbPath})`);
 

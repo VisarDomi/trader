@@ -864,6 +864,36 @@ export class ArenaDB {
     this.db.query(`DELETE FROM kv WHERE key = ?`).run(key);
   }
 
+  /** The run's latest stored equity observation. */
+  lastEquity(runId: string): { t: number; equity: number } | null {
+    return this.db.query<{ t: number; equity: number }, [string]>(`SELECT t,equity FROM equity WHERE run_id=? ORDER BY t DESC LIMIT 1`).get(runId) ?? null;
+  }
+
+  /**
+   * The instrument's price at `t`: the close of the last minute candle finished by then (within four days), else the
+   * close of the last daily bar finished by then (within a week), else the open of the first daily bar of that day or
+   * after (a window that starts on a holiday). Null when the stored history does not reach.
+   */
+  priceAt(epic: string, t: number): { t: number; price: number } | null {
+    const minute = this.db.query<{ t: number; c: number }, [string, number]>(`SELECT t,c FROM candles WHERE epic=? AND t<=? ORDER BY t DESC LIMIT 1`).get(epic, t - 60_000);
+    if (minute && t - minute.t <= 4 * 86_400_000 && minute.c > 0) return { t: minute.t + 60_000, price: minute.c };
+    const day = this.db.query<{ t: number; c: number }, [string, number]>(`SELECT t,c FROM daily_bars WHERE epic=? AND t<=? ORDER BY t DESC LIMIT 1`).get(epic, t - 86_400_000);
+    if (day && t - day.t <= 8 * 86_400_000 && day.c > 0) return { t: day.t + 86_400_000, price: day.c };
+    const next = this.db.query<{ t: number; o: number }, [string, number]>(`SELECT t,o FROM daily_bars WHERE epic=? AND t>=? ORDER BY t LIMIT 1`).get(epic, Math.floor(t / 86_400_000) * 86_400_000);
+    if (next && next.t - t <= 7 * 86_400_000 && next.o > 0) return { t: next.t, price: next.o };
+    return null;
+  }
+
+  /** Stored metrics not yet measured above T-bills, after `afterId` (batched re-scoring). */
+  metricsWithoutRiskFree(afterId: string, limit: number): { id: string; metrics: string }[] {
+    return this.db.query<{ id: string; metrics: string }, [string, number]>(
+      `SELECT id,metrics FROM runs WHERE id>? AND metrics IS NOT NULL AND json_extract(metrics,'$.riskFree') IS NULL ORDER BY id LIMIT ?`).all(afterId, limit);
+  }
+
+  updateMetrics(runId: string, metrics: RunMetrics): void {
+    this.db.query(`UPDATE runs SET metrics=? WHERE id=?`).run(JSON.stringify(metrics), runId);
+  }
+
   macroSeries(series: string): { t: number; value: number }[] {
     return this.db.query<{ t: number; value: number }, [string]>(`SELECT t,value FROM macro_series WHERE series=? ORDER BY t`).all(series);
   }

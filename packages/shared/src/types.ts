@@ -52,10 +52,9 @@ export interface CostSummary {
 }
 export interface BenchmarkComparison {
   status: 'matched' | 'unavailable';
-  /** Virtual: stored hourly equity from the run's start. Backtest: the same historical window. Capital: realized cash
-   *  since the first deal against holding over the same dates. */
+  /** The strategy side. Virtual: stored hourly equity from the run's start. Backtest: the historical window. Capital:
+   *  realized cash since the first deal. The other side is always the outright 1:1 hold over the same dates. */
   basis: 'shared-hourly-equity' | 'same-backtest-window' | 'cash-vs-hold' | 'unavailable';
-  benchmarkRunId?: string;
   from?: number;
   through?: number;
   strategyReturn?: number;
@@ -64,7 +63,21 @@ export interface BenchmarkComparison {
   /** What the money could have earned, and what inflation took, over the same dates. Absent while the arena has no
    *  stored rates for those dates. */
   hurdles?: Hurdles;
+  /** The hold's parts: benchmarkReturn = (1 + price) × (1 + income) − 1. */
+  hold?: HoldBreakdown;
   note: string;
+}
+/** The 1:1 hold bought outright, without CFD fees (apps/backend/src/arena/hold.ts). */
+export interface HoldBreakdown {
+  /** Price change alone. */
+  price: number;
+  /** What owning it paid over the dates: dividends (shares, index trackers) or foreign deposit interest. */
+  income: number;
+  kind: 'dividends' | 'interest' | 'none';
+  /** E.g. "SPY dividends ×3" (US500's tracker), "€STR on EUR". */
+  source?: string;
+  /** Oil and gas cannot be owned outright: the price path is an upper bound for a real holder. */
+  priceOnly?: boolean;
 }
 /** The common floors under every play (apps/backend/src/arena/rates.ts). Inflation lowers every alternative alike,
  *  so it never changes which one wins; it moves the line between gaining and losing purchasing power. */
@@ -154,8 +167,12 @@ export interface RunMetrics {
 	totalReturn: number;
 	annualReturn: number;
 	maxDrawdown: number;
+	/** Above 3-month T-bills when riskFree is 'tbills'; cash-free otherwise. */
 	sharpe: number;
 	sortino: number;
+	riskFree?: 'tbills';
+	/** With riskFree: the Sharpe of the returns themselves (the backtest admission gate's input). */
+	cashFreeSharpe?: number;
 	calmar: number;
 	trades: number;
 	longTrades: number;

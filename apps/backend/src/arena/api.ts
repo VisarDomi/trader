@@ -251,7 +251,8 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
       const body = (await req.json()) as { results?: BacktestResult[] };
       // Results from a lab without leverage tiers cannot be matched to a demo run.
       const results = (body.results ?? []).filter(r => typeof r.leverage === 'number');
-      for (const r of results) db.saveBacktest(r);
+      // The lab measures Sharpe without rates; the arena's are the T-bills every stored Sharpe is measured above.
+      for (const r of results) db.saveBacktest({ ...r, metrics: arena.withRiskFree(r.metrics, r.equity) });
       evidence.invalidate();
       arena.scheduleAdmissions();
       return json({
