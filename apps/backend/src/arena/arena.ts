@@ -820,7 +820,8 @@ export class Arena {
             }
           : null,
         pendingOpen: t.run.pendingOpen,
-        score: eligible ? tradeT(t.run.trades) : -1_000_000,
+        // Ranked on the same trades that made it eligible: those since its last demotion.
+        score: eligible ? tradeT(t.run.trades.filter(tr => tr.entryTime >= (demotions[t.run.runId]?.at ?? 0))) : -1_000_000,
         specialAdmission: experiment,
         eligible: eligible || experiment,
       });

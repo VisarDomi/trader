@@ -52,7 +52,9 @@ export interface CostSummary {
 }
 export interface BenchmarkComparison {
   status: 'matched' | 'unavailable';
-  basis: 'shared-hourly-equity' | 'same-backtest-window' | 'unavailable';
+  /** Virtual: stored hourly equity from the run's start. Backtest: the same historical window. Capital: realized cash
+   *  since the first deal against holding over the same dates. */
+  basis: 'shared-hourly-equity' | 'same-backtest-window' | 'cash-vs-hold' | 'unavailable';
   benchmarkRunId?: string;
   from?: number;
   through?: number;

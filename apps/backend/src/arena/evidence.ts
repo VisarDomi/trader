@@ -3,7 +3,6 @@ import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { CONTROL_SLUGS } from '../engine/policy.ts';
-import { ENGINE_VERSION } from '../engine/version.ts';
 import { HOUR_MS } from '../engine/clock.ts';
 import { isShadow, backtestGate } from './pipeline.ts';
 import { runKey, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
@@ -67,22 +66,29 @@ export class AgentEvidenceService {
     else if(row.kind===RUN_KIND.BACKTEST) {
       const m=row.metrics?JSON.parse(row.metrics):null,b=baseline.metrics?JSON.parse(baseline.metrics):null;
       const engine=row.extra?JSON.parse(row.extra).engineVersion:null,baseEngine=baseline.extra?JSON.parse(baseline.extra).engineVersion:null;
-      if(!m||!b||engine!==ENGINE_VERSION||baseEngine!==engine||m.startTime!==b.startTime||m.endTime!==b.endTime)
-        result=unavailable('Benchmark requires the same historical dates and current engine.');
+      // Holding an instrument over fixed dates hardly depends on the simulation engine, so a backtest left on an
+      // earlier engine (a retired run is not re-run) is still compared, and the note says which engines differ.
+      if(!m||!b||m.startTime!==b.startTime||m.endTime!==b.endTime)
+        result=unavailable('Benchmark requires the same historical dates.');
       else result={status:'matched',basis:'same-backtest-window',benchmarkRunId:baseline.id,from:m.startTime,through:m.endTime,
         strategyReturn:m.totalReturn,benchmarkReturn:b.totalReturn,excessReturn:m.totalReturn-b.totalReturn,
-        note:'Same historical window; 1:1 buy-and-hold sizing differs from the strategy. This is excess return, not risk-adjusted alpha.'};
+        note:'Same historical window; 1:1 buy-and-hold sizing differs from the strategy. This is excess return, not risk-adjusted alpha.'+
+          (engine!==baseEngine?` The strategy ran on engine ${engine??'unknown'}, the hold on ${baseEngine??'unknown'}.`:'')};
     } else {
-      const ticksSince=this.arena.db.getSetting<number>('feed.ticksSince',0);
-      const since=Math.ceil(Math.max(row.started_at,baseline.started_at,ticksSince)/HOUR_MS)*HOUR_MS;
+      // The run's whole life, like its Return: until 2026-11-22 the comparison began at the tick-feed epoch (Oct 16),
+      // so a row showed a lifetime Return beside an excess over other dates.
+      const since=Math.ceil(Math.max(row.started_at,baseline.started_at)/HOUR_MS)*HOUR_MS;
       const {first,last}=this.arena.db.matchedEquity(row.id,baseline.id,since);
       if(!first||!last||last.t<=first.t||first.strategy<=0||first.benchmark<=0)
         result=unavailable('Waiting for two common hourly equity observations.');
       else {
-        const strategyReturn=last.strategy/first.strategy-1,benchmarkReturn=last.benchmark/first.benchmark-1;
+        // A run that started with the control is measured from its starting capital; one that started earlier (the
+        // control was replaced) from the first common observation.
+        const base=row.started_at>=baseline.started_at&&row.capital>0?row.capital:first.strategy;
+        const strategyReturn=last.strategy/base-1,benchmarkReturn=last.benchmark/first.benchmark-1;
         result={status:'matched',basis:'shared-hourly-equity',benchmarkRunId:baseline.id,from:first.t,through:last.t,
           strategyReturn,benchmarkReturn,excessReturn:strategyReturn-benchmarkReturn,
-          note:'Same stored hourly observations, from the current tick-feed epoch onward. Sizing differs; excess return is not risk-adjusted alpha and may cover less time than lifetime Return.'};
+          note:'From the run\'s start: its return on starting capital against the 1:1 buy-and-hold run of the same instrument over the same stored hourly observations. Sizing differs; excess return is not risk-adjusted alpha.'};
       }
     }
     this.comparisons.set(row.id,result);return result;
@@ -128,12 +134,24 @@ export class AgentEvidenceService {
       dependency:this.arena.forecastAvailability?.evidence(0,now)??null,
       note:'Existing records include calibration and user experiments. Cost coverage, common-date benchmarks and paused dependencies qualify every comparison; they do not change the promotion thresholds.'};
   }
+  /** Capital demo: realized cash return on the run's allocation since its first deal, against holding the instrument
+   *  1:1 over the same dates (the buy-and-hold control's stored hourly equity). */
+  private cashComparison(row:LeaderboardRow):BenchmarkComparison {
+    this.refresh(Date.now());
+    const m=row.metrics,baseline=this.benchmarks.get(`${RUN_KIND.DEMO}:${row.epic}:`);
+    if(!m||!m.startTime||!baseline)return unavailable('No 1:1 buy-and-hold control for this instrument.');
+    const {first,last}=this.arena.db.matchedEquity(baseline.id,baseline.id,Math.ceil(m.startTime/HOUR_MS)*HOUR_MS);
+    if(!first||!last||last.t<=first.t||first.benchmark<=0)return unavailable('Waiting for two hourly hold observations since the first deal.');
+    const benchmarkReturn=last.benchmark/first.benchmark-1;
+    return {status:'matched',basis:'cash-vs-hold',benchmarkRunId:baseline.id,from:m.startTime,through:last.t,
+      strategyReturn:m.totalReturn,benchmarkReturn,excessReturn:m.totalReturn-benchmarkReturn,
+      note:'Realized cash on the run\'s Capital allocation since its first deal, against holding the instrument 1:1 over the same dates. Open positions count only once closed; sizing differs; not risk-adjusted.'};
+  }
   forCapital(row:LeaderboardRow,unrealizedPnl:number|null,openPosition:boolean):AgentEvidence|undefined {
     this.refresh(Date.now());
     const meta=this.rows.get(row.runId);if(!meta)return;
     const base=this.forRun(meta);
-    return {...base,basis:'broker-realized-cash',costs:null,
-      benchmark:unavailable('Closed cash P&L and held equity are different bases; use the virtual common-date comparison.'),
+    return {...base,basis:'broker-realized-cash',costs:null,benchmark:this.cashComparison(row),
       exposure:null,stopRisk:null,openFunding:null,unrealizedPnl,openPosition,
       note:'Actual realized cash plus linked adjustments. Unlinked funding/corporate actions remain at account level; open P&L is separate. Cash drawdown does not measure intratrade risk.'};
   }

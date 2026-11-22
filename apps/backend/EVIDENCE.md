@@ -6,15 +6,22 @@ diagnostics. Admission thresholds remain those in agents/LIFECYCLE.md.
 
 ## Common-date controls
 
-Virtual comparisons use the current standard 1:1 buy-and-hold control for the same instrument. Start
-at the first common stored hourly equity observation after both starts and the current tick-feed
-epoch; end at their latest common observation. No interpolation or future prices. Each return is
-rebased to its own starting equity and the exact stored timestamps are returned.
+Every record is compared with holding its instrument 1:1 over the same dates, so Return − hold = excess:
 
-This window can be shorter than lifetime Return. Sizes differ: the percentage-point difference is
-excess return, not risk-adjusted alpha. Missing controls/two shared points return unavailable, never
-zero. Backtests require the same dates/window/current engine. Actual realized cash is not compared
-with held virtual equity as though the bases matched. Virtual corporate-action/funding limits apply.
+- **Virtual:** the current standard 1:1 buy-and-hold control for the same instrument, from the run's start (the first
+  common stored hourly observation after both starts) to their latest common observation. The run's return is on
+  its starting capital, like its lifetime Return; the control's on its equity at that first observation. A run that
+  started before its control (a replaced control) is rebased at the first common observation. Until 2026-11-22 the
+  window began at the tick-feed epoch (Oct 16), so rows showed a lifetime Return beside an excess over fewer dates.
+- **Backtest:** the 1:1 buy-and-hold backtest over the same historical window. A backtest left on an earlier engine
+  (its run retired, so never re-run) is still compared, with both engines named in the note: holding over fixed
+  dates hardly depends on the engine.
+- **Capital demo:** realized cash return on the run's allocation since its first deal, against the control's stored
+  hourly equity over the same dates (`cash-vs-hold`). Open positions count once closed.
+
+No interpolation or future prices; exact timestamps are returned. Sizes differ: the percentage-point difference is
+excess return, not risk-adjusted alpha. Missing controls or fewer than two shared points return unavailable, never
+zero. Virtual corporate-action/funding limits apply.
 
 Current virtual exposure is notional / liquidation equity. Stop downside starts at the current mark;
 gaps/future costs can change it. Shared broker margin is never inferred by scaling virtual accounts.

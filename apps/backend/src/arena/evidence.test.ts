@@ -19,7 +19,7 @@ function agent(id:string):LoadedAgent {
 }
 function add(db:ArenaDB,id:string,name:string,now:number){db.upsertAgent(agent(name),now);db.createDemoRun({id,agentId:name,codeHash:'hash',epic:EPIC,leverage:1,capital:10000,params:{},now});}
 function fixtureTrade():Trade{return {side:'long',size:10,entryTime:T,exitTime:T+HOUR,entryPrice:101,exitPrice:109,pnl:78,funding:-2,exitReason:EXIT_REASON.SIGNAL,barsHeld:1};}
-test('common-date benchmark excludes the earlier control period and keeps unavailable windows explicit',()=>{
+test('common-date benchmark starts with the run, excludes the control\'s earlier period and keeps unavailable windows explicit',()=>{
   const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T-DAY);add(db,RUN,'fixture',T+HOUR/2);
   db.setSetting('feed.ticksSince',T);
   for(const [at,s,b]of [[T,10000,8000],[T+HOUR,10000,10000],[T+2*HOUR,11000,10500]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
@@ -31,6 +31,36 @@ test('common-date benchmark excludes the earlier control period and keeps unavai
   expect(result.benchmark.excessReturn).toBeCloseTo(.05,12);
   db.upsertEquity(RUN,T+3*HOUR,20000);service.invalidate();
   expect(service.forRun(db.run(RUN)!,T+4*HOUR).benchmark.through).toBe(T+2*HOUR);
+  db.db.close();
+});
+test('a run older than the tick feed is compared over its whole life, so Return and the excess cover the same dates',()=>{
+  // 2026-11-22: rows showed a lifetime Return (+204.9%) beside an excess from the tick-feed epoch (+348.5 pp).
+  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);add(db,RUN,'fixture',T);
+  db.setSetting('feed.ticksSince',T+5*HOUR);
+  for(const [at,s,b]of [[T+HOUR,9000,10000],[T+6*HOUR,12000,9000]]){db.upsertEquity(RUN,at!,s!);db.upsertEquity(BASE,at!,b!);}
+  const service=new AgentEvidenceService({db,tracked:new Map()}as unknown as Arena);
+  const result=service.forRun(db.run(RUN)!,T+7*HOUR);
+  expect(result.benchmark).toMatchObject({status:'matched',from:T+HOUR,through:T+6*HOUR});
+  expect(result.benchmark.strategyReturn).toBeCloseTo(.2,12);    // 12,000 on 10,000 of starting capital
+  expect(result.benchmark.benchmarkReturn).toBeCloseTo(-.1,12);
+  expect(result.benchmark.excessReturn).toBeCloseTo(.3,12);
+  db.db.close();
+});
+test('Capital cash return is compared with holding since the first deal; backtests on an earlier engine still compare',()=>{
+  const db=new ArenaDB(':memory:');add(db,BASE,'buy-hold',T);
+  for(const [at,b]of [[T,10000],[T+2*HOUR,10000],[T+5*HOUR,10500]])db.upsertEquity(BASE,at!,b!);
+  const service=new AgentEvidenceService({db,tracked:new Map()}as unknown as Arena);
+  const cash=(service as any).cashComparison({epic:EPIC,metrics:{startTime:T+2*HOUR-1,totalReturn:.25}} as LeaderboardRow);
+  expect(cash).toMatchObject({status:'matched',basis:'cash-vs-hold',from:T+2*HOUR-1,through:T+5*HOUR});
+  expect(cash.benchmarkReturn).toBeCloseTo(.05,12);expect(cash.excessReturn).toBeCloseTo(.2,12);
+  expect((service as any).cashComparison({epic:'GOLD',metrics:{startTime:T,totalReturn:0}} as LeaderboardRow).status).toBe('unavailable');
+  const window={startTime:T,endTime:T+DAY};
+  const bt=(id:string,agentId:string,engine:string,ret:number)=>{db.createDemoRun({id,agentId,codeHash:'hash',epic:EPIC,leverage:1,capital:10000,params:{},now:T});
+    db.db.run('UPDATE runs SET kind=?,window_id=?,metrics=?,extra=? WHERE id=?',[RUN_KIND.BACKTEST,'w',JSON.stringify({...window,totalReturn:ret}),JSON.stringify({engineVersion:engine}),id]);};
+  bt('bt:w:buy-hold:US500:x1','buy-hold','new',.1);bt('bt:w:fixture:US500:x1','fixture','old',.4);service.invalidate();
+  const old=service.forRun(db.run('bt:w:fixture:US500:x1')!,T+2*DAY).benchmark;
+  expect(old).toMatchObject({status:'matched',basis:'same-backtest-window'});expect(old.excessReturn).toBeCloseTo(.3,12);
+  expect(old.note).toContain('engine old');
   db.db.close();
 });
 test('forward evidence avoids historical trade scans and historical reads stay cached until invalidation',()=>{
