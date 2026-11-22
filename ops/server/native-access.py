@@ -6,8 +6,8 @@ ROOT=Path(__file__).resolve().parents[2]
 PRIVATE=ROOT/'apps/ios/Private'
 PAIRING=PRIVATE/'primary-phone.json'
 UI=Path.home()/'.local/share/hetzner-pc/mirror/home/<server-user>/trader-ui'
-RESOURCES=['leaderboard','agents','agent','run','inspection','broker','status','graveyard','journal','research','mirror','exclude']
-# v2 (2026-11-22): screens built on the server, revalidated by ETag. Keep the list in step with apps/ui/src/lib/server/native/load.ts.
+# The native API v2 (2026-11-22): screens built on the server, revalidated by ETag. Keep the list in step with
+# NATIVE_SCREENS in apps/ui/src/lib/server/native-contract.ts. v1 (raw records reshaped on the phone) is gone.
 SCREENS=['rankings','agents','agent','run','trade','accounts','account','status','scenarios','graveyard','archive','journal','research','document','source','mirror','exclude']
 SITE='trader.veron3.space'
 
@@ -48,7 +48,7 @@ def edge():
  if end is None:raise SystemExit('Unbalanced Trader block')
  old=text[start:end]
  if '127.0.0.1:18080' not in old or 'import authelia' not in old:raise SystemExit('Unexpected Trader edge routing; nothing changed')
- paths=' '.join(['/api/native/v1/'+r for r in RESOURCES]+['/api/native/v2/'+r for r in SCREENS])
+ paths=' '.join('/api/native/v2/'+r for r in SCREENS)
  new=f'''{SITE} {{
     route {{
         # Native access is authenticated by Trader's dedicated device key, never by a public bypass.

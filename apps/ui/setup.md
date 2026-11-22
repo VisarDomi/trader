@@ -27,8 +27,8 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   (`$lib/server/native/screens.ts`, loaded by `load.ts`) in the format of `wire.ts`, gzip-compressed, with an ETag so
   an unchanged screen costs a 304. Chart series are packed base64 arrays. The device key, not the website login,
   authorizes these exact paths; `ops/server/native-access.py edge` lists them at the edge. Change a native screen
-  here and push: no app build is needed unless the wire format changes. v1 (`api/native/v1`) served raw arena
-  records for the app to reshape; it stays until the v2 app is installed.
+  here and push: no app build is needed unless the wire format changes. v1 (`api/native/v1`, raw arena records
+  that the app reshaped) was removed on November 22, once the v2 app was installed.
 - API types come from `@trader/shared` (`packages/shared/src/types.ts`); change them together with
   `apps/backend/src/arena/api.ts`.
 - The leaderboard refreshes visible tabs every 30 seconds and retries failed loads after five seconds,

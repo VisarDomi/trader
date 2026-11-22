@@ -24,8 +24,7 @@ const agentList = kept(60_000, () => arena.agents());
 const graveyard = kept(300_000, () => arena.graveyard());
 const sparks = (id: string): Promise<Sparks | null> => inspection.sparks(id).catch(() => null);
 
-export const SCREENS = ['rankings', 'agents', 'agent', 'run', 'trade', 'accounts', 'account', 'status', 'scenarios', 'graveyard', 'archive', 'journal', 'research', 'document', 'source'] as const;
-export type ScreenName = typeof SCREENS[number];
+import type { NativeScreen as ScreenName } from '../native-contract';
 
 export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal: string): Promise<Screen> {
 	const id = q.get('id') ?? '';
