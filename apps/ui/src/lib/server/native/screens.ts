@@ -39,7 +39,7 @@ const count = (n: number | null | undefined, one: string, many: string) => (n ==
 export function holdParts(b: Json | undefined): string {
 	const h: Json | undefined = b?.hold;
 	if (!h) return '';
-	const parts = [`price ${pct(h.price)}`, h.kind !== 'none' ? `${h.source ?? h.kind} ${pct(h.income)}` : ''].filter(Boolean).join(' · ');
+	const parts = [`price ${pct(h.price)}`, h.kind !== 'none' ? `${h.source ?? h.kind}${h.income ? ' ' + pct(h.income) : ''}` : ''].filter(Boolean).join(' · ');
 	return `Bought outright, no CFD fees: ${parts}${h.priceOnly ? '. Nobody owns oil or gas outright, so this hold is an upper bound' : ''}.`;
 }
 /** The strategy's return in today's purchasing power: (1 + return) / (1 + inflation) − 1. */

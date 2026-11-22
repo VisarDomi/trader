@@ -69,7 +69,7 @@ test('currencies earn their deposit rate, shares without dividends and gold are 
   expect(eur.price).toBeCloseTo(.2,12);
   expect(eur).toMatchObject({kind:'interest',source:'€STR on EUR'});
   expect(eur.income).toBeCloseTo((1+.036/360)**31-1,12);
-  expect(hold('AMZN')).toMatchObject({kind:'dividends',income:0,source:'AMZN dividends ×0'});
+  expect(hold('AMZN')).toMatchObject({kind:'dividends',income:0,source:'no AMZN dividend in these dates'});
   expect(hold('GOLD')).toMatchObject({kind:'none',income:0});
   expect(hold('GOLD').priceOnly).toBeUndefined();
   expect(hold('OIL_CRUDE')).toMatchObject({kind:'none',priceOnly:true});

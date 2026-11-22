@@ -30,7 +30,7 @@ export function outrightHold(db: ArenaDB, rates: Pick<Rates, 'deposit' | 'divide
   if (DIVIDENDS[epic]) {
     const d = rates?.dividendsOver(epic, from, through);
     if (!d) return 'Waiting for the dividend history.';
-    income = d.income; kind = 'dividends'; source = `${DIVIDENDS[epic]} dividends ×${d.count}`;
+    income = d.income; kind = 'dividends'; source = d.count ? `${DIVIDENDS[epic]} dividends ×${d.count}` : `no ${DIVIDENDS[epic]} dividend in these dates`;
   } else if (DEPOSITS[epic]) {
     const interest = rates?.deposit(epic, from, through);
     if (interest == null) return 'Waiting for the deposit rate.';

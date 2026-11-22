@@ -67,6 +67,16 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   earned less than T-bills and 11 beat their hold but not T-bills (FX holds +1.8–3.7%). Since mid-October almost
   every hold lost to T-bills (547/556 virtual), so 204 virtual runs beat the hold yet earned less than cash. Sharpe
   stays cash-free (the −0.5 backtest gate was set on it); a T-bill Sharpe would need every backtest re-run.
+- Outright hold and Sharpe above T-bills (user request, 8be6b20…): the hold is now the instrument bought outright,
+  no CFD fees, full exposure, plus dividends (SPY/QQQ/DIA for the indices, the shares' own; Yahoo) or the foreign
+  deposit rate for currencies (€STR, SONIA, AUD 3-month; FRED); oil and gas price-only as an upper bound. The Buy &
+  Hold CFD control trailed it on every instrument (2024-01 → 2026-10: US500 +56.8% vs +66.3% incl. +3.3% dividends;
+  EURUSD +2.3% vs +10.5% incl. +7.7% €STR). Backtests beating the hold: 52 → 42; beating T-bills and hold: 41 → 40.
+  Sharpe/Sortino measure returns above T-bills everywhere; 3,688 stored records re-measured from their equity curves
+  (the curves reproduce the stored cash-free ratios 637/637). The admission gate keeps the cash-free Sharpe: on the
+  T-bill Sharpe −0.5 would also reject 127 of 637 backtests, mostly low-leverage variants rarely invested. FRED resets
+  connections that send a browser client name (Yahoo needs one), so only Yahoo gets it. App rows: Return · vs T-bills
+  · vs hold; trade count in the subtitle. DXY left out: in a dollar account it moves no dollar figure (see reply).
 
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
 

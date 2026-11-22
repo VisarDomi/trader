@@ -65,6 +65,7 @@ test('every stage leads with the return over T-bills and over the outright hold,
 	expect(flat.stats?.[2]).toEqual({ label: 'vs hold', value: '—', tone: 0 });
 	expect(flat.body).toBe('cash drawdown −60.0% · exposure 1.20×');
 	expect(holdParts({ hold: { price: -0.093, income: 0.002, kind: 'dividends', source: 'SPY dividends ×1' } })).toBe('Bought outright, no CFD fees: price −9.3% · SPY dividends ×1 +0.2%.');
+	expect(holdParts({ hold: { price: -0.1, income: 0, kind: 'dividends', source: 'no SPY dividend in these dates' } })).toBe('Bought outright, no CFD fees: price −10.0% · no SPY dividend in these dates.');
 	expect(holdParts({ hold: { price: 0.05, income: 0, kind: 'none', priceOnly: true } })).toBe('Bought outright, no CFD fees: price +5.0%. Nobody owns oil or gas outright, so this hold is an upper bound.');
 });
 test('thinning keeps extremes and packing round-trips', () => {

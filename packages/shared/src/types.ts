@@ -74,7 +74,7 @@ export interface HoldBreakdown {
   /** What owning it paid over the dates: dividends (shares, index trackers) or foreign deposit interest. */
   income: number;
   kind: 'dividends' | 'interest' | 'none';
-  /** E.g. "SPY dividends ×3" (US500's tracker), "€STR on EUR". */
+  /** E.g. "SPY dividends ×3" (US500's tracker), "no SPY dividend in these dates", "€STR on EUR". */
   source?: string;
   /** Oil and gas cannot be owned outright: the price path is an upper bound for a real holder. */
   priceOnly?: boolean;
