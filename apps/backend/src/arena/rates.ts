@@ -311,8 +311,10 @@ export class Rates {
 }
 
 async function download(url: string): Promise<string> {
-  // A generic browser client name: Yahoo refuses unnamed clients. Nothing about the user is sent.
-  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'User-Agent': 'Mozilla/5.0' } });
+  // Yahoo refuses unnamed clients and FRED refuses that generic browser name (2026-11-22: HTTP/2 resets), so only
+  // Yahoo gets it. Nothing about the user is sent.
+  const headers: Record<string, string> = new URL(url).hostname.endsWith('yahoo.com') ? { 'User-Agent': 'Mozilla/5.0' } : {};
+  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers });
   if (!res.ok) throw Error(`HTTP ${res.status}`);
   return res.text();
 }
