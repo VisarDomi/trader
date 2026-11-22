@@ -43,6 +43,13 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
     the trade's own price chart with both fills, the stop and the −50% / −100% equity lines.
   - The inspector adds mini paths (`/sparks`) and the twin of each trade (382c460). The edge allows the v2 paths with
     the device key only.
+  - Guarded simulator QA (shared iPhone 12 Pro Max, offline fixture of the live v2 screens) passes, including exact
+    cold/warm first-frame restoration. Phone delivery `20261122T024256Z-ef4d105254` (source 1c1f8b4) is signed and
+    published but **awaiting_ota**: the Mac could not reach the phone at 03:50. The queue retries by itself.
+- Next: once `ios-push status 20261122T024256Z-ef4d105254` says installed, merge branch `native-v1-removal` (removes
+  API v1, moves v2 handling into the tested contract), push, and run `python3 ops/server/native-access.py edge` so
+  the edge lists only the v2 paths. Until then the phone's old app still reads v1; do not remove it earlier.
+- Next: the v4 night runs' first entries (any-day and every-night trade most nights from Tuesday 03:27).
 
 ## 2026-11-21 (Sat) — first weekly visit: the twins CHECK now asks whether paper is optimistic; CPPI added; Saturday's false watchdog alerts fixed
 

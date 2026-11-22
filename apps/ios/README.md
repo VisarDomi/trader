@@ -114,6 +114,19 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
+## November 22, 2026 · server-built screens (API v2) and the SQLite store
+
+- Screens come built from `/api/native/v2`; the phone stores each as one row of `trader.sqlite` and revalidates it by
+  ETag. `responses.json` and `app-state.json` are deleted on first launch. Agents show every trade with paper and
+  demo P&L and a mini price path; the trade screen shows the strategy's setup charts and the trade's price chart with
+  the stop and the −50% / −100% equity lines.
+- Seven Linux logic tests (wire decoding of a live trade screen, packed arrays, sort/search, routes, saved routes) and
+  guarded simulator QA (`scripts/check-simulator.py` with a `screen-fixture.py` fixture) pass: all screens offline,
+  `visar` search, portrait/landscape, the 787-trade agent list, exact cold/warm first-frame restoration. A one-sample
+  blank of the bottom rows 0.5 s after relaunch was fixed (the header re-anchored the list without changing height).
+- Job `20261122T024256Z-ef4d105254`, frozen source `1c1f8b4`: signed and published, **awaiting_ota** at 03:50 (the Mac
+  could not reach the phone); direct installation retries automatically. Not yet verified installed.
+
 ## November 9, 2026 · Visar cohort navigation
 
 - `visar` searches the 20-member US500/US100 cohort, including the unchanged original. The older
