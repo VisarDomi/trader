@@ -26,3 +26,9 @@ test('metrics take the rates given, else the arena\'s', () => {
   const m = computeMetrics({ ...input, riskFree: (a, b) => 0.0005 * (b - a) / DAY });
   expect(m).toMatchObject({ riskFree: 'tbills', cashFreeSharpe: computeMetrics(input).sharpe });
 });
+
+test('a period with no time in it earns no interest instead of dropping the T-bill basis', () => {
+  // Capital's cash curve: the first deal opens at 02:27, its exit is dated to that day's midnight.
+  const curve = [{ t: 2 * DAY + 8_820_000, equity: 2000 }, { t: 2 * DAY, equity: 2100 }, { t: 3 * DAY, equity: 2050 }];
+  expect(riskAdjusted(curve, 1 / 365, (a, b) => (b < a ? null : 0.0001 * (b - a) / DAY)).riskFree).toBe('tbills');
+});

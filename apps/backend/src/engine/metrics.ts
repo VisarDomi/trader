@@ -92,7 +92,9 @@ export function riskAdjusted(equity: readonly EquityPoint[], years: number, risk
     const r = equity[i]!.equity / prev - 1;
     raw.push(r);
     if (covered) {
-      const cash = riskFree!(equity[i - 1]!.t, equity[i]!.t);
+      // A period with no time in it earns nothing (Capital's cash curve dates exits by day, so its first exit can
+      // sit at or before the first deal's open).
+      const from = equity[i - 1]!.t, to = equity[i]!.t, cash = to > from ? riskFree!(from, to) : 0;
       if (cash === null) covered = false;
       else excess.push(r - cash);
     }
