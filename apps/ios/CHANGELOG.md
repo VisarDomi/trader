@@ -12,7 +12,7 @@ Newest first. Each entry records what was delivered, how it was checked and how 
   guarded simulator QA (`scripts/check-simulator.py` with a `screen-fixture.py` fixture) pass: all screens offline,
   `visar` search, portrait/landscape, the 787-trade agent list, exact cold/warm first-frame restoration. A one-sample
   blank of the bottom rows 0.5 s after relaunch was fixed (the header re-anchored the list without changing height).
-- Job `20261122T024256Z-ef4d105254`, frozen source `1c1f8b4`: signed and published as **awaiting_ota** (the Mac at the
+- Job `20261122T024256Z-ef4d105254`, frozen source `13cc590`: signed and published as **awaiting_ota** (the Mac at the
   office could not reach the phone at home). The owner installed it from https://ios-apps.veron3.space/ the same
   night; the queue confirms the in-place install when the phone is next to the Mac again. API v1 was removed after.
 
@@ -27,7 +27,7 @@ Newest first. Each entry records what was delivered, how it was checked and how 
   (twenty cohort plus the older twin) verifies the twenty matches, sort, detail/back/forward, exact
   focal anchor, portrait/landscape and cold/warm return. QA bundle is uninstalled and the shared
   guest/owned GUI shut down. No physical-phone UI automation.
-- Paid job `20261109T014034Z-3148a2ba42`, frozen source `b9b8ad5`, is **installed** in place and
+- Paid job `20261109T014034Z-3148a2ba42`, frozen source `a336937`, is **installed** in place and
   approved for renewal. The queue verified the artifact/device inventory and retained the renewal
   schedule; it did not launch or drive the phone UI.
 
@@ -37,7 +37,7 @@ Newest first. Each entry records what was delivered, how it was checked and how 
   charts lead, numeric comparisons/deltas replace verbose filter tiles. Only essential data-gap labels
   remain. Native/web module AGENTS.md files persist this presentation rule.
 - Eleven domain checks, simulator/paid builds, portrait/landscape, offline and exact cold/warm
-  restoration pass. PWA a7cac72 is live; no trading service restart or financial-data change.
+  restoration pass. PWA 184be46 is live; no trading service restart or financial-data change.
 - Job `20261108T123547Z-5688e0b951` is **awaiting_ota**, not installed: the Mac cannot reach the phone.
   Signed build is available at the existing tailnet installer; turn on Tailscale on the iPhone and
   open `https://mac.tailf47c4e.ts.net:8443/`, then Install Trader. Direct delivery retries automatically.
@@ -45,7 +45,7 @@ Newest first. Each entry records what was delivered, how it was checked and how 
 ## November 8, 2026 · strategy context
 
 - Native setup charts and threshold gauges installed in place through job
-  `20261108T112706Z-7fa16ca4ba`, source `b64db55`, input hash `e441595469a833f4`.
+  `20261108T112706Z-7fa16ca4ba`, source `75dd9bb`, input hash `e441595469a833f4`.
   First delivery attempt succeeded; exact inputs approved for renewal. Phone UI was not launched.
 - All 46 current strategy families / 66 variants have reviewed source-pinned adapters. Night trading
   shows the previous NY path, qualifying limits and overnight reference; other families show their
@@ -60,7 +60,7 @@ Newest first. Each entry records what was delivered, how it was checked and how 
 ## November 8, 2026
 
 - Native trade charts/inspector delivered through durable job `20261108T100131Z-e357947495`,
-  source commit `2314d79`, input hash `d959f4df4632319b`. Signed paid app installed in place on the
+  source commit `cc3249d`, input hash `d959f4df4632319b`. Signed paid app installed in place on the
   first attempt and approved for renewal. The queue did not launch or drive the phone UI.
 - Ten Swift domain tests and simulator/device builds pass. Native price, cost, decision and
   partial-history screens visually checked in portrait/landscape with bounded derived fixtures.

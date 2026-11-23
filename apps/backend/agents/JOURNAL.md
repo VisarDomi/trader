@@ -21,7 +21,7 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   - The 03:27–08:27 window: over Jul 21–Nov 19 a random-direction position would have reached the 1:200 loss limit
     (0.28% away) on 16% of US500 nights and 45% of US100 nights; at 1:50, 0% and 1.5%; at 1:20, never. US100's
     overnight range is about twice US500's (median 0.5% against 0.2%).
-- The v4 cohort (2ed628e, deployed 9bac3d3): the user replaced the stricter v3 variants (`big-move`, `strong-day`,
+- The v4 cohort (09a95ee, deployed d30879c): the user replaced the stricter v3 variants (`big-move`, `strong-day`,
   `steady-day`, `gap-5bp`, `gap-15bp` on both indices, retired with history kept) with looser ones at 1:20:
   `loose-body` (net move ≥30% of range), `no-pullback` (no overnight counter-move needed), `any-day` (any up or down
   session), `every-night` (both) and `full-day` (09:30–16:00 at 1:20). Kept: the original, US100 full-day-200 (the
@@ -35,16 +35,16 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 - Paper grid: two looser day filters and the no-pullback entry, 540 settings per index (1,080), all on the v4
   source. Re-run through Nov 21, all 336 earlier settings per index replay identically. Night Lab shows the v4 cohort.
 - iPhone app (user: too slow, paper trades missing, trades behind clicks, the trade's third chart a drawdown).
-  - The server now builds every screen (`/api/native/v2`, c025b64) and the phone only stores and draws it: one SQLite
+  - The server now builds every screen (`/api/native/v2`, e356267) and the phone only stores and draws it: one SQLite
     row per screen, revalidated by ETag (an unchanged screen is a 304 with no body). The Capital rankings went from
     1.6 MB of raw JSON per 30-second refresh to 17 KB compressed. The `responses.json` cache is gone.
   - An agent shows every live record and every trade at once, paper P&L beside its demo twin, with a mini price path;
     a record shows paper and demo together; a trade shows the strategy's charts (NY session, 22:00 → 03:27) and then
     the trade's own price chart with both fills, the stop and the −50% / −100% equity lines.
-  - The inspector adds mini paths (`/sparks`) and the twin of each trade (382c460). The edge allows the v2 paths with
+  - The inspector adds mini paths (`/sparks`) and the twin of each trade (4670de4). The edge allows the v2 paths with
     the device key only.
   - Guarded simulator QA (shared iPhone 12 Pro Max, offline fixture of the live v2 screens) passes, including exact
-    cold/warm first-frame restoration. Phone delivery `20261122T024256Z-ef4d105254` (source 1c1f8b4) is signed and
+    cold/warm first-frame restoration. Phone delivery `20261122T024256Z-ef4d105254` (source 13cc590) is signed and
     published but **awaiting_ota**: the Mac could not reach the phone at 03:50. The queue retries by itself.
 - The user installed that build from https://ios-apps.veron3.space/ the same night (the queue now prints that link
   for an away delivery). API v1 was then removed (branch `native-v1-removal` merged) and the edge lists only the v2
@@ -56,18 +56,18 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   the monkeys); 37 slots wait. Closest: timesfm-band AUDUSD 1:20 (t 6.25, 10 trades in 10 days), volatility-breakout/k08
   GOLD 1:2 (t 2.52, judged ~Jan 5). 278 non-control Capital runs, 31 with judged Capital evidence; controls hold 135
   slots and are exempt from demotion by design.
-- Hold comparisons fixed (6f4115f, e2f3d7c, d09e906): virtual from the run's start (they began at the tick-feed epoch,
+- Hold comparisons fixed (559be55, 8b3665f, c8e7193): virtual from the run's start (they began at the tick-feed epoch,
   so Return and excess covered different dates), Capital cash since the first deal (new: 468 of 498 rows; the rest
   have no deals), backtests on an earlier engine (all 637 now). Every native row shows Return, trades, excess vs hold
   with the hold, Sharpe and drawdown beneath. A demoted run returning is ranked on trades since its demotion.
-- Cash and inflation (user request, 7f3b149): every hold comparison now also carries 3-month US Treasury bills
+- Cash and inflation (user request, b5dfe88): every hold comparison now also carries 3-month US Treasury bills
   (FRED DTB3, bond-equivalent, accrued daily) and US CPI-U (FRED CPIAUCNS) over the same dates, stored in the arena
   database (6,724 bill days since 2000, CPI through Oct 2026). All matched rows have them (637/637 backtests, 556/556
   virtual, 468/468 Capital). Backtest window 2024-01 → 2026-10: T-bills +12.8%, CPI +9.6%; 484 of 637 backtests
   earned less than T-bills and 11 beat their hold but not T-bills (FX holds +1.8–3.7%). Since mid-October almost
   every hold lost to T-bills (547/556 virtual), so 204 virtual runs beat the hold yet earned less than cash. Sharpe
   stays cash-free (the −0.5 backtest gate was set on it); a T-bill Sharpe would need every backtest re-run.
-- Outright hold and Sharpe above T-bills (user request, 8be6b20…): the hold is now the instrument bought outright,
+- Outright hold and Sharpe above T-bills (user request, 1461e25…): the hold is now the instrument bought outright,
   no CFD fees, full exposure, plus dividends (SPY/QQQ/DIA for the indices, the shares' own; Yahoo) or the foreign
   deposit rate for currencies (€STR, SONIA, AUD 3-month; FRED); oil and gas price-only as an upper bound. The Buy &
   Hold CFD control trailed it on every instrument (2024-01 → 2026-10: US500 +56.8% vs +66.3% incl. +3.3% dividends;
@@ -94,7 +94,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
     them by two or more (swing-reversal/p05 US100 +0.41 ± 0.14 bp over 47 pairs; orb-ny/30min US500 +1.22 ± 0.44;
     noise-area-momentum/voltarget US30 +0.84 ± 0.34). So paper is conservative on the US indices; it does not flatter
     them.
-  - Change (e7a1591): `twinStats` carries the mean gap's standard error. `bun run twins` raises the agents CHECK only
+  - Change (b5fac3a): `twinStats` carries the mean gap's standard error. `bun run twins` raises the agents CHECK only
     for a diverged agent whose demo trails paper by two standard errors or more (paper optimistic, which would
     overrate it). The other diverged agents are listed with their direction and error. The overall checks (agreement
     falling within a day, a mean gap over 1 bp) are unchanged. Rule and evidence are in LIFECYCLE.md. Today: no CHECK.
@@ -105,7 +105,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
     156 of 336 traded). Cost backfill 12/0, as before. The user's hold covers only the video pipeline, and
     `lab-control check` exits 0.
   - Tick journal 76.84M received, archive current, 0 dropped. Storage 16.6 GB (two-year 37.0, 4× stress 78.7 of 100).
-- Watchdog false alarm, fixed (e980f51). Capital closes BTCUSD and ETHUSD every Saturday 06:00–08:00 UTC; the engine
+- Watchdog false alarm, fixed (a102f8e). Capital closes BTCUSD and ETHUSD every Saturday 06:00–08:00 UTC; the engine
   logged "market closed" for ETHUSD then, and the stream dropped and reconnected 116 times (code 1006) on 11-14 and
   again on 11-21. The watchdog treats crypto as always open, so it notified "No new BTCUSD/ETHUSD candles" from 06:40
   to 08:00 UTC on both Saturdays. It now skips an instrument whose fresh market snapshot (`/api/execution`) is not
@@ -123,8 +123,8 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
     gate is the slow-agent one (5 trades); CPPI was already on that list.
   - The fixed floor shows CPPI's known flaw: GOLD gave back 79.8% from its peak while staying above the starting
     floor. TIPP's maximum drawdown stayed under 20%.
-  - A context adapter and version pin were added for the strategy page (c9425fe), since the deploy tests require
-    one per agent. Deployed c9425fe: 87 agents, 6 new standard runs (556) and 4,672 virtual runs of 5,000.
+  - A context adapter and version pin were added for the strategy page (0234695), since the deploy tests require
+    one per agent. Deployed 0234695: 87 agents, 6 new standard runs (556) and 4,672 virtual runs of 5,000.
 - Next (11-28): the watchdog over Saturday's maintenance window; CPPI's first rebalances; the twins split by direction
   (a CHECK means the demo trails paper); the reasonless-refusal resend when one comes.
 
@@ -292,7 +292,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   such closes were booked 0–400 ms after our request (7 up to 9.6 s), so yesterday's timing rule called them ours.
   A 404 means Capital closed first, with one exception: our earlier close went out but its confirmation named another
   deal (1–2 a day since 11-10; 484 since 11-03, retried 0.8 s to minutes later, so no time bound separates them).
-  Fixed (d8eeb39, deployed 22:16): the broker marks an open deal whose close went out unconfirmed (mismatched
+  Fixed (5116b6d, deployed 22:16): the broker marks an open deal whose close went out unconfirmed (mismatched
   confirmation or failed request); a later 404 on it is noted "not found after an unconfirmed close" and timing decides.
   The twins treat "already closed at broker" as Capital's close. Now 18/1 stop-loss and 15/2 take-profit broker/arena.
   One legacy row (zscore-fade ETHUSD 20:54, a mismatch before the fix) reads as broker. Agreement is 100% either way.
@@ -333,7 +333,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   The same check dropped closes and stop changes without a log line. Stale rejections went from 11–23 a day to 193
   on 11-12 (41 on standard runs) and 45 on 11-13: my arrival rule caused them, since the old rule filled at the
   releasing quote.
-  Fixed: engine `2026-11-arrival-stall` (7fde8c0, deployed 22:07 CET). Freshness is the releasing quote's, which
+  Fixed: engine `2026-11-arrival-stall` (011c05b, deployed 22:07 CET). Freshness is the releasing quote's, which
   flushPending already checks against the clock; the fill stays the price in effect at the due time. A test covers
   an open and a close across a 35 s stall. The version restarts the twin window (21:07 UTC), and tonight's lab
   refreshes the backtests.
@@ -381,7 +381,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Found (costs): since `2026-11-tp-level`, a target filled at its level is not any quote's bid or ask, so no cost
   evidence was stored. All 67 demo trades without cost evidence since 2026-11-11 were take-profits, and the backfill
   could not match them (0 of 71 this evening).
-  Fixed (2fa796f, deployed 22:10 CET): the quote that crossed the level supports the exit (stored with `limit`), and
+  Fixed (4a790e8, deployed 22:10 CET): the quote that crossed the level supports the exit (stored with `limit`), and
   the level's distance from it goes into the adjustment. The backfill then attached 59 of 71. The other 12 are entries
   under the arrival rule, where the backfill takes the releasing quote, so they stay unknown (EVIDENCE.md).
   Take-profit evidence since 2026-11-11: 85 trades, adjustment −$42 against $334 of spread cost.
@@ -406,7 +406,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Twins under `2026-11-tp-level` (decided since 2026-11-11 08:44 UTC): 104 pairs, 79% agree, mean +1.16 bp:
   CHECK. Two pairs made +103 of the +120 bp: ema-cross/9-21 US30 and BTCUSD 1:10 were demoted to virtual ("losing
   virtual trade evidence") 3–4 minutes after their demo entries, which the demotion closed, while the paper trades
-  ran 1 h and 10 h (+36, +66 bp). A lifecycle close is not a twin: such deals are now counted apart (20993ac).
+  ran 1 h and 10 h (+36, +66 bp). A lifecycle close is not a twin: such deals are now counted apart (e3ddaad).
   Without them: 102 pairs, 80% agree, mean +0.18 bp, p95 4.2 bp; targets 19 pairs, 95% agree. Both demotions
   followed reversals: the new side's demo order leaves at the decision, before the closing paper trade's P&L
   triggers the demotion (one spread at 0.2× size each, rare; left as is).
@@ -414,21 +414,21 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   246 orders since 2026-11-10 21:00 exactly; 13 at the next quote). Paper filled at the first quote stamped at or
   after decision + 500 ms, so a hole in our stream gave it a later price (16 of 246 fills more than 2 s after the
   due time, up to 10.7 s). Replayed on those 246 orders: mean |entry gap| 0.55 → 0.40 bp, median 0.24 → 0.15 bp,
-  p95 1.90 → 1.72 bp, no bias either way. Fixed: engine `2026-11-arrival-price` (20993ac, deployed ~09:35): the
+  p95 1.90 → 1.72 bp, no bias either way. Fixed: engine `2026-11-arrival-price` (e3ddaad, deployed ~09:35): the
   first quote stamped after the due time releases the order at the quote before it; after a pause over a minute the
   reopening quote is still the fill. Thinned and full recorded replays trade identically. The version restarts the
   twin window (08:40 UTC) and tonight's lab refreshes the backtests.
 - The 23:00 US100 pairs (−7.9 bp and others) are timing, not a rule: Capital's US100 jumped from 28134 to 28178 and
   back between 23:00:00.17 and 0.40; the demo order filled inside the jump 0.18 s after the decision, paper 0.5 s
   later (it would still differ by ~10 bp under the new rule).
-- Burst latency after yesterday's broker change (13b560d): 170 orders, decision → accepted median 0.41 s, p90
+- Burst latency after yesterday's broker change (1043bad): 170 orders, decision → accepted median 0.41 s, p90
   1.6 s, p99 2.9 s; the largest burst (16:00, 13 orders) took at most 2.7 s.
 - Found (mirror): Capital refused 3 orders without a reason (swing-reversal/p05 ETHUSD 15:45, donchian/turtle-20
   GOLD 16:00, rsi2/long-only US100 23:00); its activity shows a REJECTED working order from SYSTEM. One such
   refusal since October before. Not a request collision (orders 170 ms apart across accounts); other orders on the
   same account seconds later went through. Each demo entry then waited for the 5-minute retry (5.3–5.5 min behind
   its paper twin). Now the first retry of a reasonless refusal goes out after 1 s, within the 5 attempts
-  (1c0ce48, deployed).
+  (13b41e2, deployed).
 - Next: twin pairs under `2026-11-arrival-price`; whether the 1 s resends go through; arena RSS at 24 h; tonight's
   backtest refresh.
 
@@ -450,7 +450,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   bursts with ~3 s holes, and the next quote we got was 2038.36, where paper filled. Over 14 days: 25 targets
   where paper beat demo beyond a spread (−356 bp in total), 3 the other way. Capital's own records (4 days, all
   Arena accounts): targets fill at the level or better (median +0.26 bp, 83 closes); stops slip a median
-  0.15 bp (p5 −3.5 bp). Fixed (engine `2026-11-tp-level`, 13b560d, deployed 09:44): a target crossed while the
+  0.15 bp (p5 −3.5 bp). Fixed (engine `2026-11-tp-level`, 1043bad, deployed 09:44): a target crossed while the
   instrument quotes continuously (quotes under a minute apart) fills at its level; after a pause the reopening
   quote is still the fill. Stops unchanged: they are market orders and paper stays conservative (demo better in
   60 of 845 stop pairs, +514 bp). The version bump restarts the twin window and refreshes backtests tonight.
@@ -475,9 +475,9 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Twins: all trades over 14 days 2,202 pairs, 55% agree, 141 agents diverged: the old engine and the old queue.
   Since engine v2 (decided after 2026-11-09 22:19 UTC) 11 pairs, 10 agree; all 16 entries since the feed-time
   engine within a spread. Every disagreement found was the mirror: three timesfm-drift pairs (AUDUSD,
-  OIL_CRUDE ×2) from the early-close bug fixed in 0e754e4, and ema-cross/9-21 BTCUSD from the reversal bug
+  OIL_CRUDE ×2) from the early-close bug fixed in 0a01cca, and ema-cross/9-21 BTCUSD from the reversal bug
   below. The remaining CHECK (mean +8.9 bp over 11 pairs) is that pair (+96 bp); it fades as pairs accumulate.
-- Fixed (13d3ba5, deployed d57347a 09:43):
+- Fixed (d5702d4, deployed 7871080 09:43):
   - Reversals: the old side's paper close, seconds after the decision, closed every demo deal of the run,
     including the new side's deal sent at the decision, and the fill then reopened it. All 4 reversals since
     decision-time orders (ema-cross BTCUSD ×2, hma-slope GOLD, tsmom/5d US500): an extra spread and order, and
@@ -489,7 +489,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
     check. The check (never failed in 5,633 deals since October 1) and the protection resync now run after the
     account's queued orders. Since last night's broker fix: 47 orders, decision → accepted median 0.30 s, 35
     under 1 s, 90th percentile 2.2 s; the slow ones were the 2nd–4th orders on one account at 02:00 and 05:00.
-- Twins judge the current engine (492ee71): the arena records `engine.since` when its engine version changes
+- Twins judge the current engine (48b7aa7): the arena records `engine.since` when its engine version changes
   (seeded to the v2 start, 2026-11-09 22:19 UTC); `bun run twins` raises CHECKs on trades decided since then,
   with all trades as context, and Paper vs demo opens on that view.
 - Correction: the funding gap was not real. Capital books SWAP transactions without a deal id (known since
@@ -510,7 +510,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   its confirmation (300 ms sleep first) and position check, and the minute's 40 candle/market requests
   shared the same 170 ms pacer. Capital's limits (open-api.capital.com FAQ): 10 requests/s per user, orders
   at most 1 per 0.1 s, 1,000 demo orders an hour, one login per second; concurrent sessions undocumented.
-- Fix (332d263): one session per demo account (nine concurrent sessions probed read-only first: all stayed
+- Fix (2dfb9ca): one session per demo account (nine concurrent sessions probed read-only first: all stayed
   valid, the arena saw no 401s), a job queue per account with orders before reconciliation, a pacer that gives
   the next slot to orders, then confirmations and position checks, then everything else, and an immediate
   first confirmation. First night after it: decision → accepted 0.2 s median, 1.1 s p90, 2.3 s worst (8 deals,
@@ -530,7 +530,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   callback, so every US100/US500 quote still reaches them although it only acts with a profit target; a future
   SDK flag could let new agent versions ask for quotes only while positioned (changing these agents' code
   would restart the cohort).
-- Live after c33e40e: 0.23 ms per quote, quote callbacks 0.07 ms, 2–4% of a core in total by session.
+- Live after 89c0d87: 0.23 ms per quote, quote callbacks 0.07 ms, 2–4% of a core in total by session.
 
 ## 2026-11-09 (Mon, user-requested) — paper–demo twins, Capital's late quote stream, cheap idle agents
 
@@ -548,7 +548,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   earlier; a fresh connection was exactly as late as the arena's (6 ms apart), so it is Capital's. PC clock
   NTP-synced (0.8 ms). Effects: paper filled on stale quotes, live minutes closed before their last quotes,
   Capital's stops fired a median 5.7 s before ours, demo orders left after the paper fill.
-- Changed (engine `2026-11-feed-time`, 4cb33da): fills on the first quote stamped at or after the order's
+- Changed (engine `2026-11-feed-time`, c3dcd98): fills on the first quote stamped at or after the order's
   arrival; quiet minutes close after 1.5 × the observed delay; the mirror sends demo orders at the decision
   and links the later paper fill. Backtests on generated quotes unchanged; the night grid keeps the same
   trades in all 336 US500 settings (returns +0.1 pp on average; the original's Nov 3 entry 7548.3 vs 7548.5),
@@ -567,7 +567,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   the mirror's single session switching between nine accounts at top-of-hour bursts. Decision-time orders
   remove the wait for the paper fill, not this queue; it is the next gap to close.
 - Visits are now daily at 09:30 with `bun run twins` first (LIFECYCLE "Paper–demo twins").
-- Deployed 8fedc5f 21:27; 85 agents, 4,644 runs, no load errors. First decision-time demo orders: Capital
+- Deployed 91fc3ef 21:27; 85 agents, 4,644 runs, no load errors. First decision-time demo orders: Capital
   accepted them 0.5–20 s after the decision while the paper fills came 12–31 s after it (Capital's stream
   was ~9 s late again); entry prices within 0–3.4 bp. Bug: the minute sync closed 3 of the 6 demo deals as
   "paper position is flat" while their paper orders were still on the way (timesfm-drift OIL_CRUDE ×2,
@@ -605,7 +605,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   resumed alone (removed from the list), but the lab units carried `ConditionPathExists=!` on the hold file,
   so they waited for the file itself to disappear, which it never does while the video pipeline is held.
   Last lab run 2026-10-21; arena trading, tick capture and the archive were unaffected.
-- Fix (db1f855): `ops/lab/lab-control.py` (`check` / `resume`, same pattern as `forecaster-control.py`);
+- Fix (05f8754): `ops/lab/lab-control.py` (`check` / `resume`, same pattern as `forecaster-control.py`);
   `trader-lab.service` uses it as `ExecCondition`, the timer's file condition is gone. Ran the scoped resume
   at the user's request; the hold now lists only `video-pipeline.service`, which stays paused (not ours).
   A future `heavy-resources-stop` rewrites the full list and pauses the lab again.
@@ -629,7 +629,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   always long −6.9%, random −22.1%, original −99.98%. US100 base +125.1%, big-move +106.7%, strong-day +16.9%,
   steady-day +96.2%, gap-5bp +117.2%, gap-15bp +63.4%, leverage-200 +322.4% (98.5% drawdown), full-day-200
   −100%, always long +58.6%, random −17.3%. Selected on design, not on these results.
-- Deployed 9f4cf67: all 20 run and are on Capital demo; the original's record matches the pre-deploy
+- Deployed 3b3a853: all 20 run and are on Capital demo; the original's record matches the pre-deploy
   snapshot. 16 cohort runs now sit on 1:20, displacing flat legacy runs (adx-dmi, timesfm-band) to paper.
   Night Lab cohort table shows coordinates with each change from the base in bold. Verdicts: control 148,
   early 396, keep 8, leader 0; monkeys 0 of 36. Backend 180 and UI 22 tests pass.
@@ -654,7 +654,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   sequence. The rule beat both controls on both indexes in history; the forward records will test it.
 - Night Lab report rebuilt (only the cohort changed; the 16 kept members are byte-identical) with a same-nights
   comparison table; strategy explanations show the control's side against the rule's.
-- Deployed 4a6e029: 89 agents, 4,653 runs, no load errors. All 20 cohort runs assigned to Capital; the
+- Deployed 341631a: 89 agents, 4,653 runs, no load errors. All 20 cohort runs assigned to Capital; the
   original's record matches the pre-deploy snapshot (2 trades, $19,696). The controls took four 1:20 slots
   from flat legacy `adx-dmi` runs (US500, US30, GOLD, SILVER), which continue on paper. Verdicts: control 148,
   early 396, keep 8, leader 0; monkeys 0 of 36. Backend 181 and UI 22 tests pass.
@@ -667,7 +667,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   15.1 GB; two-year projection 35.0 GB, 4× stress 74.3 GB of 100 GB. Arena 489–534 MB before the deploy,
   330 MB after. Both `pc-server-trader-*` units in trader.slice. The nightly lab stays paused by the user's
   heavy-resource hold (since Oct 21; forecaster resumed Nov 1), so no backtests or additions from this visit.
-- Fix (041104e): close confirmations carry the closing order's direction (SELL for a long), which a
+- Fix (d05b7af): close confirmations carry the closing order's direction (SELL for a long), which a
   minimum-size EURUSD round trip on Arena 01 confirmed ($0.013 in spread). The Oct 15 identity check compared
   them with the position's direction, so from then on nearly every arena close was left to reconcile, sent
   again and recorded from the 404 without an exit price: 7 of 3,630 closes priced from Oct 16 to Nov 9. P&L was not
@@ -780,7 +780,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   Verdicts401early/8keep/0leader/144controls; monkeys0/36. All nineteen replaced virtual records
   were checked flat; the bounded broker deal read has no corresponding open deal. Holds, accounts,
   original account leverage, capture/archive and unrelated services remain unchanged.
-- Deployed c474ea3 and verified20/20source-pinned Capital assignments (10US500/10US100), with
+- Deployed 1fe3fb7 and verified20/20source-pinned Capital assignments (10US500/10US100), with
   no unrelated mirrored record displaced. Original run id/start/source, two trades, return and DD
   are unchanged. All nineteen superseded agents have source, forward runs and backtests in the
   live Graveyard, with explicit superseded-experiment reasons. Standard count remains553; total
@@ -912,7 +912,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   the upload during backfill and verifies a queued admission without reposting. No orders/network in
   that regression. Source/record IDs are retained across the normal systemd reload.
 - Native paid job 20261109T014034Z-3148a2ba42 is installed in place and approved for renewal;
-  source b9b8ad5, no phone UI launch/automation. Native focus-anchor fractions are stable across
+  source a336937, no phone UI launch/automation. Native focus-anchor fractions are stable across
   navigation and restart; raw pixel offset appropriately changes when header geometry changes.
 - All 20 standard virtual records are present (10/10); nineteen initial Capital assignments required
   one further Tier1 slot. Excluded the weakest current eligible non-control Tier1 incumbent,
@@ -1046,8 +1046,8 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Native domain checks (11) and simulator build pass. Compact charts/gauges, portrait/landscape,
   offline content and exact first-frame/eight-second cold plus warm restoration verified. One script
   check needed Unicode-aware JSON matching for the delta symbol; the app rendered it correctly.
-  Svelte check has zero errors/warnings and production build passes. PWA a7cac72 published normally.
-- Paid build a7cac72 passed signing/validation, but the Mac could not reach the phone. Durable job
+  Svelte check has zero errors/warnings and production build passes. PWA 184be46 published normally.
+- Paid build 184be46 passed signing/validation, but the Mac could not reach the phone. Durable job
   `20261108T123547Z-5688e0b951` published the signed app through the existing tailnet installer and
   remains `awaiting_ota`, with automatic direct-delivery retries. Installation is not claimed. Sent
   the required desktop notification with the Tailscale/Install Trader instructions because device
@@ -1086,7 +1086,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   with parallelism disabled, existing twelve-entry / 16 MiB chart cache. Warm night reads ~0.1–1 s;
   sampled longer-lookback cold reads up to ~3.4 s. Inspector roughly 22 MB after reads. Compressed
   derived decision evidence consumes the existing non-tick growth reserve; growth remains monitored.
-- Deployed ca1418c and boundary corrections 2bdac06. Verified all 4,994 forward IDs, all 66 hashes and
+- Deployed 6594efa and boundary corrections 0f15e0c. Verified all 4,994 forward IDs, all 66 hashes and
   all 442 exact Capital assignments unchanged. No agents, parameters, tiers, roster or histories reset.
   Final review: 4,599 virtual = 553 standard + 4,046 comparisons; control 144 / early 401 / keep 8 /
   leader 0 / retire 0, monkey sanity 0/36. Stream/model healthy, queue zero, no load errors, watchdog
@@ -1100,7 +1100,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   a rounding spacer. Exact first-frame through eight-second cold restoration and warm return pass.
   QA app removed and shared simulator/owned GUI closed, with no new graphics failure reported.
 - Signed native delivery installed in place on the first attempt via durable ios-push job
-  `20261108T112706Z-7fa16ca4ba`, source b64db55, input hash e441595469a833f4. Approved exact
+  `20261108T112706Z-7fa16ca4ba`, source 75dd9bb, input hash e441595469a833f4. Approved exact
   frozen inputs for renewal; product app was not launched or driven. The shared build cache reported
   unchanged NativeKit modules recompiling (178-second build); this was a nonfatal build-cache warning,
   not an app/installation failure. Temporary fixture and dev services removed; no physical user action
@@ -1129,7 +1129,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   source and logs are behind details. Compact navigation, monthly/market charts and trade tables fit
   phone portrait/landscape. Checked 390×844, 844×390 and desktop, light/dark; no page-width overflow.
   Web chart axes use UTC consistently. Native charts use the phone's local dates/times.
-- Backend deploy b580701 preserved every active/historical run identity, all 66 source hashes and
+- Backend deploy 67b4089 preserved every active/historical run identity, all 66 source hashes and
   all 442 exact Capital assignments. Original night source/special admission intact; no agent source,
   roster, fill, P&L, retirement or history changed. Post-deploy review: 4,599 active virtual records
   (553 standard, 4,046 correlated comparisons); control 144 / early 401 / keep 8 / leader 0 / retire 0;
@@ -1148,7 +1148,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   pass after persisting the connection notice. QA used an isolated bundle and private derived
   fixtures, never real credentials or demo mutations; guest/GUI closed and QA app uninstalled.
   Signed paid build installed in place on the primary iPhone on the first delivery attempt, job
-  `20261108T100131Z-e357947495`, source commit 2314d79. Exact frozen inputs approved for renewal;
+  `20261108T100131Z-e357947495`, source commit cc3249d. Exact frozen inputs approved for renewal;
   no uninstall, product-app launch or phone UI automation. Public native data verified separately.
   Final health/counts unchanged, archive acknowledged through 44,498,848 with zero received-tick
   losses. No physical user action or desktop notification needed. Unrelated working-tree edits preserved.
@@ -1182,7 +1182,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   standard run. Retired standards and explicitly retired comparisons stay retired; no new experiment
   is admitted by the fix. The two retired BTC MACD records never had comparison copies, so no live
   history had to be recovered or rewritten. Reproduced the defect in an isolated database test first.
-- Shipped 872b566. All 149 backend tests pass with native parity, including two database reopen cycles
+- Shipped cdc6466. All 149 backend tests pass with native parity, including two database reopen cycles
   preserving an open comparison position/state without reviving retired rows or adding records, even
   with a passing backtest. Typecheck and packaged/native deploy preflight pass. Actual restart preserved
   every one of 4,599 active IDs, 4,046 comparison IDs, all 66 source hashes and all 444 exact Capital
@@ -1318,7 +1318,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 
 ## 2026-10-29 (Thu, user-requested) — agent evidence and frozen execution study
 
-- Shipped arena/dashboard `54984fa`: common-date 1:1 controls, exposure/stop downside, cost coverage,
+- Shipped arena/dashboard `c1d3e8d`: common-date 1:1 controls, exposure/stop downside, cost coverage,
   family grouping, calibration/admission labels and known forecast-outage clocks. Price/funding/fill
   rules and engine version are unchanged. Existing 63 source hashes, 551 standard IDs, all 450 exact
   Capital assignments and 393 archived forward records across 41 versions were preserved. Original
@@ -1462,7 +1462,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   Added a reusable bounded offline replay tool, including optional paced delivery and real dashboard
   read handlers. All build/replay work ran within trader.slice. The scoped request authorized these
   optimization jobs; TimesFM/nightly lab and the explicit resource hold remained untouched.
-- Deployed b2e95e8, then 9b25c93. All 4,561 run IDs, 63 source hashes, 450 Capital assignments and the
+- Deployed 96572e2, then 894f863. All 4,561 run IDs, 63 source hashes, 450 Capital assignments and the
   recording journal identity survived exactly; zero new runs/load errors. Two planned restarts left
   about 24.6 seconds of explicit session coverage gaps. Zero dropped received quotes; no continuous
   history was invented across those gaps. One archive job hit restart downtime; subsequent archival
@@ -1588,7 +1588,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   holding totals are nonnegative. Eighty-eight newly opened higher-timeframe positions correctly await
   their first post-entry bar. No partial recoveries at verification. Agent source/hashes and thresholds
   are unchanged; uninterrupted historical backtests are unaffected, so their engine/cache gate stays valid.
-- Shipped 43eb576 and re-ran review: all runs, assignments and recording journal identity/sequence
+- Shipped 0c26dac and re-ran review: all runs, assignments and recording journal identity/sequence
   survived the planned restart. Night experiment source 56ac3bdfe7c1 remains on Capital demo, currently
   flat with no overdue actual position; its one closed trade is still too little evidence to judge.
   Graveyard remains 393 archived forward records across 41 versions, with every stored reason intact.
@@ -1656,7 +1656,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   of overwriting them; identical-version uploads remain idempotent. Startup retains pre-tier backtests
   instead of deleting them. Lifecycle policy now requires Graveyard preservation and platform milestones.
   Previously overwritten/deleted backtests cannot be reconstructed by this change.
-- Deployment: PC fixes deployed as 4564b48; Graveyard backend as 0824364. A shared-package root import
+- Deployment: PC fixes deployed as 584636b; Graveyard backend as 673deb7. A shared-package root import
   failed in the first Graveyard package: arena stopped at 14:25:37 UTC, API recovered at 14:26:21 and
   live warm-up finished at 14:26:37. Corrected the import, shipped the workspace dependency and added
   an isolated exported-tree import preflight before future uploads/restarts. Recording coverage keeps
@@ -1702,7 +1702,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   three-minute captured workload with restored positions. All 551 backtests were refreshed after a
   regression caught and fixed a tick/minute drawdown accounting error. No agent thresholds were tuned.
 - Final refresh completed and all 551 results were pushed, with zero missing provenance. Production
-  verified at 05:17 UTC, arena code `1a37af8`: all 4,561 runs and all 450 earlier Capital assignments
+  verified at 05:17 UTC, arena code `2156d75`: all 4,561 runs and all 450 earlier Capital assignments
   preserved, each account still at its intended leverage and 50/50 slots; no load errors, stream/GPU
   healthy, queue 0, 182 MB RSS. Night experiment entry time, size, stop and 08:27 local deadline survived
   unchanged. Recording has zero dropped ticks or errors. Review: control 144, early 407, keep/leader/retire
@@ -1724,7 +1724,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Account context: Arena 01–09 were already provided; Visi is reserved; nine hedged accounts, 50 slots
   each, 0.2× mirror scale, fixed tiers 1/2/3/5/10/20/50/100/200. Gerti became Arena 03, Endri Arena 05.
   Preserve existing assignments and the later, verified fee-free 1:1 rule (natural gas excepted).
-- Tick capture deployed first as 939898b; all 20 instruments are recording from 04:09:38 UTC, repeated
+- Tick capture deployed first as f638bc5; all 20 instruments are recording from 04:09:38 UTC, repeated
   quotes and broker/arrival times included. PostgreSQL archival and acknowledgements are working on a
   one-minute timer in trader.slice. Shared tick execution/replay integration remains in progress.
 
@@ -1748,7 +1748,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   PostgreSQL container volumes identify an unrelated project's databases, not an older trader store.
   No Windows filesystem or additional drive is currently attached. An old Windows installation or its
   backups remain the recovery lead; there is no evidence here establishing that the user dropped it.
-- Cleanup audit: commit `b612b0b` (2026-10-07) removed legacy ticks, tick statistics and old run/fill/state
+- Cleanup audit: commit `1d30397` (2026-10-07) removed legacy ticks, tick statistics and old run/fill/state
   tables, retaining minute candles. It does not explain a missing 2017-era Windows database. Corrected
   DECISIONS.md's overly broad API retention claim to the specific US500 probes actually observed.
 
@@ -1779,7 +1779,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Validation: 109 backend tests and typecheck green, deterministic agent check, funded backtest/date audit.
   Previous forward source has zero Capital deals; deploying the new version preserves its historical
   record and the other strategies' records. Full rules/results: [visar-night-trading.md](visar-night-trading.md).
-- Production verified at 16:16 UTC, arena code `bb76bff`: source `56ac3bdfe7c1` is running on Arena 09
+- Production verified at 16:16 UTC, arena code `3f80491`: source `56ac3bdfe7c1` is running on Arena 09
   at confirmed 1:200, with its matching 72-trade backtest and special user-experiment admission. The
   prior night source is archived and unassigned. Compared all assignments with the pre-night deployment
   snapshot: all 449 earlier assignments remain; the new night source is the only added assignment.
@@ -1817,7 +1817,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
 - Before deploy: stream/forecaster healthy, 4,560 virtual runs (550 standard/4,010 comparisons), 449/450
   Capital slots, Arena 09 at 49/50, no recent errors. Validation: 103 backend tests, typecheck and Svelte
   check/build green.
-- Production verified at 13:36 UTC, arena code `6ec6541`: exact source `98de49ace1c6`, run
+- Production verified at 13:36 UTC, arena code `ec3758b`: exact source `98de49ace1c6`, run
   `demo:visar-night-trading:US500:x200:98de49ace1c6`, assigned to Arena 09 at confirmed 1:200 (now 50/50).
   All 449 earlier assignments remain; total 450/551 standard runs mirrored, 4,561 virtual runs including
   the unchanged 4,010 comparisons. This experiment has one standard run; its failed ordinary backtest
@@ -1882,7 +1882,7 @@ Visits are weekly from today (Saturdays 23:00 Tirana); this entry covers 11-18 2
   13.6 s, broker queue 4.4 s, POST response 107 ms, send→verified confirmation 653 ms. These component
   percentiles are not additive. The latency cohorts had 226 commands, 206 executed, 20 pending as expected
   for the long-delay scenarios. Actual-fill adverse slippage p95 4.11 bp across the recorded history.
-- Post-patch verification (13:05 UTC): code 8a1874d deployed; 4,560 virtual records, 449 active Capital
+- Post-patch verification (13:05 UTC): code 509b0b6 deployed; 4,560 virtual records, 449 active Capital
   assignments, all 456 historical/current broker rows priced, no missing closes, no broker error or queue,
   stream and forecaster healthy. RSS 194 MB, event-loop p95 2 ms, no pending virtual commands.
   The last-hour open count correctly survived restart (12); 72 tests and UI check/build pass. Temporary

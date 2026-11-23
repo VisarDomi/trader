@@ -18,7 +18,7 @@ disabled. Quotes are decoded in memory from the canonical compressed archive, wi
 
 | Backend | Median tick CPU | Median per-quote p95 | Result digest |
 |---|---:|---:|---|
-| Baseline 69433f2 | 801.6 ms | 0.231 ms | identical |
+| Baseline f36825e | 801.6 ms | 0.231 ms | identical |
 | Optimized TypeScript | 522.4 ms | 0.146 ms | identical |
 | Optimized TypeScript + Rust risk batch | 569.6 ms | 0.158 ms | identical |
 

@@ -77,7 +77,7 @@ gzip-compressed, compressed once by the lab. The lab's copy is `apps/backend/dat
 which deploys carry forward (`NIGHT_LAB_DB` overrides the path). Nothing data-sized is in `static/` or
 the UI build. `python3 ops/lab/night_lab_db.py report` prints the full report; `info` shows its version.
 `night_lab_db.py import --report … --exports …` rebuilds the database from a report and its exports (the
-original files are in git at 9c62b05, `apps/ui/static/night-lab/`).
+original files are in git at df48bd0, `apps/ui/static/night-lab/`).
 
 Serving (`src/lib/server/night-lab.ts`, routes under `/night-lab/data/`): `summary.json` (benchmarks,
 cohort, events and every 1:20 /20% setting, enough for first paint, revalidated with an ETag) and
