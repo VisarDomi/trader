@@ -45,21 +45,22 @@ records the first quote-supported audit and the frozen immediate/spread-gated br
   show t ≈ 3, and about 10 would pass t ≥ 2 by luck. Keep t ≥ 2 for broker promotion, but call an edge
   "confirmed" only at t ≥ 3 (or a deflated Sharpe ratio). [Anomalies](topics/anomalies.md)
 
-## Already fixed tonight: no overnight fee at 1:1 except on natural gas
+## No overnight fee at 1:1 except on natural gas
 
 The unlevered research found that Capital.com's fees page exempts 1:1 positions on "most markets", while
 the engine (following the July 2024 announcement) exempted only shares and crypto. Arena 01's transactions
 for 8–12 October settled it: funding was charged only on NATURALGAS, and not on its US100, US500, US30,
-gold, silver, oil or FX positions. Arena 06 (1:20) paid funding on all of them. The engine now exempts
+gold, silver, oil or FX positions. Arena 06 (1:20) paid funding on all of them. The engine exempts
 every 1:1 position except natural gas. The 1:1 backtests were re-run, and US100 buy-and-hold went from
 +46% to +73% (2024-01 → 2026-09).
 
 Two consequences:
 
-- **The share basket is no longer the only fee-free way to hold the index.** US100 at 1:1 is fee-free too.
+- **The share basket is not the only fee-free way to hold the index.** US100 at 1:1 is fee-free too.
   The basket stays as "the eight biggest companies against the index".
-- **The engine still ignores index dividends.** Arena 01 receives them (US500 longs credited, shorts
-  charged). That is worth about 0.6–1.7% a year on index longs. It is next on the platform list.
+- **The paper engine does not simulate index dividends.** Arena 01 receives them (US500 longs credited,
+  shorts charged), worth about 0.6–1.7% a year on index longs. The outright-hold benchmark includes them
+  (`apps/backend/EVIDENCE.md`).
 
 ## Leverage: where each tier makes sense
 
@@ -98,7 +99,7 @@ The numbers behind it:
 All of these work with today's SDK and use fixed textbook parameters. The rank weighs the evidence,
 whether our costs allow it, and how much it would teach us.
 
-**Live since 2026-10-14:** #1–#12, plus `lrs-sma200/x1` on the fee-free 1:1 account (70 runs; see the
+**Live:** #1–#12 (from 2026-10-14), plus `lrs-sma200/x1` on the fee-free 1:1 account (see the
 journal for their backtests). Not built yet: #13 (needs the TimesFM quantile audit first), #14 (needs
 daily history before 2024) and #15 (a process to set up). Watch them on the leaderboard; the slow ones
 (200-day and monthly rules) are judged after 90 days.
@@ -122,7 +123,7 @@ daily history before 2024) and #15 (a process to set up). Watch them on the lead
 | 15 | LLM strategy writers | A process, not an agent: each week several frontier models write one agent from the same brief; authors are compared by demo t-statistics. Forward testing removes the memorisation problem | Any | [ai-trading](topics/ai-trading.md) |
 
 **Kelly ladder** (half, full and double Kelly on a trailing estimate) and **CPPI** (leverage only out of
-profits above a floor) are good experiments too, but slower to read. CPPI is live since 2026-11-21 as `cppi` (with
+profits above a floor) are good experiments too, but slower to read. CPPI runs as `cppi` (from 2026-11-21, with
 TIPP's ratcheting floor), at 1:5 on US500, US100 and GOLD.
 
 ## Studies that need no new agent

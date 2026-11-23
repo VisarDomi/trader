@@ -32,7 +32,7 @@ export const LIFECYCLE = {
   /** An agent is retired as a whole when at least this share of its judged runs (and at least 3) are retired. */
   AGENT_RETIRE_SHARE: 2 / 3,
   AGENT_RETIRE_MIN_JUDGED: 3,
-  /** Live demo runs the arena should hold at most (memory on the shared server); new agents wait above it. */
+  /** Live demo runs the arena should hold at most (its measured capacity); new agents wait above it. */
   PAPER_RUN_SOFT_CAP: 5000,
   /** Days between new-agent additions. */
   ADD_AGENTS_EVERY_DAYS: 7,
@@ -46,7 +46,7 @@ const V2_SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(["visar-night-v2-us100/cen
 const V3_SPARSE_NIGHT_IDS:ReadonlySet<string>=new Set(['us500','us100'].flatMap(i=>['big-move','strong-day','steady-day','gap-15bp'].map(v=>`visar-night-v3-${i}/${v}`)));
 
 // Frozen sparse experiments must be allowed to reach their declared entry cadence.
-// Error/ruin and mature losing-evidence rules still apply immediately as before.
+// Error/ruin and mature losing-evidence rules still apply immediately.
 export function silentDaysFor(agentId:string):number {
   if(agentId==='visar-night-lab/clean-50x')return 365;
   if(SPARSE_NIGHT_IDS.has(agentId)||V2_SPARSE_NIGHT_IDS.has(agentId)||V3_SPARSE_NIGHT_IDS.has(agentId))return 180;

@@ -5,7 +5,7 @@
  *   bun run review          markdown report
  *   bun run review --json   the same data as JSON
  *
- * Reads the arena API (ARENA_URL, through the SSH tunnel) and applies the
+ * Reads the arena API (ARENA_URL, loopback) and applies the
  * shared lifecycle policy (packages/shared/src/lifecycle.ts): health, capacity,
  * verdict counts, leaders, runs and agents to retire.
  */

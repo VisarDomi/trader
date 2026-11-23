@@ -1,12 +1,12 @@
 /**
- * Arena service entry point (runs on the Hetzner server under systemd).
+ * Arena service entry point (runs on the PC as the pc-server-trader-arena user unit).
  *
  * Env:
  *   CAPITAL_API_KEY / CAPITAL_IDENTIFIER / CAPITAL_PASSWORD   demo login
  *   ARENA_TOKEN          bearer token for mutating API calls (required)
  *   ARENA_PORT           default 4120 (bound to 127.0.0.1)
- *   ARENA_DB             default ./data/arena.db
- *   FORECASTER_URL       default http://127.0.0.1:4130 (SSH tunnel to the lab GPU)
+ *   ARENA_DB             default <app>/data/arena.db; the runtime .env points it at <runtime>/trader-arena/data
+ *   FORECASTER_URL       default http://127.0.0.1:4130 (the GPU forecaster on this PC)
  *   BROKER_ACCOUNT_PREFIX  demo accounts whose name starts with this are used by the broker
  *                        mirror, default "Arena"; "off" disables the mirror
  */

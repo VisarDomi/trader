@@ -2,9 +2,9 @@
  * Live TimesFM forecasts for the arena.
  *
  * The model runs on the lab PC's GPU (apps/forecaster); the arena reaches it
- * through the SSH tunnel at FORECASTER_URL. Before agents see a closed bar,
+ * over loopback at FORECASTER_URL. Before agents see a closed bar,
  * the arena calls prepare() for every forecast that bar needs, then get()
- * serves them synchronously. If the PC is unreachable agents get null.
+ * serves them synchronously. If the forecaster is unreachable agents get null.
  */
 import type { ForecastProvider } from '../engine/market.ts';
 import { DEFAULT_FORECAST_CONTEXT } from '../engine/market.ts';

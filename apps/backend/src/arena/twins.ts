@@ -166,8 +166,8 @@ export function closedByLifecycle(note: string | null): boolean {
  * Who closed the deal. "already closed at broker" means the arena's close found the deal gone: Capital's stop or target
  * filled first, even when Capital books it later than our request. With quotes ~0.1 s behind, both legs react to the
  * same quote and Capital settles the race (2026-11-14: 114 of 411 such closes since 11-10 were booked 0–400 ms after
- * our request, 7 up to 9.6 s after). A "not found" after an earlier close that may have gone through is noted
- * differently since 2026-11-14 (before, such deals, 1–2 a day since 11-10, read as broker closes).
+ * our request, 7 up to 9.6 s after). A "not found" after an earlier close of ours that may have gone through is
+ * noted differently, so it does not read as a broker close.
  * Otherwise timing decides: Capital's close before the arena asked, or the arena never asked. Paper's exit time cannot
  * decide: it comes after the modelled 500 ms order latency, while the arena sends a close it decided at once (2026-11-12).
  */

@@ -5,9 +5,9 @@ _Implementation/research update, October 29, 2026. Existing trading histories an
 ## What the new evaluation separates
 
 An operationally healthy agent is not automatically a profitable strategy. A positive lifetime return
-can reflect its market, entry date, sizing or luck. The leaderboard now shows same-instrument,
-common-observation-window excess over the 1:1 buy-and-hold control, actual virtual exposure and cost
-coverage. Excess is not risk-adjusted alpha. All admission/maturity gates still apply.
+can reflect its market, entry date, sizing or luck. The leaderboard shows same-instrument,
+same-dates excess over holding the instrument outright (`apps/backend/EVIDENCE.md`), actual virtual exposure
+and cost coverage. Excess is not risk-adjusted alpha. All admission/maturity gates still apply.
 
 In the frozen development snapshot, the TSLA volatility-managed holder and its control returned about
 6.625% and 6.622% over their common current-tick-epoch window: roughly 0.003 percentage points apart.

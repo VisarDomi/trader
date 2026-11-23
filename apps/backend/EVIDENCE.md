@@ -1,8 +1,8 @@
 # Agent evaluation and execution evidence
 
-This extends Backtest → Virtual → Capital demo without resetting source hashes, cash, trades, slots
-or equity histories. Economic fill rules/tick engine version are unchanged; new fields are derived
-diagnostics. Admission thresholds remain those in agents/LIFECYCLE.md.
+Evidence fields on Backtest → Virtual → Capital demo records are derived diagnostics: they never change
+source hashes, cash, trades, slots, equity histories or fills. Admission thresholds are those in
+agents/LIFECYCLE.md.
 
 ## Common-date controls
 
@@ -13,7 +13,7 @@ Every record is compared with holding its instrument 1:1 over the same dates, so
 - **Capital demo:** realized cash return on the run's allocation since its first deal, to now (`cash-vs-hold`).
   Open positions count once closed.
 
-The hold (`src/arena/hold.ts`, since 2026-11-22) is the instrument bought outright with the same money, never sold,
+The hold (`src/arena/hold.ts`) is the instrument bought outright with the same money, never sold,
 paying no CFD fees: an index can be owned through its shares, a share or coin directly, a metal as metal, a currency
 as a deposit. Return = (1 + price change) × (1 + what owning it paid) − 1:
 
@@ -24,9 +24,9 @@ as a deposit. Return = (1 + price change) × (1 + what owning it paid) − 1:
 - oil and natural gas: price only, an upper bound, since nobody owns barrels or gas outright (storage, futures roll).
 
 Prices are the arena's own: the close of the last minute candle finished by the moment (within four days), else the
-lab's daily bars. Until 2026-11-22 the hold was the Buy & Hold control run, a CFD at 0.9× exposure with overnight
-funding and no dividends; it stays a control agent. Over the 2024-01 → 2026-10 window it trailed the outright price
-before dividends on every instrument (US500 +56.8% vs +61.0%, gold +91.2% vs +101.2%), and it fell less in a drop.
+lab's daily bars. The Buy & Hold control agent is not the hold: it is a CFD at 0.9× exposure with overnight
+funding and no dividends, so over 2024-01 → 2026-10 it trailed the outright price before dividends on every
+instrument (US500 +56.8% vs +61.0%, gold +91.2% vs +101.2%), and it fell less in a drop.
 
 No future prices; exact dates are returned. Sizes differ: the percentage-point difference is excess return, not
 risk-adjusted alpha. Missing prices, dividend history or deposit rates return unavailable, never zero.
@@ -53,11 +53,10 @@ The series are stored in the arena database (`macro_series`), refreshed every si
 treasury.gov) and kept when a refresh fails. Dates before the stored history (2000) return no hurdles, never zeros.
 
 **Sharpe and Sortino** measure each period's return above what T-bills paid over that period (`riskFree: 'tbills'`),
-on live runs, Capital cash and backtests alike; stored records were re-measured from their stored equity curves, which
-reproduce the earlier cash-free ratios exactly (637 of 637). The backtest admission gate (−0.5) keeps checking the
+on live runs, Capital cash and backtests alike, measured from each record's stored equity curve. The backtest admission gate (−0.5) keeps checking the
 Sharpe of the returns themselves (`cashFreeSharpe`): it filters strategies that lose on their own. On the Sharpe above
 T-bills it would also reject 127 of 637 backtests, mostly low-leverage variants rarely in the market, whose idle cash
-earns nothing in a CFD account. Promotion never used Sharpe (trade t-statistics and the monkeys).
+earns nothing in a CFD account. Promotion does not use Sharpe (trade t-statistics and the monkeys).
 
 ## Costs and coverage
 
@@ -72,8 +71,8 @@ decision-midpoint signal P&L − signed timing cost = fill-time midpoint P&L
 
 Timing is positive adverse, negative favorable. The second identity requires both decision quotes.
 A take-profit filled at its level between quotes (engine `2026-11-tp-level`) is supported by the quote that
-crossed the level, stored with `limit`; the level's distance from that quote is part of the adjustment (since
-2026-11-12; such exits from November 11–12 carry evidence only where the backfill finds both ends).
+crossed the level, stored with `limit`; the level's distance from that quote is part of the adjustment. Exits
+recorded before that field existed carry evidence only where the backfill finds both ends.
 The double-spread diagnostic subtracts another spread from the same observed trades; it does not
 re-size positions or re-run signals/stops/liquidations, and is not an independent counterfactual backtest.
 Totals distinguish at-fill references, reconstructed matches, unknown trades and truncated histories.

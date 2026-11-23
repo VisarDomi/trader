@@ -11,7 +11,7 @@ import { ENGINE_VERSION } from '../engine/version.ts';
  *   bun run backtest --push-only        just (re)send cached results for current code
  *
  * Results land in data/backtests/<window>/ and are pushed to the arena
- * (ARENA_URL, default http://127.0.0.1:4120 through the SSH tunnel).
+ * (ARENA_URL, default http://127.0.0.1:4120).
  */
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

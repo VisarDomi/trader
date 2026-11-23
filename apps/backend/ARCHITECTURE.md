@@ -1,4 +1,4 @@
-# Trader platform — architecture (v2, 2026-10)
+# Trader platform — architecture
 
 A place to collect many trading agents, run them forward on live demo prices,
 and rank them. **Backtest → Virtual engine → Capital demo** is the promotion path; demotion reverses it.
@@ -7,8 +7,8 @@ Actual Capital demo cashflows are ranked separately from virtual performance.
 - Repo map, hard rules, operations: [`../../setup.md`](../../setup.md).
 - Writing an agent: [`agents/GUIDE.md`](agents/GUIDE.md) (one file, no other changes).
 - Dashboard: <https://trader.veron3.space> (Authelia login).
-- v1 (blueprints, `AgentRunner`, tick recorder) is described in `DESIGN.md` / `VALIDATION.md`;
-  its code was removed in October 2026 and lives in git history.
+- Execution contract, measured broker behavior and capacity: [`EXECUTION.md`](EXECUTION.md).
+- Tick capture, replay and the single-copy archive: [`TICKS.md`](TICKS.md).
 
 ## Three execution stages
 
@@ -22,26 +22,33 @@ Every agent × instrument × leverage has a record. Existing Capital assignments
 new assignments need mature virtual evidence. Demotion reverses the stages and retains history.
 A changed source file starts a new record. Standard monkey controls measure luck; correlated latency
 comparisons do not count as independent hypotheses. See [`EXECUTION.md`](EXECUTION.md) for details and limits.
+Internally a virtual run has the kind `demo` (it is part of every stored run id).
 
 ## Topology
 
 ```
- Lab PC (this desktop, capped at 50% CPU/RAM by trader.slice)         Hetzner (shared server)
- ──────────────────────────────────────────────────────────          ─────────────────────────────────────
- PostgreSQL  candles (20 instruments, 1m since 2024-01;              trader-arena.service  (Bun, ≤700 MB)
-             US100 since 2020) + compressed recorded ticks                                         - REST 1m candles every minute
- trader-forecaster.service   TimesFM 3 on the RTX 3060 :4130  ◄─┐      - WebSocket ticks (decisions, bars, fills; recorded)
- trader-tunnel.service       autossh  -R 4130  -L 4120  ─────────┼──►  - every agent × instrument, $10k each
- trader-lab.timer (03:30)    ingest → forecasts → backtest ─push─┘      - broker mirror (demo accounts)
- bun run backtest / check-agent / forecasts (by hand)                  - SQLite data/arena.db, API :4120
- trader-watchdog.timer (10 min)  desktop notifications
-                                                                     trader-ui.service (SvelteKit :10003)
-                                                                     Caddy trader.veron3.space + Authelia
+ PC (this desktop; everything trader runs shares trader.slice, capped at 50% CPU/RAM)
+ ───────────────────────────────────────────────────────────────────────────────────
+ pc-server-trader-arena   Bun, API 127.0.0.1:4120
+                          - REST 1m candles every minute (stored for history)
+                          - WebSocket quotes: decisions, tick-built bars, fills; recorded to a spool
+                          - every agent × instrument × leverage, $10k each; broker mirror (demo accounts)
+                          - SQLite <runtime>/trader-arena/data/arena.db
+ pc-server-trader-ui      SvelteKit :10003 (dashboard, native API)
+ trader-forecaster        TimesFM 3 on the RTX 3060, 127.0.0.1:4130
+ trader-inspector         read-only trade inspection, 127.0.0.1:4140
+ PostgreSQL               candles (20 instruments, 1m from 2024-01; US100 from 2020-02) + compressed ticks
+ trader-tick-archive.timer (1 min)   spool → PostgreSQL
+ trader-lab.timer (03:30)            ingest → history → forecasts → backtests → night grid
+ trader-watchdog.timer (10 min)      desktop notifications
+        ▲
+        └── shared gateway ← Hetzner: Caddy trader.veron3.space + Authelia (public edge only)
 ```
 
-Ports are bound to 127.0.0.1 on both machines; the SSH tunnel is the only link.
-If the PC is off, the arena keeps running; TimesFM agents get `ctx.forecast = null`
-and do nothing new, and backtests wait for the next nightly job.
+All services bind to 127.0.0.1 and talk over loopback. `<runtime>` is `TRADER_SERVER_ROOT` from
+`ops/server/runtime.sh`. The PC must stay on: when it is off, nothing trades or records and the
+dashboard is down. When the forecaster is paused or down, TimesFM agents get `ctx.forecast = null` and
+do nothing new; backtests wait for the next nightly job.
 
 ## Code map (`apps/backend`)
 
@@ -50,8 +57,10 @@ and do nothing new, and backtests wait for the next nightly job.
 | `src/sdk/` | The agent contract: `defineAgent`, `ctx` types, streaming indicators (`ta.ts`), `localTime`. The only thing agents import. |
 | `src/engine/` | Simulation shared by backtest and demo: `BarSeries` (1m → any timeframe, owns the indicator cache), `AgentRun` (account, sizing, stops, trailing stops, funding, margin call, session close), `MarketEngine` (one instrument, many runs), metrics, agent loader, instrument registry. |
 | `src/capital/` | Capital.com REST client. **Demo URL only** — no live endpoint exists in the code. |
-| `src/lab/` | PC-side tools: `ingest`, `backtest` (worker pool), `check-agent`, `forecasts` (precompute), `seed-arena`. |
-| `src/arena/` | Server-side service: live loop, SQLite store, HTTP API, broker mirror, forecast client. |
+| `src/lab/` | Lab tools: `ingest`, `backtest` (worker pool), `check-agent`, `forecasts` (precompute), `push-history`, `sync-ticks`, `storage`, `review`, `twins`, `watchdog`, audits, benchmarks, `night-study/`. |
+| `src/arena/` | The arena service: live loop, SQLite store, HTTP API, broker mirror, forecast client, tick spool, twins, evidence. |
+| `src/inspection/` | The read-only trade inspector (`trader-inspector`). |
+| `src/strategy/` | Version-pinned strategy explanations for entries ([README](src/strategy/README.md)). |
 | `agents/` | One file per agent (+ `GUIDE.md`, `_template.ts`). |
 | `apps/forecaster/` | Python TimesFM 3 HTTP service. |
 | `apps/ui/` | SvelteKit dashboard. |
@@ -65,7 +74,8 @@ and do nothing new, and backtests wait for the next nightly job.
   tick sequence; no candle stop-before-target guess is used in the default backtest.
 - `onTick` can decide on every quote; optional `onBar` keeps closed-bar strategies' intended cadence.
   UTC bars aggregate observed ticks. Minute OHLC generates a deterministic lazy fallback when recorded
-  history is absent. Synthetic paths/spreads/cadence remain assumptions, exposed in every result.
+  history is absent. Synthetic paths/spreads/cadence remain assumptions, exposed in every result
+  ([`TICKS.md`](TICKS.md)). Records keep the engine version they ran under (`src/engine/version.ts`).
 - Every run has an **account leverage** (1:1 … 1:200; crypto and shares at most
   1:20; `src/engine/leverage.ts`): margin = notional ÷ leverage.
 - Sizing precedence: `size` → `exposure` → `marginPct` (share of equity as margin,
@@ -77,7 +87,7 @@ and do nothing new, and backtests wait for the next nightly job.
 - Overnight funding at each 17:00 New York rollover using Capital.com's current
   rates (indices long ≈ −8%/yr); weekends count three nights. None at 1:1
   except on natural gas (Capital.com waives it on 1:1 positions on most markets;
-  verified on the demo accounts 2026-10-13).
+  verified on Arena 01's transactions).
 - `intradayOnly` agents are flattened 5 minutes before 17:00 New York.
 - Indicators are computed once per bar per (instrument, timeframe) and shared.
   Series keep 5,000–10,000 bars; recursive indicators re-converge after trimming.
@@ -86,9 +96,9 @@ and do nothing new, and backtests wait for the next nightly job.
 
 ## Demo specifics
 
-- REST minute candles are still polled into historical storage. From the tick cutover, forward agents
-  use tick-built bars; late REST candles cannot rewrite an already observed live path. Tick-built bars
-  and per-run tick watermarks preserve that observation across restarts.
+- REST minute candles are polled every minute into the arena's candle store (history and warm-up).
+  Forward agents use bars built from the quote stream; a late REST candle cannot rewrite an already
+  observed live path. Tick-built bars and per-run tick watermarks preserve that path across restarts.
 - On start the arena backfills 120 days of candles, replays them so new agents
   warm up (orders disabled), and restores existing runs from their snapshot,
   catching up on candles they missed while the service was down.
@@ -96,7 +106,8 @@ and do nothing new, and backtests wait for the next nightly job.
   the lab's daily bars from 2024-01 up to the 120-day window (built from the
   lab's 1-minute history the same way, pushed nightly by `push-history`), so
   200-day and 12-month lookbacks are ready on the first live day.
-- Runs are persisted every minute; hourly equity points (thinned to daily after 30 days).
+- Runs a quote can change (open position, order in flight, tick callback) are saved every minute;
+  idle flat runs every 10 minutes and hourly. Hourly equity points are thinned to daily after 30 days.
 
 ## Broker mirror
 
@@ -121,28 +132,27 @@ closes).
   balance and deposits; retried daily if refused) and switched to **hedging
   mode**, so it holds many runs on the same instrument, each as its own deal.
   Every mirrored order is **0.2 × the paper size**, and each run reserves
-  $2,000 of an account: 50 runs per account, 450 across the nine (392 live
-  runs in October 2026). At 0.2, 0.7% of backtest trades fall below an
+  $2,000 of an account: 50 runs per account, 450 across the nine. At 0.2,
+  0.7% of backtest trades fall below an
   instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
   An account that cannot be switched to hedging holds one run per instrument.
 - **Assignment:** every live run is mirrored on an account of its tier while
   capacity lasts, mature virtual evidence first, spread over the accounts with the most
-  free slots; assignments are sticky; promotion swaps only within a tier. Runs can
-  be excluded by hand. A run never has more than one open deal.
+  free slots; assignments are sticky. When a tier is full, a waiting run takes the slot of
+  the weakest mirrored run of that tier once its trade t-statistic is higher by 0.25 and
+  the weaker run is flat (`PROMOTION_MARGIN`, `src/arena/slots.ts`). Runs can be excluded
+  by hand. A run never has more than one open deal.
 - **Renames:** deals are re-attached by deal id if an account is renamed;
   renaming an account away from the prefix closes the arena's deals there and
   stops using it.
-- **Requests:** one Capital session per demo account (since 2026-11-10; nine
-  concurrent sessions checked first), so no account switching; each account has
-  its own job queue, orders before reconciliation. All sessions and the candle
+- **Requests:** one Capital session per demo account, so no account switching;
+  each account has its own job queue, orders before reconciliation. All sessions and the candle
   poller share a ~6 req/s pacer in which orders take the next free slot, then
   confirmations and protection updates, then everything else. Each new position
   is checked against its order by the account's next reconciliation (one list of
   all positions, within about a minute), not by a request per order, so a
   burst carries orders and confirmations only. Capital answers an
-  order in ~0.12 s (p50; 0.6 s p95); before this the shared, switching session
-  made the order wait a median 7 s after the decision, 52 s at 40+ decisions
-  a minute. Backtest trade logs put the load at 3 orders in a typical active
+  order in ~0.12 s (p50; 0.6 s p95). Backtest trade logs put the load at 3 orders in a typical active
   minute, 34 at the 99th percentile and ~108 at the worst top-of-hour minute; a
   burst that large still needs seconds at Capital's 10 req/s, which is the
   mirror's queue only: paper orders never wait for it.
@@ -180,21 +190,21 @@ watchdog (`src/lab/watchdog.ts`) notifies the desktop when the platform needs at
 |---|---|
 | New agent | write `agents/x.ts`, `bun run check-agent agents/x.ts`, `bun run backtest x`, commit, `ops/server/deploy-arena.sh` |
 | Deploy arena | `ops/server/deploy-arena.sh` (needs committed changes; runs typecheck + tests; restarts; runs resume) |
-| Deploy dashboard | push `main`; the veron3 watcher builds `apps/ui` and restarts `trader-ui` |
-| Lab services | `ops/lab/install.sh`; logs: `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
-| Arena logs | `ssh <server-user>@<server-ip> sudo journalctl -u trader-arena -f`; events also on the Status page |
+| Deploy dashboard | push `main`; the veron3 watcher builds `apps/ui` and restarts `pc-server-trader-ui` |
+| Lab services | `ops/lab/install.sh`; logs: `journalctl --user -u trader-forecaster -u trader-lab -u trader-tick-archive` |
+| Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the Status page |
 | Refresh candles | `bun run ingest` (gap-fills all instruments, resumable) |
 | Forecasts for new agents | `bun run forecasts` (GPU, ~2 min per instrument for 1h bars) |
 | Heavy jobs by hand | prefix with `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH` to stay within the 50% cap |
 
-Secrets live only in `.env` files (never committed): `apps/backend/.env` on the
-PC (Capital.com login, `ARENA_TOKEN`), `/home/<server-user>/trader-arena/.env` and
-`/home/<server-user>/trader-ui/.env` on the server.
+Secrets live only in `.env` files (never committed): `apps/backend/.env` for the lab
+(Capital.com login, `ARENA_TOKEN`, the shared server's `TRADER_SERVER_SSH`/`TRADER_SERVER_HOME`),
+`<runtime>/trader-arena/.env` and `<runtime>/trader-ui/.env` for the services.
 
 ## Known limitations
 
-- History: the stored shared minute dataset begins in 2024-01 (US100 also has 2020+ from an older ingest).
-  US500 probes on 2026-10-15 returned no minute bars before 2024; older hourly (2023) and daily (2015)
+- History: the stored shared minute dataset begins in 2024-01 (US100 also has minutes from 2020-02).
+  Read-only US500 API probes (2026-10-15) returned no minute bars before 2024; older hourly (2023) and daily (2015)
   quotes were available. The common leaderboard window is 2024-01 → 2026-09. Older coarse candles cannot
   reproduce minute-specific entries or overnight stops; a longer exact US500 test needs another verified
   source of overnight minute bid/ask data, with the broker/source differences disclosed.
@@ -204,16 +214,3 @@ PC (Capital.com login, `ARENA_TOKEN`), `/home/<server-user>/trader-arena/.env` a
   (4h/1d) agents need months.
 - TimesFM forecasts are precomputed for backtests only for the (instrument,
   timeframe, context) combinations agents declare; precompute is ~140 series/s.
-
-## Execution model update (2026-10-15)
-
-[`EXECUTION.md`](EXECUTION.md) supersedes earlier instant-fill, equity-based promotion and two-board
-descriptions above. It documents the exact contract probes, synthetic pacing, refreshed rules, actual
-cashflow reconciliation, stage gates, 5,000-run capacity and remaining model differences. `demo` is retained
-as the internal virtual run kind to preserve stored IDs.
-
-## Tick engine and single-copy archive (2026-10-16)
-
-See [TICKS.md](TICKS.md) for the common tick path, compressed blocks, recording gaps, reproducible replay,
-resource measurements and two-year storage budget. Older forward records remain and the feed change is
-annotated; no strategy source or Capital leverage tier was changed for this infrastructure upgrade.

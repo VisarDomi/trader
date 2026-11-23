@@ -140,75 +140,47 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 
 ---
 
-### Implications for Tick Recorder (v1; the recorder and its tables were removed 2026-10)
-
-- **WebSocket 10-min timeout**: We ping every 60s. Should be plenty but if Capital.com
-  is strict about it, we may need to lower to 30s or check that pings actually extend
-  the session.
-- **POST /session at 1/sec**: Our reconnect re-authenticates. With 3s backoff that's
-  fine, but rapid retries could trigger 429. We use exponential backoff for auth failures.
-- **40 instrument limit**: We can subscribe to US100 + BTCUSD (and more) on a single
-  WebSocket connection. No need for multiple connections.
-- **REST session 10-min expiry**: The keep-alive timer in CapitalSession pings every 5min,
-  which keeps the REST session alive. If the REST session expires, we re-auth before
-  the next WebSocket connect anyway.
-
-## Tick Stats Strategy (v1, removed 2026-10)
-
-- **Decision**: Maintain exact per-instrument tick stats incrementally during tick ingest,
-  instead of recomputing them from `ticks` each time `tick-stats` runs.
-- **Why**: The old approach required PostgreSQL to scan the full `ticks` table for exact
-  `COUNT(*)`, `MIN(timestamp)`, and `MAX(timestamp)` values grouped by instrument. That
-  cost grows with retained history and turns a lightweight operator CLI into a CPU-heavy
-  database job.
-- **Why not just add indexes**: Indexes help point lookups and range filters, but they do
-  not make an exact grouped count across the whole table cheap enough. PostgreSQL still
-  has to touch essentially all rows.
-- **Why not use a materialized view**: A materialized view would only move the same full
-  scan to refresh time. That is acceptable for scheduled reporting, but not for a command
-  that should stay cheap and safe to run on demand.
-- **Tradeoff accepted**: We take a small amount of extra write-path bookkeeping in exchange
-  for keeping operator stats reads effectively constant-cost as tick history grows.
-
-## v2 decisions (2026-10)
+## Decisions
 
 ### Where things run
 
-- **Arena on Hetzner, heavy work on the lab PC.** The shared server has ~2 GB free RAM and 4 cores used by
-  other apps, which is plenty for the live loop (~150-250 MB) but not for backtests, ingest or TimesFM.
-  The PC (12 threads, 31 GB, RTX 3060) runs those inside `trader.slice` (50% CPU/RAM cap). An SSH tunnel
-  (`-R 4130` forecaster, `-L 4120` arena API) is the only link; both services bind to 127.0.0.1.
-- **SQLite for the arena, PostgreSQL for the lab.** The arena's store is small and single-writer; SQLite needs
-  no server process on a crowded machine. The lab keeps the existing PostgreSQL candle store.
+- **Everything on the PC; Hetzner is only the public edge.** The arena, dashboard, forecaster, inspector,
+  PostgreSQL and the lab jobs run on this PC (12 threads, 31 GB, RTX 3060), all inside `trader.slice` (50%
+  CPU/RAM cap). The shared Hetzner server keeps only Caddy and Authelia for trader.veron3.space and forwards to
+  the PC through the shared gateway. Services bind to 127.0.0.1 and talk over loopback, so the forecaster and
+  the lab need no tunnel. The cost: the PC must stay on; when it is off, nothing trades or records and the
+  dashboard is down. The arena's old copy on Hetzner holds stale data and must never be started.
+- **SQLite for the arena, PostgreSQL for the lab.** The arena's store is small and single-writer, and SQLite
+  needs no server process. The lab keeps the PostgreSQL candle store and the one compressed tick archive.
 
 ### Broker mirror across many demo accounts
 
 - **Paper runs stay the leaderboard; real demo orders are a check on them.** Paper has no capacity limits and
   treats every agent the same; the mirror measures how far real fills drift from it.
 - **Hedging mode instead of one account per agent.** Capital.com allows 10 demo accounts per login (the user
-  keeps one). In netting mode an account can hold one run per instrument, so 9 accounts would mirror at most
-  108 of 392 runs. In hedging mode every position is its own deal, closed by its deal id, so one account holds
+  keeps one). In netting mode an account can hold one run per instrument, so nine accounts would mirror only
+  a small part of the live runs. In hedging mode every position is its own deal, closed by its deal id, so one account holds
   any number of runs on the same instrument (verified 2026-10-07: BUY, BUY, SELL on BTCUSD gave three positions,
   each closed separately; the mode can be switched with a position open).
 - **Scale 0.2, 50 runs per account.** Each run reserves $2,000 of a $100,000 account: 450 runs across nine
   accounts. Smaller scales round more trades below minimum sizes (0.1: 1.3% of trades off by >10%), larger ones
-  fit fewer runs (0.25: 360, fewer than the 392 live runs). At 0.2 a whole account only reaches its kill switch
+  fit fewer runs (0.25: 360). At 0.2 a whole account only reaches its kill switch
   if its runs lose half their (scaled) capital on average, so the switch stays a runaway guard.
 - **Accounts are found by name prefix and tracked by id.** The user adds capacity by naming an account
-  "Arena…", without a deploy, and their own accounts can never be traded by accident. Names can change (the
-  first nine "Arena" accounts were renamed from older ones), so state is keyed by accountId and deals are
-  re-attached by deal id.
-- **One session switching accounts, not one session per account.** The number of concurrent sessions a login
-  may hold is undocumented, and a cap would knock out the stream or position-opener. Switching costs two
-  requests per account change; jobs are grouped per account so a burst switches at most nine times.
-- **Request budget.** From the backtest trade logs (392 runs, 2.75 years): 3 orders in a typical active
-  minute, 34 at p99, 61 at p99.9, 108 at the worst minute; at most ~105 opens in any hour against the demo
-  limit of 1,000. At ~2.6 requests per order plus switches, the arena's 6 req/s pacer clears a p99 burst in
-  ~20 s and the worst one in about a minute, leaving the rest of the login's 10 req/s to the lab (≤3.3/s)
-  and position-opener. Beyond the 450-run capacity, or ~100 agent variants, mirror only the best demo runs
-  (the assignment already fills best-first) or use a second Capital.com login with its own limits.
+  "Arena…", without a deploy, and their own accounts can never be traded by accident. Names can change, so
+  state is keyed by accountId and deals are re-attached by deal id.
+- **One Capital session per account.** Nine concurrent sessions on the login were checked before relying on
+  them (`src/arena/main.ts`, `sessionFor`). No session switches between accounts, so an order never waits for
+  another account's jobs; each account has its own job queue, orders first.
+- **Request budget.** From the backtest trade logs (2.75 years): 3 orders in a typical active minute, 34 at
+  p99, 61 at p99.9, 108 at the worst minute; at most ~105 opens in any hour against the demo limit of 1,000.
+  All sessions and the candle poller share the arena's ~6 req/s pacer, where orders take the next free slot and
+  confirmations follow; new positions are checked by the account's next reconciliation, not one request per
+  order. Top-of-hour bursts take about 0.35 s per order (see `agents/LIFECYCLE.md`, twins). The rest of the
+  login's 10 req/s is left to the lab (≤3.3/s) and position-opener. Beyond the 450-run capacity only the best
+  runs are mirrored (promotion by trade t-statistic); a second Capital.com login would bring its own limits.
 
-### Leverage tiers (2026-10-07)
+### Leverage tiers
 
 - **Leverage is a dimension of every run, one tier per demo account.** The user's login offers 1, 2, 3, 4, 5,
   10, 20, (30 on FX), 50, 100 and 200 on indices, commodities and FX, and up to 20 on crypto and shares; it is
@@ -217,8 +189,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   leverage). Nine accounts, nine tiers: 1, 2, 3, 5, 10, 20, 50, 100, 200 (4 and 30 left out; 30 exists only
   on FX). Mirroring a run only on an account of its tier keeps every demo deal at its paper run's leverage.
 - **The paper engine models what leverage changes:** the margin cap on size, the 50%-of-margin close-out,
-  and no overnight funding at 1:1 on crypto and shares (Capital.com, since 2024-07-08; indices, commodities
-  and FX still pay at 1:1).
+  and no overnight funding at 1:1 on anything except natural gas.
 - **Leverage is a ceiling, not a multiplier.** Agents that risk 1% against a stop used a median of 0.7–3×
   and a 90th percentile of 1.5–5× equity in backtests (FX the most), so the account leverage changes their
   results only on the low tiers (at 1:1 89% of index and 99% of FX trades would be capped). The starting
@@ -226,22 +197,19 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   ~50 runs per account. To show what *using* leverage does, `marginPct` sizing (a share of equity put up as
   margin, so exposure grows with the tier) and a control agent, the leverage ladder, run one signal at
   every tier.
-- **Shares, for fee-free index exposure.** A 1:1 index position still pays ~8%/year on a long; the eight
-  largest Nasdaq-100 companies held at 1:1 pay nothing (the cost is the cash to own them outright). Their
-  minimum sizes are small enough (0.01–0.1 share) to mirror at 0.2×. Buy-and-hold holds them on 1:1 next to
-  US100 and US500.
-- **Corrected 2026-10-13: at 1:1 nothing but natural gas pays funding.** Capital.com's fees page says 1:1
-  positions on "most markets" pay no overnight fee (exceptions: natural gas, US cocoa, VIX, TRY pairs); the
-  July 2024 announcement covered only shares and crypto, and that is what the engine had. Arena 01's
-  transactions (8–12 October) settled it: funding only on NATURALGAS, none on its US100, US500, US30, GOLD,
-  SILVER, OIL_CRUDE and FX positions, while Arena 06 (1:20) paid on all of them. The engine now exempts every
-  1:1 position except NATURALGAS. The shares are still worth holding at 1:1, as the eight biggest companies
-  against the index, but no longer as the only fee-free way to hold it. Index dividend adjustments (credited
-  to longs, charged to shorts, seen on Arena 01) are not modelled yet.
+- **Shares: the biggest companies against the index.** The eight largest Nasdaq-100 companies trade at 1:1
+  next to US100 and US500 in buy-and-hold. Their minimum sizes are small enough (0.01–0.1 share) to mirror at
+  0.2×.
+- **At 1:1 nothing but natural gas pays funding.** Capital.com's fees page says 1:1 positions on "most
+  markets" pay no overnight fee (exceptions: natural gas, US cocoa, VIX, TRY pairs). Arena 01's transactions
+  (8–12 October 2026) confirmed it: funding only on NATURALGAS, none on its US100, US500, US30, GOLD, SILVER,
+  OIL_CRUDE and FX positions, while Arena 06 (1:20) paid on all of them. The engine exempts every 1:1
+  position except NATURALGAS. Index dividend adjustments (credited to longs, charged to shorts, seen on Arena
+  01) are recorded from Capital's transactions but not simulated by the paper engine.
 - **Leaders are compared with monkeys on t, not return,** because returns scale with position size and so
   with leverage; a trade t-statistic does not.
 - **The roster decides tiers, not agent files,** so moving an agent between tiers never changes its code
-  hash. All demo runs restarted once on 2026-10-07 when tiers were introduced (they were 1.5 days old).
+  hash.
 
 ### Lifecycle and babysitting
 
@@ -254,28 +222,33 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   babysitter's review never disagree.
 - **Retiring a single instrument goes through `agents/roster.json`,** because editing the agent's
   instrument list would change its code hash and restart every other instrument's record.
-- **Promotion to the broker is by demo equity with a $200 margin,** applied only when slots are full and
-  only while the weaker run is flat, so the mirror never cuts a trade short and does not churn on noise.
+- **Promotion to the broker is by trade t-statistic with a 0.25 margin** (`PROMOTION_MARGIN` in
+  `src/arena/broker.ts`), counted on the trades since the run's last demotion, applied only when a tier's slots
+  are full and only while the weaker run is flat, so the mirror never cuts a trade short and does not churn on
+  noise.
 - **Deterministic watchdog, judgement on a schedule.** Outages need minutes, not days: a 10-minute timer on
   the PC checks the arena, the feeds, the broker accounts and the lab services and notifies the desktop
   (after three failed checks for transient things). Retiring and adding agents needs judgement and evidence
-  accumulates slowly, so Claude visits twice a week (Monday: full cycle including new agents; Thursday:
-  health and retirements) from a T3 Code scheduled task. Visits post into the thread that built the
+  accumulates slowly, so Claude visits on a schedule from a T3 Code scheduled task. The owner sets that
+  schedule from the results: up to once a day when the last visit found bugs, down to once a week after a
+  quiet period. New agents are added at most every seven days. Visits post into the thread that built the
   platform (fresh threads would need a git worktree of the T3 project root, which is not a repository);
   the runbook and the journal, not the thread's memory, are the source of truth.
 
 ### Live data
 
-- **1-minute candles from REST, quotes from WebSocket.** Building candles from WebSocket ticks made the demo bars
-  differ from the REST history the backtests use and left gaps after disconnects. Polling `/prices` at :10 past
-  each minute (12 requests/min) gives identical data in both modes and heals gaps automatically. Ticks are still
-  used for tick-precision stops and real fill prices.
+- **Bars from the quote stream, REST candles for history.** Forward agents decide on bars built from the
+  delivered quotes, the same tick path the backtests replay, so decisions, protections and fills share one
+  model. A minute closes on the first quote stamped in a later minute, or after 1.5 × the smoothed feed delay
+  when the market is quiet, so live candles match Capital's (see `EXECUTION.md`). REST `/prices` is still polled
+  10 s past each minute into the arena's candle store: it heals gaps for warm-up and history, but never rewrites
+  a live path already observed.
 - **Candle stop checks only for minutes that started after the entry**, because in live mode a candle for the
   minute in which an order filled arrives after the fill.
 
-- **Daily history for long lookbacks (2026-10-14).** The arena keeps 120 days of 1-minute candles, so an
+- **Daily history for long lookbacks.** The arena keeps 120 days of 1-minute candles, so an
   agent with a 200-day average or a 12-month return would wait months for its first trade. Rather than keep
-  a year of 1-minute candles on the shared server, the lab pushes daily bars built from its own 1-minute
+  a year of 1-minute candles in the arena, the lab pushes daily bars built from its own 1-minute
   history (`push-history`, nightly), and the arena seeds each 1d series with the ones older than its
   1-minute window when it starts. Same construction as the backtests; only 1d series, which is what the
   long-lookback agents use.
@@ -294,17 +267,14 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 - `GET /confirms/{dealReference}` returns the account's **latest** confirmation whenever the reference is not the
   latest one, and echoes the requested reference back (verified 2026-10-15: references of a dozen older deals all
   returned the same US500 close). If a broker-side stop fills between our order and our confirm call, we get that
-  stop's confirmation. It cost one wrong record (a EURUSD close stored at an AUDUSD price, −$5,019 instead of
-  −$26.64). The broker now accepts a confirmation only when its epic, direction, size and deal id match the deal;
-  otherwise reconcile settles the deal from `/positions`.
+  stop's confirmation. The broker accepts a confirmation only when its epic, direction, size and deal id match
+  the deal; otherwise reconcile settles the deal from `/positions`.
 - A confirmation's `direction` is the **order's** direction: a close of a long confirms as `SELL`, of a short as
   `BUY` (verified with a minimum-size round trip on Arena 01, 2026-11-09; the close reference is
-  `p_<position dealId>`). The October 15 check compared closes with the position's direction, so from then on
-  nearly every genuine close was "left to reconcile", re-sent, and recorded from the 404 as already closed with
-  no exit price. P&L was unaffected (it is allocated from Capital.com's transaction history); exit prices and
-  exit slippage were lost for Oct 15 – Nov 9, and each close cost a second request. Fixed on 2026-11-09.
+  `p_<position dealId>`). The broker checks a close's confirmation against the opposite of the position's
+  direction. Closes recorded without exit prices are explained in `CHANGELOG.md`.
 - `PUT /session` (account switch) changes the active account **of that session only** (verified: another session
-  switching to Visi left the broker session on Gerti). It does, however, move the login-wide `preferred` account,
+  switching to Visi left the broker session on Arena 03). It does, however, move the login-wide `preferred` account,
   which is where *new* logins land; apps that remember their last account (position-opener does) are unaffected.
   The broker verifies its session's account after every switch and every re-login.
 - Overnight funding is charged at 17:00 New York (21:00 UTC in summer); the daily break for US indices is 5 minutes.

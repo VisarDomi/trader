@@ -1,7 +1,7 @@
 # Strategy context
 
-`evidence.ts` is a pure, version-pinned presentation adapter for the 51 current strategy families
-(87 variants). It receives the same closed bars, cached SDK indicators, parameters, state and
+`evidence.ts` is a pure, version-pinned presentation adapter for every current strategy family and
+variant (the reviewed sources are pinned in `versions.json`). It receives the same closed bars, cached SDK indicators, parameters, state and
 forecast seen when a standard run requests entry. It returns pre-entry panels, thresholds, exact
 operators, signed headroom, an exit plan and initial protections. Random and passive controls are
 explicitly described. OR conditions are not displayed as mandatory AND conditions.
@@ -29,8 +29,8 @@ recorded decision and is never relabeled as retained input. No new forecast is g
 Night context reconstructs the exact reviewed session feature formulas: 09:30–16:00 New York,
 15-minute checkpoints, move, efficiency, directional share, conservative retrace, range/body,
 coverage and policy/calendar eligibility; then the prior 22:00 reference and 03:27 pullback in Tirana.
-The versioned v2 night families also support10:30–15:30 recognition (20steps/21points) and their
-0/5/15/30bp minimum opposite-side bid gap. Both reconstructed and recorded panels show the exact
+The versioned night families (v3, v4) also support 10:30–15:30 recognition (20 steps/21 points) and
+their 0/5/15/30 bp minimum opposite-side bid gap. Both reconstructed and recorded panels show the exact
 window, entry boundary and signed threshold headroom. Profit-enabled versions additionally show
 +20/+50/+100% trade-entry-capital targets and the unchanged loss/deadline exits; order protections
 are initial decision levels, while actual filled positions rebase to rounded size/fill.

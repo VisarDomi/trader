@@ -10,8 +10,8 @@ npm workspace monorepo containing the trading agent framework and its dashboard.
 
 ## Read
 
-- Hetzner deploy playbook:
-  `~/Documents/memory/hetzner-deploy.md`
+- Shared deploy playbook (public edge, PC runtime):
+  `~/Documents/archive/memory/hetzner-deploy.md`
 
 ## Routes
 
@@ -26,5 +26,5 @@ npm workspace monorepo containing the trading agent framework and its dashboard.
 - `npm install`
 - `npm run build -w apps/ui`
 - `npm run dev -w apps/ui`
-- `cd apps/backend && bun run dev`
+- `cd apps/backend && bun run arena` (the arena service; the live one is `pc-server-trader-arena`, so do not start a second one on the same login)
 - `cd apps/backend && bun test`

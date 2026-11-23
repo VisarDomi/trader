@@ -33,7 +33,7 @@ function rates(db:ArenaDB):Rates {
 }
 const service=(db:ArenaDB,r?:Rates)=>new AgentEvidenceService({db,tracked:new Map(),rates:r??rates(db)}as unknown as Arena);
 test('virtual runs compare their whole life with holding the instrument outright: price plus dividends, no CFD fees',()=>{
-  // 2026-11-22: the hold had been the Buy & Hold CFD control (0.9× exposure, ~8%/yr index funding, no dividends).
+  // The hold is the instrument owned outright, not the Buy & Hold CFD control (0.9× exposure, ~8%/yr index funding, no dividends).
   const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);
   for(const [at,s]of [[T+HOUR,9000],[T+6*HOUR,12000]])db.upsertEquity(RUN,at!,s!);
   db.insertCandles(EPIC,[candle(T-60_000,100),candle(T+6*HOUR-60_000,90)]);

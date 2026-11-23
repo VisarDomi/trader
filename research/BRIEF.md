@@ -7,8 +7,8 @@ the notes and the saved material must let us answer without searching again.
 
 ## The platform in one screen
 
-- **Arena:** ~480 paper "runs" trade forward on live Capital.com **demo** prices; the best 450 are mirrored as
-  real demo orders on nine accounts. Demo only, never live money. Dashboard: trader.veron3.space.
+- **Arena:** a few thousand paper "runs" (most of them latency comparisons) trade forward on live Capital.com
+  **demo** prices; the best 450 are mirrored as real demo orders on nine accounts. Demo only, never live money. Dashboard: trader.veron3.space.
 - **Instruments (CFDs, all USD):** indices US100, US500, US30; commodities GOLD, SILVER, OIL_CRUDE,
   NATURALGAS; FX EURUSD, GBPUSD, AUDUSD; crypto BTCUSD, ETHUSD (7 days a week); shares NVDA, MSFT, AAPL,
   AMZN, AVGO, META, GOOGL, TSLA (24h on weekdays). 1-minute candles from 2024-01 on the lab PC.
@@ -16,15 +16,15 @@ the notes and the saved material must let us answer without searching again.
   1:100, 1:200 (crypto and shares at most 1:20). Margin = notional ÷ leverage; a position is closed when
   equity falls below 50% of its margin.
 - **Costs:** spread on every trade; overnight funding on CFDs (long indices and shares ≈ 8% a year of
-  notional, ≈ 0 short; gold ≈ 6%; crypto ≈ 22% a year long). **At 1:1, crypto and shares pay no
-  overnight fee** (Capital.com rule since 2024). Share CFDs get dividend adjustments (long receives, short
-  pays) — the engine does not model dividends yet.
-- **Agents:** one TypeScript file; `onBar(ctx)` per closed bar (1m … 1d), **one instrument and one
+  notional, ≈ 0 short; gold ≈ 6%; crypto ≈ 22% a year long). **At 1:1 nothing but natural gas pays an
+  overnight fee.** Share and index CFDs get dividend adjustments (long receives, short pays); the paper
+  engine does not simulate them.
+- **Agents:** one TypeScript file; `onTick(ctx)` per quote and/or `onBar(ctx)` per closed bar (1m … 1d), **one instrument and one
   position per run** (no portfolios or pairs yet), market orders only, stops/take-profit/trailing stops,
   sizing by risk to a stop, by exposure, or by `marginPct` (uses the leverage on purpose). TimesFM 3
   forecasts available on request. Code: `apps/backend/agents/GUIDE.md`.
 - **Lifecycle:** judged after 30 trades and 28 days by the trade t-statistic; retired at t ≤ −1; "leader" at
-  t ≥ 2 and above every random-entry monkey. New agents: 1–3 a week, parameters fixed up front (no backtest
+  t ≥ 2 and above every random-entry monkey. New agents: 1–3 at a time, at most every 7 days, parameters fixed up front (no backtest
   tuning), a documented reason to work. `apps/backend/agents/LIFECYCLE.md`.
 - **What exists already** (see the idea log at the end of `apps/backend/agents/JOURNAL.md`): trend
   (EMA/MACD/SuperTrend/Donchian/Keltner/HMA/ADX/TSMOM), mean reversion (RSI2, z-score, Bollinger fade,

@@ -3,9 +3,9 @@
 Keep the TypeScript agent SDK easy to program against. Optimize the engine under it without changing
 strategy source hashes, orders, accounting, history, leverage tiers or recorded-tick fidelity.
 
-## October 26 measurements
+## Replay measurements (2026-10-26)
 
-The original live process used 19.9% of one core over a 60-second sample, with 47.0% one-second maximum
+Before these optimizations the live process used 19.9% of one core over a 60-second sample, with 47.0% one-second maximum
 and 38.0% p95, receiving 2,221 quotes. A separate 40-second perf sample attributed 54% of sampled cycles
 to JavaScriptCore HeapHelper threads. Hardware counters also showed substantial cache misses. This
 identifies heap work as a target, not proof that all future bursts have one cause.
@@ -18,16 +18,16 @@ disabled. Quotes are decoded in memory from the canonical compressed archive, wi
 
 | Backend | Median tick CPU | Median per-quote p95 | Result digest |
 |---|---:|---:|---|
-| Original 69433f2 | 801.6 ms | 0.231 ms | identical |
+| Baseline 69433f2 | 801.6 ms | 0.231 ms | identical |
 | Optimized TypeScript | 522.4 ms | 0.146 ms | identical |
 | Optimized TypeScript + Rust risk batch | 569.6 ms | 0.158 ms | identical |
 
 Selected path: **35% less replay CPU, 37% lower p95 quote time**. Rust is about 9% slower than optimized
-TypeScript including its language boundary, so it remains **opt-in**. Earlier single trials varied more;
-use repeated, unprofiled trials. Full snapshot/trade/equity/log digest across all nine final trials:
+TypeScript including its language boundary, so it is **opt-in**. Single trials vary more; use repeated,
+unprofiled trials. Full snapshot/trade/equity/log digest across all nine final trials:
 `141fd5912267353d6a5d08081e709a4e4ab17804ad72ba891c47bef73d74bfec`.
 
-Production changes:
+What the optimized path does:
 
 - Mark one instrument dirty per quote; defer run-ID lookups to the persistence pass.
 - Skip empty order queues before consulting rules/clocks.
@@ -52,9 +52,9 @@ ticks update numeric slots in Rust. One synchronous call per instrument; no per-
 allocation, locks or worker scheduling. Small batches keep JS. Cache-line padding would enlarge rows;
 do not apply it without measuring the tradeoff.
 
-The first prototype repacked every position on every quote and lost to JS. Sparse updates improved
-it but did not eliminate boundary cost. Direct Float64Array mutation failed under the installed Bun
-while passing under Node; Buffer views fixed that measured incompatibility. Startup checks ABI and
+Repacking every position on every quote loses to JS, and sparse updates still pay the boundary cost.
+Direct Float64Array mutation fails under the installed Bun (it passes under Node), so the module uses
+Buffer views. Startup checks ABI and
 actual mutation with a canary. The boundary refuses empty/oversized/short/overlapping/misaligned
 buffers. The engine supplies private, non-shared ArrayBuffers, borrowed only during the synchronous
 call, with no JS re-entry. Differential tests cover callbacks, funding, DST, pending orders, restore,
@@ -79,32 +79,31 @@ Primary references:
 
 ## Live heap work
 
-The first post-deploy live minute did not reproduce the unpaced replay improvement: 24.1% of one
-core versus the earlier 19.9%, at slightly different quote rates. A subsequent per-thread sample
-attributed 9.48 CPU seconds/minute to HeapHelper threads and 5.01 seconds to the main thread. This
-is why an isolated replay win alone was insufficient to close the live CPU investigation.
+An unpaced replay win alone does not carry over to the live process: with the default GC settings a
+per-thread sample attributed 9.48 CPU seconds/minute to HeapHelper threads and 5.01 seconds to the main
+thread, so heap marking, not the risk loop, dominated live CPU.
 
 A separate paced workload restores the same 4,561-run snapshot, feeds 800 archived quotes with
 25 ms sleeps, and performs four sets of persistence/dashboard reads. All configurations produced
 the same full-state digest. Total measured CPU was 5,075.8 ms with the runtime default, 4,735.2 ms
 with two GC markers, and 4,022.5 ms with one. Quote p95 was essentially unchanged (0.808/0.768/0.809 ms).
-Final RSS was 251/298/372 MB respectively. One marker was selected for a live trial: about 21% lower
-CPU in this workload, trading about 120 MB RAM for less parallel heap scanning/cache contention.
+Final RSS was 251/298/372 MB respectively. One marker gives about 21% lower CPU in this workload,
+trading about 120 MB RAM for less parallel heap scanning/cache contention.
 The repeat one-marker JS trial used 4,302.2 ms and 371 MB; the paced native trial used 4,130.6 ms
 and 361 MB, with worse quote p95 (0.879 ms). Those CPU differences are within trial variation;
 there is still no demonstrated end-to-end Rust win over the selected JS path.
 
 Only the arena receives BUN_JSC_numberOfGCMarkers=1, via the committed performance drop-in. The
 shared slice/resource hold is untouched. Full engine/native tests pass under that configuration.
-Watch RSS and event-loop latency; the replay result does not replace a post-change live sample.
-The flag can be reverted by removing only that environment override and restarting the arena.
+Watch RSS and event-loop latency. Removing that environment override and restarting the arena returns
+to the runtime default.
 [JavaScriptCore's options](https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/OptionsList.h)
 and [processor-dependent defaults](https://github.com/WebKit/WebKit/blob/main/Source/JavaScriptCore/runtime/Options.cpp)
 are the primary reference for the marker setting; the measurements above are specific to this app.
 
-Post-change live validation (two consecutive 60-second windows):
+Live validation of one marker (two consecutive 60-second windows):
 
-| Metric | Original live sample | One marker, minute 1 | One marker, minute 2 |
+| Metric | Default GC markers | One marker, minute 1 | One marker, minute 2 |
 |---|---:|---:|---:|
 | Mean CPU, one core | 19.94% | 3.15% | 3.30% |
 | One-second p95 CPU | 37.99% | 12.00% | 10.00% |
@@ -118,9 +117,8 @@ live improvement, not a guarantee for every future bar burst. Watch the higher R
 
 ## Reproduce and continue
 
-Build, replay and profiling jobs run inside trader.slice. The October 26 request authorizes scoped
-optimization work; the model/nightly resource hold stays active. This does not resume unrelated jobs
-or admission backtests.
+Build, replay and profiling jobs run inside trader.slice. Respect any heavy-resource hold
+(`~/.local/share/heavy-resources/user-pause.json`); optimization work does not resume held jobs.
 
 1. Sample live CPU, quote counts, queue health and event-loop latency, including normal minutes and
    bar boundaries. CPU percent refers to one core, not the whole PC.

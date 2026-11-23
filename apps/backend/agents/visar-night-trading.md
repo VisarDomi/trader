@@ -1,6 +1,6 @@
 # visar-night-trading
 
-User-requested special demo experiment, updated 2026-10-15. Source: `56ac3bdfe7c1`.
+User-requested special demo experiment. Source: `56ac3bdfe7c1`.
 
 ## Current rule
 
@@ -8,15 +8,15 @@ US500 only, 1:200, one position and at most one entry attempt per night. The nig
 **Europe/Tirane**, including DST. Classify the previous **09:30–16:00 New York** session, then separately
 capture its **22:00 Albania-time** bid. During US/EU DST mismatch weeks these are different observations.
 
-| Day filter | Earlier version | Current version |
-|---|---:|---:|
-| Minimum absolute session move | 0.25% | 0.25% |
-| Net move / total absolute quarter-hour movement | 60% | **15%** |
-| Quarter-hours agreeing with the net direction | 18/26 | **13/26** |
-| Largest adverse excursion / session range | ≤35% | **≤75%** |
-| Absolute open-to-close move / session range | none | **≥60%** |
-| Session high-to-low range / opening price | none | **≤2%** |
-| Observed minute coverage | ≥90% | ≥90% |
+| Day filter | Threshold |
+|---|---:|
+| Minimum absolute session move | 0.25% |
+| Net move / total absolute quarter-hour movement | **15%** |
+| Quarter-hours agreeing with the net direction | **13/26** |
+| Largest adverse excursion / session range | **≤75%** |
+| Absolute open-to-close move / session range | **≥60%** |
+| Session high-to-low range / opening price | **≤2%** |
+| Observed minute coverage | ≥90% |
 
 Opening/closing observations and all 26 quarter-hour endpoints are required. Bullish and bearish use
 symmetric conditions. Otherwise the day is neutral. Minute highs/lows count toward excursions. The
@@ -64,10 +64,10 @@ it never scores returns, wins, Sharpe or later-period counts. The current settin
 
 | Period | Purpose | Opportunities | Actual full-backtest fills |
 |---|---|---:|---:|
-| 2024 | frequency calibration | **25** | **25** |
+| 2024 | frequency calibration | **25** | **24** |
 | 2025 | later-period check | **25** | **25** |
 | January–September 2026 | later-period check | **22** (29.4/year annualized) | **22** |
-| Total | | **72** | **72** |
+| Total | | **72** | **71** |
 
 Later dates were checked without retuning for their returns. This is not a pristine unseen profitability
 holdout: the dataset was inspected during earlier interpretations. Frequency is an average opportunity
@@ -75,25 +75,24 @@ rate, not a quota or a promise of an entry every week.
 
 ## Backtest result
 
-Standard window **2024-01-01 through 2026-09-30**, minute bid candles, ask-side buys/short exits, spread,
-rounded sizes, pessimistic stops and shared margin model. No funding rollover falls inside the
-03:27–08:27 holding period.
-All 72 potential entry dates match the actual fills; there was no capital reset.
+Standard window **2024-01-01 through 2026-09-30**, engine `2026-10-ticks-v2` on generated tick paths (seed 1,
+16 ticks/minute; the window predates tick recording), ask-side buys/short exits, spread, rounded sizes,
+ordinary market stops and the shared margin model. No funding rollover falls inside the 03:27–08:27 holding
+period. 71 of the 72 qualifying dates fill: July 3, 2024 has no 03:27 candle and the entry expires at 03:28
+(the audit below). There was no capital reset.
 
 | Measure | Result |
 |---|---:|
-| Starting / ending capital | $10,000 / **$2.61** |
-| Return / maximum drawdown | **−99.9739% / 99.9783%** |
-| Trades | 72 (46 long, 26 short) |
-| Win rate | 43.06% |
-| Profit factor | 0.3697 |
-| Sharpe / trade t-statistic | −1.2124 / −2.0317 |
-| Scheduled exits / stop exits | 61 / 11 |
+| Starting / ending capital | $10,000 / **$2.21** |
+| Return | **−99.9779%** |
+| Trades | 71 (11 stop exits) |
+| Profit factor | 0.3682 |
+| Sharpe | −1.2393 |
 | Agent errors | 0 |
 
-All entries were 03:27 and all timed exits 08:27 local time. A fresh-capital final-120-day check also lost
-86.2% over eight trades. The requested frequency is achieved; this test does **not** show a profitable
-strategy. Minute history does not reconstruct the historical tick path or remote broker queue.
+All entries were 03:27 and all timed exits 08:27 local time. The requested frequency is achieved; this test
+does **not** show a profitable strategy. Generated paths do not reconstruct the historical tick path or the
+broker queue. The candle-engine result this replaced is in git history.
 
 ## Why the history starts in 2024
 
@@ -119,16 +118,6 @@ The user requested a special Capital demo slot. The roster scopes that exception
 retaining safety, kill switches and subsequent demotion. It is labeled **user experiment**; after
 demotion, ordinary re-entry evidence is required. Earlier source `98de49ace1c6` had three historical
 trades (−48.18%) and no forward Capital trades before revision. Its versioned record is retained.
-
-## Tick engine recheck (2026-10-16)
-
-At unchanged source `56ac3bdfe7c1`, engine `2026-10-ticks-v2` produces 71 funded trades, final $2.21
-(−99.9779%), Sharpe −1.2393, profit factor 0.3682, zero agent errors. This supersedes the candle-engine
-result above for current comparisons. It uses generated historical tick paths (seed 1, 16 ticks/minute),
-not captured tick history; 2024–September 2026 predates recording. Frequency calibration counts remain
-72 opportunities. The November 8 independent audit below identifies the missing fill: no 03:27
-candle on July 3, 2024; the request expired at 03:28. This was not capital exhaustion. No thresholds
-were tuned for profit and the explicit Arena 09 demo experiment remains.
 
 ## Backtest audit — 2026-11-08
 
@@ -388,12 +377,14 @@ Artifacts: `risk-grid.ts`, `grid-spec.json`, six `grid-<policy>.json` files, `gr
 `grid-summary.json`, `risk-grid.csv`, `grid-sensitivity.ts` and its three result files, plus the
 updated standalone `71-trades.html` and builder. Two bounded replay jobs each used one CPU /2 GiB
 inside trader.slice; the bounded sensitivity job ran there as well. No production changes or
-arena restart. The original eight-profile pilot (`risk-study.ts`, `risk-results.json`) is retained
-as a diagnostic, superseded for the main comparison by this complete grid.
+arena restart. The eight-profile pilot (`risk-study.ts`, `risk-results.json`) is retained as a
+diagnostic; this complete grid is the main comparison.
 
-## Forward cohort requested 2026-11-09
+## First forward cohort (2026-11-09, retired)
 
-The user explicitly requested ten US500 and ten US100 agents after the exploratory report, replacing
+These agents (`visar-night-lab`, `visar-night-us100`) are retired in `agents/_retired/`, records kept in
+the Graveyard. The live cohort is described in [`LIFECYCLE.md`](LIFECYCLE.md) and
+`research/night-cohort-v4-20261122.json`. The user explicitly requested ten US500 and ten US100 agents after the exploratory report, replacing
 weak current runs. The original source and record stay unchanged. The nineteen new variants have
 exact-source demo exceptions; all retain normal error/ruin and evidence-driven demotion. The stock
 hold opportunity cost is a separate full-cash Nasdaq index-price proxy, zero funding, with entry/exit

@@ -132,7 +132,7 @@ const OPEN_RETRIES = 4;
 const OPEN_RETRY_MS = 5 * 60_000;
 /**
  * Capital sometimes refuses an order without a reason: its activity shows a REJECTED working order from SYSTEM (3 of
- * ~170 orders on 2026-11-11, at busy moments; one since October before). Other orders on the same account seconds
+ * ~170 orders on 2026-11-11, at busy moments). Other orders on the same account seconds
  * later and each retry went through, so the first retry of such a refusal goes out after this, not OPEN_RETRY_MS.
  */
 const QUICK_RETRY_MS = 1_000;

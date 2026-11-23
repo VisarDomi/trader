@@ -112,7 +112,7 @@ export async function check(state: State, now: number, heavyResourcesPaused?:boo
     alerts.push({
       key: 'arena',
       title: 'Arena unreachable',
-      body: `The arena API (via the SSH tunnel) has not answered for 30 minutes: ${err instanceof Error ? err.message : err}. Demo trading may be down. ${ASK_CLAUDE}`,
+      body: `The arena API (ARENA_URL) has not answered for 30 minutes: ${err instanceof Error ? err.message : err}. Demo trading may be down. ${ASK_CLAUDE}`,
       userAction: false,
       needsStreak: true,
     });

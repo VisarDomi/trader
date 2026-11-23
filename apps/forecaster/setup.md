@@ -11,7 +11,7 @@ it uses ~1.3 GB of VRAM and does ~140 forecasts/s at context 512). Repo-wide map
   `{"mean": [[...]], "quantiles": [[[q10 steps], ..., [q90 steps]], ...]}` (quantile levels 0.1…0.9;
   `mean` is the median).
 
-Callers: the arena (live, directly on PC loopback after the migration) and `bun run forecasts`
+Callers: the arena (live, over loopback on this PC) and `bun run forecasts`
 (backtest precompute, writes tables under `apps/backend/data/forecasts`).
 
 ## Run
@@ -40,6 +40,6 @@ python3 ops/lab/forecaster-control.py resume # from the repo root
 
 The enabled service checks its membership in the persistent hold's `services` list at each start.
 The scoped resume removes only `trader-forecaster.service` from that list. A later global
-`heavy-resources-stop` writes a fresh complete list and takes precedence again. Legacy or malformed
-hold files fail closed. The global start command retains its existing all-workloads behavior.
+`heavy-resources-stop` writes a fresh complete list and takes precedence again. A hold file without a
+valid `services` list fails closed. The global start command retains its existing all-workloads behavior.
 The nightly lab has the same scoped resume: `python3 ops/lab/lab-control.py resume`.

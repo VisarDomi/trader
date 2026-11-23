@@ -19,10 +19,10 @@ account or agent error is archived back to backtest automatically. If still on C
 slot and gets the virtual observation window. Historical records remain available. A changed idea needs
 new source/version and a new passing backtest; same-code archived runs never silently restart.
 
-The 449 existing Capital assignments are a **calibration cohort**, not 449 statistically proven leaders.
-They keep their records so execution drift can be compared. New assignments require the evidence gate.
-Backtest gates apply to new admissions; earlier forward records are retained even if their old backtest
-would fail today's gate. Engine model changes are annotated; history is never rewritten.
+The Capital assignments made before the evidence gate existed are a **calibration cohort**, not
+statistically proven leaders. They keep their records so execution drift can be compared. New assignments
+require the evidence gate. Backtest gates apply to new admissions; forward records are retained even if
+their backtest would fail the current gate. Engine model changes are annotated; history is never rewritten.
 
 An explicit user request can admit a **special demo experiment** through `roster.json` → `demoAdmissions`.
 Each exception names one `agent:EPIC@tier`, its exact source hash, date and reason. It requires a current
@@ -30,20 +30,25 @@ source/current-engine backtest without an error status, but may bypass historica
 maturity gates. It has slot priority (only flat incumbents can be displaced) and is labeled **user experiment**;
 it is not a control or a proven leader. Normal runtime safety, kill switches and subsequent demotion apply.
 After its first demotion the exception no longer grants re-entry. Changed source needs a new explicit review
-of the exception. `visar-night-trading:US500@200` is the first such admission, requested on 2026-10-15.
+of the exception. `visar-night-trading:US500@200` is one; `roster.json` lists them all.
 
 Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
 `martingale-monkey`, `bold-play`, and the night cohort's direction controls `visar-night-v3-control-us100` /
-`-us500`, plus the archived v2 ones) are never judged or retired. The direction controls trade exactly their
+`-us500`) are never judged or retired. The direction controls trade exactly their
 `base` agent's eligible nights with identical settings, always long or with a random side, and hold
 user-requested demo admissions so the comparison also runs on Capital.
 
-The night cohort (v3, 2026-11-09, `research/night-cohort-v3-20261109.json`) is ten agents per index, each the
-base plus one change: day size, day shape, overnight gap, leverage, or side (controls). The original
-`visar-night-trading` keeps its record as the US500 full-day 1:200 point; US100 has the same settings. Exits
-that never trigger at 1:20 are not explored; leverage only at 1:200, where the 50% loss limit binds. The ruin controls `bold-play` and
-`martingale-monkey` are automatically paper-only by slug, including future code versions. There is no
-live-money stage.
+The night cohort (`research/night-cohort-v4-20261122.json`, 20 members) studies the user's night rule on
+both indices. Its v3 part is a base per index plus one change each: overnight gap, leverage 1:200, or side
+(direction controls). The original `visar-night-trading` keeps its record as the US500 full-day 1:200 point;
+US100 has the same settings (`visar-night-v3-us100/full-day-200`). Its v4 part is five looser variants per
+index at 1:20 (`visar-night-v4-us500/us100`: `loose-body`, `no-pullback`, `any-day`, `every-night`,
+`full-day`). Looser variants trade more nights where the 50% loss limit (about 2.8% away at 1:20) is out of
+the night's reach; a stricter subset of the base could trade only on the base's nights and so would add no
+observations. The v4 source is the v3 rule plus two switches (`direction`, `pullback`); with its defaults it
+trades exactly like the v3 base, and the paper grid runs every cell on it. Exits that never trigger at 1:20
+are not explored. The ruin controls `bold-play` and `martingale-monkey` are automatically paper-only by slug,
+including future code versions. There is no live-money stage.
 
 Execution comparisons have separate records and labels, but are correlated copies of a strategy under
 frozen latency assumptions. They never take Capital slots and never multiply strategy/monkey verdicts.
@@ -78,23 +83,13 @@ time. Calendar age/P&L remain intact; an open holding with zero closed trades is
 recorded dependency intervals survive restarts, while earlier unknown availability is not invented.
 Paused dependencies cannot earn new Capital promotion. See [evidence](../EVIDENCE.md).
 
-The explicit November 9 Visar cohort includes sparse day definitions. Their no-trade timeout is
-180 days for the five named body/retracement variants and 365 for `visar-night-lab/clean-50x`,
-whose inspected cadence is about one trade/year. The v3 directions with about one entry a month
-(`big-move`, `strong-day`, `steady-day`, `gap-15bp`) also get 180 days. `silentDaysFor` in `engine/policy.ts` is shared by
-the runtime and review/UI; other runs retain 60 days. This extends only the opportunity to observe
-a rare entry. Error/ruin exits, maturity, losing-evidence demotion and source-specific admission
-rules are unchanged. The short normal timeout would otherwise eliminate a deliberate frequency
-experiment before its declared cadence could reasonably produce an observation.
-
-On November 22 the user replaced those stricter v3 variants (`big-move`, `strong-day`, `steady-day`, `gap-5bp`,
-`gap-15bp` on both indices, retired in the roster) with the looser v4 cohort (`visar-night-v4-us500/us100`:
-`loose-body`, `no-pullback`, `any-day`, `every-night`, `full-day`, all at 1:20). A stricter subset of the base can
-trade only on the base's nights, so at 1:20 it added no observations; looser variants trade more nights where
-the 50% loss limit (about 2.8% away at 1:20) is out of the night's reach. The v4 source is the v3 rule plus two
-switches (`direction`, `pullback`); with its defaults it trades exactly like v3 base, and the paper grid runs
-every cell on it. The two agents that had traded (`visar-night-trading`, `visar-night-v3-us100/full-day-200`),
-the v3 base, the 1:200 points and the direction controls continue. The v4 variants use the normal 60-day timeout.
+Some night variants are built to trade rarely. Their no-trade timeout is 365 days for
+`visar-night-lab/clean-50x` (about one trade a year) and 180 days for the sparse body/retracement and
+day-filter variants listed in `silentDaysFor` (`src/engine/policy.ts`, shared by the runtime and the
+review/UI); every other run, the v4 variants included, has 60 days. This extends only the opportunity to
+observe a rare entry: error/ruin exits, maturity, losing-evidence demotion and source-specific admission
+rules are unchanged. The normal timeout would otherwise end a deliberate frequency experiment before its
+declared cadence could produce an observation.
 
 ## Retiring
 
@@ -114,7 +109,7 @@ source, forward runs, broker history and results. The arena records retirement r
 archives a backtest when its agent source or simulation engine changes. A same-version repeated upload
 updates that result without making duplicate archives. Never delete old records to tidy the leaderboard.
 When replacing a platform generation, add its dated milestone to `apps/ui/src/lib/platform-history.ts`
-and the journal. Platform migrations and replaced versions must not be labeled losing strategies.
+(the Graveyard's platform history) and the journal. Platform migrations and replaced versions must not be labeled losing strategies.
 
 ## Leverage
 
@@ -126,7 +121,7 @@ id or file slug), else those declared in its file, else `leverage.default`.
 |---|---|---|---|---|---|---|---|---|---|
 | Leverage | 1:1 | 1:2 | 1:3 | 1:5 | 1:10 | 1:20 | 1:50 | 1:100 | 1:200 |
 
-Starting allocation (2026-10-07): agents sorted by how much leverage they used in backtests (90th
+Initial allocation: agents sorted by how much leverage they used in backtests (90th
 percentile of position ÷ equity), the least on 1:1 and the most on 1:200, about 50 runs per account; the
 leverage ladder on all nine; buy-and-hold (with the share basket) on 1:1. Agents that size by risk rarely
 use more than 5–10×, so on the 1:50–1:200 accounts they trade as they would at 1:20: only the ladder and
@@ -145,9 +140,9 @@ agents that size with `marginPct` use the high leverage.
 
 ## Adding agents
 
-- **When:** at most every 7 days (the weekly visit), and only while total virtual runs plus new ones stay ≤5,000
+- **When:** at most every 7 days (`ADD_AGENTS_EVERY_DAYS`), and only while total virtual runs plus new ones stay ≤5,000
   (measured capacity; `review` shows standard and comparison counts). New strategies take priority over
-  replaceable execution comparisons at the next deploy. The initial pool leaves roughly 400 slots free.
+  replaceable execution comparisons at the next deploy.
 - **How many:** 1–3 agents per addition, each with at most 3 variants that differ meaningfully.
 - **What:** ideas with a reason to work that does not come from our backtest: documented market effects
   (time-series momentum, short-term reversal, volatility breakouts, opening-range and session effects,
@@ -163,8 +158,8 @@ agents that size with `marginPct` use the high leverage.
   their backtest looked bad.
 - **Gate:** `bun run check-agent agents/<file>.ts` passes; for forecast agents run `bun run forecasts` first;
   then `bun run backtest <agent>` (heavy jobs inside `trader.slice`, see `../WORKFLOW.md`). For new admissions the engine checks each instrument/tier: reject a current-code backtest
-  with Sharpe below −0.5, fewer than 20 trades, an error or a busted account. This replaces the earlier
-  manual median/average gate, which had admitted individually broken rows. Agents built to trade a few times a year (200-day filters, monthly rebalancers,
+  with Sharpe below −0.5 (on the returns themselves, not above T-bills), fewer than 20 trades, an error or
+  a busted account; the check is per row, so one broken instrument cannot ride on a good average. Agents built to trade a few times a year (200-day filters, monthly rebalancers,
   rebalancing holders) need at least 5 trades per run instead of 20; they are judged by the slow-agent rule.
   Controls are not gated. Log rejected ideas too.
 
@@ -183,51 +178,52 @@ spread), diverged (<75% agree or mean gap beyond a spread), watch in between, to
 (paper optimistic: it would overrate them). Diverged agents with the demo ahead (paper conservative) are listed with
 their standard error but raise no CHECK. On the US indices a pair's two fills lie about half a second apart (paper
 assumes 500 ms, the demo is accepted in ~200–300 ms) in a market that moves about one spread in that time, so their
-pairs often miss by noise alone: on 2026-11-21, 28 of 32 US index runs with 5+ pairs were "diverged", 22 of them
-with the demo ahead and none with the demo significantly behind; elsewhere 1 of 43 (since 2026-11-21).
+pairs often miss by noise alone: in the 2026-11-21 check, 28 of 32 US index runs with 5+ pairs were "diverged",
+22 of them with the demo ahead and none with the demo significantly behind; on other instruments 1 of 43.
 
 The checks judge the current engine: `bun run twins` and the page's default view use only trades decided
 since the running engine version started (the arena records it as `engine.since`; a version bump restarts the
 window). The all-trades lines are context; old-engine divergence does not raise a CHECK.
 
-Known sources of gaps (2026-11-10): Capital's demo quote stream arrives 0.1–13 s after each quote's
-timestamp, in regimes (REST shows the price earlier), so Capital's own stops can fire before ours; paper fills
-use the price in effect when the order reaches Capital, the last quote stamped at or before then
-(`2026-11-arrival-price`; Capital's demo fills follow the same rule; since `2026-11-arrival-stall` a stall in the
-stream no longer turns that price stale), and minutes close
-only once their late quotes arrive. Demo orders leave at the decision: accepted ~0.15–0.3 s after it, longer
-when one account has several orders in the same burst (each waits for the previous one's confirmation;
-Capital may answer a confirmation request with the account's latest deal). Capital books overnight swaps
-per account without a deal id, so the twins cannot compare funding per trade; at paper size its 14-day swaps
-(−$3.5k) exceeded the paper funding on paired trades (−$1.8k, closed trades only). In fast markets the stream
-also arrives in bursts with holes of seconds: Capital's targets fill at their level (paper too since engine
-`2026-11-tp-level`), while its stops fill near the level and paper's at the next quote we receive, so broker-closed
-stops can agree less and favour demo (conservative paper; 60 of 845 pairs over 14 days). Capital's trailing stops
-follow paper's rule (anchored and triggered on the closing side) but on Capital's full price path, of which our stream
-is a sample. When the price turns within about a spread of the trail level, Capital closes and paper stays in: 8 of 85
-trailing pairs to 2026-11-17, Capital first by 70 s to 8.7 h, with gaps of either sign (−87 bp at worst). Since
-2026-10-22 the busy-hours delay (08:00–21:00 UTC) is 5–13 s on every instrument at once, with holes of 1.5–3.5 s; on
-10-20 it was 0.14 s at 51 quotes/s. Agents that enter only at bar closes on the US indices (noise-area-momentum) trade
-inside those holes and the burst queue, so they diverge in fast markets (2026-11-17: +3 to +7 bp for demo on one 16:00
-UTC bounce). The delay is Capital's, not one connection's: on 2026-11-18 (`bun run stream-probe`) three fresh
-sessions (US100 alone, the three indices, all 20) ran 10.7 s behind with the same holes as the arena, on the host the
-session names, and at the 23:00 UTC reopen every instrument went from 0.1 to 8 s behind within 6 s. Splitting or
-reconnecting the stream cannot help; paper's stamp rules already account for it. Top-of-hour bursts
-take about 0.35 s per order on Capital's side of the mirror (since 2026-11-11): an order and its confirmation at
-the arena's ~6 requests/s, shared by all accounts, each order needing its confirmation before the account's next one;
-2026-11-12 had bursts of 16–26 orders (opens and closes) whose last order went out 5–8 s after the decision. Capital sometimes refuses an order without a reason
-(about 2%, at busy moments); it goes out again a second later (since 2026-11-12; before, five minutes later).
+Known sources of gaps (measurements and the bugs they exposed are in the journal and `CHANGELOG.md`):
+
+- **Capital's quote delay.** Capital's demo stream arrives 0.1–13 s after each quote's timestamp, in regimes
+  (REST shows the price earlier), so Capital's own stops can fire before ours. In busy hours (08:00–21:00 UTC)
+  the delay is 5–13 s on every instrument at once, with holes of 1.5–3.5 s. The delay is Capital's, not one
+  connection's: fresh sessions (`bun run stream-probe`) ran as far behind with the same holes, on the host the
+  session names. Splitting or reconnecting the stream cannot help; paper's stamp rules account for it.
+- **Fill price.** Paper fills at the price in effect when the order reaches Capital, the last quote stamped at
+  or before then (engine `2026-11-arrival-price`), and a stall in the stream does not make that price stale
+  (`2026-11-arrival-stall`); Capital's demo fills follow the same rule. Minutes close only once their late
+  quotes arrive.
+- **Order timing.** Demo orders leave at the decision and are accepted ~0.15–0.3 s after it, longer when one
+  account has several orders in the same burst: each waits for the previous one's confirmation, at the arena's
+  ~6 requests/s shared by all accounts, about 0.35 s per order at top-of-hour bursts (bursts of 16–26 orders
+  put the last order 5–8 s after the decision). Agents that enter only at bar closes on the US indices
+  (noise-area-momentum) trade inside the stream's holes and the burst queue, so they diverge in fast markets.
+- **Refusals.** Capital refuses about 2% of orders without a reason at busy moments; the order goes out again
+  a second later.
+- **Funding.** Capital books overnight swaps per account without a deal id, so the twins cannot compare
+  funding per trade; at paper size its 14-day swaps (−$3.5k) exceeded the paper funding on paired trades
+  (−$1.8k, closed trades only).
+- **Stops and targets in fast markets.** The stream arrives in bursts with holes of seconds. Capital's targets
+  fill at their level, and so do paper's (engine `2026-11-tp-level`); Capital's stops fill near the level and
+  paper's at the next quote we receive, so broker-closed stops agree less and favour demo (conservative
+  paper; 60 of 845 pairs over 14 days).
+- **Trailing stops.** Capital's trailing stops follow paper's rule (anchored and triggered on the closing
+  side) but on Capital's full price path, of which our stream is a sample. When the price turns within about
+  a spread of the trail level, Capital closes and paper stays in (8 of 85 trailing pairs, Capital first by
+  70 s to 8.7 h, gaps of either sign, −87 bp at worst).
+
 A deal the lifecycle closes (a demotion to virtual, a run leaving the mirror) is not a twin: the paper trade goes on.
-Engine bug found by the twins: orders rejected as stale after a stream stall although the demo had traded them
-(fixed in `2026-11-arrival-stall`). Mirror bugs found by the twins: early closes of decided deals (fixed 0e754e4) and reversals closing their own new
-deal (fixed 2026-11-10).
 
 ## Each visit (runbook)
 
-Visits are weekly: Saturdays at 23:00 Tirana (the T3 task "Trader", "do the weekly check"; since November 21,
-daily before). Each visit covers the week since the last one: twins over the current engine's window, health
-since the last visit (reboots, the lab's nights, watchdog alerts in `journalctl --user -u trader-watchdog`),
-retirements and additions, and one journal entry for the week.
+Visits run from the T3 Code scheduled task "Trader". The owner sets the schedule from the results: up to
+once a day when the last visit found bugs, down to once a week after a quiet period. Each visit covers the
+time since the last one: twins over the current engine's window, health since the last visit (reboots, the
+lab's nights, watchdog alerts in `journalctl --user -u trader-watchdog`), retirements and additions (when due),
+and one journal entry.
 
 1. Read `../../../setup.md` (hard rules), this file, and the three newest entries of `JOURNAL.md`.
 2. `cd apps/backend && bun run review`. Also `systemctl --user list-units 'trader*' 'pc-server-trader*'` and, if last night's
@@ -248,17 +244,16 @@ retirements and additions, and one journal entry for the week.
    no prices/P&L are rewritten and unmatched old costs remain unknown.
    Keep the user's one-copy, 100 GB/two-year budget: compressed PostgreSQL is canonical; do not create
    another raw archive. Never delete captured history to make room; act on growth forecasts early.
-   The arena/UI moved to the PC on October 16. The migration `ACTIVE` marker selects the local runtime
-   in storage/deploy tooling; the old tunnel is intentionally disabled. Confirm both
-   `pc-server-trader-*` units share `trader.slice`. Do not start the retired Hetzner writer.
+   The arena and UI run on this PC; `~/.local/share/hetzner-pc/ACTIVE` selects the PC runtime in the
+   storage/deploy tooling and `trader-tunnel` stays disabled. Confirm both `pc-server-trader-*` units share
+   `trader.slice`. Never start the arena on Hetzner: its copy there holds stale data.
    Respect the user's `~/.local/share/heavy-resources/user-pause.json` hold: an intentionally stopped
    forecaster/nightly lab is expected. Keep trading/recording healthy; defer heavy additions/backtests
    until the user runs `heavy-resources-start`. Never clear the hold or restart these jobs autonomously.
    A model-only resume removes the forecaster from the marker's services list; remaining lab holds
    still defer additions/backtests. Check the relevant service entry rather than only file existence.
-   The user resumed the nightly lab alone on November 9 (`ops/lab/lab-control.py resume`); the video
-   pipeline stays held and is not ours. `lab-control.py check` exits 0 when the lab may run.
-   The nightly job ends with the Visar night paper grid (1,080 settings, Night Lab → Paper grid). Check its
+   The video pipeline's hold is not ours. `ops/lab/lab-control.py check` exits 0 when the lab may run.
+   The nightly job ends with the Visar night paper grid (540 settings per index, Night Lab → Paper grid). Check its
    "Built" time; a stale grid means `night grid failed` in `journalctl --user -u trader-lab`. The grid is
    a map of shape on shared nights, not a selector: do not promote cells to demo from it.
    Fix what is broken and within scope (services, agent bugs, platform bugs; follow

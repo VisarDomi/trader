@@ -27,8 +27,7 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   (`$lib/server/native/screens.ts`, loaded by `load.ts`) in the format of `wire.ts`, gzip-compressed, with an ETag so
   an unchanged screen costs a 304. Chart series are packed base64 arrays. The device key, not the website login,
   authorizes these exact paths; `ops/server/native-access.py edge` lists them at the edge. Change a native screen
-  here and push: no app build is needed unless the wire format changes. v1 (`api/native/v1`, raw arena records
-  that the app reshaped) was removed on November 22, once the v2 app was installed.
+  here and push: no app build is needed unless the wire format changes.
 - API types come from `@trader/shared` (`packages/shared/src/types.ts`); change them together with
   `apps/backend/src/arena/api.ts`.
 - The leaderboard refreshes visible tabs every 30 seconds and retries failed loads after five seconds,
@@ -39,7 +38,7 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
   `demo:<agentId>:<epic>:<codeHash>`.
 - Pages: `/` leaderboard (Backtest, Virtual engine, Capital demo, Overfit views), `/agents`, `/agents/<id>` (versioned
   source), `/runs/<id>`, `/broker` (accounts, mirrored runs, deals), `/leverage`, `/journal`, `/research`
-  (report, topic notes, library; files from `RESEARCH_DIR`, default `./research` on the server), `/status`,
+  (report, topic notes, library; files from `RESEARCH_DIR`, default `./research` in the UI runtime), `/status`,
   `/graveyard` (decommissioned agents, archived versions/runs, retirement reasons and platform history).
 - Colors and chart styling come from the tokens in `src/app.css` (light and dark); use those rather
   than new hex values.
@@ -61,8 +60,9 @@ current cohort rows. Partial/outage responses preserve the bounded last complete
 Forward schema3 includes source hashes. Both client and worker require complete, unique exact
 source/instrument/tier membership (the worker checks against the cohort of the saved summary). The
 server reads only the cohort's agents from the arena (`agents=`) and shares one read across tabs for 20 s.
-Current selection and its finite-history constraints are in research/night-cohort-20261109.json.
-Reproduce with ops/lab/select-night-cohort.py before changing the frozen choice; new source-specific
+The live cohort is research/night-cohort-v4-20261122.json; the study's original selection and its
+finite-history constraints are in research/night-cohort-20261109.json. Reproduce that one with
+ops/lab/select-night-cohort.py before changing the frozen choice; new source-specific
 backtests are verified by ops/lab/verify-night-cohort.py against the raw study cells.
 Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
 US500 against US500, US100 against US100, on the same dates and with zero overnight funding.
@@ -76,8 +76,8 @@ gzip-compressed, compressed once by the lab. The lab's copy is `apps/backend/dat
 (not in git); the builder and `ops/lab/nightly.sh` publish it to `trader-ui/night-lab/night-lab.db`,
 which deploys carry forward (`NIGHT_LAB_DB` overrides the path). Nothing data-sized is in `static/` or
 the UI build. `python3 ops/lab/night_lab_db.py report` prints the full report; `info` shows its version.
-Until 2026-11-10 the report lived in git (`apps/ui/static/night-lab/` at 9c62b05); the current database
-was imported from exactly those files (`night_lab_db.py import --report … --exports …`), which also recovers it.
+`night_lab_db.py import --report … --exports …` rebuilds the database from a report and its exports (the
+original files are in git at 9c62b05, `apps/ui/static/night-lab/`).
 
 Serving (`src/lib/server/night-lab.ts`, routes under `/night-lab/data/`): `summary.json` (benchmarks,
 cohort, events and every 1:20 /20% setting, enough for first paint, revalidated with an ETag) and
@@ -85,10 +85,9 @@ cohort, events and every 1:20 /20% setting, enough for first paint, revalidated 
 `{version}/ledger/{index}/{window}.json`, `{version}/stocks.json`, which never change for a version.
 Each response is built and compressed once per report version and kept in memory; a new publish is
 picked up by file identity. `/night-lab/report.json` and the CSVs keep their URLs. The page
-(`static/night-lab/index.html`, `night-lab.js`) renders each section when it nears the screen, with
-the same markup as before; the worker (`sw.js`) caches the shell and the sections viewed, never the
-downloads. The study is not expanded in the page source any more, so a section that has not been
-viewed is not available offline.
+(`static/night-lab/index.html`, `night-lab.js`) renders each section when it nears the screen; the worker
+(`sw.js`) caches the shell and the sections viewed, never the downloads. The study is not in the page source,
+so a section that has not been viewed is not available offline.
 Generated data contains derived research and public market facts, never
 credentials, account identifiers or captured raw ticks. Current constituent purchase estimates
 are snapshots, not a reconstruction of historical index membership. Source URLs/as-of dates,
@@ -117,7 +116,7 @@ share at15% and retains source/execution timing distinctions.
 
 ```sh
 npm install                 # once, at the repo root (workspaces)
-npm run dev                 # needs .env: ARENA_URL=http://127.0.0.1:4120 (via trader-tunnel) and ARENA_TOKEN
+npm run dev                 # needs .env: ARENA_URL=http://127.0.0.1:4120 (the arena on this PC) and ARENA_TOKEN
 npm run check               # svelte-check
 npm run build               # adapter-node build in build/
 ```
@@ -125,5 +124,5 @@ npm run build               # adapter-node build in build/
 ## Deploy
 
 Push `main`. The shared veron3 deploy watcher builds `apps/ui` from the committed source and publishes
-to the PC runtime, restarting `pc-server-trader-ui.service`. The runtime/env now live under
-`~/.local/share/hetzner-pc/mirror/home/<server-user>/trader-ui`; Hetzner hosts only the public edge.
+to the PC runtime, restarting `pc-server-trader-ui.service`. The runtime and its `.env` live in
+`<runtime>/trader-ui` (`<runtime>` from `ops/server/runtime.sh`); Hetzner hosts only the public edge.

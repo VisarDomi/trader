@@ -3,7 +3,7 @@ import { computeMetrics } from '../engine/metrics.ts';
 import { isShadow, backtestGate, STAGE, tradeT } from './pipeline.ts';
 /**
  * Arena HTTP API (127.0.0.1 only; the dashboard calls it server-side, the lab
- * pushes backtests through the SSH tunnel). Mutating endpoints need the
+ * pushes backtests to it over loopback). Mutating endpoints need the
  * ARENA_TOKEN bearer token.
  */
 import type { RunMetrics } from '../engine/metrics.ts';

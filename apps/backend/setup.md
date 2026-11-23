@@ -1,7 +1,7 @@
 # Trader Backend
 
 Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo, the lab tools
-(run on the lab PC), and the arena service (relocated to the same PC on October 16). Repo-wide map and hard rules:
+and the arena service, all on the lab PC. Repo-wide map and hard rules:
 [`../../setup.md`](../../setup.md).
 
 ## Read on demand
@@ -15,10 +15,9 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 - [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.
 - [`agents/JOURNAL.md`](agents/JOURNAL.md) — every babysitter visit and the log of agent ideas tried.
 - [`WORKFLOW.md`](WORKFLOW.md) — git conventions, everyday commands, adding an agent end to end.
-- [`DECISIONS.md`](DECISIONS.md) — why things are the way they are (v2 section first).
+- [`DECISIONS.md`](DECISIONS.md) — why things are the way they are; Capital.com API reference and quirks.
 - [`TODO.md`](TODO.md) — open work.
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed.
-- `DESIGN.md`, `VALIDATION.md` — v1 only (historical; its code is gone).
 - No-magic-strings rule: `~/Documents/archive/memory/no-magic-strings.md`
 
 ## Rules
@@ -28,8 +27,7 @@ Bun/TypeScript: the agent SDK, the simulation engine shared by backtest and demo
 - Log notable backend changes in `CHANGELOG.md` under `## Unreleased` before considering the task done.
 - Agents import only from `src/sdk`. Changing an agent file restarts its demo record (new code hash);
   to try a variation, add a new file or a variant instead.
-- `src/arena` must not import from `src/lab` (the server only receives `src/` and `agents/`, and the
-  lab code needs PostgreSQL).
+- `src/arena` must not import from `src/lab` (the lab code needs PostgreSQL, which the arena does not use).
 - Every Capital.com request goes through `CapitalClient` (`src/capital/client.ts`), which paces
   requests; the limits it documents apply to the whole login.
 
@@ -47,7 +45,7 @@ bun run sync-ticks --flush                  # archive received quote ticks immed
 bun run storage --refresh                   # whole-project storage and two-year budget estimate
 bun run review                             # lifecycle review of the live arena (health, verdicts)
 bun run watchdog --dry-run                 # what the watchdog would notify right now
-bun run arena                              # the arena service (normally only on the server)
+bun run arena                              # the arena service (the live one is pc-server-trader-arena)
 ```
 
 Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.slice`; see
@@ -59,13 +57,14 @@ Heavy jobs (backtest, forecasts, a full ingest) on the lab PC go inside `trader.
   2024-01, US100 since 2020) and one compressed recorded-tick store plus small indexes. See [TICKS.md](TICKS.md).
 - Lab caches (gitignored, rebuildable) under `data/`: candle binaries, TimesFM forecast tables,
   backtest results.
-- Arena state is SQLite in the PC runtime (`~/.local/share/hetzner-pc/mirror/home/<server-user>/trader-arena/data/arena.db`): agents and their
+- Arena state is SQLite in the PC runtime (`<runtime>/trader-arena/data/arena.db`, `<runtime>` from
+  `ops/server/runtime.sh`): agents and their
   versioned source, runs, trades, equity, logs, broker deals, events, settings.
 
 ## Broker mirror (real demo orders)
 
 Virtual runs build forward evidence; the mirror copies qualified runs onto Capital.com demo accounts.
-Their actual cashflows form a separate Capital demo leaderboard. Existing slots continue as a calibration
-cohort. Execution contract, capacity and known differences: [`EXECUTION.md`](EXECUTION.md). It uses the nine accounts named "Arena…" (Visi is the user's): each is topped up to
+Their actual cashflows form a separate Capital demo leaderboard. Slots assigned before the evidence gate
+are a calibration cohort. Execution contract, capacity and known differences: [`EXECUTION.md`](EXECUTION.md). It uses the nine accounts named "Arena…" (Visi is the user's): each is topped up to
 $100,000 and runs in hedging mode, holding up to 50 runs at 0.2× the paper size, 450 in total.
 Details: [`ARCHITECTURE.md`](ARCHITECTURE.md#broker-mirror).

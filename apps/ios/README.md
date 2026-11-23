@@ -30,9 +30,8 @@ shows that copy at once and revalidates it with If-None-Match: an unchanged scre
 and no redraw. A changed screen rewrites only its row. Decoding, sorting and search filtering run on the store's actor.
 Refreshes wait while a list is dragged or decelerates. Up to 400 screens are kept; backgrounding stops polling.
 Changing what a screen shows is a server change (push `main`); the app needs a build only when the wire format changes.
-Until November 22 the app fetched raw arena records (1.6 MB for the Capital rankings), reshaped them on the phone
-and rewrote one `responses.json` holding every response on each refresh; that file is deleted on first launch. External research links open the
-system browser; platform screens are native views.
+On launch the store deletes leftover `responses.json` and `app-state.json` files from older builds. External research
+links open the system browser; platform screens are native views.
 
 ## Build and delivery
 
@@ -50,7 +49,7 @@ ios-push status JOB
 
 Use the durable shared `ios-push` queue for ordinary phone updates; only an `installed` job is
 verified delivery. It retains renewal dates and resumes after reboot/network recovery. The older
-`deploy.py` helper remains available for initial provisioning. Signing runs attached in the logged-in Mac GUI session under the shared
+`deploy.py` helper is for initial provisioning. Signing runs attached in the logged-in Mac GUI session under the shared
 signing lock. The team and primary device come from the Mac's private `ios-tools.local.json`.
 The signed artifact is `build/Release-iphoneos/Trader.app`, identity `com.visar.Trader.paid`.
 The queue installs in place without launching or driving the phone UI. Pairing is already stored
@@ -63,7 +62,7 @@ and written to its small runtime diagnostic, so a launched phone build can be ve
 
 ## Native access
 
-The website keeps its Authelia login. Exact `/api/native/v1/…` paths use their own dedicated device-key
+The website keeps its Authelia login. Exact `/api/native/v2/…` paths use their own dedicated device-key
 authentication in the Trader UI service. The credential is limited to the native read resources and
 the existing demo mirror/exclude actions. NativeAPI handlers validate requests and do not forward
 arbitrary paths. Actual demo evidence and virtual curves have separate labels.
@@ -114,97 +113,8 @@ Native frame spans: `trader.cell`, `trader.list.apply`, `trader.chart`. Runtime 
 screen without including credentials. NativeKit's `debug-state.json` records navigation/frame reports
 on resign. Phone frame measurements are distinct from the slower Mac simulator's rendering.
 
-## November 22, 2026 · server-built screens (API v2) and the SQLite store
-
-- Screens come built from `/api/native/v2`; the phone stores each as one row of `trader.sqlite` and revalidates it by
-  ETag. `responses.json` and `app-state.json` are deleted on first launch. Agents show every trade with paper and
-  demo P&L and a mini price path; the trade screen shows the strategy's setup charts and the trade's price chart with
-  the stop and the −50% / −100% equity lines.
-- Seven Linux logic tests (wire decoding of a live trade screen, packed arrays, sort/search, routes, saved routes) and
-  guarded simulator QA (`scripts/check-simulator.py` with a `screen-fixture.py` fixture) pass: all screens offline,
-  `visar` search, portrait/landscape, the 787-trade agent list, exact cold/warm first-frame restoration. A one-sample
-  blank of the bottom rows 0.5 s after relaunch was fixed (the header re-anchored the list without changing height).
-- Job `20261122T024256Z-ef4d105254`, frozen source `1c1f8b4`: signed and published as **awaiting_ota** (the Mac at the
-  office could not reach the phone at home). The owner installed it from https://ios-apps.veron3.space/ the same
-  night; the queue confirms the in-place install when the phone is next to the Mac again. API v1 was removed after.
-
-## November 9, 2026 · Visar cohort navigation
-
-- `visar` searches the 20-member US500/US100 cohort, including the unchanged original. The older
-  small-risk twin remains separately searchable. Filtered counts show the actual matching rows.
-- Saved query/sort survive detail, back, forward, rotation, foreground refresh and relaunch. Search
-  dismissal during navigation cannot clear the stored filter. Header/notice layout and programmatic
-  scroll restoration preserve the same focal row/fraction; intentional search edits reset to top.
-- Twelve domain checks and guarded simulator compilation pass. The focused offline 21-row fixture
-  (twenty cohort plus the older twin) verifies the twenty matches, sort, detail/back/forward, exact
-  focal anchor, portrait/landscape and cold/warm return. QA bundle is uninstalled and the shared
-  guest/owned GUI shut down. No physical-phone UI automation.
-- Paid job `20261109T014034Z-3148a2ba42`, frozen source `b9b8ad5`, is **installed** in place and
-  approved for renewal. The queue verified the artifact/device inventory and retained the renewal
-  schedule; it did not launch or drive the phone UI.
-
-## Delivery — November 8, 2026 · content-only cleanup
-
-- Removed generated introductions/methodology, repeated headings and positive verification badges;
-  charts lead, numeric comparisons/deltas replace verbose filter tiles. Only essential data-gap labels
-  remain. Native/web module AGENTS.md files persist this presentation rule.
-- Eleven domain checks, simulator/paid builds, portrait/landscape, offline and exact cold/warm
-  restoration pass. PWA a7cac72 is live; no trading service restart or financial-data change.
-- Job `20261108T123547Z-5688e0b951` is **awaiting_ota**, not installed: the Mac cannot reach the phone.
-  Signed build is available at the existing tailnet installer; turn on Tailscale on the iPhone and
-  open `https://mac.tailf47c4e.ts.net:8443/`, then Install Trader. Direct delivery retries automatically.
-
-## Delivery — November 8, 2026 · strategy context
-
-- Native setup charts and threshold gauges installed in place through job
-  `20261108T112706Z-7fa16ca4ba`, source `b64db55`, input hash `e441595469a833f4`.
-  First delivery attempt succeeded; exact inputs approved for renewal. Phone UI was not launched.
-- All 46 current strategy families / 66 variants have reviewed source-pinned adapters. Night trading
-  shows the previous NY path, qualifying limits and overnight reference; other families show their
-  relevant signals. Future standard entries retain bounded compressed context; old reconstructions,
-  missing state/forecasts and unsupported source versions remain explicit.
-- Eleven committed domain tests, simulator/device builds and native context/gauge visuals pass.
-  Portrait/landscape and offline views checked. Fixed automatic-row text rounding; exact cold first
-  frame through eight seconds and warm restoration pass with the larger strategy screens.
-- Queue flagged unchanged NativeKit modules recompiling (178 seconds); delivery remained valid.
-  Simulator/owned GUI shut down, QA app uninstalled and temporary fixture removed.
-
-## Delivery — November 8, 2026
-
-- Native trade charts/inspector delivered through durable job `20261108T100131Z-e357947495`,
-  source commit `2314d79`, input hash `d959f4df4632319b`. Signed paid app installed in place on the
-  first attempt and approved for renewal. The queue did not launch or drive the phone UI.
-- Ten Swift domain tests and simulator/device builds pass. Native price, cost, decision and
-  partial-history screens visually checked in portrait/landscape with bounded derived fixtures.
-  Exact cold restoration from the first sampled frame through eight seconds and warm return pass;
-  fixed saved-screen offline loading and persisted the connection notice. QA bundle uninstalled,
-  shared guest/owned GUI shut down, temporary fixture removed; no new panic/GPU reset reported.
-- Public authenticated run data includes inline inspections; anonymous native access remains 401.
-  Native run pages preserve per-strategy demo exclusion, same-code backtest links and agent identity.
-  Chart capture gaps, read limits and unrecorded costs/fill prices remain explicit.
-
-## Delivery — October 29, 2026
-
-- Signed ARM64 and unsigned simulator builds pass; six Swift domain tests pass. Source `55c99bbd1d99b77a`.
-- Installed wirelessly in place on the unlocked primary phone. Its diagnostic confirms this source,
-  live responses and 501 actual-demo history rows. Pairing bootstrap removed; November 25 renewal retained.
-- New simulator screen/restoration QA is incomplete: the existing guest reported Data Migration Failed
-  before app checks. Stopped the guarded session, verified guest/GUI cleanup and no new panic/GPU-reset
-  report. No fresh boot, device erase or physical-phone UI test was substituted. Mobile web evidence
-  views were checked at portrait and landscape widths; the earlier native baseline below remains historical.
-
-## Verified delivery — October 25, 2026
-
-- Unsigned simulator and paid ARM64 device builds pass; signed source revision `925c0a25fbd99af3`.
-- All native screens, portrait/landscape interface geometry, archived source and offline reading pass.
-- Cold restore is exact from the first recorded frame through eight seconds; warm return is exact.
-- Four Swift domain tests and three API authorization/validation tests pass; Svelte diagnostics clear.
-- Installed wirelessly in place on the unlocked primary iPhone and launched. The actual phone's
-  diagnostic reports the matching revision, live network data and 501 actual-demo history records.
-- The temporary pairing file was removed after successful device Keychain import. API access without
-  the device key returns 401; ordinary website requests retain their Authelia redirect.
-- First monthly renewal completed successfully, with the next due date November 25. Simulator shut down.
+Delivery records (jobs, source revisions, QA results) are in [`CHANGELOG.md`](CHANGELOG.md).
 
 The signed IPA is generated locally at `build/Trader.ipa` and is not committed. Test captures and
-device credentials remain private. The 501 demo records include past assignments; the broker still
-has 450 active assignments. Correlated virtual cohorts have no independent strategy verdicts.
+device credentials remain private. The demo history includes past assignments; the broker has at most
+450 active assignments. Correlated virtual cohorts have no independent strategy verdicts.

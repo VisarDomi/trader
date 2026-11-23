@@ -1,7 +1,7 @@
 /**
  * Native app wire format (v2): the server builds each screen the iPhone app shows, ready to draw.
  * The app stores the document as it came (one SQLite row per screen) and revalidates it with its ETag;
- * it no longer downloads raw arena records and reshapes them on the phone.
+ * it never sees raw arena records.
  *
  * Chart series travel as packed little-endian arrays in base64: times as Float64 (epoch ms), values as
  * Float32. A series without times is evenly spaced over the graph's from → through (the trade mini charts).

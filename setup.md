@@ -26,17 +26,19 @@ conversation. Then read only what your task needs:
 - **The repo is public.** Secrets live only in `.env` files (see [Secrets](#secrets)); never commit them,
   never paste them into docs or logs.
 - **Keep one permanent copy of captured ticks**, losslessly compressed in PostgreSQL; the user set a
-  100 GB whole-project storage budget for at least two years. The server is a bounded transfer spool,
-  pruned only after the canonical archive is read back and verified. Synthetic paths are never stored
-  as recorded history. Do not assume Capital can replace deleted history: that unverified assumption
-  led to the premature October 7 deletion. Do not create extra long-term tick backups.
+  100 GB whole-project storage budget for at least two years. The arena's tick spool is a bounded
+  transfer buffer, pruned only after the canonical archive is read back and verified. Synthetic paths are
+  never stored as recorded history. Do not assume Capital can replace deleted history: probes of
+  Capital's API found no US500 minute bars before 2024 and it offers no tick history (the journal's
+  2026-10-16 context entry records the deletion behind this rule). Do not create extra long-term tick backups.
 - **This PC** (the "lab") may use at most 50% of its CPU/RAM: run heavy jobs inside `trader.slice`
   (the lab services already do).
-- **Shared infrastructure:** after the October 16 migration, trader runs on this PC under
-  `~/.local/share/hetzner-pc/mirror/home/<server-user>/{trader-arena,trader-ui}` with user units
-  `pc-server-trader-arena` and `pc-server-trader-ui`. Both belong in `trader.slice` with the lab.
-  Hetzner now hosts the public edge only. Touch only trader's runtimes, units, Caddy block and
-  Authelia rule; never restart the retired Hetzner app against stale data.
+- **Shared infrastructure:** trader runs on this PC under `<runtime>/{trader-arena,trader-ui}` with
+  user units `pc-server-trader-arena` and `pc-server-trader-ui`, both in `trader.slice` with the lab.
+  `<runtime>` is `TRADER_SERVER_ROOT` from `ops/server/runtime.sh` (the PC mirror of the shared
+  server's home, selected by `~/.local/share/hetzner-pc/ACTIVE`). Hetzner hosts only the public edge.
+  Touch only trader's runtimes, units, Caddy block and Authelia rule; never start the arena on Hetzner:
+  its data there is stale.
 - **The Capital.com login is shared** with other apps (position-opener). Of its 10 demo accounts (the
   maximum), "Arena 01" … "Arena 09" belong to the arena and **Visi is the user's**: the arena trades
   only on accounts whose name starts with "Arena". Each Arena account has one leverage (1:1 … 1:200),
@@ -61,15 +63,16 @@ conversation. Then read only what your task needs:
  trader-forecaster: GPU :4130   pc-server-trader-arena: Bun :4120
  trader-lab.timer: 03:30        pc-server-trader-ui: SvelteKit :10003
  trader-inspector: read-only archive/chart worker :4140
- trader-tick-archive.timer: one minute
+ trader-tick-archive.timer: one minute   trader-watchdog.timer: 10 minutes
        ▲
        └── shared gateway/tunnel ← Hetzner Caddy + Authelia ← public browser
 ```
 
-The PC must remain on, awake and connected for trading, recording and the dashboard to work.
-The public edge remains on Hetzner. The old `trader-tunnel` is deliberately disabled; arena and
-forecaster now communicate directly over loopback. Migration operations:
-`/home/visar/Documents/environment/services/hetzner-pc/README.md`.
+The PC must remain on, awake and connected for trading, recording and the dashboard to work: when it
+is off, nothing trades or records and the dashboard is down. Only the public edge (Caddy, Authelia) is
+on Hetzner. Arena, forecaster, inspector and lab talk over loopback; `trader-tunnel.service` (the SSH
+tunnel for an arena on Hetzner) stays disabled, and `ops/lab/install.sh` disables it. Shared PC-server
+operations: `~/Documents/environment/services/hetzner-pc/README.md`.
 Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTURE.md).
 
 ## Repo layout
@@ -83,25 +86,25 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | `packages/shared/` | API wire types shared by the arena and the dashboard |
 | `research/` | research report, topic notes and sources (saved copies in `research/files/`, not in git) |
 | `ops/lab/` | Lab PC systemd user units, installer, nightly job |
-| `ops/server/` | Arena systemd unit and deploy script |
+| `ops/server/` | Arena deploy script, research sync, native-access tool, runtime discovery (`runtime.sh`); `trader-arena.service` is the Hetzner unit, unused while the PC runtime is active |
 
 ## Operations
 
 | Task | How |
 |---|---|
-| Deploy the arena | commit, then `ops/server/deploy-arena.sh` (typechecks, tests, uploads, restarts; runs resume) |
-| Deploy the dashboard | push `main`; the veron3 deploy watcher builds `apps/ui` and restarts `trader-ui` |
-| Publish research files | `ops/server/sync-research.sh` (papers and snapshots to the server's Research tab) |
+| Deploy the arena | commit, then `ops/server/deploy-arena.sh` (typechecks, tests, copies the committed tree to `<runtime>/trader-arena/app`, restarts the arena and inspector; runs resume) |
+| Deploy the dashboard | push `main`; the veron3 deploy watcher builds `apps/ui` and restarts `pc-server-trader-ui` |
+| Publish research files | `ops/server/sync-research.sh` (papers and snapshots to `<runtime>/trader-ui/research/files` for the Research tab) |
 | Install/refresh lab services | `ops/lab/install.sh` |
-| Lab logs | `journalctl --user -u trader-forecaster -u trader-tunnel -u trader-lab` |
+| Lab logs | `journalctl --user -u trader-forecaster -u trader-lab -u trader-tick-archive` |
 | Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the dashboard Status page |
 | Run the nightly job now | `systemctl --user start trader-lab.service` |
-| Night Lab report | `python3 ops/lab/build-night-lab.py` (inside trader.slice) writes the study once into `apps/backend/data/night-lab/night-lab.db` and publishes it to `trader-ui/night-lab/`; the nightly job republishes it if missing. The dashboard serves each page section from it; nothing data-sized is in `apps/ui/static` or the UI build. Details: `apps/ui/setup.md` → Night Lab. |
-| Visar night paper grid | Last nightly step: `cd apps/backend && bun run night-grid` replays all 540 settings per index (336 before November 22, when the looser v4 day filters and the no-pullback entry were added) since 2026-10-01 into `data/night-grid/`, copied to `trader-ui/night-grid/` (Night Lab → Paper grid). Idle minutes carry only their open/high/low/close quotes; `--full` replays every quote for an audit. Paper only. |
+| Night Lab report | `python3 ops/lab/build-night-lab.py` (inside trader.slice) writes the study once into `apps/backend/data/night-lab/night-lab.db` and publishes it to `<runtime>/trader-ui/night-lab/`; the nightly job republishes it if missing. The dashboard serves each page section from it; nothing data-sized is in `apps/ui/static` or the UI build. Details: `apps/ui/setup.md` → Night Lab. |
+| Visar night paper grid | Last nightly step: `cd apps/backend && bun run night-grid` replays all 540 settings per index from 2026-10-01 into `data/night-grid/`, copied to `<runtime>/trader-ui/night-grid/` (Night Lab → Paper grid). Idle minutes carry only their open/high/low/close quotes; `--full` replays every quote for an audit. Paper only. |
 | Free heavy CPU/RAM/GPU work / resume it | `heavy-resources-stop` / `heavy-resources-start`: video pipeline, TimesFM and nightly lab work. Trading, tick capture/archive and dashboard stay running. The hold survives reboot until explicitly resumed. |
 | Lifecycle review (health, verdicts, what to retire) | `cd apps/backend && bun run review` |
 | Watchdog (every 10 min, desktop notifications) | `ops/lab/trader-watchdog.timer`; state in `apps/backend/data/watchdog.json`; `bun run watchdog --dry-run` |
-| Babysitter visits | T3 Code scheduled task "Trader", daily 22:00 Europe/Tirane with the prompt "do the daily check" (09:30 until November 12; Mondays and Thursdays until November 9, when the paper–demo twin check made it daily), posting into the "Trading Agent Platform" thread; it follows `apps/backend/agents/LIFECYCLE.md`. Recreated October 19 with the thread's Codex provider after its former provider was disabled. |
+| Babysitter visits | T3 Code scheduled task "Trader", posting into the "Trading Agent Platform" thread with the thread's Codex provider; each visit follows `apps/backend/agents/LIFECYCLE.md`. The owner sets the schedule from the results: up to once a day when the last visit found bugs, down to once a week after a quiet period. |
 | Heavy job by hand | `systemd-run --user --slice=trader.slice --wait --pipe -p WorkingDirectory=$PWD -E PATH=$PATH <command>` |
 
 An existing `~/.local/share/heavy-resources/user-pause.json` is an explicit user hold. Respect it:
@@ -115,7 +118,6 @@ evidence and health checks honour the service list; a later global stop reinstat
 The nightly lab works the same way: `python3 ops/lab/lab-control.py resume` removes `trader-lab.timer`
 and `trader-lab.service` from the list and starts the timer; each run checks `lab-control.py check`
 (an `ExecCondition`), so the lab runs while other holds such as the video pipeline stay in place.
-Before November 9 the lab units waited for the file to disappear, so a partial resume never restarted them.
 
 ## Secrets
 
@@ -123,16 +125,17 @@ Before November 9 the lab units waited for the file to disappear, so a partial r
 |---|---|
 | `apps/backend/.env` (lab) | Capital.com demo login, PostgreSQL, `ARENA_URL`/`ARENA_TOKEN`, `FORECASTER_URL` — template: `apps/backend/.env.template` |
 | `apps/ui/.env` (lab, for `vite dev`) | `ARENA_URL`, `ARENA_TOKEN` |
-| `~/.local/share/hetzner-pc/mirror/home/<server-user>/trader-arena/.env` (PC runtime, mode 600) | Capital.com demo login, `ARENA_TOKEN`, arena settings (see `apps/backend/src/arena/main.ts`) |
-| `~/.local/share/hetzner-pc/mirror/home/<server-user>/trader-ui/.env` (PC runtime) | `PORT`, `HOST`, `ORIGIN`, `ARENA_URL`, `ARENA_TOKEN` |
+| `<runtime>/trader-arena/.env` (PC runtime, mode 600) | Capital.com demo login, `ARENA_TOKEN`, arena settings (see `apps/backend/src/arena/main.ts`) |
+| `<runtime>/trader-ui/.env` (PC runtime) | `PORT`, `HOST`, `ORIGIN`, `ARENA_URL`, `ARENA_TOKEN` |
 
 ## Fresh install (lab PC)
 
 1. `npm install` at the repo root (npm workspaces: backend, ui, shared).
 2. PostgreSQL database `trader` with a user that owns it; copy `apps/backend/.env.template` to
    `apps/backend/.env` and fill it in.
-3. `cd apps/backend && bun run ingest` — creates the `candles` table and downloads ~2.75 years of
-   1-minute candles for every instrument (hours; resumable).
+3. `cd apps/backend && bun run ingest` — creates the `candles` table and downloads every instrument's
+   1-minute candles from the earliest day Capital serves, 2024-01 in practice (hours; resumable).
 4. Forecaster: `cd apps/forecaster && uv sync` (needs an NVIDIA GPU; see its setup.md).
-5. `ops/lab/install.sh` — forecaster, SSH tunnel, nightly timer.
+5. `ops/lab/install.sh` — forecaster, inspector, nightly lab, watchdog and tick-archive timers, and the
+   `trader.slice` drop-ins for the `pc-server-trader-*` units.
 6. `bun run backtest` (inside `trader.slice`) to fill the backtest leaderboard.
