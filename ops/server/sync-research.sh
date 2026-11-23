@@ -6,19 +6,19 @@
 #   ops/server/sync-research.sh
 #
 # research/files/ is not in git (third-party material in a public repo); the
-# notes and the report are, and reach the dashboard with every push. On the
-# server the files live in /home/<server-user>/trader-ui/research/files, which UI
-# deploys keep (they copy the folder before swapping in a new build).
+# notes and the report are, and reach the dashboard with every push. The files
+# live in $TRADER_SERVER_ROOT/trader-ui/research/files (ops/server/runtime.sh),
+# which UI deploys keep (they copy the folder before swapping in a new build).
 set -euo pipefail
 
-SERVER="<server-user>@<server-ip>"
-REMOTE="/home/<server-user>/trader-ui/research/files"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$REPO/ops/server/runtime.sh"
+SERVER="$TRADER_SERVER_SSH"
+REMOTE="$TRADER_SERVER_ROOT/trader-ui/research/files"
+if ! "$TRADER_PC_ACTIVE" && [[ -z "$SERVER" ]]; then echo "TRADER_SERVER_SSH is not set (apps/backend/.env)" >&2; exit 1; fi
 
 DESTINATION="$SERVER:$REMOTE/"
 if "$TRADER_PC_ACTIVE"; then
-  REMOTE="$TRADER_SERVER_ROOT/trader-ui/research/files"
   mkdir -p "$REMOTE"
   DESTINATION="$REMOTE/"
 else

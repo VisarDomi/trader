@@ -5,9 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=<server-user>
-WorkingDirectory=/home/<server-user>/trader-arena/app
-EnvironmentFile=/home/<server-user>/trader-arena/.env
+# Template: ops/server/deploy-arena.sh fills in @SERVER_USER@ and @SERVER_HOME@ from apps/backend/.env.
+User=@SERVER_USER@
+WorkingDirectory=@SERVER_HOME@/trader-arena/app
+EnvironmentFile=@SERVER_HOME@/trader-arena/.env
 Environment=BUN_JSC_numberOfGCMarkers=1
 ExecStart=/usr/local/bin/bun src/arena/main.ts
 Restart=always

@@ -1,11 +1,11 @@
 import { Database } from 'bun:sqlite';
 import { join,dirname } from 'node:path';
-import { homedir } from 'node:os';
 import { readPath } from './archive';
 import { inspect,INSPECTION_LIMITS } from './model';
 import { subject } from './subjects';
 import { strategyContext } from '../strategy/history';
-const arenaPath=process.env.INSPECTION_ARENA_DB??join(homedir(),'.local/share/hetzner-pc/mirror/home/<server-user>/trader-arena/data/arena.db');
+// Runs from the deployed copy, <runtime>/trader-arena/app; the arena's database is <runtime>/trader-arena/data.
+const arenaPath=process.env.INSPECTION_ARENA_DB??join(import.meta.dir,'../../../data/arena.db');
 const spoolPath=process.env.INSPECTION_TICK_DB??join(dirname(arenaPath),'ticks.db');
 const db=new Database(arenaPath,{readonly:true});
 const cache=new Map<string,{body:string;until:number;bytes:number}>(),pending=new Map<string,Promise<string>>();

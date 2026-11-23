@@ -246,10 +246,24 @@ def info(path):
         db.close()
 
 
+def env_value(key):
+    """A setting from the environment or the untracked apps/backend/.env (as ops/server/runtime.sh reads it)."""
+    if os.environ.get(key):
+        return os.environ[key]
+    env = pathlib.Path(__file__).resolve().parents[2] / 'apps/backend/.env'
+    values = [line.split('=', 1)[1].strip().strip('"\'') for line in env.read_text().splitlines() if line.startswith(key + '=')] if env.exists() else []
+    return values[-1] if values else None
+
+
 def server_dir():
     """The dashboard's runtime folder for the report on this machine (ops/server/runtime.sh), or None."""
     state = pathlib.Path.home() / '.local/share/hetzner-pc'
-    return state / 'mirror/home/<server-user>/trader-ui/night-lab' if (state / 'ACTIVE').exists() else None
+    if not (state / 'ACTIVE').exists():
+        return None
+    home = env_value('TRADER_SERVER_HOME')
+    if not home:
+        raise SystemExit('TRADER_SERVER_HOME is not set (apps/backend/.env, see .env.template)')
+    return state / 'mirror' / home.lstrip('/') / 'trader-ui/night-lab'
 
 
 def publish(path, dest_dir):

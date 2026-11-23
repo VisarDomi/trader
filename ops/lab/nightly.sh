@@ -20,7 +20,7 @@ bun run backtest || echo "backtest failed"
 echo "== push cached results $(date -Is)"
 bun run backtest --push-only || echo "push failed"
 echo "== night paper grid $(date -Is)"
-# Every meaningful Visar night setting (336 per index) replayed on data after the study window; paper only.
+# Every meaningful Visar night setting (540 per index) replayed on data after the study window; paper only.
 if bun run night-grid; then
   if "$TRADER_PC_ACTIVE"; then
     # The dashboard serves trader-ui/night-grid; PC deploys copy that folder forward.

@@ -11,7 +11,8 @@ MemoryMax=1G
 WorkingDirectory=%h/Documents/work/trading/trader/apps/backend
 Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
 Environment=INSPECTION_PORT=4140
-ExecStart=%h/.bun/bin/bun run %h/.local/share/hetzner-pc/mirror/home/<server-user>/trader-arena/app/src/inspection/main.ts
+# Runs the deployed copy in the arena runtime; ops/server/runtime.sh finds it from apps/backend/.env.
+ExecStart=/bin/bash -c 'source %h/Documents/work/trading/trader/ops/server/runtime.sh && exec %h/.bun/bin/bun run "$${TRADER_SERVER_ROOT}/trader-arena/app/src/inspection/main.ts"'
 Restart=always
 RestartSec=5
 

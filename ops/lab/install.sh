@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install / refresh the lab PC user services (forecaster, tunnel, nightly job, watchdog).
+# Install / refresh the lab PC user services (forecaster, inspector, nightly job, watchdog, tick archive) and the
+# trader.slice drop-ins for the PC runtime; the SSH tunnel is installed but enabled only without the PC runtime.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/../server/runtime.sh"

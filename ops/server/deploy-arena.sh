@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 #
-# Deploy the arena to its active runtime (PC after migration, otherwise Hetzner).
+# Deploy the arena to its active runtime: the PC runtime when ~/.local/share/hetzner-pc/ACTIVE exists,
+# otherwise the shared server (TRADER_SERVER_SSH). Targets come from ops/server/runtime.sh.
 #
 #   ops/server/deploy-arena.sh            deploy HEAD (refuses if shipped files have uncommitted changes)
 #   ops/server/deploy-arena.sh --seed DB  also upload a pre-seeded arena database (first install only)
 #
-# Layout on the server (all under /home/<server-user>/trader-arena):
+# Layout of the runtime (all under $TRADER_SERVER_ROOT/trader-arena):
 #   app/      apps/backend source + agents (replaced on every deploy)
 #   data/     arena.db (SQLite; never touched by deploys)
 #   .env      credentials and settings (created once, by hand; keys: apps/backend/.env.template)
 #   DEPLOYED  commit that is running
 set -euo pipefail
 
-SERVER="<server-user>@<server-ip>"
-REMOTE="/home/<server-user>/trader-arena"
-UNIT="trader-arena"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$REPO/ops/server/runtime.sh"
+SERVER="$TRADER_SERVER_SSH"
+REMOTE="$TRADER_SERVER_ROOT/trader-arena"
+UNIT="trader-arena"
+if ! "$TRADER_PC_ACTIVE" && [[ -z "$SERVER" ]]; then echo "TRADER_SERVER_SSH is not set (apps/backend/.env)" >&2; exit 1; fi
 if "$TRADER_PC_ACTIVE"; then
-  REMOTE="$TRADER_SERVER_ROOT/trader-arena"
   UNIT="pc-server-trader-arena"
   [[ -d "$REMOTE/app" ]] || { echo "migrated trader runtime missing: $REMOTE" >&2; exit 1; }
 fi
@@ -90,7 +91,9 @@ if "$TRADER_PC_ACTIVE"; then
   systemctl --user enable trader-inspector.service
   systemctl --user restart trader-inspector.service
 else
-  scp -q "$REPO/ops/server/trader-arena.service" "$SERVER:/tmp/trader-arena.service"
+  sed -e "s|@SERVER_USER@|${SERVER%@*}|g" -e "s|@SERVER_HOME@|$TRADER_SERVER_HOME|g" \
+    "$REPO/ops/server/trader-arena.service" > "$TMP/trader-arena.service"
+  scp -q "$TMP/trader-arena.service" "$SERVER:/tmp/trader-arena.service"
   ssh "$SERVER" "sudo install -m 0644 /tmp/trader-arena.service /etc/systemd/system/$UNIT.service && sudo systemctl daemon-reload && sudo systemctl enable $UNIT >/dev/null 2>&1; sudo systemctl restart $UNIT"
 fi
 

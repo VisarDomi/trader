@@ -5,9 +5,18 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 PRIVATE=ROOT/'apps/ios/Private'
 PAIRING=PRIVATE/'primary-phone.json'
-UI=Path.home()/'.local/share/hetzner-pc/mirror/home/<server-user>/trader-ui'
-# The native API v2 (2026-11-22): screens built on the server, revalidated by ETag. Keep the list in step with
-# NATIVE_SCREENS in apps/ui/src/lib/server/native-contract.ts. v1 (raw records reshaped on the phone) is gone.
+def env_value(key):
+ """A setting from the environment or the untracked apps/backend/.env (as ops/server/runtime.sh reads it)."""
+ if os.environ.get(key):return os.environ[key]
+ env=ROOT/'apps/backend/.env'
+ values=[l.split('=',1)[1].strip().strip('"\'') for l in env.read_text().splitlines() if l.startswith(key+'=')] if env.exists() else []
+ if not values:raise SystemExit(key+' is not set (apps/backend/.env, see .env.template)')
+ return values[-1]
+# The shared server: its user's home (mirrored on the PC) and its SSH target stay out of git.
+UI=Path.home()/'.local/share/hetzner-pc/mirror'/env_value('TRADER_SERVER_HOME').lstrip('/')/'trader-ui'
+SERVER=env_value('TRADER_SERVER_SSH')
+# The native API v2: screens built on the server, revalidated by ETag. Keep the list in step with
+# NATIVE_SCREENS in apps/ui/src/lib/server/native-contract.ts.
 SCREENS=['rankings','agents','agent','run','trade','accounts','account','status','scenarios','graveyard','archive','journal','research','document','source','mirror','exclude']
 SITE='trader.veron3.space'
 
@@ -38,7 +47,7 @@ def edge():
  req=urllib.request.Request('http://127.0.0.1:10003/api/native/v2/agents',headers={'Authorization':'Bearer '+value['token']})
  with urllib.request.urlopen(req,timeout=25) as response:
   if response.status!=200:raise SystemExit('Native API must pass its local authenticated check first')
- before=subprocess.run(['ssh','<server-user>@<server-ip>','sudo -n cat /etc/caddy/Caddyfile'],check=True,capture_output=True).stdout
+ before=subprocess.run(['ssh',SERVER,'sudo -n cat /etc/caddy/Caddyfile'],check=True,capture_output=True).stdout
  text=before.decode();start=text.find(SITE+' {')
  if start<0:raise SystemExit('Trader edge block not found')
  depth=0;end=None
@@ -83,7 +92,7 @@ try:
 finally:t.unlink(missing_ok=True)
 print('Validated and reloaded only the Trader edge route.')
 '''
- subprocess.run(['ssh','<server-user>@<server-ip>','sudo -n python3 -'],input=program.encode(),check=True)
+ subprocess.run(['ssh',SERVER,'sudo -n python3 -'],input=program.encode(),check=True)
  private_write(Path.home()/'.local/share/hetzner-pc/config/edge.Caddyfile',after)
 
 if __name__=='__main__':

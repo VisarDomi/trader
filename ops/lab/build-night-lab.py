@@ -32,7 +32,7 @@ for r in stocks['rows']:
 whole=sum(r['holdingsPrice'] for r in stocks['rows']);binding=max(stocks['rows'],key=lambda r:r['holdingsPrice']/r['normalizedWeight']);weighted=binding['holdingsPrice']/binding['normalizedWeight']
 stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'wholeShareRoundedCash':sum(math.ceil(weighted*r['normalizedWeight']/r['holdingsPrice']-1e-10)*r['holdingsPrice'] for r in stocks['rows']),'bindingTicker':binding['ticker'],'matched':len(known),'partialCFDFloor':sum(r['minimumNotional'] for r in known),'partialWeightedCFDFloor':max(r['minimumNotional']/r['normalizedWeight'] for r in known),'missing':[r['ticker'] for r in stocks['rows'] if not r['usdMatched']]})
 # The live cohort (v4, 2026-11-22): the v3 base, controls, 1:200 points and the two agents that have traded, plus
-# five looser variants per index replacing the stricter v3 ones. Earlier selections stay in research/ for history.
+# five looser variants per index. The study's original selections are the other research/night-cohort-*.json files.
 selection=json.loads((ROOT/'research/night-cohort-v4-20261122.json').read_text())
 cohort=[]
 inputs=[]
