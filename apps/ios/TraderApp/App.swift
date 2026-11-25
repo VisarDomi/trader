@@ -16,7 +16,7 @@ final class AppDelegate:UIResponder,UIApplicationDelegate {
 final class TraderTabs:UITabBarController,UITabBarControllerDelegate {
     init(startup:Startup) {
         super.init(nibName:nil,bundle:nil)
-        let labels=["Rankings","Agents","Accounts","Explore"],icons=["chart.bar.xaxis","person.3.sequence","building.columns","square.grid.2x2"]
+        let labels=["Rankings","Strategies","Agents","Accounts","Explore"],icons=["chart.bar.xaxis","text.book.closed","person.3.sequence","building.columns","square.grid.2x2"]
         viewControllers=AppFiles.roots.enumerated().map { i,root in
             let factory:LiveNavigationController.Factory={data,state in
                 guard let route=try? JSONDecoder().decode(Route.self,from:data) else{return nil}
@@ -28,14 +28,14 @@ final class TraderTabs:UITabBarController,UITabBarControllerDelegate {
             nav.navigationBar.tintColor = .systemTeal
             return nav
         }
-        selectedIndex=min(max(startup.state.selectedTab,0),3)
+        selectedIndex=min(max(startup.state.selectedTab,0),labels.count-1)
         tabBar.tintColor = .systemTeal;delegate=self
     }
     required init?(coder:NSCoder){fatalError("init(coder:)")}
     var current:ScreenController?{(selectedViewController as? UINavigationController)?.topViewController as? ScreenController}
     private func saveTab(){let i=selectedIndex;Task{await TraderStore.shared.saveTab(i)}}
     func tabBarController(_ tabBarController:UITabBarController,didSelect viewController:UIViewController){saveTab()}
-    func choose(_ index:Int){guard (0..<4).contains(index) else{return};selectedIndex=index;saveTab()}
+    func choose(_ index:Int){guard (0..<AppFiles.roots.count).contains(index) else{return};selectedIndex=index;saveTab()}
     func flush(){for nav in viewControllers ?? []{(nav as? LiveNavigationController)?.flush()};saveTab()}
     func pause(){current?.pause()}
     func resume(){current?.resumed()}

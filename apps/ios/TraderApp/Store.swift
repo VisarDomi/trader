@@ -22,7 +22,7 @@ enum AppFiles {
     static var bootstrap: URL { FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("TraderPairing.json") }
     static func navigation(_ index:Int) -> URL { root.appendingPathComponent("navigation-\(index).json") }
     static func key(_ route:Route,_ state:ScreenState) -> String { "\(route.screen.rawValue)|\(route.cacheKey)|\(route.id)|\(route.version)|\(state.query)|\(state.sort)" }
-    static let roots = [Route(screen:.rankings),Route(screen:.agents),Route(screen:.accounts),Route(screen:.more)]
+    static let roots = [Route(screen:.rankings),Route(screen:.strategies),Route(screen:.agents),Route(screen:.accounts),Route(screen:.more)]
 }
 
 enum Keychain {

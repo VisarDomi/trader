@@ -2,7 +2,7 @@
  import '../app.css';
  import{page}from'$app/state';
  let{data,children}=$props();
- const primary=[{href:'/',label:'Results'},{href:'/agents',label:'Agents'},{href:'/broker',label:'Accounts'}];
+ const primary=[{href:'/',label:'Results'},{href:'/strategies',label:'Strategies'},{href:'/agents',label:'Agents'},{href:'/broker',label:'Accounts'}];
  const more=[{href:'/twins',label:'Paper vs demo'},{href:'/night-lab/',label:'Night Lab'},{href:'/graveyard',label:'Graveyard'},{href:'/leverage',label:'Leverage'},{href:'/research',label:'Research'},{href:'/journal',label:'Journal'},{href:'/status',label:'System'}];
  const active=(href:string)=>href==='/'?page.url.pathname==='/'||page.url.pathname.startsWith('/runs'):page.url.pathname.startsWith(href);
 </script>

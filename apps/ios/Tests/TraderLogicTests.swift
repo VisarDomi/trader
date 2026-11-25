@@ -55,6 +55,8 @@ private func packed32(_ xs:[Float])->String {xs.withUnsafeBytes{Data($0)}.base64
     #expect(Route(screen:.run,id:id).cacheKey=="run?id=demo%3Avisar-night-v3-us100%2Ffull-day-200%3AUS100%3Ax200%3A6d175db7dd11")
     #expect(Route(screen:.trade,id:"demo:x",stage:"capital",version:"6706").cacheKey=="trade?id=demo%3Ax&trade=6706&stage=capital")
     #expect(Route(screen:.rankings,stage:"virtual",scenario:"delay=500").cacheKey=="rankings?stage=virtual&scenario=delay%3D500")
+    #expect(Route(screen:.strategies).cacheKey=="strategies")
+    #expect(Route(screen:.document,id:"strategy-tsmom-12m").cacheKey=="document?id=strategy-tsmom-12m")
     #expect(Route(screen:.more).cacheKey.isEmpty && Presentation.local(Route(screen:.more)) != nil)
 }
 @Test func savedNavigationRoutesStillDecode() throws {

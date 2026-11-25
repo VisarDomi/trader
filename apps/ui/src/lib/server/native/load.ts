@@ -3,10 +3,11 @@ import type { LeaderboardRow, RunDetail } from '@trader/shared';
 import { arena } from '../arena';
 import { inspection } from '../inspection';
 import { doc, sources, topics } from '../research';
+import { buildStrategyCatalog, findStrategy } from '../strategies';
 import { PLATFORM_HISTORY } from '$lib/platform-history';
 import {
 	accountScreen, accountsScreen, agentScreen, agentsScreen, archiveScreen, documentScreen, graveyardScreen, portfolioScreen, rankingsScreen, runScreen,
-	scenariosScreen, sourceScreen, statusScreen, tradeScreen, verdicts, type Sparks,
+	scenariosScreen, sourceScreen, statusScreen, strategiesScreen, strategyDetailScreen, tradeScreen, verdicts, type Sparks,
 } from './screens';
 import type { Screen } from './wire';
 
@@ -37,6 +38,7 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 				stage === 'backtest' ? [] : portfolios().catch(() => [])]);
 			return rankingsScreen(verdicts(rows, stage), stage, scenario, held);
 		}
+		case 'strategies': return strategiesScreen(buildStrategyCatalog(await agentList().catch(() => [])));
 		case 'agents': return agentsScreen(await agentList());
 		case 'agent': {
 			const agent = await arena.agent(id);
@@ -80,6 +82,12 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 				const held = (await portfolios()).find(p => `portfolio-${p.id}` === id);
 				if (!held) throw Error('No such portfolio');
 				return portfolioScreen(held);
+			}
+			if (id.startsWith('strategy-')) {
+				const catalog = buildStrategyCatalog(await agentList().catch(() => []));
+				const item = findStrategy(catalog, id.slice('strategy-'.length));
+				if (!item) throw Error('No such strategy');
+				return strategyDetailScreen(item);
 			}
 			return documentScreen(topics().find(t => t.slug === id)?.title ?? 'Research', doc(`research/topics/${id}.md`) ?? '');
 		}

@@ -1,6 +1,6 @@
 import Foundation
 
-enum Screen: String, Codable, Sendable, Hashable { case rankings, agents, agent, run, trade, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
+enum Screen: String, Codable, Sendable, Hashable { case rankings, strategies, agents, agent, run, trade, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
 
 /** Where a screen is: saved in navigation stacks, sent by the server on rows, and the key of its stored copy. */
 struct Route: Codable, Sendable, Hashable {
@@ -21,7 +21,7 @@ struct Route: Codable, Sendable, Hashable {
     var cacheKey: String {
         switch screen {
         case .rankings: return "rankings?stage=\(stage)"+(scenario.map{"&scenario=\(Route.q($0))"} ?? "")
-        case .agents,.accounts,.status,.scenarios,.graveyard,.journal,.research: return screen.rawValue
+        case .strategies,.agents,.accounts,.status,.scenarios,.graveyard,.journal,.research: return screen.rawValue
         case .agent,.account,.archive,.document: return "\(screen.rawValue)?id=\(Route.q(id))"
         case .source: return "source?id=\(Route.q(id))&version=\(Route.q(version))"
         // One record shows paper and Capital demo together, so every stage shares one stored copy.

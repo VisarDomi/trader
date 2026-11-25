@@ -5,6 +5,7 @@
 import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, FamilyView, GraveyardEntry, LeaderboardRow, PortfolioClock, PortfolioView, RunDetail, RunSummary, Trade } from '@trader/shared';
 import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily, assessPortfolio } from '@trader/shared';
 import type { Inspection } from '../inspection';
+import type { StrategyCatalog, StrategyEntry } from '../strategies';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
 import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, portfolioRuleLine, standingLine, standingTitle, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
@@ -511,6 +512,90 @@ export function markdownSections(text: string): Section[] {
 }
 export function documentScreen(title: string, markdown: string, extra: Section[] = []): Screen {
 	return { v: 2, title, sections: [...extra.filter(s => s.rows.length), ...markdownSections(markdown)] };
+}
+
+/** Strategies hub: every strategy family in Trader, its SOTA verdict, and a tap-through plain-English breakdown. */
+export function strategiesScreen(catalog: StrategyCatalog): Screen {
+	const total = catalog.researched.length + catalog.queued.length;
+	const strategyRow = (item: StrategyEntry): Row => {
+		const meta = [
+			item.timeframes.length ? item.timeframes.join('/') : '',
+			item.instruments.length ? plural(item.instruments.length, 'market', 'markets') : '',
+			item.variants.length > 1 ? plural(item.variants.length, 'variant', 'variants') : '',
+			item.usesForecast ? 'TimesFM' : '',
+		].filter(Boolean).join(' · ');
+		return compact({
+			id: `strategy-${item.id}`,
+			title: item.name,
+			subtitle: meta || item.bestFit,
+			badge: item.verdict,
+			badgeTone: item.verdictTone ?? undefined,
+			body: item.tldr,
+			route: { screen: 'document', id: `strategy-${item.id}`, title: item.name },
+		});
+	};
+	const sections: Section[] = [];
+	if (catalog.guides.length) sections.push({ title: 'Reference', rows: catalog.guides.map(strategyRow) });
+	if (catalog.researched.length) sections.push({ title: `SOTA researched · ${catalog.researched.length}`, rows: catalog.researched.map(strategyRow) });
+	if (catalog.queued.length) sections.push({ title: `Queued for research · ${catalog.queued.length}`, rows: catalog.queued.map(strategyRow) });
+	if (catalog.controls.length) sections.push({ title: `Controls & baselines · ${catalog.controls.length}`, rows: catalog.controls.map(strategyRow) });
+	return compact({
+		v: 2 as const,
+		title: 'Strategies',
+		subtitle: `${catalog.researched.length} of ${total} strategies researched · SOTA plain-English hub`,
+		sections,
+	});
+}
+
+/** One strategy's SOTA breakdown, opened as a document so no extra native screen type is required. */
+export function strategyDetailScreen(item: StrategyEntry): Screen {
+	const sections: Section[] = [];
+	const stats: Stat[] = [
+		{ label: 'SOTA verdict', value: item.verdict, tone: item.verdictTone ?? 0 },
+		...(item.bestFit ? [{ label: 'Best fit', value: item.bestFit }] : []),
+		...(item.expectedEdge ? [{ label: 'Expected edge', value: item.expectedEdge }] : []),
+	];
+	sections.push({
+		title: '',
+		rows: [compact({
+			id: 'summary',
+			title: item.name,
+			subtitle: [item.timeframes.join('/'), item.instruments.length ? plural(item.instruments.length, 'market', 'markets') : ''].filter(Boolean).join(' · '),
+			stats: stats.slice(0, 3),
+			body: item.tldr,
+		})],
+	});
+	for (const [i, sec] of item.sections.entries()) {
+		const paragraphs = sec.body.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+		sections.push({
+			title: sec.title,
+			rows: paragraphs.map((p, j) => ({ id: `sec-${i}-${j}`, title: '', body: p })),
+		});
+	}
+	if (item.variants.length) {
+		sections.push({
+			title: `Active in Trader · ${item.variants.length}`,
+			rows: item.variants.map(v => compact({
+				id: `variant-${v.id}`,
+				title: v.name,
+				subtitle: `${v.timeframe} · ${v.instruments.join(', ')}`,
+				badge: v.usesForecast ? 'TimesFM' : '',
+				route: { screen: 'agent', id: v.id },
+			})),
+		});
+	}
+	if (item.sources.length) {
+		sections.push({
+			title: 'Key sources',
+			rows: item.sources.map((s, i) => ({
+				id: `src-${i}`,
+				title: s.title,
+				subtitle: s.url.replace(/^https?:\/\//, '').split('/')[0] ?? '',
+				route: { screen: 'external', id: s.url },
+			})),
+		});
+	}
+	return compact({ v: 2 as const, title: item.name, subtitle: item.group === 'guide' ? 'Strategy guide' : 'SOTA strategy brief', sections });
 }
 export function verdicts(rows: LeaderboardRow[], stage: string): RankingRow[] {
 	const now = Date.now();

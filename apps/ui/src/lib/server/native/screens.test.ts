@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen, portfolioRow, portfolioScreen } from './screens';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen, portfolioRow, portfolioScreen, strategiesScreen, strategyDetailScreen } from './screens';
 import { agreementLine, barsLine, clockLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, spanText, standingLine, standingTitle } from '../../clock';
 import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
@@ -245,4 +245,27 @@ test('thinning keeps extremes and packing round-trips', () => {
 	expect(out.some(p => p.value === 99)).toBe(true);
 	expect([...new Float64Array(Buffer.from(f64([1.5, 1794882420703]), 'base64').buffer.slice(0))].length).toBeGreaterThan(0);
 	expect(new Float32Array(new Uint8Array(Buffer.from(f32([27272.5]), 'base64')).buffer)[0]).toBe(27272.5);
+});
+test('strategies hub groups guides, researched, queued and controls, and opens each as a document', () => {
+	const item: any = {
+		id: 'tsmom-12m', name: 'Time-Series Momentum (12M)', group: 'strategy', status: 'researched',
+		verdict: 'Strong SOTA', verdictTone: 1, bestFit: '1:1 fee-free', expectedEdge: 'SR 0.5–0.8',
+		tldr: 'Multi-market trend following.', slugs: ['tsmom-12m'],
+		sections: [{ title: 'Bottom line', body: 'Works across many markets.' }],
+		sources: [{ title: 'MOP 2012', url: 'https://example.com/mop' }], markdown: '',
+		variants: [{ id: 'tsmom-12m', name: 'Time-Series Momentum (12 months)', timeframe: '1d', instruments: ['US500'], usesForecast: false }],
+		timeframes: ['1d'], instruments: ['US500'], usesForecast: false,
+	};
+	const queued: any = { ...item, id: 'adx-dmi', name: 'ADX DMI', status: 'queued', verdict: 'Queued', verdictTone: null, sections: [], sources: [] };
+	const list = strategiesScreen({ guides: [], researched: [item], queued: [queued], controls: [], all: [item, queued] });
+	expect(list.title).toBe('Strategies');
+	expect(list.subtitle).toContain('1 of 2 strategies researched');
+	expect(list.sections.map(s => s.title)).toEqual(['SOTA researched · 1', 'Queued for research · 1']);
+	expect(list.sections[0]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', badgeTone: 1, route: { screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' } });
+
+	const detail = strategyDetailScreen(item);
+	expect(detail.title).toBe('Time-Series Momentum (12M)');
+	expect(detail.sections.map(s => s.title)).toEqual(['', 'Bottom line', 'Active in Trader · 1', 'Key sources']);
+	expect(detail.sections[2]!.rows[0]!.route).toEqual({ screen: 'agent', id: 'tsmom-12m' });
+	expect(detail.sections[3]!.rows[0]!.route).toEqual({ screen: 'external', id: 'https://example.com/mop' });
 });
