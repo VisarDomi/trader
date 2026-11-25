@@ -5,6 +5,52 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — one daily clock for every record; candidate and confirmed replace leader
+
+- The user asked whether "30 trades and 28 days" is the right point to call a record non-random, since some agents
+  get there in days and others in years, accepted the recommendations below and asked for them and the current
+  research to be applied. Slow strategies needing years to be confirmed is accepted.
+- What the old rule missed, measured here:
+  - 30 trades took the fastest tenth of strategies under 38 days and the median 97; the slowest tenth would need
+    3.5 years. The evidence in a record is about its Sharpe ratio × √years whatever its trade count: t = 2 after
+    28 days needs a realized Sharpe near 7, after a year 2, after four years 1.
+  - Checked every visit, a no-edge record shows t ≥ 2 at some point within a year 16% of the time and within five
+    years 22% (20,000 simulated records), not 2%. With 844 records tried, the luckiest is expected near t = 3.
+  - The 78 runs past 30 trades had trade t-statistics with mean −0.1 and spread 1.0; the 13 monkeys past it, −0.2
+    and 1.0. The trade t-statistic of young records ranged from −136 to +38 (two or three near-equal trades).
+  - The eight Capital rows above +10% were one bet: $5,185 of their $5,341 came from shorts while their markets
+    fell 5–35% over the seven weeks, and in three of them one deal was over half the profit.
+- The daily clock (3d2fa1d; EVIDENCE.md "The daily clock", LIFECYCLE.md "Verdicts"): every forward record is judged
+  on its return per weekday, flat days included. t = mean ÷ volatility × √weekdays; judged from 10 closed trades
+  and 42 days. **Candidate** (t ≥ 2, above the instrument's monkeys) replaces leader for Capital demo slots and is
+  ranked by daily t. **Confirmed** is new and is the claim of an edge: an e-value that stays valid under daily
+  checking, the e-BH bar over every strategy record ever started at a 10% false discovery rate, and a forward
+  record that agrees with its backtest. Virtual retirement reads the daily t (≤ −1 after 30 trades and 42 days, or
+  10 and 90); Capital demotion reads daily realized cash.
+- The bars: one record on its own needs t 3.7 after 30 weekdays, 3.1 after six months, 3.0 after a year. Counting
+  all 844 records, the first confirmation needs 4.6 after a year: a Sharpe ratio of 3.2 for two years or 2.0 for
+  five. That is about twice the track record of the single-record bar; several strong records lower it for each
+  other. A real Sharpe-1 strategy clears even the single-record bar only 33% of the time within five years.
+- Found while testing: on its own volatility the martingale monkey (US500 1:200) had a daily t of 5.2 after 31
+  weekdays, because it had not lost yet. The clock therefore never uses a volatility below the same-code
+  backtest's (5.5% a day there against 1.2% forward): t 1.2. The guard binds for about half the strategies.
+- Forward against backtest: over 392 records, the forward mean daily return sits 0.1 standard errors above the
+  backtest's on average with spread 1.0 (2% more than 2 above, 3% more than 2 below). As a group the forward
+  records are what their backtests say; `macd-trend/ema200` ETHUSD 1:100, the second-highest t, is 2.6 above its.
+- Daily t over the 377 strategies with ten or more weekdays: mean 0.06, spread 0.86, highest 2.22. No edge is
+  visible yet, as expected after seven weeks.
+- Deploy: checked first on a snapshot of the live database. Under old and new rules alike nothing was due for
+  retirement or Capital demotion; the mirror kept its 410 runs and 201 open deals. Verdicts: early 241, keep 166,
+  candidate 1 (`volatility-breakout/k08` GOLD 1:2, t 2.05 over 13 trades, already mirrored), confirmed 0, retire 0;
+  monkey sanity 0 of 36. Closest to confirmed: that run, at 2.05 of the 5.74 a 34-weekday record needs.
+  `visar-night-trading` US500 1:200 is early: 3 trades, daily t 1.63.
+- The app and the website lead every forward row with the verdict and its t; the record's screen shows the bars
+  and the backtest agreement. The clock costs 0.2 ms per pass over 556 records once read (about 80 ms after a
+  start, then one stored value per record per weekday).
+- Next: the trial count grows with every new record, raising the confirmed bar slowly (it moves with its
+  logarithm). A family's variants judged together and matched controls on the same days are the two honest ways
+  to learn sooner about slow strategies; neither is built.
+
 ## 2026-11-25 (Wed, user-requested) — how often a record's own backtest did this; the eight Capital rows above +10%
 
 - The user asked for one more number on the rankings: how often a row's result happens (an earlier answer had put
