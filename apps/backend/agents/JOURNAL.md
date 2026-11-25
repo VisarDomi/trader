@@ -5,6 +5,34 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — families judged as one record; the night rule's files are one family
+
+- The user asked for the family judging left open below, and for a family for the slow strategies without one.
+- Families (f061524; EVIDENCE.md "Families", LIFECYCLE.md "Verdicts"): every strategy record is also judged with
+  its family as one record. Each weekday the family is worth the average of its members' returns, each divided
+  by the member's backtest volatility, over the members running that day; members retired since count on the
+  days they ran. Its backtest is the same average of its running members' backtests. Verdicts are early, keep,
+  candidate and confirmed, and confirmed families are counted over the 39 families ever started: the first
+  needs a t of 3.8 after a year (a Sharpe ratio of 2.7 for two years, 1.7 for five), against 4.6 for one record.
+- Which slow strategy had none: the nine slowest files (`vol-managed-hold`, `lrs-sma200`, `tsmom-12m`,
+  `shannon-demon`, `cppi`, `donchian-ensemble`, `turn-of-month`, `vol-target`, `ibs-dip`) each already run 2 to 11
+  records and are their own families. Only `visar-night-trading` stood alone, with its cohort split over four
+  more files. `families` in `roster.json` now joins the nine night rule files, running and retired, as
+  `visar-night`: 16 running records on US500 and US100, 84 ever (68 were replaced cohort versions; most lived
+  under a day). Its direction controls stay controls.
+- First reading: `visar-night` t 1.27 over 29 weekdays and 11 trades, 1.3 standard errors above its backtests;
+  early until day 42 (tomorrow), then keep. The original alone: 3 trades, t 1.63, and at its 26 trades a year not
+  past the floor of ten trades before spring.
+- All 39 families: t mean −0.2, spread 1.0; highest `volatility-breakout` 1.50 (12 records, 6 markets), then
+  `noise-area-momentum` 1.48 and `timesfm-vol-breakout` 1.44; early 7, keep 32, none candidate or confirmed.
+  The monkeys judged as one family score −2.15 where single monkeys average −0.5: pooling at work on a family
+  that only pays costs. `timesfm-band` −2.09 and `gold-session` −1.93 are the families furthest below zero.
+- A family verdict moves nothing: slots, demotion and retirement stay per record. Record verdicts are unchanged
+  by this deploy (early 241, keep 166, candidate 1, confirmed 0) and the mirror kept its 410 runs.
+- Cost: about 3 ms per evidence refresh.
+- Next: when a file continues an existing idea, its slug goes into that family in the same commit. Matched
+  controls on the same days remain unbuilt.
+
 ## 2026-11-25 (Wed, user-requested) — one daily clock for every record; candidate and confirmed replace leader
 
 - The user asked whether "30 trades and 28 days" is the right point to call a record non-random, since some agents
@@ -50,7 +78,7 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   value per record per weekday. The broker's candidate step runs at 0.1% of a core (0.2% before).
 - Next: the trial count grows with every new record, raising the confirmed bar slowly (it moves with its
   logarithm). A family's variants judged together and matched controls on the same days are the two honest ways
-  to learn sooner about slow strategies; neither is built.
+  to learn sooner about slow strategies.
 
 ## 2026-11-25 (Wed, user-requested) — how often a record's own backtest did this; the eight Capital rows above +10%
 
