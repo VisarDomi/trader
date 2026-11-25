@@ -2,6 +2,13 @@
 
 Newest first. Each entry records what was delivered, how it was checked and how it reached the phone.
 
+## November 25, 2026 · 4-tab layout restored, SOTA briefs in Agents & Sharpe & Trust
+
+- Restored the four-tab bar (`Rankings | Agents | Accounts | Explore`) and keyed saved navigation stacks by screen name (`navigation-<screen>.json`) instead of tab index, clearing legacy `navigation-0..4.json` files on startup so existing phones never shift tabs.
+- Folded SOTA strategy briefs directly into **Agents** (Guides, SOTA strategy briefs, and verdict badges on active variants) and into each researched agent's detail screen; added a dedicated **Sharpe & Trust** entry point in both **Explore** and **Agents** with a native confirmation-years bar chart and clean plain-text cards (zero raw Markdown or LaTeX).
+- Eight Linux Swift logic tests and 36 UI tests (`svelte-check` 0 errors) pass; `/api/native/v2/strategies` removed from Caddy via `ops/server/native-access.py edge`.
+- Job `20261125T163322Z-022862c6ab`, frozen source `7eaa6d7`: **installed** in place on the phone and approved for renewal.
+
 ## November 25, 2026 · Strategies SOTA hub tab
 
 - Added a dedicated **Strategies** tab (`Rankings | Strategies | Agents | Accounts | Explore`) backed by `/api/native/v2/strategies` and server-built strategy briefs (`document?id=strategy-<id>`). Each brief shows the SOTA verdict, best fit, expected edge, plain-English breakdown, implementation audit, tappable links to active Trader variants, and Safari source links.
