@@ -50,6 +50,13 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   };
   const db = arena.db;
   const evidence = new AgentEvidenceService(arena);
+  // Pre-warm evidence caches once the arena finishes startup so the first client request is instant.
+  const warmTimer = setInterval(() => {
+    if (!arena.ready) return;
+    clearInterval(warmTimer);
+    try { evidence.warm(); } catch { /* will compute on demand */ }
+  }, 1500);
+  warmTimer.unref?.();
   add(METHOD_GET,'/api/evidence',()=>json(evidence.overview()));
   add(METHOD_GET,'/api/portfolios',()=>json(evidence.portfolios()));
   add(METHOD_GET,'/api/evidence/cost-candidates',(_req,_p,url)=>{

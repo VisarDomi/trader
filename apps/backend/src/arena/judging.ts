@@ -190,10 +190,22 @@ export class Judging {
     }
     if (now < w.due) return w;
     const before = w.closes.length;
-    for (const close of weekdayCloses(w.through, now - SETTLE_MS)) {
-      const equity = this.db.equityAt(run.id, close) ?? w.equity;
-      w.closes.push(close); w.returns.push(w.equity > 0 ? equity / w.equity - 1 : 0);
-      w.equity = equity; w.through = close;
+    const closes = weekdayCloses(w.through, now - SETTLE_MS);
+    if (closes.length > 3) {
+      // Single sequential range scan + two-pointer merge instead of one SQLite seek per weekday.
+      const pts = this.db.equityRange(run.id, w.through, closes.at(-1)!);
+      let idx = 0, held = w.equity;
+      for (const close of closes) {
+        while (idx < pts.length && pts[idx]!.t <= close) held = pts[idx++]!.equity;
+        w.closes.push(close); w.returns.push(w.equity > 0 ? held / w.equity - 1 : 0);
+        w.equity = held; w.through = close;
+      }
+    } else {
+      for (const close of closes) {
+        const equity = this.db.equityAt(run.id, close) ?? w.equity;
+        w.closes.push(close); w.returns.push(w.equity > 0 ? equity / w.equity - 1 : 0);
+        w.equity = equity; w.through = close;
+      }
     }
     if (w.closes.length !== before) w.stats = statsOf(w.returns);
     w.due = (Math.floor((now - SETTLE_MS) / DAY_MS) + 1) * DAY_MS + SETTLE_MS;

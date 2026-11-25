@@ -779,6 +779,13 @@ export class ArenaDB {
     return this.db.query<EquityPoint, [string]>(`SELECT t, equity FROM equity WHERE run_id = ? ORDER BY t`).all(runId);
   }
 
+  /** Equity points in (after, through] in chronological order, for single-scan daily clock walks. */
+  equityRange(runId: string, after: number, through: number): EquityPoint[] {
+    return this.db
+      .query<EquityPoint, [string, number, number]>(`SELECT t, equity FROM equity WHERE run_id = ? AND t > ? AND t <= ? ORDER BY t`)
+      .all(runId, after, through);
+  }
+
   appendLog(runId: string, line: LogLine): void {
     this.db.query(`INSERT INTO logs (run_id, time, message) VALUES (?, ?, ?)`).run(runId, line.time, line.message.slice(0, 2000));
   }

@@ -29,6 +29,7 @@ export class AgentEvidenceService {
   private rows = new Map<string,RunRow>();
   private comparisonRunCount = 0;
   private comparisons = new Map<string,BenchmarkComparison>();
+  private cashComparisons = new Map<string,BenchmarkComparison>();
   /** Backtest hold comparisons are immutable for a given (id, updated_at); keep them across 30s refreshes. */
   private backtestComparisons = new Map<string,BenchmarkComparison>();
   private costs = new Map<string,CostSummary>();
@@ -58,7 +59,7 @@ export class AgentEvidenceService {
   invalidate():void { this.refreshed = -Infinity; this.cashflowsRefreshed = -Infinity; this.costsRefreshed.clear(); this.backtestComparisons.clear(); }
   private refresh(now: number): void {
     if (now-this.refreshed < CACHE_MS) return;
-    this.refreshed=now; this.comparisons.clear(); this.lives.clear(); this.frequencies.clear(); this.parsed.clear(); this.clocks=null; this.held=null;
+    this.refreshed=now; this.comparisons.clear(); this.cashComparisons.clear(); this.lives.clear(); this.frequencies.clear(); this.parsed.clear(); this.clocks=null; this.held=null;
     this.demotions=this.arena.db.getSetting<Record<string,{at:number}>>('broker.demotions',{});
     if (now - this.cashflowsRefreshed >= 5 * 60_000) {
       this.cashflowsRefreshed = now;
@@ -336,14 +337,25 @@ export class AgentEvidenceService {
       dependency:this.arena.forecastAvailability?.evidence(0,now)??null,
       note:'Existing records include calibration and user experiments. Cost coverage, common-date benchmarks and paused dependencies qualify every comparison; they do not change the promotion thresholds.'};
   }
+  /** Pre-warm read-model caches once after startup so the first user request never pays cold-boot SQLite scans. */
+  warm(now = Date.now()): void {
+    this.refresh(now);
+    this.loadCosts(RUN_KIND.DEMO, now);
+    this.loadCosts(RUN_KIND.BACKTEST, now);
+    this.field(now);
+  }
   /** Capital demo: realized cash return on the run's allocation since its first deal, against holding the instrument
    *  outright over the same dates. */
   private cashComparison(row:LeaderboardRow,now=Date.now()):BenchmarkComparison {
     this.refresh(now);
     const m=row.metrics;
     if(!m||!m.startTime)return unavailable('No priced Capital deals yet.');
-    return this.versusHold(row.epic,m.startTime,now,m.totalReturn,'cash-vs-hold',
+    const key=`${row.runId}:${m.startTime}:${m.totalReturn}`;
+    const cached=this.cashComparisons.get(key);if(cached)return cached;
+    const result=this.versusHold(row.epic,m.startTime,now,m.totalReturn,'cash-vs-hold',
       'Realized cash on the run\'s Capital allocation since its first deal. Open positions count only once closed; sizing differs; not risk-adjusted.');
+    this.cashComparisons.set(key,result);
+    return result;
   }
   forCapital(row:LeaderboardRow,unrealizedPnl:number|null,openPosition:boolean):AgentEvidence|undefined {
     this.refresh(Date.now());
