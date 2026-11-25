@@ -267,10 +267,10 @@ test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail s
 	const activeAgent: any = { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'Time-Series Momentum (12 months)', description: '12M trend', timeframe: '1d', instruments: ['US500'], active: true, usesForecast: false };
 	const list = agentsScreen([activeAgent], { guides: [guide], researched: [item], queued: [], controls: [], all: [guide, item] });
 	expect(list.title).toBe('Agents');
-	expect(list.sections.map(s => s.title)).toEqual(['Guides', 'SOTA strategy briefs · 1', '1 active variants']);
+	expect(list.sections.map(s => s.title)).toEqual(['Guides', 'SOTA strategy briefs · 1', 'Trend & Momentum · 1']);
 	expect(list.sections[0]!.rows[0]!.route).toEqual({ screen: 'document', id: 'strategy-sharpe-guide', title: 'How to Read Sharpe & Trust' });
 	expect(list.sections[1]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', badgeTone: 1, route: { screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' } });
-	expect(list.sections[2]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', route: { screen: 'agent', id: 'tsmom-12m' } });
+	expect(list.sections[2]!.rows[0]).toMatchObject({ title: 'Time-Series Momentum · 12m', badge: 'Strong SOTA', route: { screen: 'agent', id: 'tsmom-12m' } });
 
 	const detail = strategyDetailScreen(item);
 	expect(detail.title).toBe('Time-Series Momentum (12M)');
@@ -290,9 +290,19 @@ test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail s
 	expect(sharpe.sections[1]!.rows[1]).toEqual({ id: 'sec-0-0', title: 'Equation', body: 't ≈ SR̂ × √T_years', code: true });
 	expect(sharpe.sections[1]!.rows[3]).toEqual({ id: 'sec-0-2', title: 'Steamroller', body: 'Low variance (σ) before crash.' });
 
-	const withBrief = agentScreen({ agent: { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'TSMOM', description: '', codeHash: 'h', runs: [], versions: [] } as any, runs: [], sparks: new Map(), capital: new Map(), strategy: item });
+	const withBrief = agentScreen({ agent: { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'TSMOM', description: '', timeframe: '1d', instruments: ['US500'], params: {}, codeHash: 'h', runs: [], versions: [] } as any, runs: [], sparks: new Map(), capital: new Map(), strategy: item });
 	expect(withBrief.sections[0]!.title).toBe('SOTA brief');
 	expect(withBrief.sections[0]!.rows[0]!.route).toEqual({ screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' });
+	expect(withBrief.sections[1]!.title).toBe('Rule & settings');
+
+	const nightAgent = agentScreen({
+		agent: { id: 'visar-night/full-day-200', slug: 'visar-night', variant: 'full-day-200', name: 'Visar Night (full-day-200)', description: '', timeframe: '1m', instruments: ['US500', 'US100'], params: { sessionStart: 570, sessionEnd: 960, pullback: 1, marginPct: 90, lossPct: 50 }, codeHash: 'h', runs: [], versions: [] } as any,
+		runs: [], sparks: new Map(), capital: new Map(),
+	});
+	expect(nightAgent.title).toBe('Visar Night · Full Day 1:200');
+	expect(nightAgent.sections[0]!.title).toBe('Rule & settings');
+	expect(nightAgent.sections[0]!.rows[0]!.body).toContain('Full NY cash day (09:30–16:00 NY)');
+	expect(nightAgent.sections[0]!.rows[0]!.body).toContain('exact same rule runs on US500 and US100');
 });
 test('runScreen exposes manual stage controls for Paper, Capital demo, and single-agent Real USD on Hetzner', () => {
 	const base = { run: { ...run, status: 'running' }, agentName: 'X', capital: null, excluded: false, comparison: null, sparks: null, account: null };

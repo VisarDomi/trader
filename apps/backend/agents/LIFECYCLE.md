@@ -34,23 +34,16 @@ After its first demotion the exception no longer grants re-entry. Changed source
 of the exception. `visar-night-trading:US500@200` is one; `roster.json` lists them all.
 
 Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leverage`, `skew-monkey`,
-`martingale-monkey`, `bold-play`, and the night cohort's direction controls `visar-night-v3-control-us100` /
-`-us500`) are never judged or retired. The direction controls trade exactly their
-`base` agent's eligible nights with identical settings, always long or with a random side, and hold
+`martingale-monkey`, `bold-play`, and `visar-night-control`) are never judged or retired. The direction controls trade
+`visar-night/midday-20`'s eligible nights with identical settings, always long or with a random side, and hold
 user-requested demo admissions so the comparison also runs on Capital.
 
-The night cohort (`research/night-cohort-v5-20261125.json`, 20 members) studies the user's night rule on
-both indices. Its clocks are New York's (16:00 reference, 21:27 entry, 02:27 exit: the user's 22:00, 03:27
-and 08:27 in Tirana, kept at the same place in the US day when the two change their clocks apart). Its v3 part is a base per index plus one change each: overnight gap, leverage 1:200, or side
-(direction controls). The original `visar-night-trading` keeps its record as the US500 full-day 1:200 point;
-US100 has the same settings (`visar-night-v3-us100/full-day-200`). Its v4 part is five looser variants per
-index at 1:20 (`visar-night-v4-us500/us100`: `loose-body`, `no-pullback`, `any-day`, `every-night`,
-`full-day`). Looser variants trade more nights where the 50% loss limit (about 2.8% away at 1:20) is out of
-the night's reach; a stricter subset of the base could trade only on the base's nights and so would add no
-observations. The v4 source is the v3 rule plus two switches (`direction`, `pullback`); with its defaults it
-trades exactly like the v3 base, and the paper grid runs every cell on it. Exits that never trigger at 1:20
-are not explored. The ruin controls `bold-play` and `martingale-monkey` are automatically paper-only by slug,
-including future code versions. Real-money execution runs exclusively on Hetzner (`trader-real.service`) against the locked USD account; the PC stays strictly non-real.
+The Visar Night family (`visar-night` + `visar-night-control`, 20 live runs across US500 and US100) studies the user's night rule on
+both indices using New York clocks (16:00 reference, 21:27 entry, 02:27 exit: 22:00, 03:27 and 08:27 in Tirana outside DST-mismatch weeks).
+Its eight rule variants run symmetrically on both US500 and US100: `full-day-200` (09:30–16:00 NY at 1:200), `midday-200` (10:30–15:30 NY at 1:200),
+`midday-20` (reference base at 1:20), `full-day-20`, `no-pullback-20`, `loose-body-20`, `any-day-20`, and `every-night-20`, alongside the two
+direction controls (`always-long`, `random-direction`) and the 540-cell Night Paper Grid. The ruin controls `bold-play` and `martingale-monkey`
+are automatically paper-only by slug, including future code versions. Real-money execution runs exclusively on Hetzner (`trader-real.service`) against the locked USD account; the PC stays strictly non-real.
 
 Execution comparisons have separate records and labels, but are correlated copies of a strategy under
 frozen latency assumptions. They never take Capital slots and never multiply strategy/monkey verdicts.

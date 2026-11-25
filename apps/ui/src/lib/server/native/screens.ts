@@ -7,6 +7,7 @@ import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily, assessPortfolio } from 
 import type { Inspection } from '../inspection';
 import type { StrategyCatalog, StrategyDoc, StrategyEntry } from '../strategies';
 import { plainNativeBlocks, stripMarkdownInline } from '../strategy-text';
+import { agentRuleSpec, cleanAgentName, groupActiveAgents } from '../agent-spec';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
 import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, portfolioRuleLine, standingLine, standingTitle, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
@@ -77,8 +78,10 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
 	const judged = stage === 'backtest' || r.comparisonOnly ? '' : clockLine(r as LeaderboardRow, Date.now(), !!r.forwardVerdict && badge === verdictWord(r.forwardVerdict));
 	const facts = [judged, frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
+	const rawTitle = name ?? (r.name || r.epic);
+	const title = !name && r.agentId ? cleanAgentName(r.agentId, rawTitle) : rawTitle;
 	return compact({
-		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
+		id, title, subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
 		keys: [m.totalReturn ?? null, overCash(b), b.status === 'matched' ? b.excessReturn : null, m.sharpe ?? null, m.trades ?? null],
 	});
@@ -124,7 +127,7 @@ export function portfolioScreen(p: PortfolioView): Screen {
 // ---------------------------------------------------------------- agents
 
 export function agentsScreen(items: AgentListItem[], catalog?: StrategyCatalog): Screen {
-	const active = items.filter(a => a.active).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+	const groups = groupActiveAgents(items);
 	const sections: Section[] = [];
 	const bySlug = new Map<string, StrategyEntry>();
 	if (catalog) {
@@ -156,21 +159,23 @@ export function agentsScreen(items: AgentListItem[], catalog?: StrategyCatalog):
 			});
 		}
 	}
-	sections.push({
-		title: `${active.length} active variants`,
-		rows: active.map(a => {
-			const brief = bySlug.get(a.slug);
-			return compact({
-				id: a.id,
-				title: a.name,
-				subtitle: `${a.timeframe} · ${a.instruments.join(', ')}`,
-				body: a.description,
-				badge: brief ? brief.verdict : a.usesForecast ? 'TimesFM' : '',
-				badgeTone: brief ? (brief.verdictTone ?? undefined) : undefined,
-				route: { screen: 'agent', id: a.id },
-			});
-		}),
-	});
+	for (const g of groups) {
+		sections.push({
+			title: `${g.title} · ${g.items.length}`,
+			rows: g.items.map(a => {
+				const brief = bySlug.get(a.slug);
+				return compact({
+					id: a.id,
+					title: cleanAgentName(a.id, a.name),
+					subtitle: `${a.timeframe} · ${a.instruments.join(', ')}`,
+					body: a.description,
+					badge: brief ? brief.verdict : a.usesForecast ? 'TimesFM' : '',
+					badgeTone: brief ? (brief.verdictTone ?? undefined) : undefined,
+					route: { screen: 'agent', id: a.id },
+				});
+			}),
+		});
+	}
 	return { v: 2, title: 'Agents', sections };
 }
 
@@ -264,6 +269,17 @@ export function agentScreen({ agent, runs, sparks, capital, backtests: board, st
 			})],
 		});
 	}
+	const spec = agentRuleSpec(agent, board);
+	sections.push({
+		title: 'Rule & settings',
+		rows: [compact({
+			id: 'rule-spec',
+			title: spec.headline,
+			subtitle: spec.subtitle,
+			stats: spec.stats,
+			body: spec.lines.join('\n'),
+		})],
+	});
 	if (records.length) sections.push({ title: 'Live records', rows: records.map(r => {
 		const c = capital.get(r.id), cm = c?.metrics, m = r.metrics;
 		const isReal = realService?.assignment?.runId === r.id || Boolean(c?.real);
@@ -289,7 +305,7 @@ export function agentScreen({ agent, runs, sparks, capital, backtests: board, st
 	const archived = agent.runs.filter(r => r.status === 'retired' && !r.id.includes(':delay=') && !(r.kind === 'backtest' && r.codeHash === agent.codeHash));
 	if (archived.length) sections.push({ title: 'Archived records', rows: archived.map(r => rankingRow(summaryRow(r, agent), r.kind === 'backtest' ? 'backtest' : 'virtual')) });
 	sections.push({ title: '', rows: [{ id: 'source', title: 'Source and parameters', subtitle: agent.codeHash, route: { screen: 'source', id: agent.id, version: agent.codeHash } }] });
-	return compact({ v: 2 as const, title: agent.name, subtitle: agent.description, sections });
+	return compact({ v: 2 as const, title: cleanAgentName(agent.id, agent.name), subtitle: agent.description, sections });
 }
 const summaryRow = (r: RunSummary, agent: AgentDetail): Json => ({ ...r, name: r.epic, timeframe: agent.timeframe });
 
@@ -451,7 +467,7 @@ export function runScreen({ run, agentName, capital, excluded, mirrored, real = 
 		sections.push({ title: real ? `Stage · ${acctLabel} (Hetzner)` : onDemo ? 'Stage · Capital demo' : 'Stage · Paper', rows: stageRows });
 	}
 	sections.push({ title: '', rows: [{ id: 'params', title: 'Parameters', body: Object.entries(run.params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join('\n'), code: true }] });
-	return compact({ v: 2 as const, title: `${run.epic} · ${tier(run.leverage)}`, subtitle: agentName, sections });
+	return compact({ v: 2 as const, title: `${run.epic} · ${tier(run.leverage)}`, subtitle: cleanAgentName(run.agentId, agentName), sections });
 }
 /** Treasury bills (the safe alternative) and CPI (what idle dollars lost) over the comparison's dates. */
 export function hurdlesRow(b: Json): Row {

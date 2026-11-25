@@ -8,7 +8,7 @@ verdictTone: 0
 bestFit: 1:20 research cohort (1:200 high-ruin)
 expectedEdge: Unproven; controls test direction vs drift
 tldr: Follows a directional New York equity session after an overnight pullback, fixed strictly to New York clocks (16:00 close, 21:27 entry, 02:27 exit) so DST mismatches never shift it. Academic SOTA documents overnight drift (mostly long/reversal around the European open), not directional continuation from the US day—which is why our always-long and random controls run beside it.
-slugs: visar-night-trading, visar-night-v3-us500, visar-night-v3-us100, visar-night-v4-us500, visar-night-v4-us100, night-risk-twin
+slugs: visar-night, visar-night-control
 ---
 
 ## Bottom line
@@ -19,12 +19,12 @@ Academically, the strongest documented overnight effect in US equity futures is 
 
 ## Exact schedule (New York clocks, DST-safe)
 
-Every active Visar night agent (`visar-night-trading`, `v3`, `v4`, controls, and `night-risk-twin`) is pinned to **New York time (`America/New_York`)**, not Tirana time:
-- **US session classified:** `09:30–16:00 NY` (full day) or `10:30–15:30 NY` (central session)
+Every variant in `visar-night` and `visar-night-control` trades symmetrically on **US500 and US100**, pinned to **New York time (`America/New_York`)**:
+- **US session classified:** `09:30–16:00 NY` (`full-day-200`, `full-day-20`) or `10:30–15:30 NY` (`midday-200`, `midday-20`, `no-pullback-20`, `loose-body-20`, `any-day-20`, `every-night-20`)
 - **Reference price:** `16:00 NY` cash close (`22:00` Tirana normally; `21:00` Tirana in the ~3 weeks/year when US and European DST disagree)
 - **Entry decision:** `21:27 NY`, Monday–Thursday evenings (`03:27` Tirana Tue–Fri normally; `02:27` Tirana in DST-mismatch weeks)
 - **Scheduled exit:** `02:27 NY` (+5 hours; `08:27` Tirana normally; `07:27` Tirana in DST-mismatch weeks)
-- **Exclusions:** Skips FOMC/BOJ decision days and neutral/choppy sessions; stops out at a 50% entry-capital loss budget.
+- **Exclusions:** Skips FOMC/BOJ decision days and neutral/choppy sessions (except `any-day-20` and `every-night-20`); stops out at a 50% entry-capital loss budget.
 
 ## What the SOTA says
 
@@ -41,8 +41,8 @@ Every active Visar night agent (`visar-night-trading`, `v3`, `v4`, controls, and
 ## Our implementation vs SOTA
 
 1. **Zero overnight funding:** The `21:27 → 02:27` New York window sits entirely outside Capital.com's daily funding rollover, eliminating financing drag.
-2. **Controlled experiment design:** Running `v3` and `v4` at **1:20** alongside `always-long` and `random-direction` controls on identical nights directly answers the SOTA question: does following the day's direction beat simply being long overnight?
-3. **1:200 vs. 1:20 divergence:** On 2024–2026 NY-clock backtests, loosening the filter and dropping leverage to 1:20 flipped backtest returns strongly positive on US100 (e.g., `base` +106.7%, `no-pullback` +214.7%) and mildly positive on US500 (`base` +9.3%, `no-pullback` +53.0%)—but remember 2024–2026 was a strong equity bull market, so forward performance against `always-long` is the real test.
+2. **Controlled experiment design:** Running `visar-night/*` alongside `visar-night-control/always-long` and `visar-night-control/random-direction` on identical `midday-20` nights directly answers the SOTA question: does following the day's direction beat simply being long overnight?
+3. **1:200 vs. 1:20 divergence:** On 2024–2026 NY-clock backtests, dropping leverage to 1:20 or narrowing to the midday window flipped US100 strongly positive (`midday-20` +106.7%, `midday-200` +171.8%, `no-pullback-20` +214.7%) while `full-day-200` lost −100% on both indices—remember 2024–2026 was a strong equity bull market, so forward performance against `always-long` is the real test.
 
 ## Sources
 

@@ -107,15 +107,15 @@ describe('RealExecutor (Hetzner single-agent USD lock)', () => {
 
     // Requires confirmation.
     await expect(
-      ex.assign({ runId: 'demo:visar-night-trading:US500:x200:h1', agentId: 'visar-night-trading', epic: 'US500', leverage: 200 }, false),
+      ex.assign({ runId: 'demo:visar-night/full-day-200:US500:x200:h1', agentId: 'visar-night/full-day-200', epic: 'US500', leverage: 200 }, false),
     ).rejects.toThrow(/Confirmation required/);
 
     // Assign first agent.
     const assigned = await ex.assign(
-      { runId: 'demo:visar-night-trading:US500:x200:h1', agentId: 'visar-night-trading', epic: 'US500', leverage: 200 },
+      { runId: 'demo:visar-night/full-day-200:US500:x200:h1', agentId: 'visar-night/full-day-200', epic: 'US500', leverage: 200 },
       true,
     );
-    expect(assigned.assignment?.runId).toBe('demo:visar-night-trading:US500:x200:h1');
+    expect(assigned.assignment?.runId).toBe('demo:visar-night/full-day-200:US500:x200:h1');
 
     // Second different agent is blocked until first is demoted.
     await expect(
@@ -126,7 +126,7 @@ describe('RealExecutor (Hetzner single-agent USD lock)', () => {
     await ex.handleRunEvent({
       type: 'order',
       kind: 'open',
-      runId: 'demo:visar-night-trading:US500:x200:h1',
+      runId: 'demo:visar-night/full-day-200:US500:x200:h1',
       side: 'long',
       size: 60,
       price: 7090,
@@ -138,18 +138,18 @@ describe('RealExecutor (Hetzner single-agent USD lock)', () => {
     expect(ex.status().openDeals).toBe(1);
 
     // Demote closes open live deal and frees the account.
-    await expect(ex.clear('demo:visar-night-trading:US500:x200:h1', false)).rejects.toThrow(/Confirmation required/);
-    const cleared = await ex.clear('demo:visar-night-trading:US500:x200:h1', true);
+    await expect(ex.clear('demo:visar-night/full-day-200:US500:x200:h1', false)).rejects.toThrow(/Confirmation required/);
+    const cleared = await ex.clear('demo:visar-night/full-day-200:US500:x200:h1', true);
     expect(cleared.assignment).toBeNull();
     expect(closed).toEqual(['REAL-1']);
     expect(cleared.openDeals).toBe(0);
 
     // Now another agent can be promoted.
     const next = await ex.assign(
-      { runId: 'demo:visar-night-trading:US500:x200:h3', agentId: 'visar-night-trading', epic: 'US500', leverage: 200 },
+      { runId: 'demo:visar-night/midday-200:US100:x200:h3', agentId: 'visar-night/midday-200', epic: 'US100', leverage: 200 },
       true,
     );
-    expect(next.assignment?.runId).toBe('demo:visar-night-trading:US500:x200:h3');
+    expect(next.assignment?.runId).toBe('demo:visar-night/midday-200:US100:x200:h3');
     db.close();
   });
 

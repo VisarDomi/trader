@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import def, { nightCalendarAllows } from '../../agents/visar-night-trading.ts';
+import def, { nightCalendarAllows } from '../../agents/visar-night/reference.ts';
 import { EXIT_REASON, localTime, TZ } from '../sdk/index.ts';
 import { getInstrument } from './instruments.ts';
 import type { LoadedAgent } from './loader.ts';

@@ -73,12 +73,11 @@ export function periodReturn(trades:readonly {entryTime:number;pnl:number}[],cap
   return {trades:n,wins,ret:growth-1};
 }
 
-/** Every cell runs the v4 source, which covers the rule, the controls and the no-pullback entry. Its default
- * settings are the v3 base's, so cells shared with v3 trade exactly as before (forward-grid.test.ts). */
+/** Every cell runs the unified Visar Night engine, which covers the rule, controls, and no-pullback entry. */
 function sourceAgents(all:LoadedAgent[],epic:string){
-  const index=epic.toLowerCase(),base=all.find(a=>a.id===`visar-night-v3-${index}/base`),source=all.find(a=>a.id===`visar-night-v4-${index}/loose-body`);
-  if(!base||!source)throw Error(`night cohort agents for ${epic} are missing`);
-  return {source,params:{...base.params,direction:'rule',pullback:1}};
+  const source=all.find(a=>a.id==='visar-night/midday-20');
+  if(!source||!source.def.instruments.includes(epic))throw Error(`visar-night agent for ${epic} is missing`);
+  return {source,params:{...source.params,direction:'rule',pullback:1}};
 }
 
 export async function runGrid(epic:string,end:number,full=false){
@@ -102,7 +101,7 @@ export async function runGrid(epic:string,end:number,full=false){
   return {
     schema:1,epic,engineVersion:ENGINE_VERSION,generatedAt:Date.now(),durationMs:Date.now()-began,idleQuotes:full?'all':'ohlc',
     window:{start:window.start,end:window.end,cohortDefined:COHORT_DEFINED},
-    sources:{rule:{id:`visar-night-v4-${epic.toLowerCase()}`,codeHash:src.codeHash},control:{id:`visar-night-v4-${epic.toLowerCase()}`,codeHash:src.codeHash}},
+    sources:{rule:{id:'visar-night',codeHash:src.codeHash},control:{id:'visar-night',codeHash:src.codeHash}},
     data:data?{mode:data.mode,recordedTicks:data.recordedTicks,syntheticTicks:data.syntheticTicks,recordedMinutes:(data as any).recordedMinutes??null,candleMinutes:(data as any).candleMinutes??null}:null,
     dimensions:{windows:WINDOWS,dayFilters:DAY_FILTERS,gapsBp:GAPS,leverage:LEVERAGE,sides:SIDES},
     cells:cells.map((c,i)=>{

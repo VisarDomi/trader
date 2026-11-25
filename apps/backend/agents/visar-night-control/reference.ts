@@ -1,19 +1,15 @@
 import { defineAgent, localTime, TZ, POLICY_EVENT, policyCalendarCovers, policyEventsOn } from '../../src/sdk';
 
-// v4 night rule (2026-11-22): the v3 rule plus two switches, so one source covers the strict v3 settings, the
-// looser v4 cohort and every paper-grid cell. With the defaults (direction 'rule', pullback 1) it trades exactly
-// like visar-night-v3-us500/base. `pullback: 0` drops the overnight counter-move requirement: the night trades
-// the day's direction at 21:27 New York whatever the price did since the 16:00 close. `direction` 'long' buys and 'random' flips a
-// fair coin (ctx.random(), reproducible per run) on the rule's eligible nights, as the v3 controls do.
+// Unified Visar Night rule: classify the New York cash session (full 09:30–16:00 or midday 10:30–15:30),
+// take the 16:00 NY close as reference, enter at 21:27 NY (Mon–Thu) and exit at 02:27 NY or a 50% capital stop.
+// With defaults (`direction: 'rule'`, `pullback: 1`), enters on an overnight counter-move against the day's direction;
+// `pullback: 0` enters in the day's direction regardless of overnight move; `direction: 'long' | 'random'` drives controls.
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 const CASH_OPEN = 9 * 60 + 30;
 const CASH_CLOSE = 16 * 60;
 const CHECKPOINT_MINUTES = 15;
 const SESSION_MINUTES = CASH_CLOSE - CASH_OPEN;
-// The night's clocks are New York time, so the trade keeps its place in the US day in the weeks when Europe and
-// the US change their clocks apart: the 16:00 cash close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in
-// Tirana in every other week).
 const REFERENCE = 16 * 60;
 const ENTRY = 21 * 60 + 27;
 const HOLD_MINUTES = 5 * 60;
@@ -73,26 +69,28 @@ export function nightCalendarAllows(sessionDate: string, entryDate: string): boo
 }
 
 /** Target return on entry capital, using the executable fill and actual rounded size. */
-export function capitalProfitLevel(side: 'long'|'short', price: number, size: number, capital: number, profitPct: number, precision: number): number | undefined {
+export function capitalProfitLevel(side: 'long' | 'short', price: number, size: number, capital: number, profitPct: number, precision: number): number | undefined {
   if (profitPct === 0) return undefined;
-  if (![price,size,capital,profitPct].every(Number.isFinite) || price<=0 || size<=0 || capital<=0 || profitPct<0) throw Error('Invalid capital-profit target');
+  if (![price, size, capital, profitPct].every(Number.isFinite) || price <= 0 || size <= 0 || capital <= 0 || profitPct < 0) {
+    throw Error('Invalid capital-profit target');
+  }
   const tick = 10 ** -precision, distance = capital * profitPct / 100 / size;
   const level = side === LONG ? Math.ceil((price + distance) / tick) * tick : Math.floor((price - distance) / tick) * tick;
-  // A short cannot earn more than its notional at positive prices. Such a target is unreachable.
   return level > 0 ? level : undefined;
 }
 
 export default defineAgent({
-  name: 'visar-night-trading',
-  description: 'US500: follow a directional NY session after a pullback from its 16:00 close by 21:27 New York time. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 02:27 New York or at a 50% capital-loss stop. New York clocks (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:200.',
+  name: 'Visar Night',
+  description: 'Follow a directional New York session overnight on US500 and US100 (16:00 NY ref, 21:27 NY entry, 02:27 NY exit, 50% capital stop, FOMC/BOJ calendar guard).',
   author: 'Visar',
-  instruments: ['US500'],
+  instruments: ['US500', 'US100'],
   timeframe: '1m',
-  leverage: [200],
+  leverage: [20],
   warmup: 0,
   intradayOnly: false,
   params: {
-    direction: 'rule', pullback: 1, sessionStart: CASH_OPEN, sessionEnd: CASH_CLOSE, minPullbackBp: 0, profitPct: 0, timeZone: TZ.NEW_YORK, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
+    direction: 'rule', pullback: 1, sessionStart: CASH_OPEN, sessionEnd: CASH_CLOSE, minPullbackBp: 0, profitPct: 0,
+    timeZone: TZ.NEW_YORK, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
     maxRetraceShare: 0.75, maxRangePct: 2, minBodyShare: 0.6, minCoverage: 0.9, marginPct: 90, lossPct: 50,
   },
   init: () => ({ session: emptySession(), referenceDate: '', reference: 0, direction: 0, attemptedDate: '', entryCapital: 0 }),
@@ -100,7 +98,7 @@ export default defineAgent({
     const s = ctx.state;
     const cashOpen = ctx.params.sessionStart, cashClose = ctx.params.sessionEnd;
     const sessionMinutes = cashClose - cashOpen;
-    const clock = localTime(ctx.time, ctx.params.timeZone); // the bar's close, New York
+    const clock = localTime(ctx.time, ctx.params.timeZone);
     const ny = localTime(ctx.bar.time, TZ.NEW_YORK);
     if (ny.minuteOfDay === cashOpen && ny.weekday >= 1 && ny.weekday <= 5) {
       s.session = {
@@ -113,7 +111,6 @@ export default defineAgent({
       day.minutes++;
       day.high = Math.max(day.high, ctx.bar.high);
       day.low = Math.min(day.low, ctx.bar.low);
-      // OHLC does not reveal intra-minute ordering: use the conservative high/low excursion.
       day.maxDrawdown = Math.max(day.maxDrawdown, day.high - ctx.bar.low);
       day.maxRebound = Math.max(day.maxRebound, ctx.bar.high - day.low);
       const minuteClose = ny.minuteOfDay + 1;
@@ -127,21 +124,15 @@ export default defineAgent({
       s.reference = ctx.bar.close;
       s.direction = day.date === clock.date ? day.direction : 0;
     }
-    // Monday to Thursday evenings in New York: the nights that end on Tuesday to Friday mornings in Tirana.
     if (ctx.isWarmup || ctx.position || clock.weekday < 1 || clock.weekday > 4 || clock.minuteOfDay !== ENTRY) return;
     if (s.attemptedDate === clock.date) return;
     s.attemptedDate = clock.date;
-    // The holding window runs into the next calendar day, where a Bank of Japan decision can land.
     const morning = new Date(Date.UTC(clock.year, clock.month - 1, clock.day) + DAY_MS).toISOString().slice(0, 10);
-    // Missing opening/reference candles and weekend gaps cannot reuse an old reference.
     if (s.referenceDate !== clock.date || s.direction === 0 || !nightCalendarAllows(clock.date, morning)) return;
-    // The rule follows the day's direction. Counter-move: how far the 21:27 bid moved against that direction since
-    // the 16:00 close (positive = a dip after a bullish day, a bounce after a bearish one).
     const ruleSide = s.direction > 0 ? LONG : SHORT;
     const counterMoveBp = (ruleSide === LONG ? s.reference - ctx.bar.close : ctx.bar.close - s.reference) / s.reference * 10000;
     if (!Number.isFinite(counterMoveBp)) return;
     if (ctx.params.pullback && (counterMoveBp <= 0 || counterMoveBp < ctx.params.minPullbackBp)) return;
-    // Controls trade the rule's eligible nights; only the side differs.
     const side = ctx.params.direction === 'long' ? LONG : ctx.params.direction === 'random' ? (ctx.random() < 0.5 ? LONG : SHORT) : ruleSide;
     s.entryCapital = ctx.balance;
     const entry = ctx.bar.close + (side === LONG ? ctx.bar.spread || ctx.instrument.typicalSpread : 0);
@@ -149,32 +140,31 @@ export default defineAgent({
     const tick = 10 ** -ctx.instrument.pricePrecision;
     const stopLoss = side === LONG ? Math.ceil((entry - distance) / tick) * tick : Math.floor((entry + distance) / tick) * tick;
     const takeProfit = capitalProfitLevel(side, entry, ctx.balance * ctx.params.marginPct / 100 * ctx.leverage / entry, ctx.balance, ctx.params.profitPct, ctx.instrument.pricePrecision);
-    const nativeTakeProfit = takeProfit !== undefined && Math.abs(takeProfit-entry) < entry*.99 ? takeProfit : undefined;
+    const nativeTakeProfit = takeProfit !== undefined && Math.abs(takeProfit - entry) < entry * .99 ? takeProfit : undefined;
     const options = {
       marginPct: ctx.params.marginPct,
       stopLoss,
       ...(nativeTakeProfit === undefined ? {} : { takeProfit: nativeTakeProfit }),
       validUntil: ctx.time + MINUTE_MS,
       closeAt: ctx.time + HOLD_MINUTES * MINUTE_MS,
-      reason: `${ctx.params.direction === 'rule' ? '' : `control ${ctx.params.direction === 'long' ? 'always long' : `coin flip ${side}`}; rule would ${ruleSide === LONG ? 'buy' : 'sell'} (`}${s.direction > 0 ? 'bullish day' : 'bearish day'}, ${counterMoveBp > 0 ? `overnight ${s.direction > 0 ? 'dip' : 'bounce'} ${counterMoveBp.toFixed(2)}bp` : `no overnight ${s.direction > 0 ? 'dip' : 'bounce'} (${counterMoveBp.toFixed(2)}bp)`}${ctx.params.pullback ? ` >= ${ctx.params.minPullbackBp}bp` : ', pullback not required'}${ctx.params.direction === 'rule' ? '' : ')'}; NY ${cashOpen===630?'10:30–15:30':'09:30–16:00'}; exit ${ctx.params.profitPct?`+${ctx.params.profitPct}% or `:''}02:27; 21:27 ${ctx.params.timeZone}`,
+      reason: `${ctx.params.direction === 'rule' ? '' : `control ${ctx.params.direction === 'long' ? 'always long' : `coin flip ${side}`}; rule would ${ruleSide === LONG ? 'buy' : 'sell'} (`}${s.direction > 0 ? 'bullish day' : 'bearish day'}, ${counterMoveBp > 0 ? `overnight ${s.direction > 0 ? 'dip' : 'bounce'} ${counterMoveBp.toFixed(2)}bp` : `no overnight ${s.direction > 0 ? 'dip' : 'bounce'} (${counterMoveBp.toFixed(2)}bp)`}${ctx.params.pullback ? ` >= ${ctx.params.minPullbackBp}bp` : ', pullback not required'}${ctx.params.direction === 'rule' ? '' : ')'}; NY ${cashOpen === 630 ? '10:30–15:30' : '09:30–16:00'}; exit ${ctx.params.profitPct ? `+${ctx.params.profitPct}% or ` : ''}02:27; 21:27 ${ctx.params.timeZone}`,
     };
     if (side === LONG) ctx.buy(options);
     else ctx.sell(options);
   },
   onTick(ctx) {
-    const p=ctx.position;
-    if (ctx.params.profitPct>0 && p && p.takeProfit===null && p.unrealizedPnl>=ctx.state.entryCapital*ctx.params.profitPct/100)
+    const p = ctx.position;
+    if (ctx.params.profitPct > 0 && p && p.takeProfit === null && p.unrealizedPnl >= ctx.state.entryCapital * ctx.params.profitPct / 100)
       ctx.close(`capital take profit +${ctx.params.profitPct}%`);
   },
   onFill(ctx, fill) {
     if (fill.kind !== 'open' || !ctx.position) return;
-    // Rebase the protective price to the actual virtual fill and rounded size.
     const distance = ctx.state.entryCapital * ctx.params.lossPct / 100 / fill.size;
     const tick = 10 ** -ctx.instrument.pricePrecision;
     const stopLoss = fill.side === LONG ? Math.ceil((fill.price - distance) / tick) * tick : Math.floor((fill.price + distance) / tick) * tick;
     const takeProfit = capitalProfitLevel(fill.side, fill.price, fill.size, ctx.state.entryCapital, ctx.params.profitPct, ctx.instrument.pricePrecision);
-    const nativeTakeProfit = takeProfit !== undefined && Math.abs(takeProfit-fill.price)<fill.price*.99 ? takeProfit : undefined;
-    if (Math.abs(stopLoss - (ctx.position.stopLoss ?? 0)) >= tick / 2 || (ctx.params.profitPct>0 && nativeTakeProfit !== ctx.position.takeProfit))
-      ctx.setStops({ stopLoss, ...(ctx.params.profitPct>0 ? { takeProfit: nativeTakeProfit ?? null } : {}) });
+    const nativeTakeProfit = takeProfit !== undefined && Math.abs(takeProfit - fill.price) < fill.price * .99 ? takeProfit : undefined;
+    if (Math.abs(stopLoss - (ctx.position.stopLoss ?? 0)) >= tick / 2 || (ctx.params.profitPct > 0 && nativeTakeProfit !== ctx.position.takeProfit))
+      ctx.setStops({ stopLoss, ...(ctx.params.profitPct > 0 ? { takeProfit: nativeTakeProfit ?? null } : {}) });
   },
 });

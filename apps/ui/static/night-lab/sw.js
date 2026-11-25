@@ -1,6 +1,6 @@
 // Night Lab offline support. Caches the page shell, cohort summary, last complete forward snapshot
 // and last complete nightly paper grid. Removes older caches on activation.
-const SHELL='night-lab-shell-v2',DATA='night-lab-data-v2',LIVE='night-lab-forward-v4',GRID='night-lab-grid-v3';
+const SHELL='night-lab-shell-v3',DATA='night-lab-data-v3',LIVE='night-lab-forward-v5',GRID='night-lab-grid-v3';
 const KEEP=new Set([SHELL,DATA,LIVE,GRID]);
 const FILES=['./index.html','./night-lab.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const scoped=path=>new URL(path,self.registration.scope);
@@ -11,7 +11,7 @@ async function cohort(){
 }
 async function complete(data){
  const members=await cohort();
- if(data.schema!==3||!Array.isArray(data.rows)||!data.rows.length||new Set(data.rows.map(r=>r.agentId)).size!==data.rows.length)return false;
+ if(data.schema!==3||!Array.isArray(data.rows)||!data.rows.length||new Set(data.rows.map(r=>`${r.agentId}:${r.epic}:${r.leverage}`)).size!==data.rows.length)return false;
  return !members||(data.rows.length===members.length&&data.rows.every(r=>members.some(m=>m.id===r.agentId&&m.codeHash===r.codeHash&&m.epic===r.epic&&m.leverage===r.leverage)));
 }
 const offline=(error,status=503)=>new Response(JSON.stringify({error}),{status,headers:{'content-type':'application/json'}});

@@ -351,6 +351,18 @@
     "extra": [],
     "description": "US500 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). New York clocks: 16:00 close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:20. User-requested Capital demo research."
   },
+  "visar-night": {
+    "hash": "28863ccbaed2",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "Overnight US500 & US100 NY-session continuation family (16:00 NY ref, 21:27 NY entry, 02:27 NY exit, 50% capital stop). Variants compare full-day vs midday windows, 1:200 vs 1:20 leverage, pullback requirement, and day-filter strictness."
+  },
+  "visar-night-control": {
+    "hash": "733289eff182",
+    "timeframe": "1m",
+    "extra": [],
+    "description": "Direction controls for Visar Night on US500 & US100: identical midday-20 qualifying nights and 1:20 risk, choosing always-long or fair coin-flip side."
+  },
   "visar-night-v4-us100": {
     "hash": "506d56ed693e",
     "timeframe": "1m",

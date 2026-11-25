@@ -142,103 +142,40 @@
       "bollinger-fade": [
         200
       ],
-      "visar-night-trading": [
-        200
-      ],
-      "night-risk-twin": [
-        3
-      ],
       "quote-breakout": [
         3
       ],
       "random-baseline/monkey-c": [
         200
       ],
-      "visar-night-v3-us500/base": [
-        20
-      ],
-      "visar-night-v3-us500/big-move": [
-        20
-      ],
-      "visar-night-v3-us500/strong-day": [
-        20
-      ],
-      "visar-night-v3-us500/steady-day": [
-        20
-      ],
-      "visar-night-v3-us500/gap-5bp": [
-        20
-      ],
-      "visar-night-v3-us500/gap-15bp": [
-        20
-      ],
-      "visar-night-v3-us500/leverage-200": [
+      "visar-night/full-day-200": [
         200
       ],
-      "visar-night-v3-control-us500/always-long": [
-        20
-      ],
-      "visar-night-v3-control-us500/random-direction": [
-        20
-      ],
-      "visar-night-v3-us100/base": [
-        20
-      ],
-      "visar-night-v3-us100/big-move": [
-        20
-      ],
-      "visar-night-v3-us100/strong-day": [
-        20
-      ],
-      "visar-night-v3-us100/steady-day": [
-        20
-      ],
-      "visar-night-v3-us100/gap-5bp": [
-        20
-      ],
-      "visar-night-v3-us100/gap-15bp": [
-        20
-      ],
-      "visar-night-v3-us100/leverage-200": [
+      "visar-night/midday-200": [
         200
       ],
-      "visar-night-v3-us100/full-day-200": [
-        200
-      ],
-      "visar-night-v3-control-us100/always-long": [
+      "visar-night/midday-20": [
         20
       ],
-      "visar-night-v3-control-us100/random-direction": [
+      "visar-night/full-day-20": [
         20
       ],
-      "visar-night-v4-us500/loose-body": [
+      "visar-night/no-pullback-20": [
         20
       ],
-      "visar-night-v4-us500/no-pullback": [
+      "visar-night/loose-body-20": [
         20
       ],
-      "visar-night-v4-us500/any-day": [
+      "visar-night/any-day-20": [
         20
       ],
-      "visar-night-v4-us500/every-night": [
+      "visar-night/every-night-20": [
         20
       ],
-      "visar-night-v4-us500/full-day": [
+      "visar-night-control/always-long": [
         20
       ],
-      "visar-night-v4-us100/loose-body": [
-        20
-      ],
-      "visar-night-v4-us100/no-pullback": [
-        20
-      ],
-      "visar-night-v4-us100/any-day": [
-        20
-      ],
-      "visar-night-v4-us100/every-night": [
-        20
-      ],
-      "visar-night-v4-us100/full-day": [
+      "visar-night-control/random-direction": [
         20
       ]
     }
@@ -490,145 +427,145 @@
     },
     "visar-night-v3-us500/big-move:US500@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us500/strong-day:US500@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us500/steady-day:US500@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us500/gap-5bp:US500@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us500/gap-15bp:US500@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us100/big-move:US100@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us100/strong-day:US100@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us100/steady-day:US100@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us100/gap-5bp:US100@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     },
     "visar-night-v3-us100/gap-15bp:US100@20": {
       "date": "2026-11-22",
-      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base’s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
+      "reason": "User-requested replacement by the looser v4 cohort (2026-11-22). A stricter subset of the base can trade only on the base\u2019s nights, so at 1:20 it added no observations; it had no trades in 13 days. Not a losing-strategy verdict; source, backtest and forward/broker history retained."
     }
   },
   "demoAdmissions": {
-    "visar-night-trading:US500@200": {
-      "codeHash": "6ef6caeeb489",
+    "visar-night/full-day-200:US500@200": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "Visar requested the night strategy as a special Capital demo experiment, calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. New York clocks: 16:00 reference, 21:27 entry, 02:27 exit (22:00, 03:27, 08:27 Tirana outside DST-mismatch weeks). Normal safety and subsequent demotion rules apply."
+      "reason": "Unified Visar Night: original full NY cash day (09:30\u201316:00 NY) at 1:200, pullback required, 50% capital stop, 16:00 ref \u2192 21:27 entry \u2192 02:27 exit NY."
     },
-    "visar-night-v3-us500/base:US500@20": {
-      "codeHash": "d1252d67b942",
+    "visar-night/full-day-200:US100@200": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: original full NY cash day (09:30\u201316:00 NY) at 1:200, pullback required, 50% capital stop, 16:00 ref \u2192 21:27 entry \u2192 02:27 exit NY."
     },
-    "visar-night-v3-us500/leverage-200:US500@200": {
-      "codeHash": "d1252d67b942",
+    "visar-night/midday-200:US500@200": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session (10:30\u201315:30 NY) at 1:200, pullback required, 50% capital stop, 16:00 ref \u2192 21:27 entry \u2192 02:27 exit NY."
     },
-    "visar-night-v3-control-us500/always-long:US500@20": {
-      "codeHash": "38d46d96cfc6",
+    "visar-night/midday-200:US100@200": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session (10:30\u201315:30 NY) at 1:200, pullback required, 50% capital stop, 16:00 ref \u2192 21:27 entry \u2192 02:27 exit NY."
     },
-    "visar-night-v3-control-us500/random-direction:US500@20": {
-      "codeHash": "38d46d96cfc6",
+    "visar-night/midday-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night reference base: midday NY session (10:30\u201315:30 NY) at 1:20, standard day filter, pullback required, 50% capital stop."
     },
-    "visar-night-v3-us100/base:US100@20": {
-      "codeHash": "1da09cf5af3f",
+    "visar-night/midday-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night reference base: midday NY session (10:30\u201315:30 NY) at 1:20, standard day filter, pullback required, 50% capital stop."
     },
-    "visar-night-v3-us100/leverage-200:US100@200": {
-      "codeHash": "1da09cf5af3f",
+    "visar-night/full-day-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: full NY cash day (09:30\u201316:00 NY) at 1:20, standard day filter, pullback required, 50% capital stop."
     },
-    "visar-night-v3-us100/full-day-200:US100@200": {
-      "codeHash": "1da09cf5af3f",
+    "visar-night/full-day-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: the original agent’s settings on US100: 09:30–16:00 NY day at 1:200. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: full NY cash day (09:30\u201316:00 NY) at 1:20, standard day filter, pullback required, 50% capital stop."
     },
-    "visar-night-v3-control-us100/always-long:US100@20": {
-      "codeHash": "e02b7b4dba13",
+    "visar-night/no-pullback-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 without overnight pullback requirement (enters in day direction at 21:27 NY)."
     },
-    "visar-night-v3-control-us100/random-direction:US100@20": {
-      "codeHash": "e02b7b4dba13",
+    "visar-night/no-pullback-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 without overnight pullback requirement (enters in day direction at 21:27 NY)."
     },
-    "visar-night-v4-us500/loose-body:US500@20": {
-      "codeHash": "0e6fcda9cad8",
+    "visar-night/loose-body-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 with looser day body filter (net move \u226530% of range vs 60%)."
     },
-    "visar-night-v4-us500/no-pullback:US500@20": {
-      "codeHash": "0e6fcda9cad8",
+    "visar-night/loose-body-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but no overnight pullback is needed: trades the day’s direction at 21:27 New York whatever the night did, exiting at 02:27 New York. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 with looser day body filter (net move \u226530% of range vs 60%)."
     },
-    "visar-night-v4-us500/any-day:US500@20": {
-      "codeHash": "0e6fcda9cad8",
+    "visar-night/any-day-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 on any up or down day (day filter disabled), pullback required."
     },
-    "visar-night-v4-us500/every-night:US500@20": {
-      "codeHash": "0e6fcda9cad8",
+    "visar-night/any-day-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: any-day and no-pullback together: every Monday–Thursday evening in New York (21:27–02:27 NY) in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: midday NY session at 1:20 on any up or down day (day filter disabled), pullback required."
     },
-    "visar-night-v4-us500/full-day:US500@20": {
-      "codeHash": "0e6fcda9cad8",
+    "visar-night/every-night-20:US500@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: every Mon\u2013Thu night at 1:20 in the midday session direction (day filter and pullback both disabled)."
     },
-    "visar-night-v4-us100/loose-body:US100@20": {
-      "codeHash": "506d56ed693e",
+    "visar-night/every-night-20:US100@20": {
+      "codeHash": "28863ccbaed2",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night: every Mon\u2013Thu night at 1:20 in the midday session direction (day filter and pullback both disabled)."
     },
-    "visar-night-v4-us100/no-pullback:US100@20": {
-      "codeHash": "506d56ed693e",
+    "visar-night-control/always-long:US500@20": {
+      "codeHash": "733289eff182",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but no overnight pullback is needed: trades the day’s direction at 21:27 New York whatever the night did, exiting at 02:27 New York. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night direction control: identical qualifying nights to midday-20 at 1:20, always long."
     },
-    "visar-night-v4-us100/any-day:US100@20": {
-      "codeHash": "506d56ed693e",
+    "visar-night-control/always-long:US100@20": {
+      "codeHash": "733289eff182",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night direction control: identical qualifying nights to midday-20 at 1:20, always long."
     },
-    "visar-night-v4-us100/every-night:US100@20": {
-      "codeHash": "506d56ed693e",
+    "visar-night-control/random-direction:US500@20": {
+      "codeHash": "733289eff182",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: any-day and no-pullback together: every Monday–Thursday evening in New York (21:27–02:27 NY) in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night direction control: identical qualifying nights to midday-20 at 1:20, fair coin-flip side."
     },
-    "visar-night-v4-us100/full-day:US100@20": {
-      "codeHash": "506d56ed693e",
+    "visar-night-control/random-direction:US100@20": {
+      "codeHash": "733289eff182",
       "date": "2026-11-25",
-      "reason": "User-requested looser v4 night cohort at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. New York clocks (16:00 reference, 21:27 entry, 02:27 exit). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "reason": "Unified Visar Night direction control: identical qualifying nights to midday-20 at 1:20, fair coin-flip side."
     }
   },
   "portfolios": {
@@ -640,8 +577,9 @@
   },
   "families": {
     "visar-night": {
-      "name": "Visar night",
+      "name": "Visar Night",
       "slugs": [
+        "visar-night",
         "visar-night-trading",
         "visar-night-lab",
         "visar-night-us100",
@@ -651,6 +589,37 @@
         "visar-night-v3-us500",
         "visar-night-v4-us100",
         "visar-night-v4-us500"
+      ]
+    },
+    "tsmom": {
+      "name": "Time-Series Momentum",
+      "slugs": [
+        "tsmom",
+        "tsmom-12m"
+      ]
+    },
+    "donchian": {
+      "name": "Donchian Breakout",
+      "slugs": [
+        "donchian-breakout",
+        "donchian-ensemble"
+      ]
+    },
+    "vol-managed": {
+      "name": "Volatility Managed",
+      "slugs": [
+        "vol-target",
+        "vol-managed-hold"
+      ]
+    },
+    "timesfm": {
+      "name": "TimesFM Forecast",
+      "slugs": [
+        "timesfm-band",
+        "timesfm-drift",
+        "timesfm-swing",
+        "timesfm-trend",
+        "timesfm-vol-breakout"
       ]
     }
   }

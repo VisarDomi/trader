@@ -1,5 +1,5 @@
 /** Frequency-only calibration: select on 2024 entry counts, then report later years without retuning. */
-import def, { classifyNightSession, nightCalendarAllows, nightSessionFeatures, type NightSessionFilter } from '../../agents/visar-night-trading.ts';
+import def, { classifyNightSession, nightCalendarAllows, nightSessionFeatures, type NightSessionFilter } from '../../agents/visar-night/reference.ts';
 import { localTime, TZ } from '../sdk/index.ts';
 import { loadAgents } from '../engine/loader.ts';
 import { getInstrument } from '../engine/instruments.ts';
@@ -8,7 +8,7 @@ import { DAY_MS, MINUTE_MS } from '../engine/clock.ts';
 import { candleAt, candleCount, loadCandleArray } from './candles.ts';
 import { STANDARD_WINDOW } from './backtest-core.ts';
 
-const AGENT_ID = 'visar-night-trading';
+const AGENT_ID = 'visar-night/full-day-200';
 const EPIC = 'US500';
 const TRAIN_END = '2025-01-01';
 const TARGET = { min: 25, max: 50 };

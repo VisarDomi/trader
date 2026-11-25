@@ -43,13 +43,13 @@ test('the twenty-member cohort matches night-lab-cohort.json, uses own-index ben
    expect(r.benchmarkExcessPp).toBeCloseTo(r.metrics.totalReturn*100-hold.returnPct,10);
    if(r.role==='base')continue;
    const changed=(Object.keys(base.coordinates) as (keyof typeof base.coordinates)[]).filter(k=>base.coordinates[k]!==r.coordinates[k]);
-   expect(changed.length).toBe(r.comparesWith?.endsWith('/leverage-200')||r.id.endsWith('/every-night')?2:1);
+   expect(changed.length).toBe(r.comparesWith?.endsWith('/midday-200')||r.id.endsWith('/every-night-20')?2:1);
   }
  }
  const controls=summary.cohort.filter(r=>r.role==='control');
  expect(controls).toHaveLength(4);
  for(const c of controls){
-  const partner=summary.cohort.find(r=>r.id===c.partner)!;
+  const partner=summary.cohort.find(r=>r.id===c.partner&&r.epic===c.epic)!;
   expect(partner.metrics.trades).toBe(c.metrics.trades);
   expect({...c.params,direction:undefined}).toEqual({...partner.params,direction:undefined});
  }
@@ -69,7 +69,7 @@ function worker(network:(url:string)=>Response|Promise<Response>){
  async function lifecycle(name:string){let done:Promise<unknown>=Promise.resolve();listeners.get(name)!({waitUntil:(p:Promise<unknown>)=>done=p});await done}
  return {get,lifecycle,stores};
 }
-const cohortRows=[{id:'a',codeHash:'h1',epic:'US500',leverage:20},{id:'b',codeHash:'h2',epic:'US100',leverage:200}];
+const cohortRows=[{id:'visar-night/full-day-200',codeHash:'h1',epic:'US500',leverage:200},{id:'visar-night/full-day-200',codeHash:'h1',epic:'US100',leverage:200}];
 
 test('offline worker keeps the last complete forward cohort and ignores unrelated paths',async()=>{
  let fail=false,incomplete=false,wrongVersion=false;
@@ -86,9 +86,9 @@ test('offline worker keeps the last complete forward cohort and ignores unrelate
 
 test('activation removes older Night Lab caches and restores the shell offline',async()=>{
  let offline=false;const w=worker(()=>{if(offline)throw Error('Offline');return new Response('latest study')});
- for(const old of ['night-lab-shell-v1','night-lab-data-v1','night-lab-study-391e1be551bd','unrelated'])w.stores.set(old,new Map([['x',new Response('old')]]));
+ for(const old of ['night-lab-shell-v1','night-lab-shell-v2','night-lab-data-v2','night-lab-study-391e1be551bd','unrelated'])w.stores.set(old,new Map([['x',new Response('old')]]));
  await w.lifecycle('install');await w.lifecycle('activate');
- expect([...w.stores.keys()].sort()).toEqual(['night-lab-shell-v2','unrelated']);
+ expect([...w.stores.keys()].sort()).toEqual(['night-lab-shell-v3','unrelated']);
  expect(await (await w.get('/night-lab/index.html?x=1'))!.text()).toBe('latest study');offline=true;
- expect(await (await w.get('/night-lab/index.html?x=2'))!.text()).toBe('latest study');expect(w.stores.get('night-lab-shell-v2')!.size).toBe(5);
+ expect(await (await w.get('/night-lab/index.html?x=2'))!.text()).toBe('latest study');expect(w.stores.get('night-lab-shell-v3')!.size).toBe(5);
 });

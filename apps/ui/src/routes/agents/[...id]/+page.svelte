@@ -42,6 +42,23 @@
 		</div>
 	</header>
 
+	{#if data.ruleSpec}
+		<section class="card stack" style="gap: 8px">
+			<div class="row" style="justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">
+				<h2>Rule &amp; settings · {data.ruleSpec.headline}</h2>
+				<span class="muted" style="font-size: 12.5px">{data.ruleSpec.subtitle}</span>
+			</div>
+			<div class="row" style="gap: 16px; flex-wrap: wrap">
+				{#each data.ruleSpec.stats as s}
+					<div><small class="muted" style="display: block; font-size: 11px">{s.label}</small><strong>{s.value}</strong></div>
+				{/each}
+			</div>
+			<ul style="margin: 0; padding-left: 18px; font-size: 13px">
+				{#each data.ruleSpec.lines as line}<li>{line}</li>{/each}
+			</ul>
+		</section>
+	{/if}
+
 	{#if data.brief}
 		<section class="card stack" style="gap: 6px">
 			<div class="row" style="justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">

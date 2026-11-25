@@ -15,7 +15,7 @@ export function leaderboardURL(url:URL,s:LeaderboardState):URL {
     evidence:s.evidenceFilter==='all'?'':s.evidenceFilter,page:s.pageNumber===1?'':String(s.pageNumber),controls:s.hideControls?'':'1',sort:s.sortKey==='totalReturn'?'':s.sortKey,asc:s.sortDesc?'':'1'};
   for(const [k,v]of Object.entries(values)){if(v)out.searchParams.set(k,v);else out.searchParams.delete(k)}return out;
 }
-export function isVisarCohort(id:string):boolean{return id.startsWith('visar-night-')}
+export function isVisarCohort(id:string):boolean{return id.startsWith('visar-night')}
 export function matchesAgentQuery(id:string,name:string,query:string):boolean {
   if(query.trim().toLowerCase()==='visar')return isVisarCohort(id);
   return `${name} ${id}`.toLowerCase().includes(query.toLowerCase());

@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "generatedAt": "2026-11-25T15:56:22.873831+00:00",
+  "generatedAt": "2026-11-25T18:50:57.806144+00:00",
   "years": 2.74880219028063,
   "window": [
     "2024-01-01",
@@ -50,12 +50,18 @@
   },
   "cohort": [
     {
-      "id": "visar-night-trading",
+      "id": "visar-night/full-day-200",
       "epic": "US500",
       "leverage": 200,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
+        "sessionStart": 570,
+        "sessionEnd": 960,
+        "minPullbackBp": 0,
+        "profitPct": 0,
         "timeZone": "America/New_York",
         "trendPct": 0.25,
         "minEfficiency": 0.15,
@@ -96,7 +102,7 @@
         "profitableMonths": 11,
         "totalMonths": 33
       },
-      "codeHash": "6ef6caeeb489",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -160.98604949990164,
       "sessionWindow": "full",
@@ -115,16 +121,18 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/leverage-200",
+      "comparesWith": "visar-night/midday-200",
       "gridCell": "full/standard/gap-0bp/x200/rule"
     },
     {
-      "id": "visar-night-v3-us500/base",
+      "id": "visar-night/midday-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -169,7 +177,7 @@
         "profitableMonths": 13,
         "totalMonths": 33
       },
-      "codeHash": "d1252d67b942",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -51.71714949990165,
       "sessionWindow": "central",
@@ -192,13 +200,14 @@
       "gridCell": "central/standard/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v3-control-us500/always-long",
+      "id": "visar-night-control/always-long",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
         "direction": "long",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -243,7 +252,7 @@
         "profitableMonths": 18,
         "totalMonths": 33
       },
-      "codeHash": "38d46d96cfc6",
+      "codeHash": "733289eff182",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -68.73364949990165,
       "sessionWindow": "central",
@@ -262,19 +271,20 @@
         "lossPct": 50,
         "side": "always long"
       },
-      "comparesWith": "visar-night-v3-us500/base",
-      "partner": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
+      "partner": "visar-night/midday-20",
       "direction": "long",
       "gridCell": "central/standard/gap-0bp/x20/long"
     },
     {
-      "id": "visar-night-v3-control-us500/random-direction",
+      "id": "visar-night-control/random-direction",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
         "direction": "random",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -295,33 +305,33 @@
         "endTime": 1790812800000,
         "days": 1003.04,
         "initialCapital": 10000,
-        "finalEquity": 7038.5,
-        "totalReturn": -0.29615,
-        "annualReturn": -0.120044,
-        "maxDrawdown": 0.367218,
-        "sharpe": -0.6472,
-        "sortino": -0.8597,
-        "calmar": -0.3269,
+        "finalEquity": 6650.01,
+        "totalReturn": -0.334999,
+        "annualReturn": -0.13805,
+        "maxDrawdown": 0.401502,
+        "sharpe": -0.7695,
+        "sortino": -1.079,
+        "calmar": -0.3438,
         "trades": 81,
-        "longTrades": 35,
-        "shortTrades": 46,
-        "winRate": 0.4198,
-        "profitFactor": 0.6802,
-        "avgTradePnl": -36.5617,
-        "avgWin": 185.2524,
-        "avgLoss": -197.023,
-        "bestTrade": 854.56,
-        "worstTrade": -1356.732,
-        "tStat": -1.1743,
+        "longTrades": 37,
+        "shortTrades": 44,
+        "winRate": 0.3827,
+        "profitFactor": 0.6279,
+        "avgTradePnl": -41.3579,
+        "avgWin": 182.3277,
+        "avgLoss": -180.043,
+        "bestTrade": 928.893,
+        "worstTrade": -693.935,
+        "tStat": -1.5352,
         "avgBarsHeld": 288.31,
         "exposure": 0.0239,
         "funding": 0,
         "profitableMonths": 12,
         "totalMonths": 33
       },
-      "codeHash": "38d46d96cfc6",
+      "codeHash": "733289eff182",
       "benchmarkEpic": "US500",
-      "benchmarkExcessPp": -90.61564949990165,
+      "benchmarkExcessPp": -94.50054949990164,
       "sessionWindow": "central",
       "minimumGapBp": 0,
       "policy": "current",
@@ -338,18 +348,20 @@
         "lossPct": 50,
         "side": "random"
       },
-      "comparesWith": "visar-night-v3-us500/base",
-      "partner": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
+      "partner": "visar-night/midday-20",
       "direction": "random",
       "gridCell": "central/standard/gap-0bp/x20/random"
     },
     {
-      "id": "visar-night-v3-us500/leverage-200",
+      "id": "visar-night/midday-200",
       "epic": "US500",
       "leverage": 200,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -394,7 +406,7 @@
         "profitableMonths": 12,
         "totalMonths": 33
       },
-      "codeHash": "d1252d67b942",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -156.44914949990164,
       "sessionWindow": "central",
@@ -413,16 +425,18 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/standard/gap-0bp/x200/rule"
     },
     {
-      "id": "visar-night-v3-us100/base",
+      "id": "visar-night/midday-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -467,7 +481,7 @@
         "profitableMonths": 17,
         "totalMonths": 33
       },
-      "codeHash": "1da09cf5af3f",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": 25.20213101134658,
       "sessionWindow": "central",
@@ -490,13 +504,14 @@
       "gridCell": "central/standard/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v3-control-us100/always-long",
+      "id": "visar-night-control/always-long",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
         "direction": "long",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -541,7 +556,7 @@
         "profitableMonths": 17,
         "totalMonths": 33
       },
-      "codeHash": "e02b7b4dba13",
+      "codeHash": "733289eff182",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -20.885868988653414,
       "sessionWindow": "central",
@@ -560,19 +575,20 @@
         "lossPct": 50,
         "side": "always long"
       },
-      "comparesWith": "visar-night-v3-us100/base",
-      "partner": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
+      "partner": "visar-night/midday-20",
       "direction": "long",
       "gridCell": "central/standard/gap-0bp/x20/long"
     },
     {
-      "id": "visar-night-v3-control-us100/random-direction",
+      "id": "visar-night-control/random-direction",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
         "direction": "random",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -593,33 +609,33 @@
         "endTime": 1790812800000,
         "days": 1003.04,
         "initialCapital": 10000,
-        "finalEquity": 10549.62,
-        "totalReturn": 0.054962,
-        "annualReturn": 0.019674,
-        "maxDrawdown": 0.357992,
-        "sharpe": 0.2006,
-        "sortino": 0.2962,
-        "calmar": 0.055,
+        "finalEquity": 4725.04,
+        "totalReturn": -0.527496,
+        "annualReturn": -0.238908,
+        "maxDrawdown": 0.559138,
+        "sharpe": -1.0068,
+        "sortino": -1.1833,
+        "calmar": -0.4273,
         "trades": 66,
-        "longTrades": 37,
-        "shortTrades": 29,
-        "winRate": 0.5303,
-        "profitFactor": 1.0422,
-        "avgTradePnl": 8.3276,
-        "avgWin": 387.7147,
-        "avgLoss": -420.0128,
-        "bestTrade": 1727.0239,
-        "worstTrade": -1727.9128,
-        "tStat": 0.1212,
+        "longTrades": 29,
+        "shortTrades": 37,
+        "winRate": 0.4242,
+        "profitFactor": 0.5274,
+        "avgTradePnl": -79.9236,
+        "avgWin": 210.2348,
+        "avgLoss": -293.7246,
+        "bestTrade": 821.3226,
+        "worstTrade": -1116.7885,
+        "tStat": -1.92,
         "avgBarsHeld": 299.98,
         "exposure": 0.0199,
         "funding": 0,
-        "profitableMonths": 17,
+        "profitableMonths": 13,
         "totalMonths": 33
       },
-      "codeHash": "e02b7b4dba13",
+      "codeHash": "733289eff182",
       "benchmarkEpic": "US100",
-      "benchmarkExcessPp": -76.00946898865341,
+      "benchmarkExcessPp": -134.2552689886534,
       "sessionWindow": "central",
       "minimumGapBp": 0,
       "policy": "current",
@@ -636,18 +652,20 @@
         "lossPct": 50,
         "side": "random"
       },
-      "comparesWith": "visar-night-v3-us100/base",
-      "partner": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
+      "partner": "visar-night/midday-20",
       "direction": "random",
       "gridCell": "central/standard/gap-0bp/x20/random"
     },
     {
-      "id": "visar-night-v3-us100/leverage-200",
+      "id": "visar-night/midday-200",
       "epic": "US100",
       "leverage": 200,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
         "sessionStart": 630,
         "sessionEnd": 930,
         "minPullbackBp": 0,
@@ -692,7 +710,7 @@
         "profitableMonths": 15,
         "totalMonths": 33
       },
-      "codeHash": "1da09cf5af3f",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": 90.2633310113466,
       "sessionWindow": "central",
@@ -711,16 +729,18 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/standard/gap-0bp/x200/rule"
     },
     {
-      "id": "visar-night-v3-us100/full-day-200",
+      "id": "visar-night/full-day-200",
       "epic": "US100",
       "leverage": 200,
       "lossPct": 50,
       "profitPct": 0,
       "params": {
+        "direction": "rule",
+        "pullback": 1,
         "sessionStart": 570,
         "sessionEnd": 960,
         "minPullbackBp": 0,
@@ -765,7 +785,7 @@
         "profitableMonths": 8,
         "totalMonths": 33
       },
-      "codeHash": "1da09cf5af3f",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -181.5047689886534,
       "sessionWindow": "full",
@@ -784,11 +804,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/leverage-200",
+      "comparesWith": "visar-night/midday-200",
       "gridCell": "full/standard/gap-0bp/x200/rule"
     },
     {
-      "id": "visar-night-v4-us500/loose-body",
+      "id": "visar-night/loose-body-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
@@ -840,7 +860,7 @@
         "profitableMonths": 13,
         "totalMonths": 33
       },
-      "codeHash": "0e6fcda9cad8",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -73.52444949990165,
       "sessionWindow": "central",
@@ -859,11 +879,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/loose-body/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v4-us500/no-pullback",
+      "id": "visar-night/no-pullback-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
@@ -915,7 +935,7 @@
         "profitableMonths": 16,
         "totalMonths": 33
       },
-      "codeHash": "0e6fcda9cad8",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -7.961149499901651,
       "sessionWindow": "central",
@@ -934,11 +954,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/standard/no-pullback/x20/rule"
     },
     {
-      "id": "visar-night-v4-us500/any-day",
+      "id": "visar-night/any-day-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
@@ -990,7 +1010,7 @@
         "profitableMonths": 12,
         "totalMonths": 33
       },
-      "codeHash": "0e6fcda9cad8",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -131.68254949990165,
       "sessionWindow": "central",
@@ -1009,11 +1029,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/any-day/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v4-us500/every-night",
+      "id": "visar-night/every-night-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
@@ -1065,7 +1085,7 @@
         "profitableMonths": 12,
         "totalMonths": 33
       },
-      "codeHash": "0e6fcda9cad8",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -144.37974949990164,
       "sessionWindow": "central",
@@ -1084,11 +1104,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/any-day/no-pullback/x20/rule"
     },
     {
-      "id": "visar-night-v4-us500/full-day",
+      "id": "visar-night/full-day-20",
       "epic": "US500",
       "leverage": 20,
       "lossPct": 50,
@@ -1140,7 +1160,7 @@
         "profitableMonths": 12,
         "totalMonths": 33
       },
-      "codeHash": "0e6fcda9cad8",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US500",
       "benchmarkExcessPp": -100.45894949990165,
       "sessionWindow": "full",
@@ -1159,11 +1179,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us500/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "full/standard/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v4-us100/loose-body",
+      "id": "visar-night/loose-body-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
@@ -1215,7 +1235,7 @@
         "profitableMonths": 17,
         "totalMonths": 33
       },
-      "codeHash": "506d56ed693e",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -93.34376898865341,
       "sessionWindow": "central",
@@ -1234,11 +1254,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/loose-body/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v4-us100/no-pullback",
+      "id": "visar-night/no-pullback-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
@@ -1290,7 +1310,7 @@
         "profitableMonths": 19,
         "totalMonths": 33
       },
-      "codeHash": "506d56ed693e",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": 133.21923101134658,
       "sessionWindow": "central",
@@ -1309,11 +1329,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/standard/no-pullback/x20/rule"
     },
     {
-      "id": "visar-night-v4-us100/any-day",
+      "id": "visar-night/any-day-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
@@ -1365,7 +1385,7 @@
         "profitableMonths": 9,
         "totalMonths": 33
       },
-      "codeHash": "506d56ed693e",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -164.78496898865342,
       "sessionWindow": "central",
@@ -1384,11 +1404,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/any-day/gap-0bp/x20/rule"
     },
     {
-      "id": "visar-night-v4-us100/every-night",
+      "id": "visar-night/every-night-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
@@ -1440,7 +1460,7 @@
         "profitableMonths": 11,
         "totalMonths": 33
       },
-      "codeHash": "506d56ed693e",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -174.1107689886534,
       "sessionWindow": "central",
@@ -1459,11 +1479,11 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "central/any-day/no-pullback/x20/rule"
     },
     {
-      "id": "visar-night-v4-us100/full-day",
+      "id": "visar-night/full-day-20",
       "epic": "US100",
       "leverage": 20,
       "lossPct": 50,
@@ -1515,7 +1535,7 @@
         "profitableMonths": 10,
         "totalMonths": 33
       },
-      "codeHash": "506d56ed693e",
+      "codeHash": "28863ccbaed2",
       "benchmarkEpic": "US100",
       "benchmarkExcessPp": -137.4607689886534,
       "sessionWindow": "full",
@@ -1534,7 +1554,7 @@
         "lossPct": 50,
         "side": "previous day"
       },
-      "comparesWith": "visar-night-v3-us100/base",
+      "comparesWith": "visar-night/midday-20",
       "gridCell": "full/standard/gap-0bp/x20/rule"
     }
   ]

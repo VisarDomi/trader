@@ -45,7 +45,7 @@ enum Presentation {
     static func matches(_ row:Row,query:String)->Bool {
         let q=query.trimmingCharacters(in:.whitespacesAndNewlines)
         if q.lowercased()=="visar",let route=row.route,[Screen.run,.agent].contains(route.screen) {
-            return route.id.hasPrefix("visar-night-") || route.id.contains(":visar-night-")
+            return route.id.hasPrefix("visar-night") || route.id.contains(":visar-night")
         }
         return q.isEmpty || "\(row.title) \(row.subtitle) \(row.body) \(row.badge)".localizedCaseInsensitiveContains(q)
     }

@@ -7,7 +7,8 @@ export const CONTROL_SLUGS: ReadonlySet<string> = new Set([
   'bold-play',
   'martingale-monkey',
   'skew-monkey',
-  // Direction controls for the Visar night cohort: same nights as frequent-core, always long or a coin flip.
+  // Direction controls for the Visar Night family: same nights as midday-20, always long or a coin flip.
+  'visar-night-control',
   'visar-night-v2-control-us100',
   'visar-night-v2-control-us500',
   'visar-night-v3-control-us100',

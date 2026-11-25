@@ -44,7 +44,7 @@ private func packed32(_ xs:[Float])->String {xs.withUnsafeBytes{Data($0)}.base64
     #expect(found.sections[0].rows.map(\.id)==["b"] && found.sections[0].title=="Capital demo · 1 records")
 }
 @Test func visarSearchKeepsTheNightCohort() throws {
-    let rows=["demo:visar-night-trading:US500:x200:h","demo:visar-night-v4-us100/no-pullback:US100:x20:h","demo:ema-cross/fast:US500:x20:h"].map{
+    let rows=["demo:visar-night/full-day-200:US100:x200:h","demo:visar-night-control/always-long:US500:x20:h","demo:ema-cross/fast:US500:x20:h"].map{
         #"{"id":"\#($0)","title":"\#($0)","route":{"screen":"run","id":"\#($0)"}}"#}.joined(separator:",")
     let c=try screen(#"{"v":2,"title":"Rankings","sort":["Return"],"sections":[{"title":"Virtual engine · 3 records","rows":[\#(rows)]}]}"#)
     #expect(Presentation.view(c,route:Route(screen:.rankings),query:" VISAR ",sort:0).sections[0].rows.count==2)
