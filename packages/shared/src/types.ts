@@ -565,6 +565,49 @@ export interface BrokerAccountStatus {
 	lastReconcileAt: number;
 }
 
+export interface RealDealSummary {
+	id: number;
+	run_id: string;
+	epic: string;
+	side: 'long' | 'short';
+	size: number;
+	deal_id: string | null;
+	status: 'open' | 'closed' | 'failed';
+	open_time: number;
+	open_price: number | null;
+	close_time: number | null;
+	close_price: number | null;
+	pnl: number | null;
+	note: string | null;
+}
+
+export interface RealStatus {
+	host: string;
+	reachable: boolean;
+	accountId: string;
+	accountName: string | null;
+	currency: string | null;
+	balance: number | null;
+	available: number | null;
+	equity: number | null;
+	leverage: number | null;
+	leverageOk: boolean | null;
+	assignment: {
+		runId: string;
+		agentId: string;
+		epic: string;
+		leverage: number;
+		codeHash: string;
+		assignedAt: number;
+	} | null;
+	streamConnected: boolean;
+	ready: boolean;
+	openDeals: number;
+	deals: RealDealSummary[];
+	lastCycleAt: number;
+	lastError: string | null;
+}
+
 export interface BrokerStatus {
 	enabled: boolean;
 	/** Accounts whose name starts with this are used. */
@@ -589,6 +632,7 @@ export interface BrokerStatus {
 	excluded: string[];
 	promoted: string[];
 	real: string[];
+	realService?: RealStatus | null;
 	queued: number;
 	opensLastHour: number;
 	maxOpensPerHour: number;

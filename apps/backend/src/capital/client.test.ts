@@ -1,6 +1,12 @@
 import { expect, test } from 'bun:test';
-import { CapitalClient, DEMO_BASE_URL, RequestPacer, CapitalApiError } from './client.ts';
+import { CapitalClient, DEMO_BASE_URL, REAL_BASE_URL, RequestPacer, CapitalApiError } from './client.ts';
 import { networkStats, route } from './telemetry.ts';
+
+test('default CapitalClient stays demo-only and only forLiveRealAccount targets REAL_BASE_URL', () => {
+  const creds = { apiKey: 'k', identifier: 'u', password: 'p' };
+  expect(new CapitalClient(creds, new RequestPacer(0)).endpoint).toBe(DEMO_BASE_URL);
+  expect(CapitalClient.forLiveRealAccount(creds, new RequestPacer(0)).endpoint).toBe(REAL_BASE_URL);
+});
 const POST = 'POST';
 const API_KEY = 'test-key';
 const SECRET = 'test-password';

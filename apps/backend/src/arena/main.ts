@@ -18,6 +18,7 @@ import { startApi } from './api.ts';
 import { Arena } from './arena.ts';
 import { BrokerMirror, DEFAULT_ACCOUNT_PREFIX } from './broker.ts';
 import { ArenaDB } from './db.ts';
+import { RealRemoteClient } from './real-remote.ts';
 import { TickJournal } from './tick-journal.ts';
 
 const BROKER_OFF = 'off';
@@ -40,6 +41,10 @@ const creds = credentialsFromEnv();
 const pacer = new RequestPacer(ARENA_REQUEST_INTERVAL_MS);
 const dataClient = new CapitalClient(creds, pacer);
 
+const realServiceUrl = process.env.REAL_SERVICE_URL?.trim();
+const realToken = process.env.REAL_TOKEN?.trim();
+const realRemote = realServiceUrl && realToken ? new RealRemoteClient({ baseUrl: realServiceUrl, token: realToken }) : undefined;
+
 const broker =
   brokerPrefix === BROKER_OFF || brokerPrefix.trim() === ''
     ? null
@@ -48,6 +53,7 @@ const broker =
         accountTiers: loadRoster().accounts,
         // One session per demo account (9 checked concurrently on 2026-11-10): no switching, no cross-account waits.
         sessionFor: () => new CapitalClient(creds, pacer),
+        realRemote,
       });
 
 const tickJournal = new TickJournal(resolve(dirname(dbPath),'ticks.db'), message => db.event('error','ticks',message));
@@ -66,6 +72,7 @@ function shutdown(signal: string): void {
   db.event('info', 'arena', `shutting down (${signal})`);
   arena.stop();
   tickJournal.close();
+  realRemote?.stop();
   broker?.stop();
   api.stop();
   process.exit(0);
@@ -79,5 +86,6 @@ console.log(`arena live: ${arena.tracked.size} demo runs`);
 if (broker) {
   // After the arena: the mirror needs the live runs, and replayed history is never mirrored.
   broker.setCandidateSource(() => arena.mirrorCandidates());
+  realRemote?.start();
   await broker.start();
 }

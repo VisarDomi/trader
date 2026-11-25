@@ -61,8 +61,10 @@ import type { RunEvent } from '../engine/run.ts';
 import type { Side } from '../sdk/types.ts';
 import type { ArenaDB, DealRow } from './db.ts';
 import { DEAL_STATUS } from './db.ts';
+import type { RealRemoteClient } from './real-remote.ts';
 import type { SlotCandidate } from './slots.ts';
 import { accountsNeeded, assignSlots } from './slots.ts';
+import type { RealStatus } from '@trader/shared/types';
 
 export const BROKER_SETTINGS = {
   ENABLED: 'broker.enabled',
@@ -156,6 +158,8 @@ export interface BrokerOptions {
    * own job queue, so an order on one account never waits for another account's work.
    */
   sessionFor?: (accountId: string) => CapitalClient;
+  /** Optional remote client to the standalone Hetzner `trader-real` service (single Real USD account). */
+  realRemote?: RealRemoteClient;
 }
 
 /** A live demo run the arena offers for mirroring. */
@@ -326,6 +330,7 @@ export interface BrokerStatus {
   excluded: string[];
   promoted: string[];
   real: string[];
+  realService?: RealStatus | null;
   queued: number;
   opensLastHour: number;
   maxOpensPerHour: number;
@@ -529,6 +534,7 @@ export class BrokerMirror {
       excluded,
       promoted: this.promoted.filter(id => liveIds.has(id)),
       real: this.realRuns.filter(id => liveIds.has(id)),
+      realService: this.opts.realRemote?.cachedStatus() ?? null,
       queued: this.queue.length,
       opensLastHour: this.opens.filter(t => now - t < HOUR_MS).length,
       maxOpensPerHour: MAX_OPENS_PER_HOUR,
@@ -606,21 +612,51 @@ export class BrokerMirror {
     this.rebalance();
   }
 
-  /** Manually promote a Capital demo run to Real, or demote Real back to Capital demo (confirmation required). */
-  setReal(runId: string, enabled: boolean, confirmed: boolean): void {
+  /**
+   * Manually promote a single Capital demo run to the Hetzner Real USD account, or demote it back to
+   * its appropriate Capital demo account (confirmation required in both directions).
+   * Only one agent may control Real at a time; demotion closes any live Real deal and returns the run to demo.
+   */
+  async setReal(runId: string, enabled: boolean, confirmed: boolean): Promise<void> {
     if (!confirmed) throw new Error('Confirmation required for Real account stage changes');
-    const real = new Set(this.realRuns);
     if (enabled) {
-      if (!this.promoted.includes(runId) && !this.runAccounts[runId]) {
+      const existingReal = this.realRuns.find(id => id !== runId) ?? this.opts.realRemote?.cachedStatus().assignment?.runId;
+      if (existingReal && existingReal !== runId) {
+        throw new Error(`Real USD account is already controlled by ${existingReal}; demote it from Real before promoting another run`);
+      }
+      if (!this.realRuns.includes(runId) && !this.promoted.includes(runId) && !this.runAccounts[runId]) {
         throw new Error('Promote this run to Capital demo before promoting to Real');
       }
-      real.add(runId);
-      this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
-      this.db.event('info', 'broker', `confirmed promotion of ${runId} from Capital demo to Real stage (tracked; Capital API remains demo-only)`);
+      const parsed = parseDemoRunId(runId);
+      const row = this.db.run(runId);
+      const agentId = row?.agent_id ?? parsed?.agentId;
+      const epic = row?.epic ?? parsed?.epic;
+      const leverage = row?.leverage ?? parsed?.leverage;
+      const codeHash = row?.code_hash ?? parsed?.codeHash ?? '';
+      if (!agentId || !epic || !leverage) throw new Error(`Cannot resolve strategy metadata for ${runId}`);
+      if (this.opts.realRemote) {
+        await this.opts.realRemote.assign({ runId, agentId, epic, leverage, codeHash, confirmed: true });
+      }
+      this.db.setSetting(BROKER_SETTINGS.REAL, [runId]);
+      // While running on Hetzner Real, release its PC Capital demo slot so the PC handles non-real only.
+      const promoted = new Set(this.promoted);
+      if (promoted.delete(runId)) this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+      this.db.event('info', 'broker', `confirmed promotion of ${runId} from Capital demo to Hetzner Real USD account`);
+      this.rebalance();
     } else {
-      real.delete(runId);
-      this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
-      this.db.event('info', 'broker', `confirmed demotion of ${runId} from Real stage back to Capital demo`);
+      if (this.opts.realRemote) {
+        await this.opts.realRemote.clear(runId, true);
+      }
+      const real = this.realRuns.filter(id => id !== runId);
+      this.db.setSetting(BROKER_SETTINGS.REAL, real);
+      // Return the demoted agent to an appropriate Capital demo account of its leverage tier.
+      const excluded = new Set(this.excluded);
+      if (excluded.delete(runId)) this.db.setSetting(BROKER_SETTINGS.EXCLUDED, [...excluded]);
+      const promoted = new Set(this.promoted);
+      promoted.add(runId);
+      this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+      this.db.event('info', 'broker', `confirmed demotion of ${runId} from Hetzner Real USD back to Capital demo`);
+      this.rebalance();
     }
   }
 
@@ -913,9 +949,10 @@ export class BrokerMirror {
     // Manual promotion only: assignSlots keeps sticky slots for promoted runs without auto-swapping or auto-demoting.
     const plan = assignSlots(before, usable, eligible, new Set(this.excluded));
     this.db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, plan.assignments);
-    // Prune tracked Real entries only when a run is no longer live (e.g. code changed, retired, busted).
+    // Prune Real entry only when a run is no longer live (e.g. code changed, retired, busted).
+    // A Real run intentionally lives on Hetzner (not in PC demo `plan.assignments`).
     const real = this.realRuns;
-    const activeReal = real.filter(id => liveIds.has(id) && plan.assignments[id] !== undefined);
+    const activeReal = real.filter(id => liveIds.has(id));
     if (activeReal.length !== real.length) this.db.setSetting(BROKER_SETTINGS.REAL, activeReal);
     this.unassigned = live.filter(c => !plan.assignments[c.runId] && !this.excluded.includes(c.runId));
     const dropped = Object.keys(before).filter(id => plan.assignments[id] === undefined);

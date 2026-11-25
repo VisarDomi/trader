@@ -7,7 +7,9 @@
 	const status = $derived(data.broker.status);
 	const accountOf = $derived(new Map((status?.accounts ?? []).flatMap(a => a.runs.map(id => [id, a.name] as const))));
 	const capacity = $derived((status?.accounts ?? []).reduce((n, a) => n + (a.killed || a.retiring ? 0 : a.slots), 0));
-	const realRuns = $derived(new Set(status?.real ?? []));
+	const realService = $derived(status?.realService ?? null);
+	const realHolder = $derived(realService?.assignment?.runId ?? status?.real?.[0] ?? null);
+	const realRuns = $derived(new Set([...(status?.real ?? []), ...(realHolder ? [realHolder] : [])]));
 	const runs = $derived(
 		[...data.demo]
 			.filter(r => r.status === 'running')
@@ -58,8 +60,32 @@
 		</div>
 		{#if status.lastError}<div class="card small"><span class="status-dot status-warning"></span>Last error: {status.lastError}</div>{/if}
 
+		{#if realService}
+			<section class="card">
+				<h2>Real USD account (Hetzner)</h2>
+				<p class="secondary small">
+					Runs standalone on Hetzner against the locked USD live account ({realService.accountName ?? realService.accountId});
+					only one agent can control it at a time. PC handles non-real (Paper + Capital demo) only.
+				</p>
+				<div class="row">
+					<StatTile label="Status" value={!realService.reachable ? 'Offline' : realService.assignment ? 'Active' : 'Idle'} />
+					<StatTile label="Balance / Avail." value="{usd(realService.balance)} / {usd(realService.available)}" />
+					<StatTile label="Leverage" value={realService.leverage ? `1:${realService.leverage}` : '—'} />
+					<StatTile label="Open deals" value={String(realService.openDeals)} />
+				</div>
+				{#if realService.assignment}
+					<p class="small" style="margin-top: 8px">
+						<strong>Controlling agent:</strong>
+						<a href="/runs/{encodeURIComponent(realService.assignment.runId)}">{realService.assignment.agentId} · {realService.assignment.epic} · 1:{realService.assignment.leverage}</a>
+						({realService.streamConnected ? 'live stream connected' : 'stream reconnecting'})
+					</p>
+				{/if}
+				{#if realService.lastError}<div class="small muted" style="margin-top: 6px">Last error: {realService.lastError}</div>{/if}
+			</section>
+		{/if}
+
 		<section class="card">
-			<h2>Accounts</h2>
+			<h2>Demo accounts (PC)</h2>
 			<p class="secondary small">Each mirrored run reserves {usd((status.scale ?? 0.2) * 10_000, 0)} of an account's allocation.</p>
 			<div class="table-wrap">
 				<table class="data">
@@ -101,8 +127,8 @@
 	<section class="card">
 		<h2>Runs</h2>
 		<p class="secondary small">
-			Stage transitions between Paper, Capital demo, and Real are manual. Paper ↔ Capital demo and Paper → Backtest apply
-			immediately; Capital demo ↔ Real requires confirmation (Real is tracked while the Capital API remains demo-only).
+			Stage transitions between Paper, Capital demo (PC), and Real USD (Hetzner) are manual. Paper ↔ Capital demo and
+			Paper → Backtest apply immediately; Capital demo ↔ Real USD requires confirmation and allows only one agent at a time.
 		</p>
 		<input type="search" placeholder="Filter" bind:value={filter} style="max-width: 260px; margin-bottom: 8px" />
 		<div class="table-wrap" style="max-height: 480px">
@@ -116,25 +142,29 @@
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.name}</a></td>
 							<td>{r.epic}</td>
 							<td title={levTitle(r)}>{lev(r)}</td>
-							<td class:muted={!acct && !isReal}>{isReal ? `Real (${acct ?? 'tracked'})` : (acct ?? 'Paper')}</td>
+							<td class:muted={!acct && !isReal}>{isReal ? 'Real USD (Hetzner)' : (acct ?? 'Paper')}</td>
 							<td class="num">{r.metrics?.trades ?? 0}</td>
 							<td class="num {sign(r.metrics?.totalReturn)}">{pct(r.metrics?.totalReturn)}</td>
 							<td>
 								<div class="actions">
 									{#if isReal}
-										<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Demote ${r.name} (${r.epic}) from Real back to Capital demo?`)} use:enhance>
+										<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Demote ${r.name} (${r.epic}) from Real USD (Hetzner) back to Capital demo? Any open live deal will be closed.`)} use:enhance>
 											<input type="hidden" name="runId" value={r.runId} />
 											<input type="hidden" name="target" value="demo" />
 											<input type="hidden" name="confirmed" value="true" />
 											<button class="btn small">Demote to Demo</button>
 										</form>
 									{:else if acct}
-										<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Promote ${r.name} (${r.epic}) from Capital demo to Real stage (tracked; Capital API stays demo-only)?`)} use:enhance>
-											<input type="hidden" name="runId" value={r.runId} />
-											<input type="hidden" name="target" value="real" />
-											<input type="hidden" name="confirmed" value="true" />
-											<button class="btn small">Promote to Real</button>
-										</form>
+										{#if realHolder && realHolder !== r.runId}
+											<button class="btn small" disabled title="Demote the active Real agent first">Real busy</button>
+										{:else}
+											<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Promote ${r.name} (${r.epic}) to the live Real USD account on Hetzner? This trades real money.`)} use:enhance>
+												<input type="hidden" name="runId" value={r.runId} />
+												<input type="hidden" name="target" value="real" />
+												<input type="hidden" name="confirmed" value="true" />
+												<button class="btn small">Promote to Real</button>
+											</form>
+										{/if}
 										<form method="POST" action="?/stage" use:enhance>
 											<input type="hidden" name="runId" value={r.runId} />
 											<input type="hidden" name="target" value="virtual" />

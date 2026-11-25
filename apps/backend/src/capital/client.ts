@@ -1,9 +1,11 @@
 import { measuredFetch, recordPace } from './telemetry.ts';
 /**
- * Capital.com REST client — DEMO ONLY.
+ * Capital.com REST client.
  *
- * The base URL is a constant on purpose: this platform never trades real
- * money, so there is no code path that can point it at the live API.
+ * `new CapitalClient(...)` defaults strictly to DEMO_BASE_URL so the PC arena,
+ * lab, and demo mirror can never point at the live API by accident. Only the
+ * dedicated Hetzner real executor constructs a live client via
+ * `CapitalClient.forLiveRealAccount(...)`.
  *
  * Handles: session auth, re-auth on 401, account switching, request pacing,
  * and 429 back-off.
@@ -18,6 +20,7 @@ import { measuredFetch, recordPace } from './telemetry.ts';
  */
 
 export const DEMO_BASE_URL = 'https://demo-api-capital.backend-capital.com';
+export const REAL_BASE_URL = 'https://api-capital.backend-capital.com';
 export const STREAM_URL = 'wss://api-streaming-capital.backend-capital.com/connect';
 
 const HEADER_API_KEY = 'X-CAP-API-KEY';
@@ -51,6 +54,17 @@ export function credentialsFromEnv(): CapitalCredentials {
   const password = process.env.CAPITAL_PASSWORD;
   if (!apiKey || !identifier || !password) {
     throw new Error('Missing CAPITAL_API_KEY / CAPITAL_IDENTIFIER / CAPITAL_PASSWORD');
+  }
+  return { apiKey, identifier, password };
+}
+
+/** Credentials for the Hetzner real-account service (optional CAPITAL_REAL_* overrides). */
+export function realCredentialsFromEnv(): CapitalCredentials {
+  const apiKey = process.env.CAPITAL_REAL_API_KEY || process.env.CAPITAL_API_KEY;
+  const identifier = process.env.CAPITAL_REAL_IDENTIFIER || process.env.CAPITAL_IDENTIFIER;
+  const password = process.env.CAPITAL_REAL_PASSWORD || process.env.CAPITAL_PASSWORD;
+  if (!apiKey || !identifier || !password) {
+    throw new Error('Missing CAPITAL_REAL_* or CAPITAL_* credentials');
   }
   return { apiKey, identifier, password };
 }
@@ -181,10 +195,27 @@ export class CapitalClient {
   /** Incremented on every successful login, so callers can tell when to re-verify the active account. */
   logins = 0;
 
+  private readonly baseUrl: string;
+
   constructor(
     private readonly creds: CapitalCredentials,
     private readonly pacer = new RequestPacer(DEFAULT_MIN_INTERVAL_MS),
-  ) {}
+    baseUrl: typeof DEMO_BASE_URL | typeof REAL_BASE_URL = DEMO_BASE_URL,
+  ) {
+    this.baseUrl = baseUrl;
+  }
+
+  /** Explicit live-account constructor, used exclusively by the Hetzner real-account service. */
+  static forLiveRealAccount(
+    creds: CapitalCredentials,
+    pacer = new RequestPacer(DEFAULT_MIN_INTERVAL_MS),
+  ): CapitalClient {
+    return new CapitalClient(creds, pacer, REAL_BASE_URL);
+  }
+
+  get endpoint(): string {
+    return this.baseUrl;
+  }
 
   tokens(): { cst: string; securityToken: string } {
     return { cst: this.cst, securityToken: this.securityToken };
@@ -202,7 +233,7 @@ export class CapitalClient {
   private async doLogin(): Promise<void> {
     await loginPacer.wait();
     await this.pacer.wait(REQUEST_PRIORITY.FOLLOW_UP);
-    const res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
+    const res = await measuredFetch(`${this.baseUrl}/api/v1/session`, {
       method: 'POST',
       headers: {
         [HEADER_API_KEY]: this.creds.apiKey,
@@ -260,7 +291,7 @@ export class CapitalClient {
     let res: Response;
     for (let attempt = 0; ; attempt++) {
       await this.pacer.wait(REQUEST_PRIORITY.FOLLOW_UP);
-      res = await measuredFetch(`${DEMO_BASE_URL}/api/v1/session`, {
+      res = await measuredFetch(`${this.baseUrl}/api/v1/session`, {
         method: 'PUT',
         headers: this.authHeaders(),
         body: JSON.stringify({ accountId }),
@@ -299,7 +330,7 @@ export class CapitalClient {
     for (let attempt = 0; ; attempt++) {
       await this.pacer.wait(priority);
       hooks?.sent?.();
-      const res = await measuredFetch(`${DEMO_BASE_URL}${path}`, {
+      const res = await measuredFetch(`${this.baseUrl}${path}`, {
         method,
         headers: this.authHeaders(),
         body: body === undefined ? undefined : JSON.stringify(body),

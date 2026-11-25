@@ -12,8 +12,9 @@ export async function load({params,url}){
   const periods=frequency?await arena.periods(frequency.runId,frequency.days).catch(()=>null):null;
   const account=broker?.status?.accounts.find(a=>a.runs.includes(run.id))?.name??null;
   const mirrored=Boolean(account)||(broker?.status?.promoted?.includes(run.id)??false);
-  const real=broker?.status?.real?.includes(run.id)??false;
-  return{run,agentName:agent?.name??run.agentId,stage,capital,inspections:previews,selected,frequency,periods,account,mirrored,real};
+  const realHolder=broker?.status?.realService?.assignment?.runId??broker?.status?.real?.[0]??null;
+  const real=(broker?.status?.real?.includes(run.id)??false)||realHolder===run.id;
+  return{run,agentName:agent?.name??run.agentId,stage,capital,inspections:previews,selected,frequency,periods,account,mirrored,real,realHolder};
  }catch(e){error(404,e instanceof Error?e.message:'Run unavailable')}
 }
 export const actions={
@@ -23,7 +24,7 @@ export const actions={
   const confirmed=form.get('confirmed')==='true';
   try{
    await arena.setStage(params.id,target,confirmed);
-   return{ok:true,message:target==='real'?'Promoted to Real stage (tracked · demo API only).':target==='demo'?'Moved to Capital demo.':target==='virtual'?'Demoted to Paper.':'Demoted to Backtest.'};
+   return{ok:true,message:target==='real'?'Promoted to Real USD account on Hetzner.':target==='demo'?'Moved to Capital demo.':target==='virtual'?'Demoted to Paper.':'Demoted to Backtest.'};
   }catch(e){return fail(400,{ok:false,message:e instanceof Error?e.message:String(e)})}
  },
 };

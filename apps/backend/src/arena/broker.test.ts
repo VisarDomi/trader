@@ -143,14 +143,19 @@ test('Paper <-> Capital demo and Capital demo <-> Real promotion/demotion are ma
     expect(mirror.mirroredRuns).not.toContain(freed);
     mirror.promoteToDemo(RUN);
     expect(mirror.mirroredRuns).toContain(RUN);
-    // Demo <-> Real requires explicit confirmation in both directions, and blocks direct Demo -> Paper while in Real.
-    expect(() => mirror.setReal(RUN, true, false)).toThrow(/Confirmation required/);
-    mirror.setReal(RUN, true, true);
-    expect(mirror.realRuns).toContain(RUN);
+    // Demo <-> Real requires explicit confirmation in both directions, enforces single-agent control,
+    // moves the run off PC demo while on Hetzner Real, and returns it to its demo tier on demotion.
+    await expect(mirror.setReal(RUN, true, false)).rejects.toThrow(/Confirmation required/);
+    await mirror.setReal(RUN, true, true);
+    expect(mirror.realRuns).toEqual([RUN]);
+    expect(mirror.mirroredRuns).not.toContain(RUN);
+    // Second run cannot be promoted to Real until the current Real run is demoted.
+    const other = incumbents[1]!.runId;
+    await expect(mirror.setReal(other, true, true)).rejects.toThrow(/already controlled by/);
     expect(() => mirror.demoteToPaper(RUN)).toThrow(/Demote from Real/);
-    expect(() => mirror.setReal(RUN, false, false)).toThrow(/Confirmation required/);
-    mirror.setReal(RUN, false, true);
-    expect(mirror.realRuns).not.toContain(RUN);
+    await expect(mirror.setReal(RUN, false, false)).rejects.toThrow(/Confirmation required/);
+    await mirror.setReal(RUN, false, true);
+    expect(mirror.realRuns).toEqual([]);
     expect(mirror.mirroredRuns).toContain(RUN);
     mirror.demoteToPaper(RUN);
     expect(mirror.mirroredRuns).not.toContain(RUN);

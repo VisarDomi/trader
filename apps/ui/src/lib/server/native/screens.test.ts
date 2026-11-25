@@ -294,7 +294,7 @@ test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail s
 	expect(withBrief.sections[0]!.title).toBe('SOTA brief');
 	expect(withBrief.sections[0]!.rows[0]!.route).toEqual({ screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' });
 });
-test('runScreen exposes manual stage controls for Paper, Capital demo, and confirmed Real', () => {
+test('runScreen exposes manual stage controls for Paper, Capital demo, and single-agent Real USD on Hetzner', () => {
 	const base = { run: { ...run, status: 'running' }, agentName: 'X', capital: null, excluded: false, comparison: null, sparks: null, account: null };
 	const paper = runScreen({ ...base, mirrored: false, real: false });
 	const paperStage = paper.sections.find(s => s.title === 'Stage · Paper')!;
@@ -304,10 +304,14 @@ test('runScreen exposes manual stage controls for Paper, Capital demo, and confi
 	const demoStage = demo.sections.find(s => s.title === 'Stage · Capital demo')!;
 	expect(demoStage.rows.map(r => r.action)).toEqual([`stage:real:${run.id}`, `stage:virtual:${run.id}`]);
 
-	const real = runScreen({ ...base, mirrored: true, real: true, account: 'Arena 09' });
-	const realStage = real.sections.find(s => s.title === 'Stage · Real (tracked)')!;
+	const demoBusy = runScreen({ ...base, mirrored: true, real: false, realHolder: 'demo:other:US500:x200:h', account: 'Arena 09' });
+	const demoBusyStage = demoBusy.sections.find(s => s.title === 'Stage · Capital demo')!;
+	expect(demoBusyStage.rows.map(r => r.id)).toEqual(['stage-real-busy', 'stage-virtual']);
+
+	const real = runScreen({ ...base, mirrored: false, real: true, realHolder: run.id, account: null });
+	const realStage = real.sections.find(s => s.title === 'Stage · Real USD (Hetzner)')!;
 	expect(realStage.rows.map(r => r.action)).toEqual([`stage:demo-from-real:${run.id}`]);
 
-	const realRank = rankingRow({ runId: run.id, name: 'X', epic: 'US500', leverage: 200, status: 'running', mirrored: true, real: true, metrics: { totalReturn: 0.2, sharpe: 2, trades: 3, maxDrawdown: 0.05 } }, 'capital');
+	const realRank = rankingRow({ runId: run.id, name: 'X', epic: 'US500', leverage: 200, status: 'running', mirrored: false, real: true, metrics: { totalReturn: 0.2, sharpe: 2, trades: 3, maxDrawdown: 0.05 } }, 'capital');
 	expect(realRank.badge).toBe('Real');
 });

@@ -10,8 +10,8 @@ Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writi
 |---|---|---|
 | Backtest | historical simulation on the lab PC | current-code result passes the gate below before a new virtual record starts |
 | Virtual engine (Paper) | forward execution on live quotes, $10,000 per run, independent cash | automatic losing/silent/busted/error retirement to backtest, plus one-way manual demotion to backtest (no confirm) |
-| Capital demo | actual demo orders on Arena accounts at 0.2× size | two-way **manual** promotion/demotion with Paper (no confirm); never auto-promoted, auto-swapped, or auto-demoted on performance |
-| Real (tracked) | runs promoted from Capital demo for real-money trading | two-way **manual** promotion/demotion with Capital demo (**confirmation required**); Capital API stays demo-only until live credentials and risk caps are configured |
+| Capital demo | actual demo orders on Arena accounts (PC) at 0.2× size | two-way **manual** promotion/demotion with Paper (no confirm); never auto-promoted, auto-swapped, or auto-demoted on performance |
+| Real USD (Hetzner) | standalone single-agent live execution on Hetzner (`trader-real.service`), locked to the designated USD live account | two-way **manual** promotion/demotion with Capital demo (**confirmation required**); only one agent may control Real at a time — demote it back to its demo tier before promoting another |
 
 Promotion and demotion across **Paper ↔ Capital demo** (no confirmation) and **Capital demo ↔ Real**
 (confirmation required) are manual (`POST /api/stage`, Web `/runs/<id>` and `/broker`, and iPhone Run Detail).
@@ -50,7 +50,7 @@ the night's reach; a stricter subset of the base could trade only on the base's 
 observations. The v4 source is the v3 rule plus two switches (`direction`, `pullback`); with its defaults it
 trades exactly like the v3 base, and the paper grid runs every cell on it. Exits that never trigger at 1:20
 are not explored. The ruin controls `bold-play` and `martingale-monkey` are automatically paper-only by slug,
-including future code versions. There is no live-money stage.
+including future code versions. Real-money execution runs exclusively on Hetzner (`trader-real.service`) against the locked USD account; the PC stays strictly non-real.
 
 Execution comparisons have separate records and labels, but are correlated copies of a strategy under
 frozen latency assumptions. They never take Capital slots and never multiply strategy/monkey verdicts.

@@ -54,10 +54,11 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 			const comparison = run.kind === 'backtest' ? null : agent?.runs.filter(x => x.kind === 'backtest' && x.status !== 'retired' && x.epic === run.epic && x.leverage === run.leverage && x.codeHash === run.codeHash).sort((a, c) => c.updatedAt - a.updatedAt)[0] ?? null;
 			const account = b?.status?.accounts.find(a => a.runs.includes(run.id))?.name ?? null, capital = board.find(r => r.runId === run.id) ?? null;
 			const mirrored = !!account || (b?.status?.promoted?.includes(run.id) ?? false);
-			const real = b?.status?.real?.includes(run.id) ?? false;
+			const realHolder = b?.status?.realService?.assignment?.runId ?? b?.status?.real?.[0] ?? null;
+			const real = (b?.status?.real?.includes(run.id) ?? false) || realHolder === run.id;
 			// The chart behind each frequency: the backtest's periods as long as the virtual run and as its Capital cash.
 			const periods = await Promise.all([run.evidence?.frequency, capital?.evidence?.frequency].flatMap(f => (f ? [arena.periods(f.runId, f.days).catch(() => null)] : [])));
-			return runScreen({ run, agentName: agent?.name ?? run.agentId, capital, excluded: b?.status?.excluded.includes(run.id) ?? false, mirrored, real, comparison, sparks: line, account, periods });
+			return runScreen({ run, agentName: agent?.name ?? run.agentId, capital, excluded: b?.status?.excluded.includes(run.id) ?? false, mirrored, real, realHolder, realService: b?.status?.realService ?? null, comparison, sparks: line, account, periods });
 		}
 		case 'trade': {
 			const d = await inspection.trade(id, q.get('trade') ?? '', q.get('stage') ?? 'virtual');

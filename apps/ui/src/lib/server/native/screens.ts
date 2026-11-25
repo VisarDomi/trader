@@ -288,7 +288,7 @@ const summaryRow = (r: RunSummary, agent: AgentDetail): Json => ({ ...r, name: r
 
 // ---------------------------------------------------------------- run
 
-export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; mirrored?: boolean; real?: boolean; comparison: RunSummary | null; sparks: Sparks | null; account: string | null; periods?: (BacktestPeriods | null)[] }
+export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; mirrored?: boolean; real?: boolean; realHolder?: string | null; realService?: Json | null; comparison: RunSummary | null; sparks: Sparks | null; account: string | null; periods?: (BacktestPeriods | null)[] }
 /** The record on the daily clock: its verdict, the t it has, the bars it needs and whether it agrees with its backtest. */
 export function clockRow(row: LeaderboardRow, now = Date.now()): Row | null {
 	const c = row.evidence?.clock, a = assess(row, now);
@@ -332,7 +332,7 @@ export function frequencyRow(id: string, what: string, f: BacktestFrequency, p: 
 		body: [`${num(count, 0)} of ${num(f.periods, 0)} periods of ${daysText(f.days)}${p ? ` in the ${ym(p.from)} → ${ym(p.through)} backtest` : ''}${f.independent < f.periods ? `; they overlap, ${num(f.independent, 0)} fit end to end` : ''}`,
 			`Worst ${pct(f.worst)} · best ${pct(f.best)}`, winsLine(f)].filter(Boolean).join('\n') });
 }
-export function runScreen({ run, agentName, capital, excluded, mirrored, real = false, comparison, sparks, account, periods = [] }: RunInputs): Screen {
+export function runScreen({ run, agentName, capital, excluded, mirrored, real = false, realHolder = null, realService = null, comparison, sparks, account, periods = [] }: RunInputs): Screen {
 	const onDemo = mirrored ?? (Boolean(account) || Boolean(capital?.mirrored));
 	const historical = run.kind === 'backtest', m = run.metrics, e = run.evidence as AgentEvidence | undefined, extra = (run.extra ?? {}) as Json;
 	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`,
@@ -381,18 +381,23 @@ export function runScreen({ run, agentName, capital, excluded, mirrored, real = 
 	if (comparison) sections.push({ title: 'Same-code backtest', rows: [rankingRow({ ...comparison, name: 'Backtest' }, 'backtest')] });
 	sections.push(...evidenceSections(e));
 	if (!historical && run.status !== 'retired' && !run.id.includes(':delay=')) {
+		const otherReal = realHolder && realHolder !== run.id ? realHolder : null;
+		const acctLabel = realService?.accountName ? `${realService.accountName} (${realService.currency ?? 'USD'})` : 'Real USD';
+		const balLabel = realService?.available != null ? ` · ${usd(realService.available)} avail.` : '';
 		const stageRows: Row[] = real
-			? [{ id: 'stage-demo-from-real', title: 'Demote from Real to Capital demo', subtitle: 'Requires confirmation · keeps Capital demo slot', action: `stage:demo-from-real:${run.id}` }]
+			? [{ id: 'stage-demo-from-real', title: 'Demote from Real to Capital demo', subtitle: `Requires confirmation · closes live deal on ${acctLabel} (Hetzner) and returns to demo`, action: `stage:demo-from-real:${run.id}` }]
 			: onDemo
 				? [
-					{ id: 'stage-real', title: 'Promote to Real account', subtitle: 'Requires confirmation · tracked stage (Capital API stays demo-only)', action: `stage:real:${run.id}` },
+					...(otherReal
+						? [{ id: 'stage-real-busy', title: `${acctLabel} occupied`, subtitle: `Controlled by ${otherReal.split(':')[1] ?? otherReal} · demote it from Real first` }]
+						: [{ id: 'stage-real', title: `Promote to ${acctLabel} (Hetzner)`, subtitle: `Requires confirmation · single-agent live account${balLabel}`, action: `stage:real:${run.id}` }]),
 					{ id: 'stage-virtual', title: 'Demote to Paper', subtitle: 'Closes Capital demo deals and frees slot · no confirm', action: `stage:virtual:${run.id}` },
 				]
 				: [
 					{ id: 'stage-demo', title: 'Promote to Capital demo', subtitle: 'Takes a free slot on this leverage tier · no confirm', action: `stage:demo:${run.id}` },
 					{ id: 'stage-backtest', title: 'Demote to Backtest', subtitle: 'One-way retirement from paper · no confirm', action: `stage:backtest:${run.id}` },
 				];
-		sections.push({ title: real ? 'Stage · Real (tracked)' : onDemo ? 'Stage · Capital demo' : 'Stage · Paper', rows: stageRows });
+		sections.push({ title: real ? `Stage · ${acctLabel} (Hetzner)` : onDemo ? 'Stage · Capital demo' : 'Stage · Paper', rows: stageRows });
 	}
 	sections.push({ title: '', rows: [{ id: 'params', title: 'Parameters', body: Object.entries(run.params).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join('\n'), code: true }] });
 	return compact({ v: 2 as const, title: `${run.epic} · ${tier(run.leverage)}`, subtitle: agentName, sections });
@@ -526,10 +531,44 @@ export function gateRows(gates: NonNullable<Inspection['strategy']>['gates']): R
 
 export function accountsScreen(b: Json): Screen {
 	const s = b.status ?? {};
-	return { v: 2, title: 'Accounts', subtitle: 'Capital demo only · Arena 01–09', sections: [
-		{ title: 'Broker mirror', rows: [{ id: 'mirror', title: s.enabled ? 'Demo orders enabled' : 'Demo orders paused', subtitle: `${num(s.coverage?.mirrored, 0)} assigned · queue ${num(s.queued?.length ?? s.queued, 0)}`, action: s.enabled ? 'mirror:off' : 'mirror:on' }] },
-		{ title: 'Nine leverage tiers', rows: (s.accounts ?? []).map((a: Json) => compact({ id: a.id, title: a.name, subtitle: `${tier(a.leverage)} · ${a.runs.length}/${num(a.slots, 0)} slots`, badge: a.killed ? 'Kill switch' : '', badgeTone: -1 as const,
-			stats: [{ label: 'Equity', value: usd(a.equity) }, { label: 'Balance', value: usd(a.balance) }, { label: 'Open deals', value: num(a.openDeals, 0) }], route: { screen: 'account', id: a.id } })) }] };
+	const real = s.realService;
+	const sections: Section[] = [];
+	if (real) {
+		const assigned = real.assignment;
+		const realRows: Row[] = [compact({
+			id: 'real-usd',
+			title: `${real.accountName ?? 'Real USD'} · ${real.currency ?? 'USD'} (Hetzner)`,
+			subtitle: assigned
+				? `Controlled by ${assigned.agentId} (${assigned.epic} · ${tier(assigned.leverage)}) · ${real.streamConnected ? 'live feed ok' : 'feed reconnecting'}`
+				: real.reachable ? 'Idle · single-agent real account ready' : (real.lastError ?? 'Hetzner real service offline'),
+			badge: !real.reachable ? 'Offline' : assigned ? 'Active' : 'Idle',
+			badgeTone: !real.reachable ? (-1 as const) : assigned ? (1 as const) : (0 as const),
+			stats: [
+				{ label: 'Balance', value: usd(real.balance) },
+				{ label: 'Available', value: usd(real.available) },
+				{ label: 'Open deals', value: num(real.openDeals, 0) },
+			],
+			body: real.lastError && real.reachable ? `Last error: ${real.lastError}` : '',
+			route: assigned ? runRoute(assigned.runId) : undefined,
+		})];
+		for (const d of (real.deals ?? []).slice(0, 5)) {
+			realRows.push(compact({
+				id: `real-deal-${d.id}`,
+				title: `${d.epic} · ${d.side === 'long' ? 'Long' : 'Short'} · ${num(d.size, 2)}`,
+				subtitle: `${d.status} · ${moment(d.close_time ?? d.open_time)}`,
+				badge: d.pnl != null ? signedUsd(d.pnl) : d.status,
+				badgeTone: d.pnl != null ? tone(d.pnl) : (d.status === 'failed' ? (-1 as const) : (0 as const)),
+				body: d.note ?? '',
+			}));
+		}
+		sections.push({ title: 'Real account · Hetzner', rows: realRows });
+	}
+	sections.push(
+		{ title: 'Demo mirror (PC)', rows: [{ id: 'mirror', title: s.enabled ? 'Demo orders enabled' : 'Demo orders paused', subtitle: `${num(s.coverage?.mirrored, 0)} assigned · queue ${num(s.queued?.length ?? s.queued, 0)}`, action: s.enabled ? 'mirror:off' : 'mirror:on' }] },
+		{ title: 'Nine demo leverage tiers', rows: (s.accounts ?? []).map((a: Json) => compact({ id: a.id, title: a.name, subtitle: `${tier(a.leverage)} · ${a.runs.length}/${num(a.slots, 0)} slots`, badge: a.killed ? 'Kill switch' : '', badgeTone: -1 as const,
+			stats: [{ label: 'Equity', value: usd(a.equity) }, { label: 'Balance', value: usd(a.balance) }, { label: 'Open deals', value: num(a.openDeals, 0) }], route: { screen: 'account', id: a.id } })) },
+	);
+	return { v: 2, title: 'Accounts', subtitle: real ? 'Real USD on Hetzner · Demo Arena 01–09 on PC' : 'Capital demo only · Arena 01–09', sections };
 }
 export function accountScreen(b: Json, id: string, names: Map<string, string>): Screen {
 	const a = (b.status?.accounts ?? []).find((x: Json) => x.id === id) ?? { name: 'Account', runs: [] };

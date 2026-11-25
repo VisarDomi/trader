@@ -1,0 +1,23 @@
+[Unit]
+Description=Trader real-money executor (standalone single-agent Capital.com live USD service on Hetzner)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Template: ops/server/deploy-real.sh fills in @SERVER_USER@ and @SERVER_HOME@ from apps/backend/.env.
+User=@SERVER_USER@
+WorkingDirectory=@SERVER_HOME@/trader-real/app
+EnvironmentFile=@SERVER_HOME@/trader-real/.env
+Environment=BUN_JSC_numberOfGCMarkers=1
+ExecStart=/usr/local/bin/bun src/real/main.ts
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+MemoryHigh=180M
+MemoryMax=300M
+CPUQuota=50%
+Nice=0
+
+[Install]
+WantedBy=multi-user.target

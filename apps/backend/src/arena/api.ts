@@ -252,9 +252,9 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
           arena.demotePaperToBacktest(body.runId);
         } else {
           if (!arena.broker) return json({ error: 'broker disabled' }, 400);
-          if (body.target === 'real') arena.broker.setReal(body.runId, true, body.confirmed === true);
+          if (body.target === 'real') await arena.broker.setReal(body.runId, true, body.confirmed === true);
           else if (body.target === 'demo') {
-            if (arena.broker.realRuns.includes(body.runId)) arena.broker.setReal(body.runId, false, body.confirmed === true);
+            if (arena.broker.realRuns.includes(body.runId)) await arena.broker.setReal(body.runId, false, body.confirmed === true);
             else arena.broker.promoteToDemo(body.runId);
           } else {
             arena.broker.demoteToPaper(body.runId);
@@ -426,7 +426,7 @@ function demoLeaderboard(arena: Arena, rows: LeaderboardRow[], evidence?:AgentEv
   const grouped = Map.groupBy(deals, d => d.run_id);
   const scale = arena.broker?.status().scale ?? 0.2;
   return rows
-    .filter(r => grouped.has(r.runId) || r.mirrored)
+    .filter(r => grouped.has(r.runId) || r.mirrored || r.real)
     .map(r => {
       const mine = (grouped.get(r.runId) ?? []).sort((a, b) => a.open_time - b.open_time);
       const closed = mine.filter(d => d.status === 'closed');

@@ -40,12 +40,16 @@
  {#if form?.message}<p class="status-line" role="status">{form.message}</p>{/if}
  {#if liveControl}
   <section class="card stage-bar">
-   <div><strong>Stage: {data.real?'Real (tracked · demo API only)':data.mirrored?`Capital demo${data.account?' · '+data.account:''}`:'Paper (virtual)'}</strong></div>
+   <div><strong>Stage: {data.real?'Real USD (Hetzner)':data.mirrored?`Capital demo${data.account?' · '+data.account:''}`:'Paper (virtual)'}</strong></div>
    <div class="stage-actions">
     {#if data.real}
-     <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Demote this run from Real back to Capital demo?')} use:enhance><input type="hidden" name="target" value="demo"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Demote to Capital demo</button></form>
+     <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Demote this run from Real USD (Hetzner) back to Capital demo? Any live position it opened on Hetzner will be closed.')} use:enhance><input type="hidden" name="target" value="demo"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Demote to Capital demo</button></form>
     {:else if data.mirrored}
-     <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Promote this Capital demo run to Real stage (tracked; Capital API stays demo-only)?')} use:enhance><input type="hidden" name="target" value="real"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Promote to Real</button></form>
+     {#if data.realHolder && data.realHolder !== run.id}
+      <span class="muted small">Real USD occupied by {data.realHolder.split(':')[1] ?? data.realHolder} — demote it first</span>
+     {:else}
+      <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Promote this run to the live Real USD account on Hetzner? This trades real money.')} use:enhance><input type="hidden" name="target" value="real"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Promote to Real USD</button></form>
+     {/if}
      <form method="POST" action="?/stage" use:enhance><input type="hidden" name="target" value="virtual"/><button class="btn">Demote to Paper</button></form>
     {:else}
      <form method="POST" action="?/stage" use:enhance><input type="hidden" name="target" value="demo"/><button class="btn">Promote to Capital demo</button></form>
