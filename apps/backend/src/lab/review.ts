@@ -10,7 +10,7 @@
  * verdict counts, confirmed records and candidates, runs and agents to retire.
  */
 import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow } from '@trader/shared';
-import { assess, isCandidate, LIFECYCLE, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
+import { assess, assessFamily, isCandidate, LIFECYCLE, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
 import { FORECASTER_UNIT,resourcePaused } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
@@ -109,6 +109,11 @@ const monkeyCandidates = standard.filter(r => {
 }).length;
 const monkeys = standard.filter(r => r.slug === RANDOM_BASELINE_SLUG).length;
 
+// Families judged as one record: every member row carries its family's clock.
+const families = [...new Map(standard.flatMap(r => (r.evidence?.clock?.family ? [[r.evidence.clock.family.id, r.evidence.clock.family] as const] : []))).values()]
+  .map(f => ({ ...f, ...assessFamily(f) }))
+  .sort((a, b) => b.t - a.t);
+
 const count = (v: string) => runs.filter(r => r.verdict === v).length;
 const recentErrors = events.filter(e => e.level === 'error' && now - e.time < RECENT_EVENTS_MS);
 const errorKinds = [...Map.groupBy(recentErrors, e => `${e.source}: ${e.message.replace(/[0-9a-f-]{20,}|\d+(\.\d+)?/g, '#').slice(0, 90)}`)]
@@ -157,6 +162,14 @@ const report = {
     .filter(r => r.verdict !== VERDICT.CONTROL && r.verdict !== VERDICT.CONFIRMED && r.verdict !== VERDICT.EARLY && r.confirmAt !== null)
     .sort((a, b) => b.lifeT - b.confirmAt! - (a.lifeT - a.confirmAt!))
     .slice(0, 5),
+  families: {
+    /** Strategy families ever started: what a family's confirmed bar is counted over. */
+    tried: families[0]?.trials ?? null,
+    verdicts: Object.fromEntries([VERDICT.EARLY, VERDICT.KEEP, VERDICT.CANDIDATE, VERDICT.CONFIRMED].map(v => [v, families.filter(f => f.verdict === v).length])),
+    confirmed: families.filter(f => f.verdict === VERDICT.CONFIRMED),
+    candidates: families.filter(f => f.verdict === VERDICT.CANDIDATE),
+    closestToConfirmed: families.filter(f => f.verdict === VERDICT.KEEP && f.confirmAt !== null).slice(0, 5),
+  },
   retireRuns: runs.filter(r => r.verdict === VERDICT.RETIRE),
   retireAgents: agents.filter(a => a.retireAgent),
   closestToJudgement: runs
@@ -210,6 +223,12 @@ if (process.argv.includes(FLAG_JSON)) {
   lines.push('', '## Candidates (may compete for Capital demo slots; may still be luck)');
   if (report.candidates.length === 0) lines.push('- none yet');
   for (const r of report.candidates) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
+  const fam = report.families, about = (f: (typeof families)[number]) => `${f.name}: ${f.reason} (${f.records} running on ${f.markets} markets)`;
+  lines.push('', `## Families (each judged as one record; false discovery rate ${LIFECYCLE.CONFIRM_FDR * 100}% over ${fam.tried ?? '?'} families tried)`);
+  lines.push(`- ${Object.entries(fam.verdicts).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  for (const f of fam.confirmed) lines.push(`- confirmed: ${about(f)}`);
+  for (const f of fam.candidates) lines.push(`- candidate: ${about(f)}`);
+  for (const f of fam.closestToConfirmed) lines.push(`- closest: ${f.name}: family t ${f.t.toFixed(2)} of ${f.confirmAt!.toFixed(2)} needed (${f.records} running on ${f.markets} markets)`);
   lines.push('', '## Retire: agents (move file to agents/_retired/)');
   if (report.retireAgents.length === 0) lines.push('- none');
   for (const a of report.retireAgents) lines.push(`- ${a.agentId}: ${a.retire} of ${a.runs} runs retire (${a.judged} judged)`);

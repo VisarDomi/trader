@@ -147,3 +147,15 @@ test('verdicts read the record clock: early, keep, candidate, confirmed and reti
   expect(assess(row({ t: -1.5, trades: 12, days: 90 }), NOW).verdict).toBe(VERDICT.RETIRE);
   expect(assess(row({ t: 9, confirmed: true }, { slug: 'random-baseline' }), NOW).verdict).toBe(VERDICT.CONTROL);
 });
+
+test('a family is judged as one record: early, keep, candidate or confirmed, never retired', async () => {
+  const { assessFamily, VERDICT } = await import('@trader/shared');
+  const family = { id: 'visar-night', name: 'Visar night', records: 16, everRecords: 84, markets: 2, since: NOW - 50 * DAY, days: 50, trades: 14, observations: 36, t: 1.27, e: 1.7, monkey: -2.15, backtestZ: 1.3, trials: 39, confirmAt: 4.6, aloneAt: 3.6, confirmed: false };
+  expect(assessFamily(family)).toEqual({ verdict: VERDICT.KEEP, reason: 'family t = 1.27 over 50 days and 14 trades of 84 records' });
+  expect(assessFamily({ ...family, days: 41 }).reason).toBe('14 trades in 41 days (judged from 10 trades and 42 days)');
+  expect(assessFamily({ ...family, trades: 9 }).verdict).toBe(VERDICT.EARLY);
+  expect(assessFamily({ ...family, t: 2.4 })).toEqual({ verdict: VERDICT.CANDIDATE, reason: 'family t = 2.40 over 50 days and 14 trades of 84 records, above the monkeys judged as a family; may still be luck' });
+  expect(assessFamily({ ...family, t: 2.4, monkey: 2.6 }).verdict).toBe(VERDICT.KEEP);
+  expect(assessFamily({ ...family, t: 5, confirmed: true }).reason).toBe('family t = 5.00 over 50 days and 14 trades of 84 records; clears the bar for all 39 families tried and agrees with its backtests');
+  expect(assessFamily({ ...family, t: -3 }).verdict).toBe(VERDICT.KEEP);
+});

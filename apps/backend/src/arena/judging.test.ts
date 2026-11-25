@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { ArenaDB, RUN_KIND } from './db.ts';
 import { AgentEvidenceService } from './evidence.ts';
-import { Judging, agreementZ, cashStats, confirmedSet, dailyStats, eValue, judgedT, normalCdf, tAt, weekdayCloses } from './judging.ts';
+import { Judging, agreementZ, cashStats, confirmedSet, dailyStats, eValue, judgedT, normalCdf, pool, statsOf, tAt, weekdayCloses } from './judging.ts';
 import { LIFECYCLE } from '../engine/policy.ts';
 import { backtestRunId, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import { defineAgent } from '../sdk/index.ts';
@@ -87,9 +87,30 @@ test('Capital cash is counted on the weekday each deal closed', () => {
   expect(judgedT(cashStats([{ close_time: day(0) + HOUR, pnl: -10 }, { close_time: day(1) + HOUR, pnl: -12 }, { close_time: day(2) + HOUR, pnl: -8 }], MON, day(3)))).toBeLessThan(-5);
 });
 
+test('a family is the average of its members at equal risk, over the members running each day', () => {
+  // A calm member (±1%) and a wild one (±10%) on opposite days, each scaled by 1 / its volatility: both count alike.
+  const calm = { closes: [day(1), day(2), day(3), day(4)], returns: [0.01, -0.01, 0.01, -0.01], scale: 1 / 0.01 };
+  const wild = { closes: [day(1), day(2), day(3), day(4)], returns: [-0.1, 0.1, -0.1, 0.1], scale: 1 / 0.1 };
+  expect(pool([calm, wild]).values).toEqual([0, 0, 0, 0]);
+  // Two members with the same days and the same sign add nothing a single one does not say: the t does not grow.
+  const twin = pool([calm, { ...calm }]);
+  expect(twin.values).toEqual([1, -1, 1, -1]);
+  // A member that joined later, and one retired earlier, count on the days they ran.
+  const late = { closes: [day(3), day(4)], returns: [0.03, 0.03], scale: 1 / 0.01 }, gone = { closes: [day(1)], returns: [0.05], scale: 1 / 0.01 };
+  const p = pool([calm, late, gone]);
+  expect(p.closes).toEqual([day(1), day(2), day(3), day(4)]);
+  expect(p.values).toEqual([(1 + 5) / 2, -1, (1 + 3) / 2, (-1 + 3) / 2]);
+  expect(pool([]).values).toEqual([]);
+  // Members on different days add evidence: ten members each winning on its own day beat any one of them.
+  const one = (d: number) => ({ closes: Array.from({ length: 10 }, (_, i) => day(i + 1)).filter(t => weekdayCloses(MON, day(12)).includes(t)), returns: [] as number[], scale: 1 });
+  const members = Array.from({ length: 8 }, (_, k) => { const m = one(k); m.returns = m.closes.map((_, i) => (i === k ? 0.02 : -0.001)); return m; });
+  const alone = judgedT(statsOf(members[0]!.returns)), together = judgedT(statsOf(pool(members).values));
+  expect(together).toBeGreaterThan(alone * 2);
+});
+
 const EPIC = 'US500';
-function agent(id: string): LoadedAgent {
-  return { id, slug: id, variant: null, file: '', source: '', codeHash: 'hash', params: {}, def: defineAgent({ name: id, description: id, instruments: [EPIC], timeframe: '1h', params: {}, onBar() {} }) };
+function agent(id: string, slug = id, variant: string | null = null): LoadedAgent {
+  return { id, slug, variant, file: '', source: '', codeHash: 'hash', params: {}, def: defineAgent({ name: slug, description: id, instruments: [EPIC], timeframe: '1h', params: {}, onBar() {} }) };
 }
 /** A forward record with one stored equity point per midnight, growing by `daily` each weekday. */
 function record(db: ArenaDB, name: string, days: number, daily: (weekdayIndex: number) => number, trades = 20) {
@@ -170,5 +191,52 @@ test('the arena measures every live record, the instrument\'s luckiest monkey, a
   // Controls are measured but never offered; Capital rows carry the virtual record's clock.
   expect(clock(ids.monkey)).toMatchObject({ confirmed: false, trials: 305 });
   expect(service.forCapital({ runId: ids.strong, epic: EPIC, metrics: null } as any, 0, false)!.clock).toMatchObject({ confirmed: true, observations: 50 });
+  db.db.close();
+});
+
+test('families are judged as one record: files joined by the roster, retired runs on the days they ran, confirmed among families', () => {
+  const db = new ArenaDB(':memory:'), now = day(70) + 2 * HOUR;
+  // Five slow night variants, each with 2 or 3 trades: none can be judged alone. Three belong to one file, two to others.
+  const win = (k: number) => (i: number) => (i % 5 === k ? 0.03 : -0.0005);
+  const add = (id: string, slug: string, variant: string | null, daily: (i: number) => number, trades: number, epic = EPIC) => {
+    const run = `demo:${id}:${epic}:x20:hash`;
+    db.upsertAgent({ ...agent(id, slug, variant), def: defineAgent({ name: slug, description: id, instruments: [epic], timeframe: '1h', params: {}, onBar() {} }) }, MON);
+    db.createDemoRun({ id: run, agentId: id, codeHash: 'hash', epic, leverage: 20, capital: 10_000, params: {}, now: MON });
+    let equity = 10_000, w = 0;
+    for (const close of weekdayCloses(MON, day(70))) db.upsertEquity(run, close, (equity *= 1 + daily(w++)));
+    db.db.run('UPDATE runs SET metrics=? WHERE id=?', [JSON.stringify({ trades, winRate: 0.5 }), run]);
+    const bt = backtestRunId(PRIMARY_BACKTEST_WINDOW_ID, id, epic, 20), start = Date.UTC(2024, 0, 1);
+    db.createDemoRun({ id: bt, agentId: id, codeHash: 'hash', epic, leverage: 20, capital: 10_000, params: {}, now: start });
+    db.db.run('UPDATE runs SET kind=?,window_id=?,started_at=?,metrics=? WHERE id=?', [RUN_KIND.BACKTEST, PRIMARY_BACKTEST_WINDOW_ID, start, JSON.stringify({ trades: 300, winRate: 0.5 }), bt]);
+    let e = 10_000; w = 0;
+    for (const close of weekdayCloses(start, start + 700 * DAY)) db.upsertEquity(bt, close - DAY, (e *= 1 + daily(w++)));
+    return run;
+  };
+  const ids = [add('night/a', 'night', 'a', win(0), 3), add('night/b', 'night', 'b', win(1), 2), add('night/c', 'night', 'c', win(2), 2, 'US100'), add('night-old', 'night-old', null, win(3), 2), add('night-v2', 'night-v2', null, win(4), 3)];
+  const other = add('trend', 'trend', null, i => (i % 2 ? 0.004 : -0.004), 40), monkey = add('random-baseline/m', 'random-baseline', 'm', i => (i % 2 ? 0.01 : -0.0101), 60);
+  // One member was retired after its second week; it still counts on those days.
+  db.db.run('UPDATE runs SET retired=1,ended_at=? WHERE id=?', [day(14), ids[4]!]);
+  const roster = { families: { night: { name: 'Night', slugs: ['night', 'night-old', 'night-v2'] } } };
+  const service = new AgentEvidenceService({ db, tracked: new Map(), roster } as unknown as Arena);
+  const clock = (id: string) => service.forRun(db.run(id)!, now).clock!;
+  const alone = clock(ids[0]!), family = alone.family!;
+  // Alone: three trades, early for years. Together: 12 trades on two markets, each member winning on its own days.
+  expect(alone.trades).toBe(3);
+  expect(family).toMatchObject({ id: 'night', name: 'Night', records: 4, everRecords: 5, markets: 2, trades: 12, since: MON, observations: 50, trials: 2 });
+  expect(family.t).toBeGreaterThan(alone.t * 1.8);
+  expect(clock(ids[3]!).family).toEqual(family);
+  // The monkeys judged as one family are the yardstick; the other file is its own family, named without its variant.
+  expect(family.monkey).toBeCloseTo(clock(monkey).life.t, 6);
+  expect(clock(monkey).family).toBeUndefined();
+  expect(clock(other).family).toMatchObject({ id: 'trend', name: 'trend', records: 1, everRecords: 1, trials: 2 });
+  expect(service.familyOf({ agent_id: 'night/a' })).toEqual({ id: 'night', name: 'Night' });
+  // Confirmed among families: two tried, so the first needs e ≥ 20.
+  expect(family.confirmAt!).toBeCloseTo(tAt(2 / LIFECYCLE.CONFIRM_FDR, 50), 9);
+  expect(family.confirmed).toBe(family.e >= 20 && family.backtestZ! <= LIFECYCLE.AGREE_Z);
+  expect(family.confirmed).toBe(true);
+  // Without the roster each file stands alone: the three-variant file is a family of three, the others of one.
+  const plain = new AgentEvidenceService({ db, tracked: new Map() } as unknown as Arena);
+  expect(plain.forRun(db.run(ids[0]!)!, now).clock!.family).toMatchObject({ id: 'night', name: 'night', records: 3, everRecords: 3, trials: 4 });
+  expect(plain.forRun(db.run(ids[3]!)!, now).clock!.family).toMatchObject({ id: 'night-old', records: 1 });
   db.db.close();
 });

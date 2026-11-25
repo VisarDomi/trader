@@ -20,7 +20,7 @@ import { RUN_KIND } from './db.ts';
 import { TICK_API, TICK_EXPORT_LIMIT } from '../engine/ticks.ts';
 import {ENGINE_VERSION} from '../engine/version.ts';
 import { graveyard } from './graveyard.ts';
-import { AgentEvidenceService } from './evidence.ts';
+import { AgentEvidenceService, familyLabel } from './evidence.ts';
 import { costFingerprint, ingestCosts } from './cost-ingest.ts';
 import { ENGINE_SINCE_KEY, ENGINE_VERSION_KEY, twinReport, TWIN_DEFAULT_DAYS, TWIN_MAX_DAYS } from './twins.ts';
 
@@ -333,6 +333,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       agentId: r.agent_id,
       name: a?.name ?? r.agent_id,
       slug: a?.slug ?? r.agent_id,
+      family: familyLabel(arena.roster, a ?? { slug: r.agent_id.split('/')[0]!, name: r.agent_id }),
       timeframe: a?.timeframe ?? '',
       epic: r.epic,
       leverage: r.leverage,

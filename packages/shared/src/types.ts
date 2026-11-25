@@ -152,6 +152,38 @@ export interface RecordClock {
   aloneAt: number | null;
   /** Past the floor, agreeing with its backtest and clearing the bar for every record tried. */
   confirmed: boolean;
+  /** The record's family judged as one record; absent for controls. */
+  family?: FamilyClock;
+}
+/**
+ * A family on the daily clock: each weekday it is worth the average of its records' returns, each divided by that
+ * record's volatility (judging.ts `pool`). A family is an agent file with all its variants, instruments and tiers,
+ * or several files joined in agents/roster.json. Records retired since still count on the days they ran.
+ */
+export interface FamilyClock {
+  id: string;
+  name: string;
+  /** Records running now, all that ever ran, and the instruments the running ones trade. */
+  records: number;
+  everRecords: number;
+  markets: number;
+  /** When its first record started, days since, and the closed trades of all its records. */
+  since: number;
+  days: number;
+  trades: number;
+  /** Weekdays with at least one record, their t-statistic and the e-value against "no edge". */
+  observations: number;
+  t: number;
+  e: number;
+  /** The random monkeys judged as one family; null without them. */
+  monkey: number | null;
+  /** The family's forward mean against the same average of its records' backtests, in standard errors. */
+  backtestZ: number | null;
+  /** Strategy families ever started: what a family's confirmed bar is counted over. */
+  trials: number;
+  confirmAt: number | null;
+  aloneAt: number | null;
+  confirmed: boolean;
 }
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';
@@ -262,6 +294,8 @@ export interface LeaderboardRow {
 	agentId: string;
 	name: string;
 	slug: string;
+	/** The family the record is judged with: its agent file, or a roster family joining several files. */
+	family?: { id: string; name: string };
 	timeframe: string;
 	epic: string;
 	/** Account leverage tier (1 = 1:1, unleveraged); null for runs from before leverage tiers. */

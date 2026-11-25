@@ -2,8 +2,8 @@
  * Words for a record's verdict on the daily clock (apps/backend/EVIDENCE.md "The daily clock"; the verdict itself
  * comes from the shared policy). Shared by the website and the native screens.
  */
-import type { LeaderboardRow, RecordClock } from '@trader/shared';
-import { assess, LIFECYCLE, VERDICT, type Verdict } from '@trader/shared';
+import type { FamilyClock, LeaderboardRow, RecordClock } from '@trader/shared';
+import { assess, assessFamily, LIFECYCLE, VERDICT, type Verdict } from '@trader/shared';
 
 const minus = (n: number, digits = 2) => n.toFixed(digits).replace(/^-/, '−');
 export const verdictWord = (v: Verdict) => v[0]!.toUpperCase() + v.slice(1);
@@ -33,4 +33,25 @@ export function agreementLine(c: RecordClock): string {
 	if (c.backtestZ == null) return 'No backtest of this code: it cannot be confirmed';
 	const side = `${minus(Math.abs(c.backtestZ), 1)} standard errors ${c.backtestZ >= 0 ? 'above' : 'below'}`;
 	return c.backtestZ > LIFECYCLE.AGREE_Z ? `Better than its backtest allows (${side}; agrees up to ${LIFECYCLE.AGREE_Z})` : `Agrees with its backtest (${side})`;
+}
+/**
+ * The record's family judged as one record: "Family Visar night (16 records): Keep · daily t 1.27 over 43 days".
+ * Empty for a family that never had a second record: it says what the record says.
+ */
+export function familyLine(c: RecordClock | undefined): string {
+	const f = c?.family;
+	if (!f || f.everRecords < 2) return '';
+	const { verdict } = assessFamily(f), days = Math.floor(f.days), t = `daily t ${minus(f.t)}`;
+	return `Family ${f.name} (${f.records} ${f.records === 1 ? 'record' : 'records'}): ${verdictWord(verdict)} · ${verdict === VERDICT.EARLY ? `${f.trades} ${f.trades === 1 ? 'trade' : 'trades'} in ${days} days · ${t}` : `${t} over ${days} days`}`;
+}
+/** What the family needs: "confirmed at t 4.62 with 39 families tried (3.57 alone)". */
+export function familyBarsLine(f: FamilyClock): string {
+	if (f.confirmAt == null || f.aloneAt == null) return '';
+	return `Confirmed at t ${minus(f.confirmAt)} with ${f.trials} families tried (${minus(f.aloneAt)} alone) · candidate at ${minus(LIFECYCLE.CANDIDATE_TSTAT)}${f.monkey != null ? `, above the monkeys' family t ${minus(f.monkey)}` : ''}`;
+}
+/** "Agrees with its backtests (1.3 standard errors above)" for the family's pooled backtests. */
+export function familyAgreementLine(f: FamilyClock): string {
+	if (f.backtestZ == null) return 'No backtest of its running code: it cannot be confirmed';
+	const side = `${minus(Math.abs(f.backtestZ), 1)} standard errors ${f.backtestZ >= 0 ? 'above' : 'below'}`;
+	return f.backtestZ > LIFECYCLE.AGREE_Z ? `Better than its backtests allow (${side}; agrees up to ${LIFECYCLE.AGREE_Z})` : `Agrees with its backtests (${side})`;
 }

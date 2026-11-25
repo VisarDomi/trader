@@ -101,9 +101,35 @@ with them from `agents/LIFECYCLE.md`:
 - **Retire:** t ≤ −1 once the record has 30 closed trades and 42 days, or 10 trades and 90 days.
 
 No test shortens this. A real Sharpe-1 strategy clears even the bar for one record alone only 33% of the time
-within five years (simulation), so slow strategies stay unproven for years. A matched control on the same days
-(the night cohort's direction controls) or a family of variants judged together can answer sooner; a lower bar
-cannot.
+within five years (simulation), so slow strategies stay unproven for years. A family judged together (below) or
+a matched control on the same days (the night cohort's direction controls) can answer sooner; a lower bar cannot.
+
+### Families
+
+Every strategy record is also judged with its family, as one record (`evidence.clock.family`; `pool` in
+`src/arena/judging.ts`). A family is an agent file with all its variants, instruments and tiers, unless
+`families` in `agents/roster.json` joins several files: the night rule's files, running and retired, are the
+family `visar-night`.
+
+- **One record.** Each weekday the family is worth the average of its members' returns, each divided by that
+  member's volatility (its same-code backtest's; for a record of an older code version, its own), over the
+  members running that day. Equal risk keeps a 1:200 member from drowning a 1:20 one. Members that trade the
+  same days in the same direction move together and add little; other markets and other days add evidence,
+  which is why a family can answer where its slow members cannot.
+- **Retired members count on the days they ran.** The family's record is what an account holding every member
+  while it ran would have earned, so retiring losers does not improve it afterwards.
+- **Its backtest** is the same average of its running members' backtests. Its volatility is the floor under the
+  family's, and its mean is what the family's forward mean must agree with (`backtestZ`, up to 2).
+- **Verdicts** are early, keep, candidate and confirmed, with the record floor (10 closed trades across the
+  family, 42 days since its first record) and the same bars. The yardstick for a candidate family is the random
+  monkeys judged as one family: −2.2 on 2026-11-25, where single monkeys average −0.5, which is the pooling at
+  work on a family that only pays costs.
+- **Confirmed families** are counted among families: e-BH over every strategy family ever started, at 10%. With
+  39 families and none confirmed (2026-11-25) the first needs a t of 3.8 after a year (a Sharpe ratio of 2.7 for
+  two years, 1.7 for five), against 4.6 for a single record. A confirmed family says the family has an edge on
+  average, not which member has it.
+
+A family verdict moves nothing: Capital slots, demotion and retirement stay per record.
 
 Method: [probabilistic Sharpe ratio and minimum track record length](https://www.risk.net/journal-risk/2223785/sharpe-ratio-efficient-frontier)
 and [How to Use the Sharpe Ratio](https://www.adialab.ae/research-series/how-to-use-the-sharpe-ratio) (time, not

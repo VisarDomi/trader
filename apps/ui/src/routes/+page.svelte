@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
-	import { assess, VERDICT } from '@trader/shared';
+	import { assess, assessFamily, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
   import { untrack } from 'svelte';
@@ -130,20 +130,28 @@
 		medianExcess:number;
 		benchmarkRuns:number;
 		href:string;
+		/** The family judged as one record: its daily t and verdict (per-family view). */
+		familyT:number;
+		familyVerdict:string;
+		familyReason:string;
 	}
 
 	const agents = $derived.by((): AgentAgg[] => {
 		const by = new Map<string, LeaderboardRow[]>();
-		for (const r of filtered) {const key=group==='family'?r.slug:r.agentId;const rs=by.get(key)??[];rs.push(r);by.set(key,rs);}
+		for (const r of filtered) {const key=group==='family'?(r.family?.id??r.slug):r.agentId;const rs=by.get(key)??[];rs.push(r);by.set(key,rs);}
 		return [...by.entries()].map(([agentId, rs]) => {
 			const ms = rs.map(r => r.metrics).filter((m): m is RunMetrics => m !== null);
 			const byReturn = [...rs].sort((a, b) => (b.metrics?.totalReturn ?? 0) - (a.metrics?.totalReturn ?? 0));
 			const capital = ms.reduce((s, m) => s + m.initialCapital, 0);
 			const equity = ms.reduce((s, m) => s + m.finalEquity, 0);
 			const bt = rs.map(r => r.backtest?.metrics?.sharpe).filter((x): x is number => typeof x === 'number');
+			const family = group==='family'?rs.map(r=>r.evidence?.clock?.family).find(Boolean):undefined, judged=family?assessFamily(family):null;
 			return {
 				agentId,
-				name: group==='family'?rs[0]!.name.replace(/\s*\([^)]*\)\s*$/,''):rs[0]!.name,
+				name: group==='family'?(rs[0]!.family?.name??rs[0]!.name):rs[0]!.name,
+				familyT: family&&family.observations>=2?family.t:NaN,
+				familyVerdict: judged?.verdict??'',
+				familyReason: judged?.reason??'',
 				timeframe: rs[0]!.timeframe,
 				control: isControl(rs[0]!),
 				runs: rs.length,
@@ -171,6 +179,7 @@
 		profitable: 'profitable',
 		btSharpe: 'btMedianSharpe',
 		excess:'medianExcess',
+		familyT:'familyT',
 	};
 
 	const sortedAgents = $derived(
@@ -332,6 +341,7 @@
 						<th class="num"><button onclick={() => sortBy('sharpe')}>Median Sharpe{arrow('sharpe')}</button></th>
 						<th class="num"><button onclick={() => sortBy('trades')}>Trades{arrow('trades')}</button></th>
             <th class="num" title="Median per-record excess over its own common-date control; not portfolio alpha"><button onclick={()=>sortBy('excess')}>Median excess{arrow('excess')}</button></th>
+						{#if group==='family'&&view!=='backtest'}<th class="num" title="The family judged as one record: each weekday the average of its records' returns at equal risk, retired records included while they ran. Confirmed families clear the bar for every family tried."><button onclick={()=>sortBy('familyT')}>Family t{arrow('familyT')}</button></th>{/if}
 						{#if view === 'virtual'}<th class="num"><button onclick={() => sortBy('btSharpe')}>BT median Sharpe{arrow('btSharpe')}</button></th>{/if}
 						<th>Best / worst</th>
 					</tr>
@@ -347,11 +357,12 @@
 							<td class="num">{num(a.medianSharpe)}</td>
 							<td class="num">{a.trades}</td>
               <td class="num {sign(a.medianExcess)}">{Number.isFinite(a.medianExcess)?`${num(a.medianExcess*100,2)} pp`:'—'}<small class="muted">{a.benchmarkRuns}/{a.runs} matched</small></td>
+							{#if group==='family'&&view!=='backtest'}<td class="num" title={a.familyReason}>{num(a.familyT)}{#if a.familyVerdict}<small class="muted">{a.familyVerdict}</small>{/if}</td>{/if}
 							{#if view === 'virtual'}<td class="num">{num(a.btMedianSharpe)}</td>{/if}
 							<td class="muted">{a.bestEpic} / {a.worstEpic}</td>
 						</tr>
 					{:else}
-						<tr><td colspan="9" class="muted">No agents match.</td></tr>
+						<tr><td colspan="10" class="muted">No agents match.</td></tr>
 					{/each}
 				</tbody>
 			</table>

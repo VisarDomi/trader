@@ -83,6 +83,15 @@ Sharpe ratio of 3.2 for two years, or 2 for five. Slow strategies need years; no
 Candidates are compared on t, not return, because the return grows with position size and runs trade at
 different leverages; the t-statistic does not.
 
+Every record is also judged with its **family** as one record: the average of its members' weekday returns at
+equal risk, retired members included on the days they ran. A family is an agent file with its variants,
+instruments and tiers, or several files joined under `families` in `roster.json` (the night rule's files are
+`visar-night`). Its verdicts are early, keep, candidate and confirmed; confirmed families are counted over every
+family ever started (39 on 2026-11-25: the first needs a t of 3.8 after a year, against 4.6 for one record). This
+is how slow strategies can be judged sooner. A family verdict is information: slots, demotion and retirement stay
+per record. When a new file continues an existing idea, add its slug to that family in the same commit; keep the
+slugs of retired files listed.
+
 An agent with no edge pays the spread on every trade, so its t-statistic drifts below zero as days
 accumulate: −1 retires most no-edge runs within a few months while rarely retiring a real edge.
 The review's monkey sanity line shows how many random monkeys pass the candidate bar.

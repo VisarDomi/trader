@@ -23,6 +23,7 @@
 			<li><strong>Capital demo</strong> — candidates compete for real demo orders on the nine "Arena" accounts. The existing calibration cohort and user experiments remain labeled separately.</li>
 			<li><strong>Candidate</strong> — daily t-statistic of {LIFECYCLE.CANDIDATE_TSTAT} or more and better than every random monkey on the same instrument. It may still be luck: about one no-edge record in six gets there within a year.</li>
 			<li><strong>Confirmed</strong> — clears the bar that keeps luck under {LIFECYCLE.CONFIRM_FDR * 100}% of confirmed records, counted over every strategy record ever started and valid however often it is checked, and agrees with its backtest. Slow strategies need years.</li>
+			<li><strong>Family</strong> — every record is also judged with its family as one record: the average of its members' daily returns at equal risk, retired members included while they ran. Slow strategies are judged sooner this way; a family verdict moves no slots.</li>
 			<li><strong>Retired</strong> — daily t-statistic of {LIFECYCLE.RETIRE_TSTAT} or less after {LIFECYCLE.LOSER_MIN_TRADES} trades ({LIFECYCLE.SLOW_MIN_TRADES} over {LIFECYCLE.SLOW_MIN_DAYS} days for slow agents), no trades in {LIFECYCLE.SILENT_DAYS} days, or a busted account. A whole agent goes when most of its judged runs do.</li>
 		</ul>
 		<p class="secondary small">

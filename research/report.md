@@ -147,7 +147,7 @@ TIPP's ratcheting floor), at 1:5 on US500, US100 and GOLD.
 
 | Change | What it enables | Size |
 |---|---|---|
-| Fairer judging beyond the daily clock and the confirmed verdict: flags for strongly negative skew; a family's variants judged together | slow families judged sooner | 1–2 days |
+| Fairer judging beyond the daily clock, the confirmed verdict and families judged as one record: flags for strongly negative skew | no-edge records with hidden tail risk spotted early | 1 day |
 | Checks other projects have: per-agent matched monkeys (100 random-entry twins with the same stops and holding times), Monte Carlo of trades, a cost "speed limit" in `check-agent` (it would have caught intraday-momentum), paper-vs-demo slippage per agent, lookahead and warm-up checks | "is the edge in the entry or in the stop?"; broken agents spotted early | about 1 day each |
 | Controls for timing agents: the same average exposure on shuffled dates; a warning when many mirrored runs pile into one instrument; a check that the monkeys never use information from before their entry | tells timing skill from exposure; avoids an accidental one-bet book | ~1 day each |
 | Start recording free data now: Capital.com client sentiment (% long per market), Kalshi FOMC and CPI odds | sentiment-fade and macro-surprise studies in 6 months | ~1 day |

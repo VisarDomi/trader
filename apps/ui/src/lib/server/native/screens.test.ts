@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts } from './screens';
-import { agreementLine, barsLine, clockLine } from '../../clock';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, agentScreen } from './screens';
+import { agreementLine, barsLine, clockLine, familyLine } from '../../clock';
 import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
 
@@ -139,6 +139,31 @@ test('every forward row says where it stands on the daily clock, and the record 
 	expect(screen.sections[0]!.rows[0]!.body?.split('\n')[0]).toBe('Early · 3 trades in 40 days · daily t 1.63');
 	expect(screen.sections.find(s => s.title === 'Edge or luck')!.rows.map(r => r.id)).toEqual(['clock']);
 	expect(screen.sections.findIndex(s => s.title === 'Edge or luck')).toBeLessThan(screen.sections.findIndex(s => s.title.startsWith('Trades')));
+});
+test('a record also says where its family stands, judged as one record', () => {
+	const NOW = Date.UTC(2026, 10, 25);
+	const family = { id: 'visar-night', name: 'Visar night', records: 16, everRecords: 84, markets: 2, since: NOW - 41 * 86400000, days: 41.2, trades: 11, observations: 29, t: 1.27, e: 1.72, monkey: -2.15, backtestZ: 1.29, trials: 39, confirmAt: 4.82, aloneAt: 3.71, confirmed: false };
+	const clock = { since: family.since, days: 40.8, trades: 3, observations: 29, t: 1.63, monkey: 1.29, life: { observations: 29, t: 1.63, e: 2.38 }, backtestZ: 1.88, trials: 844, confirmAt: 5.99, aloneAt: 3.71, confirmed: false, family };
+	expect(familyLine(clock)).toBe('Family Visar night (16 records): Early · 11 trades in 41 days · daily t 1.27');
+	expect(familyLine({ ...clock, family: { ...family, days: 49.5, trades: 14 } })).toBe('Family Visar night (16 records): Keep · daily t 1.27 over 49 days');
+	expect(familyLine({ ...clock, family: { ...family, days: 400, trades: 300, t: 4.9, confirmed: true } })).toBe('Family Visar night (16 records): Confirmed · daily t 4.90 over 400 days');
+	// A family that never had a second record says what the record says.
+	expect(familyLine({ ...clock, family: { ...family, records: 1, everRecords: 1 } })).toBe('');
+	expect(familyLine({ ...clock, family: undefined })).toBe('');
+	const row: any = { runId: 'demo:visar-night-trading:US500:x200:h', agentId: 'visar-night-trading', slug: 'visar-night-trading', name: 'visar-night-trading', epic: 'US500', leverage: 200, status: 'running', mirrored: true,
+		startedAt: clock.since, metrics: { totalReturn: 1.662, sharpe: 9.27, trades: 3, maxDrawdown: 0 }, evidence: { clock } };
+	expect(rankingRow(row, 'capital').body).toBe('Early · 3 trades in 40 days · daily t 1.63\nFamily Visar night (16 records): Early · 11 trades in 41 days · daily t 1.27\nSharpe 9.27 · cash drawdown 0.0%');
+	const detail = familyRow(family);
+	expect(detail.title).toBe('Family Visar night · Early · daily t 1.27');
+	expect(detail.subtitle).toBe('16 records on 2 markets · 11 trades · 41 days');
+	expect(detail.stats).toEqual([{ label: 'Family t over 29 weekdays', value: '1.27', tone: 1 }, { label: 'Candidate at', value: '2.00' }, { label: 'Confirmed at, 39 families tried', value: '4.82' }]);
+	expect(detail.chart).toEqual({ kind: 'meter', height: 18, meter: { value: 1.27, limit: 4.82, above: true } });
+	expect(detail.body).toBe("Confirmed at t 4.82 with 39 families tried (3.71 alone) · candidate at 2.00, above the monkeys' family t −2.15\nAgrees with its backtests (1.3 standard errors above)\nEach weekday the family is worth the average of its records, each at equal risk; 68 retired records count on the days they ran");
+	// The record's screen puts the family under the record; the agent's screen leads with it.
+	const screen = runScreen({ run: { ...run, agentId: 'visar-night-trading', status: 'running', evidence: { clock } }, agentName: 'X', capital: null, excluded: false, comparison: null, sparks: null, account: null });
+	expect(screen.sections.find(s => s.title === 'Edge or luck')!.rows.map(r => r.id)).toEqual(['clock', 'family']);
+	const agent = agentScreen({ agent: { id: 'visar-night-trading', slug: 'visar-night-trading', name: 'visar-night-trading', description: '', codeHash: 'h', runs: [], versions: [] } as any, runs: [{ ...run, id: 'demo:visar-night-trading:US500:x200:h', agentId: 'visar-night-trading', status: 'running', evidence: { clock } }], sparks: new Map(), capital: new Map() });
+	expect(agent.sections[0]).toMatchObject({ title: 'Edge or luck', rows: [{ id: 'family', title: 'Family Visar night · Early · daily t 1.27' }] });
 });
 test('thinning keeps extremes and packing round-trips', () => {
 	const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, value: i === 2500 ? 99 : Math.sin(i / 50) }));

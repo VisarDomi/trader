@@ -1,7 +1,7 @@
 import{expect,test}from'bun:test';
 import{readFileSync}from'node:fs';
 import{loadAgents}from'./loader';
-import{loadRoster,planRuns,rosterProblems}from'./roster';
+import{familyOf,loadRoster,planRuns,rosterProblems}from'./roster';
 import{silentDaysFor}from'./policy';
 import{assess,VERDICT}from'@trader/shared';
 import type{LeaderboardRow}from'@trader/shared/types';
@@ -16,6 +16,10 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
  expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
  expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(52);
  expect(plans.filter(p=>p.agent.slug.startsWith('visar-night-v3-control-'))).toHaveLength(4);
+ // Every night rule file, running or retired, is judged in one family; the direction controls are controls, not members.
+ for(const p of plans)expect(familyOf(roster,p.agent.slug).id).toBe(p.agent.slug.includes('-control-')?p.agent.slug:'visar-night');
+ for(const slug of ['visar-night-lab','visar-night-us100','visar-night-v2-us100','visar-night-v2-us500'])expect(familyOf(roster,slug)).toEqual({id:'visar-night',name:'Visar night'});
+ expect(agents.filter(a=>familyOf(roster,a.slug).id==='visar-night').every(a=>a.slug.startsWith('visar-night-')&&!a.slug.includes('-control-'))).toBe(true);
 });
 test('sparse experiments have enough observation time while errors and ordinary silence still retire',()=>{
  const now=Date.UTC(2027,2,1),row={agentId:'visar-night-lab/clean-50x',slug:'visar-night-lab',status:'active',startedAt:now-90*86400000,metrics:{trades:0,tStat:0}} as LeaderboardRow;

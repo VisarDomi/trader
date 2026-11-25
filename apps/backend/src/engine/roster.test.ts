@@ -4,7 +4,7 @@ import { LEVERAGE_TIERS } from './leverage.ts';
 import type { LoadedAgent } from './loader.ts';
 import { loadAgents } from './loader.ts';
 import type { Roster } from './roster.ts';
-import { demoAdmissionFor, leveragesFor, loadRoster, planRuns, retiredBy, rosterProblems } from './roster.ts';
+import { demoAdmissionFor, familyOf, leveragesFor, loadRoster, planRuns, retiredBy, rosterProblems } from './roster.ts';
 
 function agent(id: string, instruments: string[], leverage?: number[]): LoadedAgent {
   const def = defineAgent({ name: id, description: 'test', instruments, timeframe: '1h', params: {}, leverage, onBar() {} });
@@ -15,6 +15,19 @@ function agent(id: string, instruments: string[], leverage?: number[]): LoadedAg
 const roster = (patch: Partial<Roster> = {}): Roster => ({ accounts: {}, leverage: { default: 20, agents: {} }, retired: {}, ...patch });
 
 describe('roster', () => {
+  test('a family is the agent file unless the roster joins several files, retired ones included', () => {
+    const r = roster({ families: { night: { name: 'Night', slugs: ['night-a', 'night-old'] } } });
+    expect(familyOf(r, 'night-a')).toEqual({ id: 'night', name: 'Night' });
+    expect(familyOf(r, 'night-old')).toEqual({ id: 'night', name: 'Night' });   // its file is retired and not loaded
+    expect(familyOf(r, 'trend')).toEqual({ id: 'trend' });
+    expect(familyOf(null, 'trend')).toEqual({ id: 'trend' });
+    const agents = [agent('night-a/x', ['US500']), agent('trend', ['US500'])];
+    expect(rosterProblems(r, agents)).toEqual([]);
+    expect(rosterProblems(roster({ families: { night: { name: 'Night', slugs: ['night-a'] }, other: { name: 'Other', slugs: ['night-a'] } } }), agents)).toEqual(['families["other"]: night-a is already in night']);
+    expect(rosterProblems(roster({ families: { night: { name: ' ', slugs: [] } } }), agents)).toEqual(['families["night"]: a name and at least one file slug are required']);
+    // A family id that is a file's slug must contain that file, or the file would be judged under a name it does not have.
+    expect(rosterProblems(roster({ families: { trend: { name: 'Trend', slugs: ['night-a'] } } }), agents)).toEqual(['families["trend"]: the id is a file slug that the family does not list']);
+  });
   test('a special demo admission applies only to the exact instrument, tier and source version', () => {
     const id = 'night';
     const epic = 'US500';

@@ -11,6 +11,9 @@
  *   mixture of likelihood ratios). At 1/α it is the always-valid bar for one record on its own.
  * - `confirmedSet`: the records whose e-values clear the bar for everything tried (e-BH, Wang and Ramdas 2022):
  *   among them the expected share of lucky ones stays under the chosen rate whatever their dependence.
+ * - `pool`: a family judged as one record. Each weekday it is worth the average of its members' returns, each
+ *   divided by that member's volatility so that a 1:200 member does not drown a 1:20 one. Members that run on the
+ *   same days move together and add little; members on other markets or other days add real evidence.
  */
 import type { ArenaDB, RunRow } from './db.ts';
 import { DAY_MS, HOUR_MS } from '../engine/clock.ts';
@@ -46,22 +49,48 @@ class Tally {
     return { n: this.n, mean, sd: Math.sqrt(Math.max(0, (this.squares - this.n * mean * mean) / (this.n - 1))) };
   }
 }
+export function statsOf(returns: ArrayLike<number>): DailyStats {
+  const tally = new Tally();
+  for (let i = 0; i < returns.length; i++) tally.add(returns[i]!);
+  return tally.stats();
+}
 
 /**
  * Weekday returns of an equity curve from `since` (worth `start` then) through `through`. `closesDay`: each point is
  * dated by the day it closes (backtests); otherwise by the moment it was taken (live curves).
  */
-export function dailyStats(points: readonly { t: number; equity: number }[], since: number, through: number, start: number, closesDay: boolean): DailyStats {
-  const tally = new Tally();
+export function dailyReturns(points: readonly { t: number; equity: number }[], since: number, through: number, start: number, closesDay: boolean): number[] {
+  const out: number[] = [];
   let i = 0, held = start;
   const before = (close: number) => { while (i < points.length && (closesDay ? points[i]!.t < close : points[i]!.t <= close)) held = points[i++]!.equity; return held; };
   let previous = closesDay ? start : before(since);
   for (const close of weekdayCloses(since, through)) {
     const equity = before(close);
-    tally.add(previous > 0 ? equity / previous - 1 : 0);
+    out.push(previous > 0 ? equity / previous - 1 : 0);
     previous = equity;
   }
-  return tally.stats();
+  return out;
+}
+export function dailyStats(points: readonly { t: number; equity: number }[], since: number, through: number, start: number, closesDay: boolean): DailyStats {
+  return statsOf(dailyReturns(points, since, through, start, closesDay));
+}
+
+/** One member of a family: its weekday returns by close, and what each is multiplied by (1 / its volatility). */
+export interface Member { closes: ArrayLike<number>; returns: ArrayLike<number>; scale: number }
+/**
+ * A family as one record: on each weekday close, the average of its members' scaled returns over the members that
+ * have that day. A member counts while it runs; one retired later still counts on the days it ran.
+ */
+export function pool(members: readonly Member[]): { closes: number[]; values: number[] } {
+  const days = new Map<number, { sum: number; count: number }>();
+  for (const m of members) {
+    for (let i = 0; i < m.closes.length; i++) {
+      const day = days.get(m.closes[i]!);
+      if (day) { day.sum += m.returns[i]! * m.scale; day.count++; } else days.set(m.closes[i]!, { sum: m.returns[i]! * m.scale, count: 1 });
+    }
+  }
+  const closes = [...days.keys()].sort((a, b) => a - b);
+  return { closes, values: closes.map(c => days.get(c)!.sum / days.get(c)!.count) };
 }
 
 /** Realized cash per weekday from closed deals, for Capital demo: a close on a weekend counts on Monday. */
@@ -127,10 +156,12 @@ export function confirmedSet(offered: readonly { id: string; e: number }[], tria
   return { ids: new Set(sorted.slice(0, size).map(x => x.id)), needs: trials / (rate * (size + 1)) };
 }
 
-/** What a same-code backtest contributes: its daily curve (frequency.ts), its daily returns and its win rate. */
-export interface BacktestHistory { at: number; curve: Curve; daily: DailyStats; winRate: number; trades: number }
+/** What a same-code backtest contributes: its daily curve (frequency.ts), its weekday returns and its win rate. */
+export interface BacktestHistory { at: number; curve: Curve; daily: DailyStats; closes: number[]; returns: number[]; winRate: number; trades: number }
 
-interface Window { equity: number; through: number; tally: Tally; stats: DailyStats; due: number }
+/** A live record's weekday returns so far, with the closes they belong to. */
+export interface ForwardSeries { closes: number[]; returns: number[]; stats: DailyStats }
+interface Window extends ForwardSeries { equity: number; through: number; due: number }
 const BACKTEST_RECHECK_MS = 10 * 60_000;
 
 /** Cached daily clocks, read from stored equity: one closed weekday at a time for live records, once per backtest. */
@@ -142,23 +173,28 @@ export class Judging {
 
   /** The record's weekday returns from `since` (its start, or a later moment such as its demotion) to the last closed weekday. */
   forward(run: Pick<RunRow, 'id' | 'capital' | 'started_at'>, since: number, now: number): DailyStats {
+    return this.forwardSeries(run, since, now).stats;
+  }
+  /** The same returns one by one, for pooling a family. */
+  forwardSeries(run: Pick<RunRow, 'id' | 'capital' | 'started_at'>, since: number, now: number): ForwardSeries {
     const key = `${run.id}|${since}`;
     let w = this.windows.get(key);
     if (!w) {
       if (this.windows.size > 50_000) this.windows.clear();
       const equity = since <= run.started_at ? run.capital : this.db.equityAt(run.id, since) ?? run.capital;
-      w = { equity, through: since, tally: new Tally(), stats: NO_DAYS, due: 0 };
+      w = { equity, through: since, closes: [], returns: [], stats: NO_DAYS, due: 0 };
       this.windows.set(key, w);
     }
-    if (now < w.due) return w.stats;
+    if (now < w.due) return w;
+    const before = w.closes.length;
     for (const close of weekdayCloses(w.through, now - SETTLE_MS)) {
       const equity = this.db.equityAt(run.id, close) ?? w.equity;
-      w.tally.add(w.equity > 0 ? equity / w.equity - 1 : 0);
+      w.closes.push(close); w.returns.push(w.equity > 0 ? equity / w.equity - 1 : 0);
       w.equity = equity; w.through = close;
     }
-    w.stats = w.tally.stats();
+    if (w.closes.length !== before) w.stats = statsOf(w.returns);
     w.due = (Math.floor((now - SETTLE_MS) / DAY_MS) + 1) * DAY_MS + SETTLE_MS;
-    return w.stats;
+    return w;
   }
 
   /** A backtest's history, read once and again only after it is re-run. */
@@ -167,7 +203,8 @@ export class Judging {
     if (kept && kept.at === row.updated_at) return kept;
     const points = this.db.equity(row.id), m = row.metrics ? JSON.parse(row.metrics) : null;
     const end = Math.max(row.ended_at ?? 0, (points.at(-1)?.t ?? row.started_at) + DAY_MS);
-    const read = { at: row.updated_at, curve: curveOf(points), daily: dailyStats(points, row.started_at, end, row.capital, true),
+    const returns = dailyReturns(points, row.started_at, end, row.capital, true);
+    const read = { at: row.updated_at, curve: curveOf(points), daily: statsOf(returns), closes: weekdayCloses(row.started_at, end), returns,
       winRate: Number(m?.winRate) || 0, trades: Number(m?.trades) || 0 };
     this.histories.set(row.id, read);
     return read;

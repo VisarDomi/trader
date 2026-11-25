@@ -2,7 +2,7 @@
 // Used by the dashboard (verdict column), the native screens and `bun run review` (the babysitter's input), so all agree.
 // The full policy, including what the babysitter does with each verdict: apps/backend/agents/LIFECYCLE.md.
 
-import type { LeaderboardRow } from './types.ts';
+import type { FamilyClock, LeaderboardRow } from './types.ts';
 
 /**
  * Agents that are yardsticks, not strategies; they are never judged or retired: random entries,
@@ -66,5 +66,21 @@ export function assess(row: LeaderboardRow, now = Date.now()): Assessment {
 	if (isCandidate(trades, days, t, c?.monkey ?? null)) {
 		return { verdict: VERDICT.CANDIDATE, reason: `${over}${c?.monkey != null ? ', above every monkey' : ''}; may still be luck` };
 	}
+	return { verdict: VERDICT.KEEP, reason: over };
+}
+
+/**
+ * Verdict for a family judged as one record (`evidence.clock.family`): early, keep, candidate or confirmed. A family
+ * answers sooner than its slow members because markets and days that do not move together add evidence. It is not
+ * retired and holds no Capital slot; its runs are judged for those on their own.
+ */
+export function assessFamily(f: FamilyClock): Assessment {
+	const days = Math.floor(f.days);
+	if (!floorMet(f.trades, f.days)) {
+		return { verdict: VERDICT.EARLY, reason: `${f.trades} trades in ${days} days (judged from ${LIFECYCLE.MIN_TRADES} trades and ${LIFECYCLE.MIN_DAYS} days)` };
+	}
+	const over = `family t = ${f.t.toFixed(2)} over ${days} days and ${f.trades} trades of ${f.everRecords} records`;
+	if (f.confirmed) return { verdict: VERDICT.CONFIRMED, reason: `${over}; clears the bar for all ${f.trials} families tried and agrees with its backtests` };
+	if (isCandidate(f.trades, f.days, f.t, f.monkey)) return { verdict: VERDICT.CANDIDATE, reason: `${over}${f.monkey != null ? ', above the monkeys judged as a family' : ''}; may still be luck` };
 	return { verdict: VERDICT.KEEP, reason: over };
 }

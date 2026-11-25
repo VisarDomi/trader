@@ -227,6 +227,13 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   false discovery rate, and a forward record that agrees with its backtest. The bar for one record alone
   (t 3.0–3.7) would in time let several lucky ones through among 844 records; counting them all puts it
   near 4.6 and roughly doubles the track record needed, the honest price of having tried 844.
+- **Families are judged as one record, at equal risk, retired members included.** A slow record cannot be
+  judged for years, but its family (the same rule on other markets, days or settings) carries more evidence
+  when its members do not move together. Averaging member returns per weekday measures that honestly:
+  correlated members add nothing, and the days of members retired since stay in. Each member is divided by
+  its backtest volatility so leverage tiers weigh alike. Families are confirmed among families (39 tried, not
+  844 records), which is a smaller and broader claim: the family has an edge on average. The verdict moves
+  no slots: a lucky family would otherwise bring every member onto Capital demo at once.
 - **Volatility never below the backtest's.** A short record of small steady wins has not yet shown its
   losses: the martingale monkey, a no-edge control, had a daily t of 5.2 after 31 weekdays on its own
   volatility and 1.2 on its backtest's.

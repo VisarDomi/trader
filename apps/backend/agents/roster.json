@@ -630,5 +630,21 @@
       "date": "2026-11-22",
       "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
     }
+  },
+  "families": {
+    "visar-night": {
+      "name": "Visar night",
+      "slugs": [
+        "visar-night-trading",
+        "visar-night-lab",
+        "visar-night-us100",
+        "visar-night-v2-us100",
+        "visar-night-v2-us500",
+        "visar-night-v3-us100",
+        "visar-night-v3-us500",
+        "visar-night-v4-us100",
+        "visar-night-v4-us500"
+      ]
+    }
   }
 }

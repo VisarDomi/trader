@@ -1,17 +1,23 @@
-import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, LeaderboardRow, EvidenceOverview, RecordClock } from '@trader/shared/types';
+import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, FamilyClock, LeaderboardRow, EvidenceOverview, RecordClock } from '@trader/shared/types';
 import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { CONTROL_SLUGS, LIFECYCLE, RANDOM_BASELINE_SLUG, floorMet } from '../engine/policy.ts';
 import { outrightHold } from './hold.ts';
 import { countPeriods, curveOf, listPeriods, periodDays, winChance } from './frequency.ts';
-import { Judging, agreementZ, confirmedSet, eValue, judgedT, tAt } from './judging.ts';
+import { Judging, agreementZ, confirmedSet, eValue, judgedT, pool, statsOf, tAt, type DailyStats, type Member } from './judging.ts';
+import { familyOf, type Roster } from '../engine/roster.ts';
 import { isShadow, backtestGate } from './pipeline.ts';
 import { runKey, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 
 const CACHE_MS = 30_000;
 const HISTORICAL_COST_CACHE_MS = 30 * 60_000;
 const unavailable = (note: string): BenchmarkComparison => ({status:'unavailable',basis:'unavailable',note});
+/** The family of an agent file and its display name: a roster family, else the agent's own name without its variant. */
+export function familyLabel(roster:Pick<Roster,'families'>|null|undefined,agent:{slug:string;name:string;variant?:string|null}):{id:string;name:string} {
+  const family=familyOf(roster,agent.slug), suffix=agent.variant?` (${agent.variant})`:'';
+  return {id:family.id,name:family.name??(suffix&&agent.name.endsWith(suffix)?agent.name.slice(0,-suffix.length):agent.name)};
+}
 const emptyCosts = (): CostSummary => ({reportedTrades:0,historyComplete:true,closedTrades:0,closedNetPnl:0,closedFunding:0,
   beforeFundingPnl:0,measuredTrades:0,capturedTrades:0,reconstructedTrades:0,measuredNetPnl:0,measuredFunding:0,midpointPnl:0,spreadCost:0,
   adjustmentPnl:0,timedTrades:0,timingCost:0,timedSignalPnl:0,timedNetPnl:0,doubledSpreadPnl:null,diagnosis:'unmeasured'});
@@ -23,7 +29,9 @@ export class AgentEvidenceService {
   private comparisons = new Map<string,BenchmarkComparison>();
   private costs = new Map<string,CostSummary>();
   private costsRefreshed = new Map<string,number>();
-  private agents = new Map<string,{slug:string;uses_forecast:number;code_hash:string}>();
+  private agents = new Map<string,{slug:string;name:string;variant:string|null;uses_forecast:number;code_hash:string}>();
+  /** A family's pooled weekday returns, forward and in its backtests: kept while its days and members stand. */
+  private pooled = new Map<string,{key:string;own:DailyStats;backtest:DailyStats|null;retiredTrades:number}>();
   private variants = 0;
   private cashflows:EvidenceOverview['accountCashflows']={totals:[],unallocated:[]};
   private backtests = new Map<string,RunRow>();
@@ -136,12 +144,69 @@ export class AgentEvidenceService {
     const offered=live.filter(r=>!this.control(r)).map(r=>({id:r.id,c:clocks.get(r.id)!}))
       .filter(({c})=>floorMet(c.trades,c.days)&&c.backtestZ!==null&&c.backtestZ<=LIFECYCLE.AGREE_Z);
     const confirmed=confirmedSet(offered.map(({id,c})=>({id,e:c.life.e})),this.trials,LIFECYCLE.CONFIRM_FDR);
+    const families=this.families(demo,now);
     for(const [id,c] of clocks) {
-      c.monkey=this.monkeys.get(this.rows.get(id)!.epic)??null;
+      const row=this.rows.get(id)!;
+      c.monkey=this.monkeys.get(row.epic)??null;
       c.confirmed=confirmed.ids.has(id);
       if(c.life.observations>=2)c.confirmAt=tAt(c.confirmed?this.trials/(LIFECYCLE.CONFIRM_FDR*confirmed.ids.size):confirmed.needs,c.life.observations);
+      const family=this.control(row)?undefined:families.get(this.familyOf(row).id);
+      if(family)c.family=family;
     }
     return this.clocks=clocks;
+  }
+  familyOf(row:Pick<RunRow,'agent_id'>):{id:string;name:string} {
+    const slug=row.agent_id.split('/')[0]!;
+    return familyLabel(this.arena.roster,this.agents.get(row.agent_id)??{slug,name:slug});
+  }
+  /**
+   * Every strategy family judged as one record (judging.ts `pool`): its members' weekday returns, each divided by
+   * the member's volatility (its same-code backtest's; a record of an older code version, its own), averaged over
+   * the members running that day. The family's backtest is the same average of its running members' backtests: its
+   * volatility is the floor under the family's, and its mean is what the forward mean must agree with. Families
+   * are confirmed among themselves, counted over every strategy family ever started.
+   */
+  private families(demo:RunRow[],now:number):Map<string,FamilyClock> {
+    const groups=new Map<string,{name:string;rows:RunRow[];monkeys:boolean}>();
+    for(const r of demo) {
+      const monkeys=this.agents.get(r.agent_id)?.slug===RANDOM_BASELINE_SLUG;
+      if(this.control(r)&&!monkeys)continue;
+      const {id,name}=this.familyOf(r), group=groups.get(id);
+      if(group)group.rows.push(r);else groups.set(id,{name,rows:[r],monkeys});
+    }
+    const day=Math.floor((now-3_600_000)/86_400_000), measured:{monkeys:boolean;clock:FamilyClock}[]=[];
+    for(const [id,group] of groups) {
+      const live=group.rows.filter(r=>!r.retired);
+      if(!live.length)continue;
+      const histories=live.map(r=>{const b=this.sameCodeBacktest(r);return b?this.judging.backtest(b):null;});
+      const key=`${day}|${group.rows.length}|${live.length}|${histories.reduce((n,h)=>n+(h?.at??0),0)}`;
+      let p=this.pooled.get(id);
+      if(!p||p.key!==key) {
+        const members:Member[]=[];
+        for(const r of group.rows) {
+          const series=this.judging.forwardSeries(r,r.started_at,r.retired?r.ended_at??r.updated_at:now);
+          const backtest=this.sameCodeBacktest(r), sd=backtest?this.judging.backtest(backtest).daily.sd:series.stats.n>=5?series.stats.sd:0;
+          if(sd>0&&series.closes.length)members.push({closes:series.closes,returns:series.returns,scale:1/sd});
+        }
+        const past=histories.filter(h=>h&&h.daily.sd>0).map(h=>({closes:h!.closes,returns:h!.returns,scale:1/h!.daily.sd}));
+        p={key,own:statsOf(pool(members).values),backtest:past.length?statsOf(pool(past).values):null,
+          retiredTrades:group.rows.filter(r=>r.retired).reduce((n,r)=>n+(this.metricsOf(r)?.trades??0),0)};
+        this.pooled.set(id,p);
+      }
+      const since=Math.min(...group.rows.map(r=>r.started_at)), t=judgedT(p.own,p.backtest);
+      const trades=p.retiredTrades+live.reduce((n,r)=>n+(this.arena.tracked.get(r.id)?.run.trades.length??this.metricsOf(r)?.trades??0),0);
+      measured.push({monkeys:group.monkeys,clock:{id,name:group.name,records:live.length,everRecords:group.rows.length,markets:new Set(live.map(r=>r.epic)).size,
+        since,days:Math.max(0,now-since)/86_400_000,trades,observations:p.own.n,t,e:eValue(t,p.own.n),monkey:null,backtestZ:agreementZ(p.own,p.backtest),
+        trials:0,confirmAt:null,aloneAt:p.own.n>=2?tAt(1/LIFECYCLE.ALONE_ALPHA,p.own.n):null,confirmed:false}});
+    }
+    const trials=[...groups.values()].filter(g=>!g.monkeys).length, monkey=measured.find(m=>m.monkeys)?.clock.t??null;
+    const strategies=measured.filter(m=>!m.monkeys).map(m=>m.clock);
+    const confirmed=confirmedSet(strategies.filter(c=>floorMet(c.trades,c.days)&&c.backtestZ!==null&&c.backtestZ<=LIFECYCLE.AGREE_Z).map(c=>({id:c.id,e:c.e})),trials,LIFECYCLE.CONFIRM_FDR);
+    for(const c of strategies) {
+      c.trials=trials; c.monkey=monkey; c.confirmed=confirmed.ids.has(c.id);
+      if(c.observations>=2)c.confirmAt=tAt(c.confirmed?trials/(LIFECYCLE.CONFIRM_FDR*confirmed.ids.size):confirmed.needs,c.observations);
+    }
+    return new Map(strategies.map(c=>[c.id,c]));
   }
   private clockOf(row:RunRow,now:number):RecordClock|undefined {
     if(row.kind!==RUN_KIND.DEMO)return;
