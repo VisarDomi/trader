@@ -3,7 +3,7 @@ import { defineAgent, localTime, TZ, POLICY_EVENT, policyCalendarCovers, policyE
 // v4 night rule (2026-11-22): the v3 rule plus two switches, so one source covers the strict v3 settings, the
 // looser v4 cohort and every paper-grid cell. With the defaults (direction 'rule', pullback 1) it trades exactly
 // like visar-night-v3-us500/base. `pullback: 0` drops the overnight counter-move requirement: the night trades
-// the day's direction at 03:27 whatever the price did since 22:00. `direction` 'long' buys and 'random' flips a
+// the day's direction at 21:27 New York whatever the price did since the 16:00 close. `direction` 'long' buys and 'random' flips a
 // fair coin (ctx.random(), reproducible per run) on the rule's eligible nights, as the v3 controls do.
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -11,15 +11,18 @@ const CASH_OPEN = 9 * 60 + 30;
 const CASH_CLOSE = 16 * 60;
 const CHECKPOINT_MINUTES = 15;
 const SESSION_MINUTES = CASH_CLOSE - CASH_OPEN;
-const REFERENCE = 22 * 60;
-const ENTRY = 3 * 60 + 27;
-const EXIT = 8 * 60 + 27;
+// The night's clocks are New York time, so the trade keeps its place in the US day in the weeks when Europe and
+// the US change their clocks apart: the 16:00 cash close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in
+// Tirana in every other week).
+const REFERENCE = 16 * 60;
+const ENTRY = 21 * 60 + 27;
+const HOLD_MINUTES = 5 * 60;
 const LONG = 'long';
 const SHORT = 'short';
 
 function emptySession() {
   return {
-    date: '', localDate: '', open: 0, high: 0, low: 0, maxDrawdown: 0, maxRebound: 0,
+    date: '', open: 0, high: 0, low: 0, maxDrawdown: 0, maxRebound: 0,
     minutes: 0, points: [] as number[], direction: 0,
   };
 }
@@ -81,7 +84,7 @@ export function capitalProfitLevel(side: 'long'|'short', price: number, size: nu
 
 export default defineAgent({
   name: 'visar-night-trading',
-  description: 'US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200.',
+  description: 'US500: follow a directional NY session after a pullback from its 16:00 close by 21:27 New York time. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 02:27 New York or at a 50% capital-loss stop. New York clocks (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:200.',
   author: 'Visar',
   instruments: ['US500'],
   timeframe: '1m',
@@ -89,7 +92,7 @@ export default defineAgent({
   warmup: 0,
   intradayOnly: false,
   params: {
-    direction: 'rule', pullback: 1, sessionStart: CASH_OPEN, sessionEnd: CASH_CLOSE, minPullbackBp: 0, profitPct: 0, timeZone: TZ.TIRANA, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
+    direction: 'rule', pullback: 1, sessionStart: CASH_OPEN, sessionEnd: CASH_CLOSE, minPullbackBp: 0, profitPct: 0, timeZone: TZ.NEW_YORK, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
     maxRetraceShare: 0.75, maxRangePct: 2, minBodyShare: 0.6, minCoverage: 0.9, marginPct: 90, lossPct: 50,
   },
   init: () => ({ session: emptySession(), referenceDate: '', reference: 0, direction: 0, attemptedDate: '', entryCapital: 0 }),
@@ -97,11 +100,11 @@ export default defineAgent({
     const s = ctx.state;
     const cashOpen = ctx.params.sessionStart, cashClose = ctx.params.sessionEnd;
     const sessionMinutes = cashClose - cashOpen;
-    const local = localTime(ctx.time, ctx.params.timeZone);
+    const clock = localTime(ctx.time, ctx.params.timeZone); // the bar's close, New York
     const ny = localTime(ctx.bar.time, TZ.NEW_YORK);
     if (ny.minuteOfDay === cashOpen && ny.weekday >= 1 && ny.weekday <= 5) {
       s.session = {
-        ...emptySession(), date: ny.date, localDate: local.date, open: ctx.bar.open,
+        ...emptySession(), date: ny.date, open: ctx.bar.open,
         high: ctx.bar.open, low: ctx.bar.open, points: [ctx.bar.open],
       };
     }
@@ -119,19 +122,21 @@ export default defineAgent({
         day.direction = classifyNightSession(nightSessionFeatures(day, sessionMinutes), ctx.params, sessionMinutes);
       }
     }
-    if (local.minuteOfDay === REFERENCE) {
-      s.referenceDate = local.date;
+    if (clock.minuteOfDay === REFERENCE) {
+      s.referenceDate = clock.date;
       s.reference = ctx.bar.close;
-      s.direction = day.localDate === local.date ? day.direction : 0;
+      s.direction = day.date === clock.date ? day.direction : 0;
     }
-    if (ctx.isWarmup || ctx.position || local.weekday === 0 || local.weekday === 6 || local.minuteOfDay !== ENTRY) return;
-    if (s.attemptedDate === local.date) return;
-    s.attemptedDate = local.date;
-    const yesterday = new Date(Date.UTC(local.year, local.month - 1, local.day) - DAY_MS).toISOString().slice(0, 10);
+    // Monday to Thursday evenings in New York: the nights that end on Tuesday to Friday mornings in Tirana.
+    if (ctx.isWarmup || ctx.position || clock.weekday < 1 || clock.weekday > 4 || clock.minuteOfDay !== ENTRY) return;
+    if (s.attemptedDate === clock.date) return;
+    s.attemptedDate = clock.date;
+    // The holding window runs into the next calendar day, where a Bank of Japan decision can land.
+    const morning = new Date(Date.UTC(clock.year, clock.month - 1, clock.day) + DAY_MS).toISOString().slice(0, 10);
     // Missing opening/reference candles and weekend gaps cannot reuse an old reference.
-    if (s.referenceDate !== yesterday || s.direction === 0 || !nightCalendarAllows(yesterday, local.date)) return;
-    // The rule follows the day's direction. Counter-move: how far the 03:27 bid moved against that direction since
-    // 22:00 (positive = a dip after a bullish day, a bounce after a bearish one).
+    if (s.referenceDate !== clock.date || s.direction === 0 || !nightCalendarAllows(clock.date, morning)) return;
+    // The rule follows the day's direction. Counter-move: how far the 21:27 bid moved against that direction since
+    // the 16:00 close (positive = a dip after a bullish day, a bounce after a bearish one).
     const ruleSide = s.direction > 0 ? LONG : SHORT;
     const counterMoveBp = (ruleSide === LONG ? s.reference - ctx.bar.close : ctx.bar.close - s.reference) / s.reference * 10000;
     if (!Number.isFinite(counterMoveBp)) return;
@@ -150,8 +155,8 @@ export default defineAgent({
       stopLoss,
       ...(nativeTakeProfit === undefined ? {} : { takeProfit: nativeTakeProfit }),
       validUntil: ctx.time + MINUTE_MS,
-      closeAt: ctx.time + (EXIT - ENTRY) * MINUTE_MS,
-      reason: `${ctx.params.direction === 'rule' ? '' : `control ${ctx.params.direction === 'long' ? 'always long' : `coin flip ${side}`}; rule would ${ruleSide === LONG ? 'buy' : 'sell'} (`}${s.direction > 0 ? 'bullish day' : 'bearish day'}, ${counterMoveBp > 0 ? `overnight ${s.direction > 0 ? 'dip' : 'bounce'} ${counterMoveBp.toFixed(2)}bp` : `no overnight ${s.direction > 0 ? 'dip' : 'bounce'} (${counterMoveBp.toFixed(2)}bp)`}${ctx.params.pullback ? ` >= ${ctx.params.minPullbackBp}bp` : ', pullback not required'}${ctx.params.direction === 'rule' ? '' : ')'}; NY ${cashOpen===630?'10:30–15:30':'09:30–16:00'}; exit ${ctx.params.profitPct?`+${ctx.params.profitPct}% or `:''}08:27; 03:27 ${ctx.params.timeZone}`,
+      closeAt: ctx.time + HOLD_MINUTES * MINUTE_MS,
+      reason: `${ctx.params.direction === 'rule' ? '' : `control ${ctx.params.direction === 'long' ? 'always long' : `coin flip ${side}`}; rule would ${ruleSide === LONG ? 'buy' : 'sell'} (`}${s.direction > 0 ? 'bullish day' : 'bearish day'}, ${counterMoveBp > 0 ? `overnight ${s.direction > 0 ? 'dip' : 'bounce'} ${counterMoveBp.toFixed(2)}bp` : `no overnight ${s.direction > 0 ? 'dip' : 'bounce'} (${counterMoveBp.toFixed(2)}bp)`}${ctx.params.pullback ? ` >= ${ctx.params.minPullbackBp}bp` : ', pullback not required'}${ctx.params.direction === 'rule' ? '' : ')'}; NY ${cashOpen===630?'10:30–15:30':'09:30–16:00'}; exit ${ctx.params.profitPct?`+${ctx.params.profitPct}% or `:''}02:27; 21:27 ${ctx.params.timeZone}`,
     };
     if (side === LONG) ctx.buy(options);
     else ctx.sell(options);

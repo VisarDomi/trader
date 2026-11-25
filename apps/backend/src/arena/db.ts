@@ -552,6 +552,11 @@ export class ArenaDB {
     return { first, last };
   }
 
+  /** Closed trades of a run that were entered in [from, before). */
+  tradesEntered(runId: string, from: number, before: number): number {
+    return this.db.query<{ n: number }, [string, number, number]>(`SELECT COUNT(*) n FROM trades WHERE run_id = ? AND entry_time >= ? AND entry_time < ?`).get(runId, from, before)?.n ?? 0;
+  }
+
   trades(runId: string, limit = 5000): Trade[] {
     return this.db
       .query<Record<string, unknown>, [string, number]>(`SELECT * FROM trades WHERE run_id = ? ORDER BY idx DESC LIMIT ?`)

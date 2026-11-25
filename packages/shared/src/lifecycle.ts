@@ -2,7 +2,7 @@
 // Used by the dashboard (verdict column), the native screens and `bun run review` (the babysitter's input), so all agree.
 // The full policy, including what the babysitter does with each verdict: apps/backend/agents/LIFECYCLE.md.
 
-import type { FamilyClock, LeaderboardRow } from './types.ts';
+import type { FamilyClock, LeaderboardRow, PortfolioClock } from './types.ts';
 
 /**
  * Agents that are yardsticks, not strategies; they are never judged or retired: random entries,
@@ -82,5 +82,22 @@ export function assessFamily(f: FamilyClock): Assessment {
 	const over = `family t = ${f.t.toFixed(2)} over ${days} days and ${f.trades} trades of ${f.everRecords} records`;
 	if (f.confirmed) return { verdict: VERDICT.CONFIRMED, reason: `${over}; clears the bar for all ${f.trials} families tried and agrees with its backtests` };
 	if (isCandidate(f.trades, f.days, f.t, f.monkey)) return { verdict: VERDICT.CANDIDATE, reason: `${over}${f.monkey != null ? ', above the monkeys judged as a family' : ''}; may still be luck` };
+	return { verdict: VERDICT.KEEP, reason: over };
+}
+
+/**
+ * Verdict for a portfolio judged as one record (EVIDENCE.md "The arena portfolio"): early until the day floor,
+ * then keep, candidate or confirmed. It is one claim made before its days, so it is confirmed at the bar for the
+ * portfolios declared instead of the bar for every record tried. It is not retired and holds no Capital slot.
+ */
+export function assessPortfolio(p: PortfolioClock): Assessment {
+	if (p.since === null) return { verdict: VERDICT.EARLY, reason: 'no records picked yet' };
+	const days = Math.floor(p.days);
+	if (p.days < LIFECYCLE.MIN_DAYS) return { verdict: VERDICT.EARLY, reason: `${days} days (judged from ${LIFECYCLE.MIN_DAYS} days)` };
+	const over = `portfolio t = ${p.t.toFixed(2)} over ${days} days and ${p.trades} trades of ${p.records} records`;
+	if (p.confirmed) return { verdict: VERDICT.CONFIRMED, reason: `${over}; clears the bar for ${p.trials === 1 ? 'one claim' : `${p.trials} portfolios`} made in advance` };
+	if (p.t >= LIFECYCLE.CANDIDATE_TSTAT && (p.monkey === null || p.t > p.monkey)) {
+		return { verdict: VERDICT.CANDIDATE, reason: `${over}${p.monkey != null ? ', above the monkeys judged as a family' : ''}; may still be luck` };
+	}
 	return { verdict: VERDICT.KEEP, reason: over };
 }

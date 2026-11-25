@@ -82,11 +82,13 @@ virtual experiments. Track accounts by stable Capital account ID, not names.
 ## The user's night strategy
 
 `visar-night-trading` is an explicit **special Capital demo experiment**, not an earned candidate:
-US500, consistently directional 09:30–16:00 New York session, next local 03:27 pullback entry relative
- to 22:00, 08:27 exit or a stop targeting half the strategy capital, 1:200. Local means Europe/Tirane.
+US500, consistently directional 09:30–16:00 New York session, pullback entry at 21:27 New York relative
+to the 16:00 close, 02:27 exit or a stop targeting half the strategy capital, 1:200. The clocks are New
+York's so the trade keeps its place in the US day; in Tirana they read 22:00, 03:27 and 08:27 except in
+the weeks when Europe and the US change their clocks apart.
 The user clarified that the path matters, neutral/volatile days should be skipped, FOMC/BOJ decisions
-should be excluded, and the intended frequency is 25–50 entries/year. Source `56ac3bdfe7c1` meets that
-frequency on the stored history, but its backtest loses 99.98%. It retains its
+should be excluded, and the intended frequency is 25–50 entries/year. Source `6ef6caeeb489` meets that
+frequency on the stored history, but its backtest loses 99.99%. It retains its
 user-authorized Arena 09 experiment and normal subsequent safety/demotion rules. See
 [its complete contract](agents/visar-night-trading.md). Refresh results honestly after an engine change;
 do not tune this or other strategies for a better reported profit.

@@ -1,121 +1,121 @@
 [
   {
     "id": "visar-night-trading",
-    "codeHash": "56ac3bdfe7c1",
+    "codeHash": "6ef6caeeb489",
     "epic": "US500",
     "leverage": 200
   },
   {
     "id": "visar-night-v3-us500/base",
-    "codeHash": "8354a30c0e07",
+    "codeHash": "d1252d67b942",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-control-us500/always-long",
-    "codeHash": "1b545896d222",
+    "codeHash": "38d46d96cfc6",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-control-us500/random-direction",
-    "codeHash": "1b545896d222",
+    "codeHash": "38d46d96cfc6",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-us500/leverage-200",
-    "codeHash": "8354a30c0e07",
+    "codeHash": "d1252d67b942",
     "epic": "US500",
     "leverage": 200
   },
   {
     "id": "visar-night-v3-us100/base",
-    "codeHash": "6d175db7dd11",
+    "codeHash": "1da09cf5af3f",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-control-us100/always-long",
-    "codeHash": "2e666eb542a7",
+    "codeHash": "e02b7b4dba13",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-control-us100/random-direction",
-    "codeHash": "2e666eb542a7",
+    "codeHash": "e02b7b4dba13",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v3-us100/leverage-200",
-    "codeHash": "6d175db7dd11",
+    "codeHash": "1da09cf5af3f",
     "epic": "US100",
     "leverage": 200
   },
   {
     "id": "visar-night-v3-us100/full-day-200",
-    "codeHash": "6d175db7dd11",
+    "codeHash": "1da09cf5af3f",
     "epic": "US100",
     "leverage": 200
   },
   {
     "id": "visar-night-v4-us500/loose-body",
-    "codeHash": "1fe3ef5a7662",
+    "codeHash": "c32f1cc9101a",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us500/no-pullback",
-    "codeHash": "1fe3ef5a7662",
+    "codeHash": "c32f1cc9101a",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us500/any-day",
-    "codeHash": "1fe3ef5a7662",
+    "codeHash": "c32f1cc9101a",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us500/every-night",
-    "codeHash": "1fe3ef5a7662",
+    "codeHash": "c32f1cc9101a",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us500/full-day",
-    "codeHash": "1fe3ef5a7662",
+    "codeHash": "c32f1cc9101a",
     "epic": "US500",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us100/loose-body",
-    "codeHash": "fdbba74775a7",
+    "codeHash": "82461f1916df",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us100/no-pullback",
-    "codeHash": "fdbba74775a7",
+    "codeHash": "82461f1916df",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us100/any-day",
-    "codeHash": "fdbba74775a7",
+    "codeHash": "82461f1916df",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us100/every-night",
-    "codeHash": "fdbba74775a7",
+    "codeHash": "82461f1916df",
     "epic": "US100",
     "leverage": 20
   },
   {
     "id": "visar-night-v4-us100/full-day",
-    "codeHash": "fdbba74775a7",
+    "codeHash": "82461f1916df",
     "epic": "US100",
     "leverage": 20
   }

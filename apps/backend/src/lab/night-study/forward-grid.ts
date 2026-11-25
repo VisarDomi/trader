@@ -40,8 +40,9 @@ export const DAY_FILTERS=[
   {id:'small-pullback',label:'Pullback ≤50% of range',params:{maxRetraceShare:.5}},
   {id:'tiny-pullback',label:'Pullback ≤35% of range',params:{maxRetraceShare:.35}},
 ] as const;
-/** Minimum overnight counter-move at 03:27, basis points. 0 = any counter-move; null = no counter-move needed
- * (v4 `pullback: 0`: the night trades the day's direction whatever the price did since 22:00). */
+/** Minimum overnight counter-move at the 21:27 New York decision, basis points. 0 = any counter-move; null = no
+ * counter-move needed (v4 `pullback: 0`: the night trades the day's direction whatever the price did since the
+ * 16:00 close). */
 export const GAPS=[null,0,5,15,30] as const;
 export const gapId=(gapBp:number|null)=>gapBp===null?'no-pullback':`gap-${gapBp}bp`;
 /** 1:20 (the 50% loss limit is out of reach) and 1:200 (it binds at about a 0.28% adverse move). */
@@ -123,7 +124,7 @@ async function main(){
   const epics=args.filter((a,i)=>!a.startsWith('--')&&!['--out','--end'].includes(args[i-1]??''));
   const chosen=epics.length?epics:[...EPICS];
   if(chosen.some(e=>!(EPICS as readonly string[]).includes(e)))throw Error('Use night-grid [US500|US100] [--out <dir>] [--full] [--end YYYY-MM-DD]');
-  // Up to the start of today (UTC): every night that has ended by the 03:30 Tirana run is complete.
+  // Up to the start of today (UTC): every night that has ended by the lab's nightly run is complete.
   const end=endDay?Date.parse(endDay+'T00:00:00Z'):Math.floor(Date.now()/DAY_MS)*DAY_MS;
   if(!Number.isFinite(end))throw Error('Invalid --end date');
   mkdirSync(out,{recursive:true});

@@ -54,7 +54,8 @@ export function reconstructedState(slug:string,b:readonly Bar[],at:number,p:Reco
         if((ny.minuteOfDay+1-start)%15===0)day.points.push(bar.close);
         if(ny.minuteOfDay+1===end)day.direction=/^visar-night-v[234]-/.test(slug)?windowClassify(windowFeatures(day,minutes),p as any,minutes):classifyNightSession(nightSessionFeatures(day),p as any);
       }
-      if(local.minuteOfDay===1320){state.reference=bar.close;state.referenceDate=local.date;}
+      // The reference is the 16:00 New York close; retired versions took it at 22:00 Tirana.
+      if(local.minuteOfDay===(p.timeZone===TZ.NEW_YORK?960:1320)){state.reference=bar.close;state.referenceDate=local.date;}
     }
     state.session=day;return state;
   }

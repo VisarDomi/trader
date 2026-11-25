@@ -6,7 +6,7 @@ import reference from './reference';
 export default defineAgent({
   ...reference,
   name: 'Visar US500 night v3 control',
-  description: 'Control for US500 base: trades exactly its eligible nights (10:30–15:30 NY day, any overnight counter-move, 1:20, 50% loss limit, 08:27 exit), but always long or in a random direction instead of following the previous day.',
+  description: 'Control for US500 base: trades exactly its eligible nights (10:30–15:30 NY day, any overnight counter-move, 1:20, 50% loss limit, 02:27 New York exit), but always long or in a random direction instead of following the previous day.',
   instruments: ['US500'],
   author: 'Visar / platform research',
   leverage: [20],

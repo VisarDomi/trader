@@ -531,104 +531,111 @@
   },
   "demoAdmissions": {
     "visar-night-trading:US500@200": {
-      "codeHash": "56ac3bdfe7c1",
-      "date": "2026-10-15",
-      "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply."
+      "codeHash": "6ef6caeeb489",
+      "date": "2026-11-25",
+      "reason": "Visar requested the night strategy as a special Capital demo experiment, now calibrated for 25–50 annual entries with FOMC/BOJ and volatility exclusions. Normal safety and subsequent demotion rules apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-us500/base:US500@20": {
-      "codeHash": "8354a30c0e07",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, 08:27 exit. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "d1252d67b942",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, 08:27 exit. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-us500/leverage-200:US500@200": {
-      "codeHash": "8354a30c0e07",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "d1252d67b942",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-control-us500/always-long:US500@20": {
-      "codeHash": "1b545896d222",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "38d46d96cfc6",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-control-us500/random-direction:US500@20": {
-      "codeHash": "1b545896d222",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "38d46d96cfc6",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-us100/base:US100@20": {
-      "codeHash": "6d175db7dd11",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, 08:27 exit. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "1da09cf5af3f",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: the reference point: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, 08:27 exit. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-us100/leverage-200:US100@200": {
-      "codeHash": "6d175db7dd11",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "1da09cf5af3f",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: base at 1:200, where the 50% loss limit can trigger. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-us100/full-day-200:US100@200": {
-      "codeHash": "6d175db7dd11",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: the original agent’s settings on US100: 09:30–16:00 NY day at 1:200. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "1da09cf5af3f",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: the original agent’s settings on US100: 09:30–16:00 NY day at 1:200. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-control-us100/always-long:US100@20": {
-      "codeHash": "2e666eb542a7",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "e02b7b4dba13",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, always long. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v3-control-us100/random-direction:US100@20": {
-      "codeHash": "2e666eb542a7",
-      "date": "2026-11-09",
-      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. Selected on design, not backtest; normal safety and subsequent demotion apply."
+      "codeHash": "e02b7b4dba13",
+      "date": "2026-11-25",
+      "reason": "User-requested uniform v3 night cohort: control: base nights and settings, random side. Selected on design, not backtest; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us500/loose-body:US500@20": {
-      "codeHash": "1fe3ef5a7662",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "c32f1cc9101a",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us500/no-pullback:US500@20": {
-      "codeHash": "1fe3ef5a7662",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but no overnight pullback is needed: it trades the day’s direction at 03:27 whatever the night did. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "c32f1cc9101a",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but no overnight pullback is needed: it trades the day’s direction at 03:27 whatever the night did. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us500/any-day:US500@20": {
-      "codeHash": "1fe3ef5a7662",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "c32f1cc9101a",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us500/every-night:US500@20": {
-      "codeHash": "1fe3ef5a7662",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: any-day and no-pullback together: every Tuesday–Friday night in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "c32f1cc9101a",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: any-day and no-pullback together: every Tuesday–Friday night in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us500/full-day:US500@20": {
-      "codeHash": "1fe3ef5a7662",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "c32f1cc9101a",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us100/loose-body:US100@20": {
-      "codeHash": "fdbba74775a7",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "82461f1916df",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the net move need only be 30% of the day’s range (instead of 60%). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us100/no-pullback:US100@20": {
-      "codeHash": "fdbba74775a7",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but no overnight pullback is needed: it trades the day’s direction at 03:27 whatever the night did. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "82461f1916df",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but no overnight pullback is needed: it trades the day’s direction at 03:27 whatever the night did. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us100/any-day:US100@20": {
-      "codeHash": "fdbba74775a7",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "82461f1916df",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but any up or down session qualifies (no move, shape, step, pullback-share or range limits). Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us100/every-night:US100@20": {
-      "codeHash": "fdbba74775a7",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: any-day and no-pullback together: every Tuesday–Friday night in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "82461f1916df",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: any-day and no-pullback together: every Tuesday–Friday night in the previous session’s direction. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
     },
     "visar-night-v4-us100/full-day:US100@20": {
-      "codeHash": "fdbba74775a7",
-      "date": "2026-11-22",
-      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply."
+      "codeHash": "82461f1916df",
+      "date": "2026-11-25",
+      "reason": "User-requested looser v4 night cohort, replacing the stricter v3 variants at 1:20: base, but the full 09:30–16:00 New York day: the original agent’s window at 1:20. Selected on design and entry frequency, not backtest returns; normal safety and subsequent demotion apply. Source changed 2026-11-25 on the user's request: reference, entry and exit follow New York time (16:00, 21:27, 02:27) instead of Tirana's clock."
+    }
+  },
+  "portfolios": {
+    "backtest-half": {
+      "name": "Arena portfolio",
+      "declared": "2026-11-25",
+      "minBacktestSharpe": 0.5
     }
   },
   "families": {

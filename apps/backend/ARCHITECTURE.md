@@ -177,7 +177,10 @@ Toggle the mirror and exclude runs on the dashboard's Broker page.
 Agents move Backtest → Virtual engine → Capital demo, with reverse demotion ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
 Verdicts (early, keep, candidate, confirmed, retire) come from `packages/shared/src/lifecycle.ts`, read off each
 record's daily clock (`src/arena/judging.ts`, [`EVIDENCE.md`](EVIDENCE.md)) and used by the dashboard's Stage column,
-the native screens and `bun run review`. `agents/roster.json` (read by the arena and the lab;
+the native screens and `bun run review`. The arena portfolio, every record picked by its backtest and judged as
+one record, is picked once a month by `src/arena/portfolio.ts` from the rule in `roster.json`; its picks are stored in the
+arena database.
+`agents/roster.json` (read by the arena and the lab;
 `src/engine/roster.ts`) holds what is decided without touching agent code: each account's leverage,
 each agent's leverage tiers, and retired single runs. A run is agent × instrument × leverage (its id
 includes all three and the code hash). Whole agents are retired by moving them to `agents/_retired/`.

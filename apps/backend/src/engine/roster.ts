@@ -11,7 +11,8 @@
  *       "agents": { "tsmom/20d": [1], "buy-hold": [1] }        agent id or file slug → tiers
  *     },
  *     "retired": { "ema-cross/9-21:US100@20": { "date": "2026-11-02", "reason": "losing: t = -1.6 over 41 trades" } },
- *     "families": { "visar-night": { "name": "Visar night", "slugs": ["visar-night-trading", "visar-night-v4-us500"] } }
+ *     "families": { "visar-night": { "name": "Visar night", "slugs": ["visar-night-trading", "visar-night-v4-us500"] } },
+ *     "portfolios": { "backtest-half": { "name": "Arena portfolio", "declared": "2026-11-25", "minBacktestSharpe": 0.5 } }
  *   }
  *
  * An agent's tiers: the roster entry for its id, else for its slug, else its
@@ -21,6 +22,9 @@
  * Families: records are judged alone and together with their family (src/arena/judging.ts). A family is an
  * agent file with all its variants, instruments and tiers, unless `families` joins several files into one;
  * retired files stay listed, because the family's record includes the days their runs lived.
+ *
+ * Portfolios: one record made of every running strategy record whose backtest clears the rule's Sharpe ratio,
+ * judged as a single claim (src/arena/portfolio.ts). The rule is written here before the days that judge it.
  *
  * Retired keys: "<agentId>", "<agentId>:<EPIC>", "<agentId>@<tier>" or
  * "<agentId>:<EPIC>@<tier>". Whole agents are normally retired by moving their
@@ -53,7 +57,16 @@ export interface Roster {
   retired: Record<string, RosterEntry>;
   /** Families that span several agent files: family id → display name and the file slugs in it. */
   families?: Record<string, { name: string; slugs: string[] }>;
+  /** Portfolios judged as one record, each a rule fixed before the days that judge it (src/arena/portfolio.ts). */
+  portfolios?: Record<string, PortfolioRule>;
 }
+
+/**
+ * Holds every running strategy record whose same-code backtest has a Sharpe ratio before T-bills of at least
+ * `minBacktestSharpe`, at equal risk. `declared` is the day the rule was written down; changing the rule needs a new id, because the
+ * stored picks and the count of portfolios tried belong to the id.
+ */
+export interface PortfolioRule { name: string; declared: string; minBacktestSharpe: number }
 
 /** The family a file slug is judged with: the roster family that lists it, else the file itself (name: the agent's). */
 export function familyOf(roster: Pick<Roster, 'families'> | null | undefined, slug: string): { id: string; name?: string } {
@@ -80,6 +93,7 @@ export function loadRoster(agentsDir: string = DEFAULT_AGENTS_DIR): Roster {
     retired: parsed.retired ?? {},
     demoAdmissions: parsed.demoAdmissions ?? {},
     families: parsed.families ?? {},
+    portfolios: parsed.portfolios ?? {},
   };
 }
 
@@ -104,6 +118,11 @@ export function rosterProblems(roster: Roster, agents: readonly LoadedAgent[]): 
     }
     // A family named like a file it does not contain would silently swallow that file's own family.
     if (agents.some(a => a.slug === id) && !family.slugs?.includes(id)) problems.push(`families["${id}"]: the id is a file slug that the family does not list`);
+  }
+  for (const [id, rule] of Object.entries(roster.portfolios ?? {})) {
+    if (!/^[a-z0-9-]{1,40}$/.test(id)) problems.push(`portfolios["${id}"]: the id is lower-case letters, digits and dashes`);
+    if (!rule.name?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(rule.declared ?? '')) problems.push(`portfolios["${id}"]: a name and the day it was declared (YYYY-MM-DD) are required`);
+    if (!Number.isFinite(rule.minBacktestSharpe)) problems.push(`portfolios["${id}"]: minBacktestSharpe must be a number`);
   }
   const planned = planRuns(agents, roster).runs;
   for (const [key, entry] of Object.entries(roster.demoAdmissions ?? {})) {

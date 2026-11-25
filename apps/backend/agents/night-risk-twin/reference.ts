@@ -7,15 +7,18 @@ const CASH_OPEN = 9 * 60 + 30;
 const CASH_CLOSE = 16 * 60;
 const CHECKPOINT_MINUTES = 15;
 const SESSION_MINUTES = CASH_CLOSE - CASH_OPEN;
-const REFERENCE = 22 * 60;
-const ENTRY = 3 * 60 + 27;
-const EXIT = 8 * 60 + 27;
+// The night's clocks are New York time, so the trade keeps its place in the US day in the weeks when Europe and
+// the US change their clocks apart: the 16:00 cash close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in
+// Tirana in every other week).
+const REFERENCE = 16 * 60;
+const ENTRY = 21 * 60 + 27;
+const HOLD_MINUTES = 5 * 60;
 const LONG = 'long';
 const SHORT = 'short';
 
 function emptySession() {
   return {
-    date: '', localDate: '', open: 0, high: 0, low: 0, maxDrawdown: 0, maxRebound: 0,
+    date: '', open: 0, high: 0, low: 0, maxDrawdown: 0, maxRebound: 0,
     minutes: 0, points: [] as number[], direction: 0,
   };
 }
@@ -67,7 +70,7 @@ export function nightCalendarAllows(sessionDate: string, entryDate: string): boo
 
 export default defineAgent({
   name: 'visar-night-trading',
-  description: 'US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200.',
+  description: 'US500: follow a directional NY session after a pullback from its 16:00 close by 21:27 New York time. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 02:27 New York or at a 50% capital-loss stop. New York clocks (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:200.',
   author: 'Visar',
   instruments: ['US500'],
   timeframe: '1m',
@@ -75,17 +78,17 @@ export default defineAgent({
   warmup: 0,
   intradayOnly: false,
   params: {
-    timeZone: TZ.TIRANA, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
+    timeZone: TZ.NEW_YORK, trendPct: 0.25, minEfficiency: 0.15, minDirectionalShare: 0.5,
     maxRetraceShare: 0.75, maxRangePct: 2, minBodyShare: 0.6, minCoverage: 0.9, marginPct: 90, lossPct: 50,
   },
   init: () => ({ session: emptySession(), referenceDate: '', reference: 0, direction: 0, attemptedDate: '', entryCapital: 0 }),
   onBar(ctx) {
     const s = ctx.state;
-    const local = localTime(ctx.time, ctx.params.timeZone);
+    const clock = localTime(ctx.time, ctx.params.timeZone); // the bar's close, New York
     const ny = localTime(ctx.bar.time, TZ.NEW_YORK);
     if (ny.minuteOfDay === CASH_OPEN && ny.weekday >= 1 && ny.weekday <= 5) {
       s.session = {
-        ...emptySession(), date: ny.date, localDate: local.date, open: ctx.bar.open,
+        ...emptySession(), date: ny.date, open: ctx.bar.open,
         high: ctx.bar.open, low: ctx.bar.open, points: [ctx.bar.open],
       };
     }
@@ -103,17 +106,19 @@ export default defineAgent({
         day.direction = classifyNightSession(nightSessionFeatures(day), ctx.params);
       }
     }
-    if (local.minuteOfDay === REFERENCE) {
-      s.referenceDate = local.date;
+    if (clock.minuteOfDay === REFERENCE) {
+      s.referenceDate = clock.date;
       s.reference = ctx.bar.close;
-      s.direction = day.localDate === local.date ? day.direction : 0;
+      s.direction = day.date === clock.date ? day.direction : 0;
     }
-    if (ctx.isWarmup || ctx.position || local.weekday === 0 || local.weekday === 6 || local.minuteOfDay !== ENTRY) return;
-    if (s.attemptedDate === local.date) return;
-    s.attemptedDate = local.date;
-    const yesterday = new Date(Date.UTC(local.year, local.month - 1, local.day) - DAY_MS).toISOString().slice(0, 10);
+    // Monday to Thursday evenings in New York: the nights that end on Tuesday to Friday mornings in Tirana.
+    if (ctx.isWarmup || ctx.position || clock.weekday < 1 || clock.weekday > 4 || clock.minuteOfDay !== ENTRY) return;
+    if (s.attemptedDate === clock.date) return;
+    s.attemptedDate = clock.date;
+    // The holding window runs into the next calendar day, where a Bank of Japan decision can land.
+    const morning = new Date(Date.UTC(clock.year, clock.month - 1, clock.day) + DAY_MS).toISOString().slice(0, 10);
     // Missing opening/reference candles and weekend gaps cannot reuse an old reference.
-    if (s.referenceDate !== yesterday || s.direction === 0 || !nightCalendarAllows(yesterday, local.date)) return;
+    if (s.referenceDate !== clock.date || s.direction === 0 || !nightCalendarAllows(clock.date, morning)) return;
     const side = s.direction > 0 && ctx.bar.close < s.reference ? LONG : s.direction < 0 && ctx.bar.close > s.reference ? SHORT : null;
     if (!side) return;
     s.entryCapital = ctx.balance;
@@ -125,8 +130,8 @@ export default defineAgent({
       marginPct: ctx.params.marginPct,
       stopLoss,
       validUntil: ctx.time + MINUTE_MS,
-      closeAt: ctx.time + (EXIT - ENTRY) * MINUTE_MS,
-      reason: `${s.direction > 0 ? 'bullish day, overnight dip' : 'bearish day, overnight bounce'}; 03:27 ${ctx.params.timeZone}`,
+      closeAt: ctx.time + HOLD_MINUTES * MINUTE_MS,
+      reason: `${s.direction > 0 ? 'bullish day, overnight dip' : 'bearish day, overnight bounce'}; 21:27 ${ctx.params.timeZone}`,
     };
     if (side === LONG) ctx.buy(options);
     else ctx.sell(options);

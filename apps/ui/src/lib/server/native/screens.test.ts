@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen } from './screens';
-import { agreementLine, barsLine, clockLine, standingLine, standingTitle } from '../../clock';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen, portfolioRow, portfolioScreen } from './screens';
+import { agreementLine, barsLine, clockLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, spanText, standingLine, standingTitle } from '../../clock';
 import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
 
@@ -180,6 +180,63 @@ test('the family has its own section: what it says about the record, apart from 
 	// A family that never had a second record gets no section.
 	const lone = runScreen({ run: { ...run, agentId: 'visar-night-trading', status: 'running', evidence: { clock, family: { ...family, records: 1, everRecords: 1 } } }, agentName: 'X', capital: null, excluded: false, comparison: null, sparks: null, account: null });
 	expect(lone.sections.some(s => s.title === 'Family')).toBe(false);
+});
+test('the arena portfolio is pinned above the forward rankings and opens as one record', () => {
+	const DAY = 86_400_000, since = Date.UTC(2026, 10, 25, 14), now = since + 35 * DAY;
+	const p: any = { id: 'backtest-half', name: 'Arena portfolio', minBacktestSharpe: 0.5, declared: '2026-11-25', since, pickedAt: now - 20 * DAY, records: 74, agents: 32, markets: 14, picks: 2,
+		days: 35, trades: 586, observations: 25, ret: 0.01, t: 1.09, e: 1.49, sharpe: 3.46, backtestSharpe: 3.01, monkey: -2.15, backtestZ: 0.16, trials: 1, confirmAt: 3.84, confirmed: false,
+		confirmDays: { backtest: 371, half: 1502 }, curve: [{ t: since + DAY, value: 0.004 }, { t: since + 2 * DAY, value: 0.01 }],
+		members: [{ runId: 'demo:ibs-dip/pagonidis:US30:x2:h', agentId: 'ibs-dip/pagonidis', name: 'IBS Dip (pagonidis)', epic: 'US30', leverage: 2, share: 0.037, backtestSharpe: 1.39, ret: -0.004 },
+			{ runId: 'demo:tsmom/20d:EURUSD:x1:h', agentId: 'tsmom/20d', name: 'Time-Series Momentum (20d)', epic: 'EURUSD', leverage: 1, share: 0.025, backtestSharpe: 0.93, ret: null }] };
+	// Under the day floor it is early whatever its t; the pace line says when to expect the answer.
+	expect(portfolioLine(p)).toBe('Early · 35 of 42 days · t 1.09');
+	expect(portfolioLine({ ...p, days: 96.5, t: 2.31 })).toBe('Candidate · t 2.31 over 96 days · may still be luck');
+	expect(portfolioLine({ ...p, days: 96.5, t: 2.31, monkey: 2.4 })).toBe('Keep · t 2.31 over 96 days');
+	expect(portfolioLine({ ...p, days: 400, t: 3.4, confirmed: true })).toBe('Confirmed · t 3.40 over 400 days');
+	expect(portfolioBarsLine(p)).toBe("Confirmed at t 3.84 from 42 days, as one claim made in advance · candidate at 2.00, above the monkeys' family t −2.15");
+	expect(portfolioPaceLine(p)).toBe("Holding its backtests' Sharpe of 3.01 it is confirmed about 12 months after its first pick; at half of it, about 4.1 years");
+	expect(portfolioPaceLine({ ...p, confirmDays: { backtest: null, half: null } })).toContain('would not confirm it in fifty years');
+	expect(portfolioBacktestLine(p)).toBe('Running at a Sharpe of 3.46 a year over 25 weekdays. Its backtests give 3.01, which flatters it: the records were picked on them');
+	expect(portfolioBacktestLine({ ...p, observations: 4 })).toBe('Its backtests give 3.01, which flatters it: the records were picked on them');
+	expect([spanText(42), spanText(120), spanText(700), spanText(1502)]).toEqual(['42 days', 'about 4 months', 'about 23 months', 'about 4.1 years']);
+
+	const row = portfolioRow(p)!;
+	expect(row).toMatchObject({ id: 'portfolio-backtest-half', title: 'Arena portfolio', badge: 'Early', route: { screen: 'document', id: 'portfolio-backtest-half', title: 'Arena portfolio' }, keys: [1e300, 1e300, 1e300, 1e300, 1e300] });
+	expect(row.subtitle).toContain('74 records on 14 markets · backtest Sharpe 0.5 or more');
+	expect(row.stats!.map(s => s.value)).toEqual(['+1.0%', '1.09', '3.84']);
+	expect(row.body).toBe(`${portfolioLine(p)}\n${portfolioPaceLine(p)}`);
+	expect(JSON.parse(JSON.stringify(row)).keys[0]).toBe(1e300);              // survives the wire as a number
+	expect(portfolioRow({ ...p, since: null })).toBeNull();                   // nothing to show before its first pick
+	// First on Capital demo and the standard virtual ranking; never among backtests or execution comparisons.
+	const record = { runId: 'demo:x:US100:x20:h', name: 'X', epic: 'US100', leverage: 20, metrics: { totalReturn: 9, trades: 3 } } as any;
+	for (const stage of ['capital', 'virtual']) {
+		const screen = rankingsScreen([record], stage, null, [p]);
+		expect(screen.sections[0]!.rows.map(r => r.id)).toEqual(['portfolio-backtest-half', 'demo:x:US100:x20:h']);
+		expect(screen.sections[0]!.title).toContain('· 1 records');
+	}
+	expect(rankingsScreen([record], 'backtest', null, [p]).sections[0]!.rows).toHaveLength(1);
+	expect(rankingsScreen([record], 'virtual', 'delay-2s', [p]).sections[0]!.rows).toHaveLength(1);
+	expect(rankingsScreen([record], 'virtual', 'standard', [p]).sections[0]!.rows).toHaveLength(2);
+
+	const screen = portfolioScreen(p);
+	expect(screen.title).toBe('Arena portfolio');
+	expect(screen.sections.map(s => s.title)).toEqual(['', '', 'Rule', 'Records · 2']);
+	const clock = screen.sections[0]!.rows[0]!;
+	expect(clock.title).toBe('Early · t 1.09');
+	expect(clock.subtitle).toBe('74 records of 32 agent files on 14 markets · 586 trades · 35 days');
+	expect(clock.chart).toMatchObject({ kind: 'meter', meter: { value: 1.09, limit: 3.84, above: true } });
+	expect(clock.body!.split('\n')).toEqual([portfolioBarsLine(p), portfolioPaceLine(p), portfolioBacktestLine(p)]);
+	expect(screen.sections[1]!.rows[0]!.chart).toMatchObject({ kind: 'line', unit: '%', height: 180 });
+	const rule = screen.sections[2]!.rows[0]!;
+	expect(rule.title).toBe('Every running strategy record whose backtest Sharpe before T-bills is 0.5 or more, at equal risk, picked again from backtests alone each month');
+	expect(rule.body).toContain('Written down on 2026-11-25');
+	expect(rule.body).toContain('the days before it do not count');
+	expect(rule.body).toContain('Pick 2 made');
+	expect(rule.body).toContain('Next pick in January');
+	expect(screen.sections[3]!.rows[0]).toMatchObject({ title: 'IBS Dip (pagonidis)', subtitle: 'US30 · 1:2 · 3.7% of the capital · backtest Sharpe 1.39', badge: '−0.4%', badgeTone: -1, route: { screen: 'run', id: 'demo:ibs-dip/pagonidis:US30:x2:h' } });
+	expect(screen.sections[3]!.rows[1]!.badge).toBeUndefined();
+	// Before the first pick: the rule, no chart and no records.
+	expect(portfolioScreen({ ...p, since: null, pickedAt: null, records: 0, observations: 0, confirmAt: null, curve: [], members: [] }).sections.map(s => s.title)).toEqual(['', 'Rule']);
 });
 test('thinning keeps extremes and packing round-trips', () => {
 	const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, value: i === 2500 ? 99 : Math.sin(i / 50) }));

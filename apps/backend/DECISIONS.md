@@ -234,6 +234,19 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   its backtest volatility so leverage tiers weigh alike. Families are confirmed among families (39 tried, not
   844 records), which is a smaller and broader claim: the family has an edge on average. The verdict moves
   no slots: a lucky family would otherwise bring every member onto Capital demo at once.
+- **One portfolio, declared in advance, is the fastest honest answer.** Confirming one record among 844 takes a
+  Sharpe ratio no backtest here has (the best is 1.4; four months would take 8.4). A group's Sharpe ratio grows
+  with its independent bets, and the records are nearly uncorrelated, so every record with a backtest Sharpe
+  of 0.5 or more, held at equal risk, backtests at 3.0. Judged as one claim it needs only the bar for one
+  record on its own: about a year at 3.0. That holds only because the rule is fixed before its days and never
+  reads forward results: the picks come from backtests, the record starts at the first pick, and a changed
+  rule is a new portfolio that raises the bar for both. Agreement with its backtests is not required, because
+  the members were picked on them. It tests the decision real money would take: whether picking by backtest
+  works. It holds no slot and moves no record.
+- **The night rule's clocks are New York's.** The user trades it at 03:27 and 08:27 in Tirana, which is 21:27
+  and 02:27 in New York in all but about four weeks of the year. What the rule reads is the US day, so in those
+  weeks the Tirana clock moved the trade an hour against the session it follows. The source change restarted
+  all twenty night records; the earlier ones stay in the family's record.
 - **Volatility never below the backtest's.** A short record of small steady wins has not yet shown its
   losses: the martingale monkey, a no-edge control, had a daily t of 5.2 after 31 weekdays on its own
   volatility and 1.2 on its backtest's.

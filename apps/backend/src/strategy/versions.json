@@ -130,7 +130,7 @@
     "description": "Buys 1h pullbacks inside a 4h uptrend (and sells rallies in a 4h downtrend)."
   },
   "night-risk-twin": {
-    "hash": "8362c8e6f3c2",
+    "hash": "c671fd7cc290",
     "timeframe": "1m",
     "extra": [],
     "description": "Frozen night signals and deadline, with 0.5% planned capital loss and about 1.8× initial exposure at tier 1:3. Separate normal-gate research; no special demo admission."
@@ -256,10 +256,10 @@
     "description": "Holds US indices and the largest Nasdaq shares from two days before the month ends to the third trading day of the next; flat otherwise."
   },
   "visar-night-trading": {
-    "hash": "56ac3bdfe7c1",
+    "hash": "6ef6caeeb489",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500: follow a directional NY session after a 03:27 pullback from the 22:00 reference. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 08:27 or at a 50% capital-loss stop. Albania time, 1:200."
+    "description": "US500: follow a directional NY session after a pullback from its 16:00 close by 21:27 New York time. Skip neutral, volatile and FOMC/BOJ decision days; target 25–50 entries/year. Exit 02:27 New York or at a 50% capital-loss stop. New York clocks (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:200."
   },
   "vol-managed-hold": {
     "hash": "7e43195f79f7",
@@ -322,39 +322,39 @@
     "description": "US100 direction control: the frequent-core night's eligible days, always long or a random side, same exits."
   },
   "visar-night-v3-us500": {
-    "hash": "8354a30c0e07",
+    "hash": "d1252d67b942",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500 night v3: one base (10:30–15:30 day, any gap, 1:20, 50% loss limit, 08:27) plus one change per variant: day size, day shape, gap or leverage."
+    "description": "US500 night directions around one base: day size (big-move), day shape (strong-day, steady-day), overnight gap (gap-5bp, gap-15bp) and leverage (leverage-200). New York clocks: entry 21:27, exit 02:27 (03:27 and 08:27 in Tirana outside the clock-change weeks). User-requested Capital demo research."
   },
   "visar-night-v3-us100": {
-    "hash": "6d175db7dd11",
+    "hash": "1da09cf5af3f",
     "timeframe": "1m",
     "extra": [],
-    "description": "US100 night v3: one base (10:30–15:30 day, any gap, 1:20, 50% loss limit, 08:27) plus one change per variant: day size, day shape, gap or leverage."
+    "description": "US100 night directions around one base: day size (big-move), day shape (strong-day, steady-day), overnight gap (gap-5bp, gap-15bp) and leverage (leverage-200, full-day-200). New York clocks: entry 21:27, exit 02:27 (03:27 and 08:27 in Tirana outside the clock-change weeks). User-requested Capital demo research."
   },
   "visar-night-v3-control-us500": {
-    "hash": "1b545896d222",
+    "hash": "38d46d96cfc6",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500 v3 direction control: the base agent's eligible nights, always long or a random side, same exits."
+    "description": "Control for US500 base: trades exactly its eligible nights (10:30–15:30 NY day, any overnight counter-move, 1:20, 50% loss limit, 02:27 New York exit), but always long or in a random direction instead of following the previous day."
   },
   "visar-night-v3-control-us100": {
-    "hash": "2e666eb542a7",
+    "hash": "e02b7b4dba13",
     "timeframe": "1m",
     "extra": [],
-    "description": "US100 v3 direction control: the base agent's eligible nights, always long or a random side, same exits."
+    "description": "Control for US100 base: trades exactly its eligible nights (10:30–15:30 NY day, any overnight counter-move, 1:20, 50% loss limit, 02:27 New York exit), but always long or in a random direction instead of following the previous day."
   },
   "visar-night-v4-us500": {
-    "hash": "1fe3ef5a7662",
+    "hash": "c32f1cc9101a",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500 night v4: the v3 base loosened one step per variant (day shape, no pullback, any day, every night, full NY day), 1:20, 50% loss limit, 08:27."
+    "description": "US500 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). Frozen 03:27/08:27 Tirana clocks, 1:20. User-requested Capital demo research."
   },
   "visar-night-v4-us100": {
-    "hash": "fdbba74775a7",
+    "hash": "82461f1916df",
     "timeframe": "1m",
     "extra": [],
-    "description": "US100 night v4: the v3 base loosened one step per variant (day shape, no pullback, any day, every night, full NY day), 1:20, 50% loss limit, 08:27."
+    "description": "US100 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). Frozen 03:27/08:27 Tirana clocks, 1:20. User-requested Capital demo research."
   }
 }

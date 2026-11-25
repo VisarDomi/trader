@@ -5,10 +5,10 @@ import original from'../../../agents/visar-night-trading';
 import{SESSION}from'./replay';
 import{localTime,TZ}from'../../sdk';
 
-test('central recognition changes only the NY window; overnight execution and original source stay frozen',()=>{
- const text=readFileSync(new URL('./central-session.ts',import.meta.url),'utf8').replace("from '../../sdk'","from '../src/sdk'").replace('const CASH_OPEN = 10 * 60 + 30;','const CASH_OPEN = 9 * 60 + 30;').replace('const CASH_CLOSE = 15 * 60 + 30;','const CASH_CLOSE = 16 * 60;');
- expect(text).toBe(readFileSync(new URL('../../../agents/visar-night-trading.ts',import.meta.url),'utf8'));
- expect(central.params).toEqual(original.params);expect(SESSION.intervals).toBe(20);
+test('central recognition changes only the NY window of the rule the study froze, which keeps its Tirana clocks',()=>{
+ const text=readFileSync(new URL('./central-session.ts',import.meta.url),'utf8').replace("from '../../sdk'","from '../../src/sdk'").replace('const CASH_OPEN = 10 * 60 + 30;','const CASH_OPEN = 9 * 60 + 30;').replace('const CASH_CLOSE = 15 * 60 + 30;','const CASH_CLOSE = 16 * 60;');
+ expect(text).toBe(readFileSync(new URL('../../../agents/_retired/visar-night-lab-20261109/reference.ts',import.meta.url),'utf8'));
+ expect(central.params).toEqual({...original.params,timeZone:TZ.TIRANA});expect(original.params.timeZone).toBe(TZ.NEW_YORK);expect(SESSION.intervals).toBe(20);
 });
 test('opening/closing volatility is excluded and central-session coverage/checkpoints are enforced',()=>{
  const state=central.init!(central.params),base=Date.UTC(2026,8,8,13,30),orders:unknown[]=[];

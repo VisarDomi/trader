@@ -41,7 +41,7 @@ function setup() {
 }
 
 describe('visar-night-trading', () => {
-  test('buys only at 03:27 after a bullish day and overnight dip, then exits at 08:27', () => {
+  test('buys only at 21:27 New York (03:27 in Tirana) after a bullish day and overnight dip, then exits at 02:27 (08:27)', () => {
     const { run, bar, day } = setup();
     day();
     bar('2026-01-07T03:26:00+01:00', 5010);
@@ -49,6 +49,7 @@ describe('visar-night-trading', () => {
     bar('2026-01-07T03:27:00+01:00', 5010);
     expect(run.position?.side).toBe(LONG);
     expect(run.position?.entryTime).toBe(Date.parse('2026-01-07T03:27:00+01:00'));
+    expect(localTime(run.position!.entryTime, TZ.NEW_YORK)).toMatchObject({ date: '2026-01-06', minuteOfDay: 21 * 60 + 27 });
     expect(run.position!.size * run.position!.entryPrice / CAPITAL).toBeGreaterThan(179);
     bar('2026-01-07T08:26:00+01:00', 5011);
     expect(run.position).not.toBeNull();
@@ -56,6 +57,7 @@ describe('visar-night-trading', () => {
     expect(run.position).toBeNull();
     expect(run.trades[0]?.exitReason).toBe(EXIT_REASON.SESSION_END);
     expect(localTime(run.trades[0]!.exitTime, TZ.TIRANA).minuteOfDay).toBe(8 * 60 + 27);
+    expect(localTime(run.trades[0]!.exitTime, TZ.NEW_YORK)).toMatchObject({ date: '2026-01-07', minuteOfDay: 2 * 60 + 27 });
   });
 
   test('mirrors the rule for a bearish day and overnight bounce', () => {
@@ -124,18 +126,33 @@ describe('visar-night-trading', () => {
     expect(run.position).toBeNull();
   });
 
-  test('NY-session direction is separate from the 22:00 reference during the DST mismatch', () => {
+  test('in the weeks when Europe and the US are an hour closer, the night keeps its New York clock', () => {
+    // 10 March 2026: New York is already on summer time, Tirana is not. The cash close is 21:00 in Tirana, the
+    // entry 02:27 and the exit 07:27: an hour earlier on Tirana's clock, the same moments of the US day.
     const { run, bar, session } = setup();
-    session({ openAt: Date.parse('2026-03-10T14:30:00+01:00') });
-    bar('2026-03-10T22:00:00+01:00', 4970);
-    bar('2026-03-11T03:27:00+01:00', 4960);
+    const close = session({ openAt: Date.parse('2026-03-10T14:30:00+01:00') });
+    expect(close).toBe(Date.parse('2026-03-10T21:00:00+01:00'));
+    bar('2026-03-10T22:00:00+01:00', 4970);                                  // Tirana's 22:00 is 17:00 New York: not the reference
+    bar('2026-03-11T02:26:00+01:00', 5010);
+    expect(run.position).toBeNull();
+    bar('2026-03-11T02:27:00+01:00', 5010);                                  // a dip below the 16:00 close of 5020
     expect(run.position?.side).toBe(LONG);
+    expect(localTime(run.position!.entryTime, TZ.NEW_YORK)).toMatchObject({ date: '2026-03-10', minuteOfDay: 21 * 60 + 27 });
+    expect(run.position?.closeAt).toBe(Date.parse('2026-03-11T07:27:00+01:00'));
   });
 
-  test('a missing NY closing observation stays neutral even with a later 22:00 reference', () => {
+  test('Tirana\'s own 03:27 is not an entry in those weeks', () => {
+    const { run, bar, session } = setup();
+    session({ openAt: Date.parse('2026-03-10T14:30:00+01:00') });
+    bar('2026-03-11T03:27:00+01:00', 5010);                                  // 22:27 New York
+    expect(run.position).toBeNull();
+  });
+
+  test('a missing NY closing observation leaves no reference and no direction', () => {
     const { run, bar, session } = setup();
     session({ openAt: Date.parse('2026-03-10T14:30:00+01:00'), missing: new Set([389]) });
     bar('2026-03-10T22:00:00+01:00', 5020);
+    bar('2026-03-11T02:27:00+01:00', 5010);
     bar('2026-03-11T03:27:00+01:00', 5010);
     expect(run.position).toBeNull();
   });
@@ -201,14 +218,17 @@ describe('visar-night-trading', () => {
 
   for (const [open, reference, entry, exit] of [
     ['2026-07-07T15:31:00+02:00', '2026-07-07T22:00:00+02:00', '2026-07-08T03:27:00+02:00', '2026-07-08T08:27:00+02:00'],
-    ['2026-03-10T14:31:00+01:00', '2026-03-10T22:00:00+01:00', '2026-03-11T03:27:00+01:00', '2026-03-11T08:27:00+01:00'],
-    ['2026-10-27T14:31:00+01:00', '2026-10-27T22:00:00+01:00', '2026-10-28T03:27:00+01:00', '2026-10-28T08:27:00+01:00'],
-  ]) test(`uses local time across summer and US/EU DST mismatches: ${entry}`, () => {
+    ['2026-03-10T14:31:00+01:00', '2026-03-10T21:00:00+01:00', '2026-03-11T02:27:00+01:00', '2026-03-11T07:27:00+01:00'],
+    ['2026-10-27T14:31:00+01:00', '2026-10-27T21:00:00+01:00', '2026-10-28T02:27:00+01:00', '2026-10-28T07:27:00+01:00'],
+  ]) test(`keeps New York time across summer and US/EU clock-change weeks: ${entry}`, () => {
     const { run, bar, session } = setup();
     const sessionEnd = session({ openAt: Date.parse(open!) - MINUTE });
     if (sessionEnd !== Date.parse(reference!)) bar(reference!, 5020);
     bar(entry!, 5010);
     expect(run.position?.side).toBe(LONG);
     expect(run.position?.closeAt).toBe(Date.parse(exit!));
+    expect(localTime(Date.parse(reference!), TZ.NEW_YORK).minuteOfDay).toBe(16 * 60);
+    expect(localTime(Date.parse(entry!), TZ.NEW_YORK).minuteOfDay).toBe(21 * 60 + 27);
+    expect(localTime(Date.parse(exit!), TZ.NEW_YORK).minuteOfDay).toBe(2 * 60 + 27);
   });
 });

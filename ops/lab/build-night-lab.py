@@ -31,18 +31,17 @@ for r in stocks['rows']:
     if r['usdMatched']:known.append(r)
 whole=sum(r['holdingsPrice'] for r in stocks['rows']);binding=max(stocks['rows'],key=lambda r:r['holdingsPrice']/r['normalizedWeight']);weighted=binding['holdingsPrice']/binding['normalizedWeight']
 stocks.update({'wholeShareBasket':whole,'wholeShareWeightedFloor':weighted,'wholeShareRoundedCash':sum(math.ceil(weighted*r['normalizedWeight']/r['holdingsPrice']-1e-10)*r['holdingsPrice'] for r in stocks['rows']),'bindingTicker':binding['ticker'],'matched':len(known),'partialCFDFloor':sum(r['minimumNotional'] for r in known),'partialWeightedCFDFloor':max(r['minimumNotional']/r['normalizedWeight'] for r in known),'missing':[r['ticker'] for r in stocks['rows'] if not r['usdMatched']]})
-# The live cohort (v4, 2026-11-22): the v3 base, controls, 1:200 points and the two agents that have traded, plus
-# five looser variants per index. The study's original selections are the other research/night-cohort-*.json files.
-selection=json.loads((ROOT/'research/night-cohort-v4-20261122.json').read_text())
+# The live cohort: the v3 base, controls, 1:200 points, the original and five looser variants per index, on New York
+# clocks. The earlier selections are the other research/night-cohort-*.json files; the study tables below were
+# measured on Tirana clocks, which differ in the weeks when Europe and the US change their clocks apart.
+selection=json.loads((ROOT/'research/night-cohort-v5-20261125.json').read_text())
 cohort=[]
 inputs=[]
 GRID_DAY={'Standard':'standard','Move ≥0.5%':'big-move','Body ≥80% of range':'strong-day','≥62% of steps agree':'steady-day','Net move ≥30% of range':'loose-body','Any up or down day':'any-day'}
 GRID_SIDE={'previous day':'rule','always long':'long','random':'random'}
 for chosen in selection['members']:
-    if chosen['role']=='original':r=load('../night-audit-20261108/baseline-x200.json')
-    else:
-        file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
-        r=json.loads(file.read_text())
+    file=ROOT/'apps/backend/data/backtests/2024-01_2026-09'/f"{chosen['id'].replace('/','__')}__{chosen['epic']}__x{chosen['leverage']}.json"
+    r=json.loads(file.read_text())
     assert r['codeHash']==chosen['codeHash'] and r['agentId']==chosen['id'] and r['leverage']==chosen['leverage']
     inputs.append((r,chosen))
 for r,chosen in inputs:

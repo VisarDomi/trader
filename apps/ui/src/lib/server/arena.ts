@@ -4,6 +4,7 @@
  */
 import { env } from '$env/dynamic/private';
 import type {
+	PortfolioView,
 	AgentDetail,
 	AgentListItem,
 	ArenaEvent,
@@ -58,6 +59,7 @@ export const arena = {
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
 	/** Every period of `days` in a backtest: the chart behind a record's frequency. */
 	periods: (backtestId: string, days: number) => call<BacktestPeriods>(`/api/runs/${encodeURIComponent(backtestId)}/periods?days=${days}`),
+	portfolios: () => call<PortfolioView[]>('/api/portfolios'),
 	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
 	twins: (days: number, sinceEngine = false) => call<any>(`/api/twins?days=${days}${sinceEngine ? '&since=engine' : ''}`),
 	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),

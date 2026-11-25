@@ -9,11 +9,12 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
  const {agents,errors}=await loadAgents();expect(errors).toEqual([]);const roster=loadRoster();expect(rosterProblems(roster,agents)).toEqual([]);
  const plans=planRuns(agents,roster).runs.filter(p=>p.agent.id.startsWith('visar-night-'));
  expect(plans).toHaveLength(20);expect(plans.filter(p=>p.epic==='US500')).toHaveLength(10);expect(plans.filter(p=>p.epic==='US100')).toHaveLength(10);
- expect(agents.find(a=>a.id==='visar-night-trading')?.codeHash).toBe('56ac3bdfe7c1');
+ expect(agents.find(a=>a.id==='visar-night-trading')?.codeHash).toBe('6ef6caeeb489');
  for(const p of plans){expect(Number(p.agent.params.lossPct)).toBeGreaterThan(0);expect(Number(p.agent.params.lossPct)).toBeLessThanOrEqual(50);expect(roster.demoAdmissions?.[`${p.agent.id}:${p.epic}@${p.leverage}`]?.codeHash).toBe(p.agent.codeHash)}
- const root=import.meta.dir+'/../../agents/';const original=readFileSync(root+'visar-night-trading.ts','utf8');
- expect(readFileSync(root+'_retired/visar-night-lab-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'")).toBe(original);
- expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("from '../../src/sdk'","from '../src/sdk'").replace("instruments: ['US100']","instruments: ['US500']")).toBe(original);
+ // The retired lab copies keep the rule as they ran it, on Tirana clocks; the running original follows New York's.
+ const root=import.meta.dir+'/../../agents/';const lab=readFileSync(root+'_retired/visar-night-lab-20261109/reference.ts','utf8');
+ expect(readFileSync(root+'_retired/visar-night-us100-20261109/reference.ts','utf8').replace("instruments: ['US100']","instruments: ['US500']")).toBe(lab);
+ expect(lab).toContain('timeZone: TZ.TIRANA');expect(readFileSync(root+'visar-night-trading.ts','utf8')).toContain('timeZone: TZ.NEW_YORK');
  expect(Object.keys(roster.retired).filter(k=>k.startsWith('visar-night-'))).toHaveLength(52);
  expect(plans.filter(p=>p.agent.slug.startsWith('visar-night-v3-control-'))).toHaveLength(4);
  // Every night rule file, running or retired, is judged in one family; the direction controls are controls, not members.

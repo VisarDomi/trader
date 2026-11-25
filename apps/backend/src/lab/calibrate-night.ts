@@ -34,18 +34,18 @@ for (let i = 0; i < candleCount(data); i++) {
     const f = nightSessionFeatures(state.session);
     if (f.minutes >= 351 && f.checkpoints === 27) counts.complete++;
   }
-  const local = localTime(now, TZ.TIRANA);
-  if (local.minuteOfDay !== 3 * 60 + 27 || local.weekday === 0 || local.weekday === 6) continue;
+  // The decision minute: 21:27 New York on Monday to Thursday evenings, the reference being that day's 16:00 close.
+  if (ny.minuteOfDay !== 21 * 60 + 27 || ny.weekday < 1 || ny.weekday > 4) continue;
   counts.entryObservations++;
-  const yesterday = new Date(Date.UTC(local.year, local.month - 1, local.day) - DAY_MS).toISOString().slice(0, 10);
-  if (state.referenceDate !== yesterday || state.session.localDate !== yesterday) continue;
+  if (state.referenceDate !== ny.date || state.session.date !== ny.date) continue;
   counts.priorReference++;
   const features = nightSessionFeatures(state.session);
   if (!(features.direction > 0 ? bar.close < state.reference : features.direction < 0 && bar.close > state.reference)) continue;
   counts.overnightPullbacks++;
-  const calendar = nightCalendarAllows(yesterday, local.date);
+  const morning = new Date(Date.UTC(ny.year, ny.month - 1, ny.day) + DAY_MS).toISOString().slice(0, 10);
+  const calendar = nightCalendarAllows(ny.date, morning);
   if (calendar) counts.calendarAllowed++;
-  opportunities.push({ date: local.date, features, calendar });
+  opportunities.push({ date: morning, features, calendar });
 }
 
 const training = opportunities.filter(o => o.date < TRAIN_END && o.calendar);

@@ -3,13 +3,13 @@ import reference from './reference';
 
 // Uniform night cohort (2026-11-09): every variant is the base plus one change, so each one explores a
 // single dimension. base = 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20,
-// 50% loss limit (it never triggers at 1:20; it does at 1:200), exit 08:27, no profit target.
+// 50% loss limit (it never triggers at 1:20; it does at 1:200), exit 02:27 New York, no profit target.
 // Controls (always long, random direction) are in visar-night-v3-control-us100. full-day-200 repeats
 // the original agent's settings (US500, visar-night-trading) on US100.
 export default defineAgent({
   ...reference,
   name: 'Visar US100 night v3',
-  description: 'US100 night directions around one base: day size (big-move), day shape (strong-day, steady-day), overnight gap (gap-5bp, gap-15bp) and leverage (leverage-200, full-day-200). Frozen 03:27/08:27 Tirana clocks. User-requested Capital demo research.',
+  description: 'US100 night directions around one base: day size (big-move), day shape (strong-day, steady-day), overnight gap (gap-5bp, gap-15bp) and leverage (leverage-200, full-day-200). New York clocks: entry 21:27, exit 02:27 (03:27 and 08:27 in Tirana outside the clock-change weeks). User-requested Capital demo research.',
   instruments: ['US100'],
   author: 'Visar / platform research',
   leverage: [20],

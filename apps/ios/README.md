@@ -9,10 +9,12 @@ iOS 26, Swift 6 strict concurrency, NativeKit, no third-party app dependencies.
 - Rankings, sort/search, independent virtual evidence, historical backtests and actual demo cashflows.
 - An agent shows every live record and every trade at once: paper P&L beside its Capital demo twin, the share of
   equity, the recorded reasons and a mini price path per trade. A record shows paper and demo together.
-- A trade shows the strategy's setup charts (for the night rule: the NY session, then 22:00 → 03:27) followed by the
+- A trade shows the strategy's setup charts (for the night rule: the NY session, then 16:00 → 21:27 New York) followed by the
   trade's own price chart with both fills, the stop and the −50% / −100% equity lines (listed as numbers when far).
 - Every forward row's verdict on the daily clock (early, keep, candidate, confirmed, retire) with its t-statistic; the
   record's screen shows the bars it needs and whether it agrees with its backtest.
+- The arena portfolio pinned above the Capital demo and Virtual rankings: every record picked by its backtest, judged
+  as one record. Its screen shows its verdict and bar, when to expect the answer, its return and the records it holds.
 - A Family section on the record's and the agent's screens: where the record ranks in its family, its t with the luck
   taken out, and the family judged as one record. It changes nothing in the record's own lines.
 - How often a record's own backtest did as well or as badly over the same number of days, on every forward row; the

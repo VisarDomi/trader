@@ -10,7 +10,7 @@ test('v3: one base plus a single change per variant, the original kept, the stri
  const {agents,errors}=await loadAgents();expect(errors).toHaveLength(0);
  const cohort=agents.filter(a=>a.slug.startsWith('visar-night-v3-'));
  const controls=cohort.filter(a=>a.slug.startsWith('visar-night-v3-control-'));
- expect(cohort).toHaveLength(19);expect(controls).toHaveLength(4);expect(agents.find(a=>a.id==='visar-night-trading')?.codeHash).toBe('56ac3bdfe7c1');
+ expect(cohort).toHaveLength(19);expect(controls).toHaveLength(4);expect(agents.find(a=>a.id==='visar-night-trading')?.codeHash).toBe('6ef6caeeb489');
  expect(agents.some(a=>a.slug.startsWith('visar-night-v2-')||a.slug==='visar-night-lab'||a.slug==='visar-night-us100')).toBe(false);
  const roster=loadRoster();expect(rosterProblems(roster,agents)).toEqual([]);
  const runs=planRuns(cohort,roster).runs;expect(runs).toHaveLength(9);
@@ -41,8 +41,7 @@ test('native/web strategy evidence uses the central window and the agent-specifi
  const {agents}=await loadAgents(),a=agents.find(a=>a.id==='visar-night-v3-us100/gap-15bp')!,p=a.params as any;
  const start=atLocal('2026-11-02','America/New_York',570),bars:Bar[]=[];
  for(let i=0;i<390;i++){const open=100+i*.002,close=open+.002;bars.push({time:start+i*60000,open,high:i<60||i>=360?150:close+.0001,low:i<60||i>=360?50:open-.0001,close,volume:1,spread:.01})}
- const ref=atLocal('2026-11-02',p.timeZone,1320);bars.push({time:ref-60000,open:100.78,high:100.8,low:100.7,close:100.78,volume:1,spread:.01});
- const time=atLocal('2026-11-03',p.timeZone,207);bars.push({time:time-60000,open:100.6,high:100.6,low:100.5,close:100.5,volume:1,spread:.01});
+ const time=atLocal('2026-11-02',p.timeZone,1287);expect(p.timeZone).toBe('America/New_York');bars.push({time:time-60000,open:100.6,high:100.6,low:100.5,close:100.5,volume:1,spread:.01});
  const state=reconstructedState(a.slug,bars,time,p),ta=makeIndicators(new IndicatorCache(bars));
  const x=explain(a.id,supportedVersions[a.slug]!.hash,{bars,bar:bars.at(-1)!,ta,tf:()=>({bars,ta}),params:p,state,time,timeframe:'1m',leverage:50,equity:10000,position:null,forecast:null,tick:null},'long',{},'reconstructed');
  expect(x.panels[0]!.series[0]!.points).toHaveLength(21);expect(x.panels[0]!.from).toBe(start+60*60000);expect(x.panels[0]!.through).toBe(start+360*60000);
@@ -63,7 +62,7 @@ test('v4: five looser variants per index at 1:20, each v3 base plus one loosenin
   expect(changed).toEqual(expected[r.agent.variant!]!);
  }
 });
-// One callback context per decision night: reference 10000 at 22:00, the 03:27 bid given.
+// One callback context per decision night: reference 10000 at the 16:00 New York close, the 21:27 bid given.
 function night(a:any,params:any,direction:number,bid:number,random=()=>0.25){
  const time=Date.UTC(2024,0,9,2,27),orders:any[]=[];
  const ctx:any={state:{...a.def.init!(params),referenceDate:'2024-01-08',reference:10000,direction},params,time,random,

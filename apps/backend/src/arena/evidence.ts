@@ -1,4 +1,4 @@
-import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, FamilyClock, FamilyView, LeaderboardRow, EvidenceOverview, RecordClock } from '@trader/shared/types';
+import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, FamilyClock, FamilyView, LeaderboardRow, EvidenceOverview, PortfolioView, RecordClock } from '@trader/shared/types';
 import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
@@ -44,6 +44,9 @@ export class AgentEvidenceService {
   /** What each live strategy record's family says about it; kept apart from the record's own clock. */
   private views = new Map<string,FamilyView>();
   private monkeys = new Map<string,number>();
+  /** The random monkeys judged as one family, and the declared portfolios measured against them. */
+  private monkeyFamily:number|null = null;
+  private held:PortfolioView[]|null = null;
   private trials = 0;
   private demotions:Record<string,{at:number}> = {};
   private readonly judging:Judging;
@@ -51,7 +54,7 @@ export class AgentEvidenceService {
   invalidate():void { this.refreshed = -Infinity; this.costsRefreshed.clear(); }
   private refresh(now: number): void {
     if (now-this.refreshed < CACHE_MS) return;
-    this.refreshed=now; this.comparisons.clear(); this.lives.clear(); this.frequencies.clear(); this.parsed.clear(); this.clocks=null;
+    this.refreshed=now; this.comparisons.clear(); this.lives.clear(); this.frequencies.clear(); this.parsed.clear(); this.clocks=null; this.held=null;
     this.demotions=this.arena.db.getSetting<Record<string,{at:number}>>('broker.demotions',{});
     this.cashflows=this.arena.db.cashflowSummary();
     const rows=[...this.arena.db.listRuns(RUN_KIND.DEMO,true),...this.arena.db.listRuns(RUN_KIND.BACKTEST,true)];
@@ -219,6 +222,7 @@ export class AgentEvidenceService {
         trials:0,confirmAt:null,aloneAt:p.own.n>=2?tAt(1/LIFECYCLE.ALONE_ALPHA,p.own.n):null,confirmed:false}});
     }
     const trials=[...groups.values()].filter(g=>!g.monkeys).length, monkey=measured.find(m=>m.monkeys)?.clock.t??null;
+    this.monkeyFamily=monkey;
     const strategies=measured.filter(m=>!m.monkeys).map(m=>m.clock);
     const confirmed=confirmedSet(strategies.filter(c=>floorMet(c.trades,c.days)&&c.backtestZ!==null&&c.backtestZ<=LIFECYCLE.AGREE_Z).map(c=>({id:c.id,e:c.e})),trials,LIFECYCLE.CONFIRM_FDR);
     for(const c of strategies) {
@@ -226,6 +230,11 @@ export class AgentEvidenceService {
       if(c.observations>=2)c.confirmAt=tAt(c.confirmed?trials/(LIFECYCLE.CONFIRM_FDR*confirmed.ids.size):confirmed.needs,c.observations);
     }
     return new Map(strategies.map(c=>[c.id,c]));
+  }
+  /** The declared portfolios, each judged as one record (portfolio.ts). */
+  portfolios(now=Date.now()):PortfolioView[] {
+    this.refresh(now); this.field(now);
+    return this.held??=this.arena.portfolios.views(now,this.monkeyFamily);
   }
   private clockOf(row:RunRow,now:number):RecordClock|undefined {
     if(row.kind!==RUN_KIND.DEMO)return;

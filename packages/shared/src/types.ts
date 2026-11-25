@@ -195,6 +195,61 @@ export interface FamilyView extends FamilyClock {
    */
   member?: { t: number; rank: number; of: number; average: number; spread: number; kept: number; estimate: number };
 }
+/**
+ * A portfolio judged as one record: a rule fixed in advance that picks records from their backtests alone
+ * (EVIDENCE.md "The arena portfolio"). It is one claim, so its bar is counted over the portfolios declared.
+ */
+export interface PortfolioClock {
+  id: string;
+  name: string;
+  /** The rule: running strategy records whose same-code backtest Sharpe before T-bills is at least this, at equal risk, picked again in each UTC month. */
+  minBacktestSharpe: number;
+  /** The day the rule was written down (YYYY-MM-DD). */
+  declared: string;
+  /** Its first pick and its latest; null before the first. The record is the weekdays closed after the first. */
+  since: number | null;
+  pickedAt: number | null;
+  /** The latest pick: its records, the agent files and instruments among them; and the picks made so far. */
+  records: number;
+  agents: number;
+  markets: number;
+  picks: number;
+  /** Days since the first pick, and the trades its records entered while it held them. */
+  days: number;
+  trades: number;
+  /** Weekdays closed, their compounded return, their t-statistic and the e-value against "no edge". */
+  observations: number;
+  ret: number;
+  t: number;
+  e: number;
+  /** Sharpe ratio per year so far (volatility never below the backtests'), and of the latest pick's backtests at the same weights. */
+  sharpe: number | null;
+  backtestSharpe: number | null;
+  /** The random monkeys judged as one family; null without them. */
+  monkey: number | null;
+  /**
+   * The forward mean against the latest pick's backtests, in standard errors. Shown, not required: the members were
+   * picked on those backtests, so the backtests flatter the pick and the forward record is expected to fall short.
+   */
+  backtestZ: number | null;
+  /** Portfolios declared: what the confirmed bar is counted over. */
+  trials: number;
+  confirmAt: number | null;
+  /** Past the day floor with an e-value at the always-valid bar for the portfolios declared. */
+  confirmed: boolean;
+  /**
+   * Days from the first pick until it is expected at the confirmed bar if it holds its backtests' Sharpe ratio, and
+   * if it holds half of it. Null without backtests, without an edge in them, or beyond fifty years.
+   */
+  confirmDays: { backtest: number | null; half: number | null };
+}
+/** One record of the latest pick: its share of the capital, its backtest Sharpe before T-bills and its return since the pick. */
+export interface PortfolioMember { runId: string; agentId: string; name: string; epic: string; leverage: number | null; share: number; backtestSharpe: number | null; ret: number | null }
+export interface PortfolioView extends PortfolioClock {
+  /** Compounded return after each closed weekday, as a fraction. */
+  curve: { t: number; value: number }[];
+  members: PortfolioMember[];
+}
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';
   since: number;

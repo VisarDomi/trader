@@ -141,6 +141,39 @@ night rule's files, running and retired, are the family `visar-night`.
 
 A family verdict moves nothing: Capital slots, demotion and retirement stay per record.
 
+### The arena portfolio
+
+One record made of many, judged as a single claim (`src/arena/portfolio.ts`, `GET /api/portfolios`). The claim is
+the one real money would act on: picking records by their backtests earns a positive return. It is written down in
+`agents/roster.json` (`portfolios`) before the days that judge it.
+
+- **The rule.** Every running strategy record whose same-code backtest has a Sharpe ratio of 0.5 or more, held at
+  equal risk: capital in proportion to 1 ÷ the backtest's daily volatility. The Sharpe ratio is that of the returns
+  themselves, before T-bills, as in the backtest gate, because the clock judges returns against zero and idle cash
+  earns nothing in a CFD account. Controls and execution comparisons are never members.
+- **Picked from backtests alone.** The first pick is made in the first hour after the rule is deployed, and a new
+  one in the first hour of each UTC month (the next hour the arena runs, if the machine was off). No forward
+  result enters a pick. Each pick is stored with its weights, so a later backtest or retirement cannot change what
+  the portfolio held on a past day. A member retired within the month counts on the days it ran and its share
+  passes to the others.
+- **Its record starts at the first pick.** Days before it are not counted, although the members have them: the
+  threshold was chosen after looking at those days.
+- **One claim, the lowest honest bar.** It is confirmed when its e-value reaches the always-valid bar for one
+  record on its own (1 ÷ 2.5%, times the number of portfolios declared) after 42 days: a t of about 3.8 after a
+  month and 3.0 after a year, against 4.6 for the first of 844 single records. A candidate needs a t of 2 above
+  the random monkeys judged as one family.
+- **Its volatility is never below its backtests'**: the latest pick's weights over its members' backtests.
+- **Agreement with its backtests is shown, not required.** The members were picked on those backtests, so the
+  backtests flatter the pick and the forward record is expected to fall short. Requiring agreement would refuse a
+  real but smaller edge.
+- **What to expect.** Breadth is what makes it faster than any member: a group's Sharpe ratio grows with the
+  independent bets in it, and the records are nearly uncorrelated (0.02 on average). On 2026-11-25 the rule holds
+  74 records from 32 agent files on 14 markets, whose backtests at the pick's weights give a Sharpe ratio of 3.0
+  where the best single backtest gives 1.4. Holding 3.0 it is confirmed about a year after its first pick;
+  holding half of it, about four years (`confirmDays`). Four months would take 5.4.
+
+The portfolio holds no Capital slot and changes no record's verdict, slot or retirement.
+
 Method: [probabilistic Sharpe ratio and minimum track record length](https://www.risk.net/journal-risk/2223785/sharpe-ratio-efficient-frontier)
 and [How to Use the Sharpe Ratio](https://www.adialab.ae/research-series/how-to-use-the-sharpe-ratio) (time, not
 trades; the count of trials); [always-valid inference](https://arxiv.org/abs/1512.04922),

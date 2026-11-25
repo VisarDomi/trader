@@ -67,6 +67,10 @@ backtests are verified by ops/lab/verify-night-cohort.py against the raw study c
 Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
 US500 against US500, US100 against US100, on the same dates and with zero overnight funding.
 
+The study's replays keep Tirana clocks (22:00, 03:27, 08:27). The cohort table shows the running agents,
+whose clocks are New York's (16:00, 21:27, 02:27) and differ from the study's only in the weeks when Europe
+and the US change their clocks apart.
+
 Data model: the published report is one SQLite file, written once per report by
 `python3 ops/lab/build-night-lab.py` (repo root, inside trader.slice) through `ops/lab/night_lab_db.py`.
 Tables hold every risk setting (`runs`, keyed by index, NY window, gap, profit exit, policy and profile),

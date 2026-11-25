@@ -51,6 +51,7 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
   const db = arena.db;
   const evidence = new AgentEvidenceService(arena);
   add(METHOD_GET,'/api/evidence',()=>json(evidence.overview()));
+  add(METHOD_GET,'/api/portfolios',()=>json(evidence.portfolios()));
   add(METHOD_GET,'/api/evidence/cost-candidates',(_req,_p,url)=>{
     const from=Number(url.searchParams.get('from')),limit=Number(url.searchParams.get('limit')??5000);
     if(!Number.isSafeInteger(from)||from<0||!Number.isInteger(limit)||limit<1||limit>5000)return json({error:'invalid candidate window'},400);

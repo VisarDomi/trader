@@ -2,11 +2,11 @@
  * The native app's screens, built on the server from arena records (see wire.ts for the format).
  * Each builder is a pure function of the records it is given; `loadScreen` fetches them.
  */
-import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, FamilyView, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
-import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily } from '@trader/shared';
+import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, FamilyView, GraveyardEntry, LeaderboardRow, PortfolioClock, PortfolioView, RunDetail, RunSummary, Trade } from '@trader/shared';
+import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily, assessPortfolio } from '@trader/shared';
 import type { Inspection } from '../inspection';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
-import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, standingLine, standingTitle, verdictWord } from '../../clock';
+import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, portfolioRuleLine, standingLine, standingTitle, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
 
 type Json = Record<string, any>;
@@ -80,10 +80,42 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 		keys: [m.totalReturn ?? null, overCash(b), b.status === 'matched' ? b.excessReturn : null, m.sharpe ?? null, m.trades ?? null],
 	});
 }
-export function rankingsScreen(rows: RankingRow[], stage: string, scenario?: string | null): Screen {
+const plural = (n: number, one: string, many: string) => `${num(n, 0)} ${n === 1 ? one : many}`;
+const portfolioStats = (p: PortfolioClock): Stat[] => [{ label: 'Return since its first pick', value: pct(p.ret), tone: tone(p.ret) },
+	{ label: `t over ${plural(p.observations, 'weekday', 'weekdays')}`, value: num(p.t), tone: tone(p.t) }, { label: 'Confirmed at', value: num(p.confirmAt) }];
+/** The document id of a portfolio's screen: the app opens it like a research page. */
+export const portfolioRoute = (p: Pick<PortfolioClock, 'id' | 'name'>) => ({ screen: 'document', id: `portfolio-${p.id}`, title: p.name });
+/**
+ * A portfolio judged as one record, pinned above a ranking: its keys keep it first under every sort. Before its
+ * first pick it has nothing to show and is left out.
+ */
+export function portfolioRow(p: PortfolioClock): Row | null {
+	if (p.since === null) return null;
+	return compact({ id: `portfolio-${p.id}`, title: p.name, subtitle: `${plural(p.records, 'record', 'records')} on ${plural(p.markets, 'market', 'markets')} · backtest Sharpe ${p.minBacktestSharpe} or more · since ${day(p.since)}`,
+		badge: verdictWord(assessPortfolio(p).verdict), stats: portfolioStats(p), body: [portfolioLine(p), portfolioPaceLine(p)].filter(Boolean).join('\n'),
+		route: portfolioRoute(p), keys: RANKING_SORT.map(() => 1e300) });
+}
+export function rankingsScreen(rows: RankingRow[], stage: string, scenario?: string | null, portfolios: PortfolioClock[] = []): Screen {
 	const name = stage === 'capital' ? 'Capital demo' : stage === 'virtual' ? 'Virtual engine' : 'Backtests';
+	const pinned = stage === 'backtest' || (scenario && scenario !== 'standard') ? [] : portfolios.map(portfolioRow).filter((r): r is Row => !!r);
 	return compact({ v: 2 as const, title: 'Rankings', subtitle: scenario && scenario !== 'standard' ? scenario : '', sort: RANKING_SORT,
-		sections: [{ title: `${name} · ${rows.length} records`, rows: rows.map(r => rankingRow(r, stage)) }] });
+		sections: [{ title: `${name} · ${rows.length} records`, rows: [...pinned, ...rows.map(r => rankingRow(r, stage))] }] });
+}
+/** One portfolio: its verdict and bars, its return since the first pick, the rule and the records it holds now. */
+export function portfolioScreen(p: PortfolioView): Screen {
+	const a = assessPortfolio(p), month = (t: number) => new Date(t).toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
+	const sections: Section[] = [{ title: '', rows: [compact({ id: 'clock', title: `${verdictWord(a.verdict)} · t ${num(p.t)}`,
+		subtitle: p.since === null ? 'No records picked yet' : `${plural(p.records, 'record', 'records')} of ${plural(p.agents, 'agent file', 'agent files')} on ${plural(p.markets, 'market', 'markets')} · ${plural(p.trades, 'trade', 'trades')} · ${num(Math.floor(p.days), 0)} days`,
+		stats: portfolioStats(p), chart: p.confirmAt != null ? { kind: 'meter' as const, height: 18, meter: { value: p.t, limit: p.confirmAt, above: true } } : undefined,
+		body: [portfolioBarsLine(p), portfolioPaceLine(p), portfolioBacktestLine(p)].filter(Boolean).join('\n') })] }];
+	if (p.curve.length > 1) sections.push({ title: '', rows: [{ id: 'return', title: `Return since ${day(p.since)}`, chart: { kind: 'line', unit: '%', height: 180, series: [series('Return', [{ t: p.since!, value: 0 }, ...p.curve.map(x => ({ t: x.t, value: x.value * 100 }))])] } }] });
+	sections.push({ title: 'Rule', rows: [{ id: 'rule', title: portfolioRuleLine(p),
+		body: [`Written down on ${p.declared}`, p.since === null ? '' : `First pick ${date(p.since)}; the days before it do not count`, p.pickedAt && p.picks > 1 ? `Pick ${num(p.picks, 0)} made ${date(p.pickedAt)}` : '',
+			p.pickedAt ? `Next pick in ${month(Date.UTC(new Date(p.pickedAt).getUTCFullYear(), new Date(p.pickedAt).getUTCMonth() + 1, 1))}` : '', 'It holds no Capital slot and changes no record\'s own verdict'].filter(Boolean).join('\n') }] });
+	if (p.members.length) sections.push({ title: `Records · ${p.members.length}`, rows: p.members.map(m => compact({ id: m.runId, title: m.name,
+		subtitle: [m.epic, tier(m.leverage), `${num(m.share * 100, 1)}% of the capital`, m.backtestSharpe != null ? `backtest Sharpe ${num(m.backtestSharpe)}` : ''].filter(Boolean).join(' · '),
+		badge: m.ret != null ? pct(m.ret) : '', badgeTone: tone(m.ret), route: runRoute(m.runId) })) });
+	return compact({ v: 2 as const, title: p.name, subtitle: 'Judged as one record', sections });
 }
 
 // ---------------------------------------------------------------- agents
@@ -346,10 +378,11 @@ export function tradeScreen(d: Inspection, agentName: string): Screen {
 			{ label: risk.fullTrade ? 'Worst adverse' : 'Observed adverse', value: signedUsd(risk.mae), tone: tone(risk.mae) }],
 		body: [`Open: ${s.entryReason ?? 'reason not recorded'}`, `Close: ${s.exitTime ? (s.exitReason ?? 'reason not recorded') : 'still open'}`].join('\n') });
 	sections.push({ title: '', rows: [head] });
-	// The setup: the strategy's own charts (for the night rule: the NY session, then 22:00 → 03:27).
+	// The setup: the strategy's own charts (for the night rule: the NY session, then 16:00 → 21:27 New York).
 	const panels: Row[] = [];
 	for (const [i, p] of (d.strategy?.panels ?? []).entries()) {
-		const title = p.title.replace('Previous New York session', 'Previous NY session').replace(' reference → 03:27 decision', ' → 03:27');
+		// "16:00 reference → 21:27 decision" (New York clocks; retired versions: 22:00 → 03:27 Tirana) fits a phone as "16:00 → 21:27".
+		const title = p.title.replace('Previous New York session', 'Previous NY session').replace(/ reference → (\d\d:\d\d) decision/, ' → $1');
 		if (!p.series.some(x => x.points.length)) { panels.push({ id: `panel-${i}`, title, body: p.guides.map(g => `${g.label}: ${num(g.value)}`).join('\n') }); continue; }
 		const precision = p.unit === 'Price' && p.guides.some(g => Math.abs(g.value) < 10) ? 5 : 2;
 		panels.push(compact({ id: `panel-${i}`, title, badge: i === 0 && d.strategy?.basis === 'reconstructed' ? 'Recomputed' : '', badgeTone: 0 as const,
@@ -392,7 +425,7 @@ export function tradeScreen(d: Inspection, agentName: string): Screen {
 	if (d.strategy?.exitRule) sections.push({ title: '', rows: [{ id: 'exit-rule', title: 'Exit rule', body: d.strategy.exitRule + (d.strategy.note ? `\n${d.strategy.note}` : '') }] });
 	return compact({ v: 2 as const, title: `${s.epic} · ${s.side === 'long' ? 'Long' : 'Short'}`, subtitle: s.stage === 'capital' ? 'Capital demo deal' : s.stage === 'backtest' ? 'Backtest trade' : 'Paper trade', sections });
 }
-const REDUNDANT = new Set(['15-minute checkpoints', 'Session direction', 'Calendar allows entry', 'Entry clock', 'Weekday entry', 'Reference belongs to previous day']);
+const REDUNDANT = new Set(['15-minute checkpoints', 'Session direction', 'Calendar allows entry', 'Entry clock', 'Weekday entry', 'Reference belongs to the session day', 'Reference belongs to previous day']);
 export function gateNumber(n: number | null, unit: string): string {
 	if (n == null || !Number.isFinite(n)) return 'Unknown';
 	if (unit === 'yes/no') return n === 1 ? 'Yes' : 'No';

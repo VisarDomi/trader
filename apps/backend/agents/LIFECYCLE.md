@@ -39,8 +39,9 @@ Control agents (`random-baseline`, `buy-hold`, `leverage-ladder`, `constant-leve
 `base` agent's eligible nights with identical settings, always long or with a random side, and hold
 user-requested demo admissions so the comparison also runs on Capital.
 
-The night cohort (`research/night-cohort-v4-20261122.json`, 20 members) studies the user's night rule on
-both indices. Its v3 part is a base per index plus one change each: overnight gap, leverage 1:200, or side
+The night cohort (`research/night-cohort-v5-20261125.json`, 20 members) studies the user's night rule on
+both indices. Its clocks are New York's (16:00 reference, 21:27 entry, 02:27 exit: the user's 22:00, 03:27
+and 08:27 in Tirana, kept at the same place in the US day when the two change their clocks apart). Its v3 part is a base per index plus one change each: overnight gap, leverage 1:200, or side
 (direction controls). The original `visar-night-trading` keeps its record as the US500 full-day 1:200 point;
 US100 has the same settings (`visar-night-v3-us100/full-day-200`). Its v4 part is five looser variants per
 index at 1:20 (`visar-night-v4-us500/us100`: `loose-body`, `no-pullback`, `any-day`, `every-night`,
@@ -93,6 +94,15 @@ family ever started (39 on 2026-11-25: the first needs a t of 3.8 after a year, 
 is how slow strategies can be judged sooner. A family verdict is information: slots, demotion and retirement stay
 per record. When a new file continues an existing idea, add its slug to that family in the same commit; keep the
 slugs of retired files listed.
+
+The **arena portfolio** is one more record, made of every running strategy record whose same-code backtest
+has a Sharpe ratio before T-bills of 0.5 or more, at equal risk (`portfolios` in `roster.json`; EVIDENCE.md
+"The arena portfolio"). The arena picks its members from backtests alone when the rule starts and in the
+first hour of each month, and judges it as a single claim made in advance: confirmed at the bar for one record
+on its own, about a year if it holds its backtests' Sharpe ratio of 3.0. It is the platform's fastest honest
+answer to whether picking by backtest works. It holds no slot and moves no record. Do not change a declared
+rule: a different threshold is a new portfolio with a new id, and the old one stays listed, because the bar
+is counted over every portfolio declared.
 
 An agent with no edge pays the spread on every trade, so its t-statistic drifts below zero as days
 accumulate: −1 retires most no-edge runs within a few months while rarely retiring a real edge.

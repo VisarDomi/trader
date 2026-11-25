@@ -9,8 +9,8 @@
  * shared lifecycle policy (packages/shared/src/lifecycle.ts): health, capacity,
  * verdict counts, confirmed records and candidates, runs and agents to retire.
  */
-import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow } from '@trader/shared';
-import { assess, assessFamily, isCandidate, LIFECYCLE, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
+import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow, PortfolioView } from '@trader/shared';
+import { assess, assessFamily, assessPortfolio, isCandidate, LIFECYCLE, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
 import { FORECASTER_UNIT,resourcePaused } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
@@ -54,11 +54,12 @@ interface AgentReview {
   retireAgent: boolean;
 }
 
-const [status, broker, demo, events] = await Promise.all([
+const [status, broker, demo, events, held] = await Promise.all([
   get<ArenaStatus>('/api/status'),
   get<{ status: BrokerStatus | null }>('/api/broker'),
   get<LeaderboardRow[]>('/api/leaderboard?kind=demo'),
   get<ArenaEvent[]>('/api/events?limit=2000'),
+  get<PortfolioView[]>('/api/portfolios'),
 ]);
 
 const now = Date.now();
@@ -170,6 +171,8 @@ const report = {
     candidates: families.filter(f => f.verdict === VERDICT.CANDIDATE),
     closestToConfirmed: families.filter(f => f.verdict === VERDICT.KEEP && f.confirmAt !== null).slice(0, 5),
   },
+  /** Portfolios judged as one record: one claim each, made before the days that judge it. */
+  portfolios: held.map(({ curve: _curve, members: _members, ...p }) => ({ ...p, ...assessPortfolio(p) })),
   retireRuns: runs.filter(r => r.verdict === VERDICT.RETIRE),
   retireAgents: agents.filter(a => a.retireAgent),
   closestToJudgement: runs
@@ -229,6 +232,8 @@ if (process.argv.includes(FLAG_JSON)) {
   for (const f of fam.confirmed) lines.push(`- confirmed: ${about(f)}`);
   for (const f of fam.candidates) lines.push(`- candidate: ${about(f)}`);
   for (const f of fam.closestToConfirmed) lines.push(`- closest: ${f.name}: family t ${f.t.toFixed(2)} of ${f.confirmAt!.toFixed(2)} needed (${f.records} running on ${f.markets} markets)`);
+  if (report.portfolios.length) lines.push('', '## Portfolios (each one claim made in advance, picked from backtests alone)');
+  for (const p of report.portfolios) lines.push(`- ${p.name}: ${p.verdict}, ${p.reason}${p.confirmAt !== null ? `; t ${p.t.toFixed(2)} of ${p.confirmAt.toFixed(2)} needed` : ''}${p.since !== null ? `; ${pct(p.ret)} since ${new Date(p.since).toISOString().slice(0, 10)} with ${p.records} records on ${p.markets} markets` : ''}`);
   lines.push('', '## Retire: agents (move file to agents/_retired/)');
   if (report.retireAgents.length === 0) lines.push('- none');
   for (const a of report.retireAgents) lines.push(`- ${a.agentId}: ${a.retire} of ${a.runs} runs retire (${a.judged} judged)`);

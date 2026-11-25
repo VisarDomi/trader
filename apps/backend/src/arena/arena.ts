@@ -13,6 +13,7 @@ import {
   loserMature,
 } from './pipeline.ts';
 import { Judging, judgedT } from './judging.ts';
+import { Portfolios } from './portfolio.ts';
 import { runKey,PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 /**
@@ -100,6 +101,8 @@ export class Arena {
   readonly rates: Rates;
   /** The daily clock records are judged on: candidates for Capital slots, losing evidence, the evidence shown. */
   readonly judging: Judging;
+  /** Portfolios judged as one record: their monthly picks from backtests (portfolio.ts). */
+  readonly portfolios: Portfolios;
   readonly broker: BrokerMirror | null;
   private readonly agentsDir?: string;
   private readonly liveMode: boolean;
@@ -144,6 +147,7 @@ export class Arena {
     this.forecastAvailability = new ForecastAvailability(opts.db);
     this.rates = new Rates(opts.db);
     this.judging = new Judging(opts.db);
+    this.portfolios = new Portfolios(opts.db, this.judging, () => this.roster?.portfolios ?? {});
     this.broker = opts.broker;
     this.agentsDir = opts.agentsDir;
     this.liveMode = opts.live !== false;
@@ -819,6 +823,8 @@ export class Arena {
       this.db.pruneCandles(now - (HISTORY_DAYS + 5) * DAY_MS);
       this.db.pruneLogs();
       this.db.thinEquity(now);
+      // Stored picks survive a restart; a month that began while the machine was off is picked at the next hour.
+      if (this.liveMode && this.ready) this.portfolios.repick(now);
     }
   }
 

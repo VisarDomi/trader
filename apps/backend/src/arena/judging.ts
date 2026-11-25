@@ -156,8 +156,11 @@ export function confirmedSet(offered: readonly { id: string; e: number }[], tria
   return { ids: new Set(sorted.slice(0, size).map(x => x.id)), needs: trials / (rate * (size + 1)) };
 }
 
-/** What a same-code backtest contributes: its daily curve (frequency.ts), its weekday returns and its win rate. */
-export interface BacktestHistory { at: number; curve: Curve; daily: DailyStats; closes: number[]; returns: number[]; winRate: number; trades: number }
+/**
+ * What a same-code backtest contributes: its daily curve (frequency.ts), its weekday returns, its win rate and the
+ * Sharpe ratio of its returns themselves, before T-bills, as the backtest gate reads it (pipeline.ts).
+ */
+export interface BacktestHistory { at: number; curve: Curve; daily: DailyStats; closes: number[]; returns: number[]; winRate: number; trades: number; rawSharpe: number }
 
 /** A live record's weekday returns so far, with the closes they belong to. */
 export interface ForwardSeries { closes: number[]; returns: number[]; stats: DailyStats }
@@ -205,7 +208,7 @@ export class Judging {
     const end = Math.max(row.ended_at ?? 0, (points.at(-1)?.t ?? row.started_at) + DAY_MS);
     const returns = dailyReturns(points, row.started_at, end, row.capital, true);
     const read = { at: row.updated_at, curve: curveOf(points), daily: statsOf(returns), closes: weekdayCloses(row.started_at, end), returns,
-      winRate: Number(m?.winRate) || 0, trades: Number(m?.trades) || 0 };
+      winRate: Number(m?.winRate) || 0, trades: Number(m?.trades) || 0, rawSharpe: Number(m?.cashFreeSharpe ?? m?.sharpe) || 0 };
     this.histories.set(row.id, read);
     return read;
   }

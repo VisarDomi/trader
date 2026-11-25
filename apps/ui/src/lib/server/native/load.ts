@@ -5,7 +5,7 @@ import { inspection } from '../inspection';
 import { doc, sources, topics } from '../research';
 import { PLATFORM_HISTORY } from '$lib/platform-history';
 import {
-	accountScreen, accountsScreen, agentScreen, agentsScreen, archiveScreen, documentScreen, graveyardScreen, rankingsScreen, runScreen,
+	accountScreen, accountsScreen, agentScreen, agentsScreen, archiveScreen, documentScreen, graveyardScreen, portfolioScreen, rankingsScreen, runScreen,
 	scenariosScreen, sourceScreen, statusScreen, tradeScreen, verdicts, type Sparks,
 } from './screens';
 import type { Screen } from './wire';
@@ -23,6 +23,7 @@ const broker = kept(15_000, () => arena.broker());
 const agentList = kept(60_000, () => arena.agents());
 const graveyard = kept(300_000, () => arena.graveyard());
 const backtestBoard = kept(300_000, () => arena.leaderboard('backtest'));
+const portfolios = kept(30_000, () => arena.portfolios());
 const sparks = (id: string): Promise<Sparks | null> => inspection.sparks(id).catch(() => null);
 
 import type { NativeScreen as ScreenName } from '../native-contract';
@@ -32,8 +33,9 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 	switch (screen) {
 		case 'rankings': {
 			const stage = q.get('stage') ?? 'capital', scenario = q.get('scenario');
-			const rows = await arena.leaderboard(stage === 'backtest' ? 'backtest' : 'demo', false, stage === 'capital' ? 'demo' : '', stage === 'virtual' ? scenario ?? 'standard' : 'standard');
-			return rankingsScreen(verdicts(rows, stage), stage, scenario);
+			const [rows, held] = await Promise.all([arena.leaderboard(stage === 'backtest' ? 'backtest' : 'demo', false, stage === 'capital' ? 'demo' : '', stage === 'virtual' ? scenario ?? 'standard' : 'standard'),
+				stage === 'backtest' ? [] : portfolios().catch(() => [])]);
+			return rankingsScreen(verdicts(rows, stage), stage, scenario, held);
 		}
 		case 'agents': return agentsScreen(await agentList());
 		case 'agent': {
@@ -73,6 +75,12 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 			{ title: 'Source library', rows: sources().map(s => ({ id: s.id, title: s.title, subtitle: `${s.topic} · ${s.id}`, body: s.summary ?? '', ...(s.url ? { route: { screen: 'external', id: s.url } } : {}) })) }]);
 		case 'document': {
 			if (!/^[a-z0-9-]{1,60}$/.test(id)) throw Error('Invalid topic');
+			// A portfolio judged as one record is opened like a document, so the app needs no screen of its own for it.
+			if (id.startsWith('portfolio-')) {
+				const held = (await portfolios()).find(p => `portfolio-${p.id}` === id);
+				if (!held) throw Error('No such portfolio');
+				return portfolioScreen(held);
+			}
 			return documentScreen(topics().find(t => t.slug === id)?.title ?? 'Research', doc(`research/topics/${id}.md`) ?? '');
 		}
 		case 'source': return sourceScreen(await arena.agent(id), q.get('version') ?? '');

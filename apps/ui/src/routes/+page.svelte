@@ -10,6 +10,7 @@
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
   import LiveRefresh from '$lib/components/LiveRefresh.svelte';
   import ValueBars from '$lib/components/ValueBars.svelte';
+  import PortfolioCard from '$lib/components/PortfolioCard.svelte';
   import { frequencyLine, frequencySide, shareText } from '$lib/frequency';
 
 	let { data } = $props();
@@ -293,6 +294,7 @@
     {/if}</div></details>
 	</div>
 
+  {#if view!=='backtest'&&scenario==='standard'}{#each data.portfolios.filter(p=>p.since!==null) as portfolio}<PortfolioCard {portfolio}/>{/each}{/if}
   {#if !data.error||data.savedAt}
     <div class="result-charts">
       <section class="card"><h2>Return</h2><ValueBars items={sortedRuns.slice(0,8).filter(r=>r.metrics).map(r=>({label:`${r.name} · ${r.epic}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.runId)}${view==='demo'?'?stage=capital':''}`,note:`1:${r.leverage??'—'} · ${r.metrics!.trades} trades · ${day(r.metrics!.startTime)} → ${day(r.metrics!.endTime)}`}))}/></section>
