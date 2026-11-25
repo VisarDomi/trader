@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts } from './screens';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen } from './screens';
+import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
 
 const run: any = {
@@ -37,7 +38,7 @@ test('rankings rows carry sort keys and the capital stage reads cash drawdown as
 	expect(row.keys).toEqual([0.1, null, null, 1, 3]);
 	expect(row.stats).toEqual([{ label: 'Return', value: '+10.0%', tone: 1 }, { label: 'vs T-bills', value: '—', tone: 0 }, { label: 'vs hold', value: '—', tone: 0 }]);
 	expect(row.subtitle).toBe('US500 · 1:20 · 3 trades');
-	expect(row.body).toBe('cash drawdown −5.0%');
+	expect(row.body).toBe('Sharpe 1.00 · cash drawdown −5.0%');
 	expect(rankingsScreen([], 'capital').sort).toEqual(['Return', 'vs T-bills', 'vs hold', 'Sharpe', 'Closed trades']);
 });
 test('every stage leads with the return over T-bills and over the outright hold, then the alternatives and after inflation', () => {
@@ -51,7 +52,7 @@ test('every stage leads with the return over T-bills and over the outright hold,
 		expect(r.stats).toEqual([{ label: 'Return', value: '+168.1%', tone: 1 }, { label: 'vs T-bills', value: '+167.89 pp', tone: 1 }, { label: 'vs hold', value: '+176.40 pp', tone: 1 }]);
 		expect(r.keys).toEqual([1.681, 1.681 - 0.0021, 1.764, 5.14, 3]);
 		// (1 + 168.1%) / (1 + 0.5%) − 1 = +166.8%: still gained purchasing power.
-		expect(r.body).toBe('Hold −8.3% · T-bills +0.2% · inflation +0.5%\n' + (stage === 'capital' ? 'After inflation +166.8% · cash drawdown −35.4%' : 'After inflation +166.8% · Sharpe 5.14 · drawdown −35.4%'));
+		expect(r.body).toBe('Hold −8.3% · T-bills +0.2% · inflation +0.5%\n' + (stage === 'capital' ? 'After inflation +166.8% · Sharpe 5.14 · cash drawdown −35.4%' : 'After inflation +166.8% · Sharpe 5.14 · drawdown −35.4%'));
 		expect(r.body).not.toContain('exposure');   // flat: no "Exposure 0.00×"
 	}
 	// Without stored rates the hold still shows.
@@ -67,6 +68,39 @@ test('every stage leads with the return over T-bills and over the outright hold,
 	expect(holdParts({ hold: { price: -0.093, income: 0.002, kind: 'dividends', source: 'SPY dividends ×1' } })).toBe('Bought outright, no CFD fees: price −9.3% · SPY dividends ×1 +0.2%.');
 	expect(holdParts({ hold: { price: -0.1, income: 0, kind: 'dividends', source: 'no SPY dividend in these dates' } })).toBe('Bought outright, no CFD fees: price −10.0% · no SPY dividend in these dates.');
 	expect(holdParts({ hold: { price: 0.05, income: 0, kind: 'none', priceOnly: true } })).toBe('Bought outright, no CFD fees: price +5.0%. Nobody owns oil or gas outright, so this hold is an upper bound.');
+});
+test('a record says how often its own backtest did this well or this badly, at a glance and in full on its screen', () => {
+	// Three wins of three for +166.2% in 40 days; the backtest's best 40 days were +114.6%.
+	const night = { runId: 'bt:2024-01_2026-09:visar-night-trading:US500:x200', days: 40, observed: 1.662, periods: 825, independent: 25, atLeast: 0, atMost: 825, best: 1.146, worst: -0.92,
+		wins: { won: 3, trades: 3, rate: 0.4366, backtestTrades: 71, chance: 0.4366 ** 3 } };
+	expect(frequencyLine(night)).toBe('Backtest never did this well in 40 days (825 periods)');
+	expect(winsLine(night)).toBe("3 of 3 trades won; that many or more happen 8.3% of the time at the backtest's 43.7% win rate (71 trades)");
+	const usual = { ...night, days: 48, observed: 0.112, periods: 817, atLeast: 134, atMost: 683, best: 0.281, worst: -0.116, wins: undefined };
+	expect(frequencyLine(usual)).toBe('Backtest did this well in 16% of 48-day periods');
+	expect(frequencyLine({ ...usual, observed: -0.1, atLeast: 800, atMost: 17 })).toBe('Backtest did this badly in 2.1% of 48-day periods');
+	expect(frequencyLine({ ...usual, days: 1, atLeast: 0 })).toBe('Backtest never did this well in 1 day (817 periods)');
+	expect(frequencyLine({ ...usual, periods: 5000, atLeast: 1, atMost: 4999 })).toBe('Backtest did this well in <0.1% of 48-day periods');
+	expect(frequencyLine(undefined)).toBe('');
+	// The ranking row leads with it, in every forward stage.
+	const row = rankingRow({ runId: 'demo:a', name: 'A', epic: 'US500', leverage: 200, status: 'running', mirrored: true, metrics: { totalReturn: 1.662, sharpe: 9.27, trades: 3, maxDrawdown: 0 }, evidence: { frequency: night } }, 'capital');
+	expect(row.body).toBe('Backtest never did this well in 40 days (825 periods)\nSharpe 9.27 · cash drawdown 0.0%');
+	const periods = { runId: night.runId, days: 40, from: Date.UTC(2024, 0, 1), through: Date.UTC(2026, 8, 30), median: -0.16, points: [{ t: Date.UTC(2024, 1, 10), ret: -0.2 }, { t: Date.UTC(2024, 1, 11), ret: 1.146 }] };
+	const detail = frequencyRow('frequency-capital', 'Capital demo', night, periods);
+	expect(detail.title).toBe('Capital demo +166.2% in 40 days');
+	expect(detail.stats).toEqual([{ label: 'this good in 825 backtest periods', value: 'Never' }, { label: 'Median 40 days', value: '−16.0%' }, { label: 'Best', value: '+114.6%' }]);
+	expect(detail.chart).toMatchObject({ kind: 'line', unit: '%', height: 180, guides: [{ label: 'This record +166.2%', value: 166.2, tone: 1 }] });
+	expect(detail.body).toBe("0 of 825 periods of 40 days in the 2024-01 → 2026-09 backtest; they overlap, 25 fit end to end\nWorst −92.0% · best +114.6%\n3 of 3 trades won; that many or more happen 8.3% of the time at the backtest's 43.7% win rate (71 trades)");
+	// A loser reads its own side: the share of periods this bad, and the worst one.
+	const bad = frequencyRow('frequency-virtual', 'Virtual', { ...usual, observed: -0.1, atLeast: 800, atMost: 17 }, null);
+	expect(bad.stats?.map(s => [s.label, s.value])).toEqual([['of 817 backtest periods this bad', '2.1%'], ['Median 48 days', '—'], ['Worst', '−11.6%']]);
+	expect(bad.chart).toBeUndefined();
+	// The record's screen: the line on both summaries, then one row per stage before the trades.
+	const screen = runScreen({ run: { ...run, evidence: { frequency: usual } }, agentName: 'X', capital: { runId: run.id, mirrored: true, metrics: { totalReturn: 1.662, sharpe: 9.27, maxDrawdown: 0 }, evidence: { frequency: night } } as any,
+		excluded: false, comparison: null, sparks: null, account: 'Arena 09', periods: [periods, null] });
+	expect(screen.sections[0]!.rows.map(r => r.body?.split('\n')[0])).toEqual(['Backtest did this well in 16% of 48-day periods', 'Backtest never did this well in 40 days (825 periods)']);
+	const often = screen.sections.find(s => s.title === 'How often its backtest did this')!;
+	expect(often.rows.map(r => [r.id, !!r.chart])).toEqual([['frequency-virtual', false], ['frequency-capital', true]]);
+	expect(screen.sections.findIndex(s => s === often)).toBeLessThan(screen.sections.findIndex(s => s.title.startsWith('Trades')));
 });
 test('thinning keeps extremes and packing round-trips', () => {
 	const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, value: i === 2500 ? 99 : Math.sin(i / 50) }));

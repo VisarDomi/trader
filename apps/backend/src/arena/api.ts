@@ -191,6 +191,14 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     });
   });
 
+  // Every period of `days` in a backtest by its end date: the chart behind a record's frequency (frequency.ts).
+  add(METHOD_GET, '/api/runs/:id/periods', (_req, { id }, url) => {
+    const r = db.run(id!), days = Number(url.searchParams.get('days'));
+    if (!r || r.kind !== RUN_KIND.BACKTEST) return json({ error: 'backtest not found' }, 404);
+    if (!Number.isInteger(days) || days < 1 || days > 1000) return json({ error: 'days must be a whole number from 1 to 1000' }, 400);
+    return json(evidence.periods(r, days));
+  });
+
   add(METHOD_GET, '/api/broker', () => json({ status: arena.broker?.status() ?? null, deals: db.deals(300) }));
 
   add(METHOD_GET, '/api/twins', (_req, _p, url) => {

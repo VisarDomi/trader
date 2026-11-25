@@ -2,9 +2,10 @@
  * The native app's screens, built on the server from arena records (see wire.ts for the format).
  * Each builder is a pure function of the records it is given; `loadScreen` fetches them.
  */
-import type { AgentDetail, AgentEvidence, AgentListItem, Deal, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
+import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
 import { CONTROL_SLUGS, assess, luckBands } from '@trader/shared';
 import type { Inspection } from '../inspection';
+import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
 
 type Json = Record<string, any>;
@@ -65,11 +66,11 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	// Every stage compares over the same dates with T-bills (the safe floor) and with holding the instrument outright.
 	const dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
 	const stats = worthStats('Return', m.totalReturn, b);
-	// Line one: what the same dates paid elsewhere. Line two: this record after inflation, then its risk.
+	// How often its own backtest did this; what the same dates paid elsewhere; this record after inflation, then its risk.
 	const real = afterInflation(b);
-	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage === 'capital' ? `cash drawdown ${dd}` : `Sharpe ${num(m.sharpe)} · drawdown ${dd}`,
+	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage !== 'capital' || m.sharpe != null ? `Sharpe ${num(m.sharpe)}` : '', stage === 'capital' ? `cash drawdown ${dd}` : `drawdown ${dd}`,
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
-	const facts = [alternatives(b), risk].filter(Boolean).join('\n');
+	const facts = [frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
 	return compact({
 		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
@@ -186,14 +187,26 @@ const summaryRow = (r: RunSummary, agent: AgentDetail): Json => ({ ...r, name: r
 
 // ---------------------------------------------------------------- run
 
-export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; comparison: RunSummary | null; sparks: Sparks | null; account: string | null }
-export function runScreen({ run, agentName, capital, excluded, comparison, sparks, account }: RunInputs): Screen {
+export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; comparison: RunSummary | null; sparks: Sparks | null; account: string | null; periods?: (BacktestPeriods | null)[] }
+/** The backtest's every period as long as the record has lived, with the record's own return drawn across them. */
+export function frequencyRow(id: string, what: string, f: BacktestFrequency, p: BacktestPeriods | null | undefined): Row {
+	const { well, count } = frequencySide(f), points = (p?.points ?? []).map(x => ({ t: x.t, value: x.ret * 100 }));
+	const ym = (t: number) => new Date(t).toISOString().slice(0, 7);
+	return compact({ id, title: `${what} ${pct(f.observed)} in ${daysText(f.days)}`,
+		stats: [{ label: count ? `of ${f.periods} backtest periods this ${well ? 'good' : 'bad'}` : `this ${well ? 'good' : 'bad'} in ${f.periods} backtest periods`, value: count ? shareText(count, f.periods) : 'Never' },
+			{ label: `Median ${daysText(f.days)}`, value: pct(p?.median) }, { label: well ? 'Best' : 'Worst', value: pct(well ? f.best : f.worst) }],
+		chart: points.length > 1 ? { kind: 'line' as const, unit: '%', precision: 1, height: 180, series: [series(`Backtest ${f.days}-day return`, points)],
+			guides: [{ label: `This record ${pct(f.observed)}`, value: f.observed * 100, tone: tone(f.observed) }] } : undefined,
+		body: [`${num(count, 0)} of ${num(f.periods, 0)} periods of ${daysText(f.days)}${p ? ` in the ${ym(p.from)} → ${ym(p.through)} backtest` : ''}${f.independent < f.periods ? `; they overlap, ${num(f.independent, 0)} fit end to end` : ''}`,
+			`Worst ${pct(f.worst)} · best ${pct(f.best)}`, winsLine(f)].filter(Boolean).join('\n') });
+}
+export function runScreen({ run, agentName, capital, excluded, comparison, sparks, account, periods = [] }: RunInputs): Screen {
 	const historical = run.kind === 'backtest', m = run.metrics, e = run.evidence as AgentEvidence | undefined, extra = (run.extra ?? {}) as Json;
 	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`,
 		subtitle: [tier(run.leverage), date(run.startedAt), count(m?.trades, 'closed trade', 'closed trades')].filter(Boolean).join(' · '),
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
 		stats: worthStats('Return', m?.totalReturn, e?.benchmark as Json | undefined),
-		body: [alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
+		body: [frequencyLine(e?.frequency), alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
 			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
@@ -202,8 +215,8 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 			subtitle: [capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', count(deals.filter(d => d.status === 'closed').length, 'closed deal', 'closed deals')].join(' · '),
 			badge: excluded ? 'Excluded' : '',
 			stats: worthStats('Cash return', cm?.totalReturn, (capital?.evidence as Json | undefined)?.benchmark),
-			body: (capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? `${alternatives((capital!.evidence as Json).benchmark)} since the first deal\n` +
-				[afterInflation((capital!.evidence as Json).benchmark) != null ? `After inflation ${pct(afterInflation((capital!.evidence as Json).benchmark))}` : '', `cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}`].filter(Boolean).join(' · ') : '' }));
+			body: [frequencyLine(capital?.evidence?.frequency), ...((capital?.evidence as Json | undefined)?.benchmark?.status === 'matched' ? [`${alternatives((capital!.evidence as Json).benchmark)} since the first deal`,
+				[afterInflation((capital!.evidence as Json).benchmark) != null ? `After inflation ${pct(afterInflation((capital!.evidence as Json).benchmark))}` : '', cm ? `Sharpe ${num(cm.sharpe)}` : '', `cash drawdown ${pct(cm?.maxDrawdown ? -cm.maxDrawdown : cm?.maxDrawdown)}`].filter(Boolean).join(' · ')] : [])].filter(Boolean).join('\n') }));
 	}
 	if (extra.retirement) summary.push({ id: 'retirement', title: 'Retired', subtitle: date(extra.retirement.at), body: extra.retirement.reason });
 	const sections: Section[] = [{ title: '', rows: summary }];
@@ -217,6 +230,9 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	const priced = deals.filter(d => d.status === 'closed' && d.pnl != null && d.close_time).sort((a, b) => a.close_time! - b.close_time!);
 	if (priced.length) { let cash = 0; charts.push({ id: 'cash', title: 'Capital demo closed P&L', chart: { kind: 'line', height: 140, series: [series('P&L', priced.map(d => ({ t: d.close_time!, value: (cash += d.pnl!) })))] } }); }
 	if (charts.length) sections.push({ title: '', rows: charts });
+	const often = ([['frequency-virtual', 'Virtual', e?.frequency], ['frequency-capital', 'Capital demo', capital?.evidence?.frequency]] as const)
+		.flatMap(([id, what, f]) => (f ? [frequencyRow(id, what, f, periods.find(p => p?.runId === f.runId && p.days === f.days))] : []));
+	if (often.length) sections.push({ title: 'How often its backtest did this', rows: often });
 	const trades = runTrades(run, sparks);
 	sections.push({ title: trades.length ? `Trades · ${trades.length}` : 'Trades', rows: trades.length ? trades.map(t => tradeRow(t, false)) : [{ id: 'no-trades', title: 'No trades yet' }] });
 	if (m?.monthly?.length) sections.push({ title: '', rows: [{ id: 'monthly', title: 'Monthly return', chart: { kind: 'bars', unit: '%', height: Math.max(120, m.monthly.length * 24 + 20), bars: m.monthly.map(x => ({ name: x.month, value: x.ret * 100, total: true })) } }] });

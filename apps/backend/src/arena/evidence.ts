@@ -1,9 +1,10 @@
-import type { AgentEvidence, BenchmarkComparison, CostSummary, LeaderboardRow, EvidenceOverview } from '@trader/shared/types';
+import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, LeaderboardRow, EvidenceOverview } from '@trader/shared/types';
 import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
 import { CONTROL_SLUGS } from '../engine/policy.ts';
 import { outrightHold } from './hold.ts';
+import { countPeriods, curveOf, listPeriods, periodDays, winChance, type Curve } from './frequency.ts';
 import { isShadow, backtestGate } from './pipeline.ts';
 import { runKey, PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 
@@ -25,15 +26,22 @@ export class AgentEvidenceService {
   private variants = 0;
   private cashflows:EvidenceOverview['accountCashflows']={totals:[],unallocated:[]};
   private backtests = new Map<string,RunRow>();
+  /** A virtual run's whole life, like its Return: its latest hourly equity on its starting capital. */
+  private lives = new Map<string,{from:number;through:number;ret:number}|null>();
+  private frequencies = new Map<string,BacktestFrequency|undefined>();
+  /** Each current backtest's daily equity and win rate, read once and again only when the backtest is re-run. */
+  private histories = new Map<string,{at:number;curve:Curve;winRate:number;trades:number}>();
   constructor(private readonly arena: Arena) {}
   invalidate():void { this.refreshed = -Infinity; this.costsRefreshed.clear(); }
   private refresh(now: number): void {
     if (now-this.refreshed < CACHE_MS) return;
-    this.refreshed=now; this.comparisons.clear();
+    this.refreshed=now; this.comparisons.clear(); this.lives.clear(); this.frequencies.clear();
     this.cashflows=this.arena.db.cashflowSummary();
     const rows=[...this.arena.db.listRuns(RUN_KIND.DEMO,true),...this.arena.db.listRuns(RUN_KIND.BACKTEST,true)];
     this.rows=new Map(rows.map(r=>[r.id,r])); this.agents=new Map(this.arena.db.agents().map(a=>[a.id,a]));
     this.backtests=new Map(rows.filter(r=>r.kind===RUN_KIND.BACKTEST&&!r.retired&&r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r=>[runKey(r.agent_id,r.epic,r.leverage??0),r]));
+    const current=new Set([...this.backtests.values()].map(r=>r.id));
+    for(const id of this.histories.keys())if(!current.has(id))this.histories.delete(id);
     this.variants=new Set(rows.filter(r=>r.kind===RUN_KIND.DEMO&&!r.retired&&!isShadow(r.id)&&!CONTROL_SLUGS.has(this.agents.get(r.agent_id)?.slug??r.agent_id)).map(r=>r.agent_id)).size;
   }
   private loadCosts(kind:RunRow['kind'],now:number,runId?:string):void {
@@ -64,13 +72,49 @@ export class AgentEvidenceService {
         :this.versusHold(row.epic,m.startTime,m.endTime,m.totalReturn,'same-backtest-window',
           'Same historical window. Sizing differs; excess return is not risk-adjusted alpha.');
     } else {
-      // The run's whole life, like its Return: its latest hourly equity on its starting capital.
-      const last=this.arena.db.lastEquity(row.id);
-      result=!last||last.t<=row.started_at||!(row.capital>0)?unavailable('Waiting for the first hourly equity observation.')
-        :this.versusHold(row.epic,row.started_at,last.t,last.equity/row.capital-1,'shared-hourly-equity',
+      const life=this.life(row);
+      result=!life?unavailable('Waiting for the first hourly equity observation.')
+        :this.versusHold(row.epic,life.from,life.through,life.ret,'shared-hourly-equity',
           'From the run\'s start to its latest hourly equity, on its starting capital. Sizing differs; excess return is not risk-adjusted alpha.');
     }
     this.comparisons.set(row.id,result);return result;
+  }
+  private life(row:RunRow):{from:number;through:number;ret:number}|null {
+    let life=this.lives.get(row.id);
+    if(life===undefined) {
+      const last=this.arena.db.lastEquity(row.id);
+      life=!last||last.t<=row.started_at||!(row.capital>0)?null:{from:row.started_at,through:last.t,ret:last.equity/row.capital-1};
+      this.lives.set(row.id,life);
+    }
+    return life;
+  }
+  private history(backtest:RunRow) {
+    const kept=this.histories.get(backtest.id);
+    if(kept&&kept.at===backtest.updated_at)return kept;
+    const m=backtest.metrics?JSON.parse(backtest.metrics):null;
+    const read={at:backtest.updated_at,curve:curveOf(this.arena.db.equity(backtest.id)),winRate:Number(m?.winRate)||0,trades:Number(m?.trades)||0};
+    this.histories.set(backtest.id,read);return read;
+  }
+  /**
+   * How often the backtest of the same agent version, instrument and leverage returned what the record did over
+   * as many days (frequency.ts). Absent before the record's first closed trade and without such a backtest.
+   */
+  private frequency(row:Pick<RunRow,'agent_id'|'epic'|'leverage'|'code_hash'>,observed:number,from:number,through:number,
+    m:{trades?:number;winRate?:number}|null):BacktestFrequency|undefined {
+    if(!m||!(m.trades!>0))return;
+    const backtest=this.backtests.get(runKey(row.agent_id,row.epic,row.leverage??0));
+    if(!backtest||backtest.code_hash!==row.code_hash)return;
+    const history=this.history(backtest),counted=countPeriods(history.curve,periodDays(from,through),observed);
+    if(!counted)return;
+    const won=Math.round((m.winRate??0)*m.trades!);
+    return {runId:backtest.id,...counted,...(history.trades>0?{wins:{won,trades:m.trades!,rate:history.winRate,backtestTrades:history.trades,
+      chance:winChance(won,m.trades!,history.winRate)}}:{})};
+  }
+  /** Every period of `days` in a backtest by its end date: the chart behind a frequency. */
+  periods(backtest:RunRow,days:number,now=Date.now()):BacktestPeriods {
+    this.refresh(now);
+    const current=this.backtests.get(runKey(backtest.agent_id,backtest.epic,backtest.leverage??0))?.id===backtest.id;
+    return listPeriods(backtest.id,current?this.history(backtest).curve:curveOf(this.arena.db.equity(backtest.id)),days);
   }
   /** Holding the instrument outright over the same dates (hold.ts), then T-bills and inflation (rates.ts). */
   private versusHold(epic:string,from:number,through:number,strategyReturn:number,basis:BenchmarkComparison['basis'],note:string):BenchmarkComparison {
@@ -104,9 +148,15 @@ export class AgentEvidenceService {
     // A passed backtest is admission evidence, not a claim of a proven forward edge.
     const currentBacktest=this.backtests.get(runKey(row.agent_id,row.epic,row.leverage??0));
     const passes=backtestGate(currentBacktest,a?.code_hash??row.code_hash,a?.slug??row.agent_id).passed;
+    let frequency=this.frequencies.get(row.id);
+    if(frequency===undefined&&row.kind===RUN_KIND.DEMO&&!this.frequencies.has(row.id)) {
+      const life=this.life(row);
+      frequency=life?this.frequency(row,life.ret,life.from,life.through,row.metrics?JSON.parse(row.metrics):null):undefined;
+      this.frequencies.set(row.id,frequency);
+    }
     return {asOf:now,basis:row.kind===RUN_KIND.BACKTEST?'historical-equity':'virtual-equity',
       admission:control?'control':extra.demoAdmission?'user-experiment':row.kind===RUN_KIND.BACKTEST&&!passes?'backtest-rejected':extra.grandfathered||!passes?'calibration':'backtest-qualified',
-      benchmark:this.comparison(row,now),costs:this.costs.get(row.id)??emptyCosts(),
+      benchmark:this.comparison(row,now),...(frequency?{frequency}:{}),costs:this.costs.get(row.id)??emptyCosts(),
       exposure:p&&q&&equity>0?p.size*(q.bid+q.ask)/2/equity:p?null:0,
       openPosition:!!p,
       stopRisk:p&&exit!==null&&stop!==null&&equity>0?Math.max(0,(p.side==='long'?exit-stop:stop-exit)*p.size)/equity:null,
@@ -139,8 +189,10 @@ export class AgentEvidenceService {
   forCapital(row:LeaderboardRow,unrealizedPnl:number|null,openPosition:boolean):AgentEvidence|undefined {
     this.refresh(Date.now());
     const meta=this.rows.get(row.runId);if(!meta)return;
-    const base=this.forRun(meta);
-    return {...base,basis:'broker-realized-cash',costs:null,benchmark:this.cashComparison(row),
+    // The virtual run's frequency describes its own return and days; Capital's counts its cash since the first deal.
+    const {frequency:_virtual,...base}=this.forRun(meta),m=row.metrics;
+    const frequency=m&&m.startTime?this.frequency(meta,m.totalReturn,m.startTime,m.endTime,m):undefined;
+    return {...base,basis:'broker-realized-cash',costs:null,benchmark:this.cashComparison(row),...(frequency?{frequency}:{}),
       exposure:null,stopRisk:null,openFunding:null,unrealizedPnl,openPosition,
       note:'Actual realized cash plus linked adjustments. Unlinked funding/corporate actions remain at account level; open P&L is separate. Cash drawdown does not measure intratrade risk.'};
   }

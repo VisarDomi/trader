@@ -10,6 +10,7 @@
 	import OverfitScatter from '$lib/components/OverfitScatter.svelte';
   import LiveRefresh from '$lib/components/LiveRefresh.svelte';
   import ValueBars from '$lib/components/ValueBars.svelte';
+  import { frequencyLine, frequencySide, shareText } from '$lib/frequency';
 
 	let { data } = $props();
 
@@ -87,6 +88,8 @@
 	function metric(r: LeaderboardRow, key: string): number {
 		if(key==='excess')return r.evidence?.benchmark.excessReturn??-Infinity;
 		if(key==='exposure')return r.evidence?.exposure??-Infinity;
+		// The share of backtest periods that did at least as well: low for a result its backtest rarely reached.
+		if(key==='frequency')return r.evidence?.frequency?r.evidence.frequency.atLeast/r.evidence.frequency.periods:-Infinity;
 		if(key==='activeDays')return observedDays(r)??-Infinity;
 		if (key === 'btSharpe') return r.backtest?.metrics?.sharpe ?? -Infinity;
 		if (key === 'btAnnual') return r.backtest?.metrics?.annualReturn ?? -Infinity;
@@ -295,17 +298,21 @@
       <th><button onclick={()=>sortBy('name')}>Agent{arrow('name')}</button></th><th>Market</th><th><button onclick={()=>sortBy('leverage')}>Setup{arrow('leverage')}</button></th>
       <th class="num"><button onclick={()=>sortBy('activeDays')}>Days{arrow('activeDays')}</button></th><th class="num"><button onclick={()=>sortBy('trades')}>Trades{arrow('trades')}</button></th>
       <th class="num"><button onclick={()=>sortBy('totalReturn')}>Return{arrow('totalReturn')}</button></th>
+      {#if view!=='backtest'}<th class="num" title="How often the backtest of the same code, instrument and leverage did this well (or this badly) over the record's own number of days. Periods overlap."><button onclick={()=>sortBy('frequency')}>In backtest{arrow('frequency')}</button></th>{/if}
+      <th class="num" title="Annualized, above 3-month T-bills"><button onclick={()=>sortBy('sharpe')}>Sharpe{arrow('sharpe')}</button></th>
       <th class="num"><button onclick={()=>sortBy('maxDrawdown')}>{view==='demo'?'Cash DD':'Max DD'}{arrow('maxDrawdown')}</button></th>
       <th class="num" title="Excess over holding the instrument 1:1 over the same dates (Capital: realized cash since the first deal); sizing differs"><button onclick={()=>sortBy('excess')}>Excess{arrow('excess')}</button></th><th>Status</th>
     </tr></thead><tbody>{#each sortedRuns.slice((pageNumber-1)*PAGE_SIZE,pageNumber*PAGE_SIZE)as r(r.runId)}
-      {@const m=r.metrics}{@const verdict=stages.get(r.runId)}
+      {@const m=r.metrics}{@const verdict=stages.get(r.runId)}{@const f=r.evidence?.frequency}{@const side=f?frequencySide(f):null}
       <tr class:control={isControl(r)}><td><a class="agent-name" href="/agents/{r.agentId}">{r.name}</a>{#if r.demoAdmission}<span class="badge">Experiment</span>{/if}{#if isControl(r)}<span class="badge">Control</span>{/if}{#if r.usesForecast}<small>TimesFM{r.dependency&&r.dependency.state!=='available'?' · paused':''}</small>{/if}</td>
         <td><a href="/runs/{encodeURIComponent(r.runId)}{view==='demo'?'?stage=capital':''}">{r.epic}</a></td>
         <td>{lev(r)}<small>{r.timeframe}{#if r.evidence?.exposure!=null} · {num(r.evidence.exposure)}× used{/if}{#if r.comparisonOnly} · {r.scenario}{/if}</small></td>
-        <td class="num">{num(observedDays(r),1)}</td><td class="num">{m?.trades??'—'}</td><td class="num {sign(m?.totalReturn)}">{pct(m?.totalReturn)}</td><td class="num">{pctPlain(m?.maxDrawdown)}</td>
+        <td class="num">{num(observedDays(r),1)}</td><td class="num">{m?.trades??'—'}</td><td class="num {sign(m?.totalReturn)}">{pct(m?.totalReturn)}</td>
+        {#if view!=='backtest'}<td class="num" title={f?`${frequencyLine(f)}${f.independent<f.periods?`; ${f.independent} fit end to end`:''}. Best ${pct(f.best)}, worst ${pct(f.worst)}.`:'No closed trades yet, or no backtest of this code long enough to count'}>{#if f&&side}{shareText(side.count,f.periods)}<small>this {side.well?'well':'badly'} · {f.days}d × {f.periods}</small>{:else}—{/if}</td>{/if}
+        <td class="num">{num(m?.sharpe)}</td><td class="num">{pctPlain(m?.maxDrawdown)}</td>
         <td class="num {sign(r.evidence?.benchmark.excessReturn)}" title={r.evidence?.benchmark.status==='matched'?`${utc(r.evidence.benchmark.from)} → ${utc(r.evidence.benchmark.through)}: hold ${pct(r.evidence.benchmark.benchmarkReturn)}${r.evidence.benchmark.hurdles?`, 3-month T-bills ${pct(r.evidence.benchmark.hurdles.cash)}, US CPI ${pct(r.evidence.benchmark.hurdles.inflation)}`:''}`:'No common-date benchmark'}>{r.evidence?.benchmark.excessReturn!==undefined?`${num(r.evidence.benchmark.excessReturn*100)} pp`:'—'}{#if r.evidence?.benchmark.hurdles}<small>T-bills {pct(r.evidence.benchmark.hurdles.cash)} · CPI {pct(r.evidence.benchmark.hurdles.inflation)}</small>{/if}</td>
         <td><span class="badge">{view==='virtual'?(verdict?.verdict??r.status):view==='demo'?(r.mirrored?'Active':'Past'):r.status}</span>{#if view==='virtual'&&r.mirrored}<small>Capital demo</small>{/if}</td>
-      </tr>{:else}<tr><td colspan="9" class="muted">No matching records.</td></tr>{/each}</tbody></table></div>
+      </tr>{:else}<tr><td colspan="11" class="muted">No matching records.</td></tr>{/each}</tbody></table></div>
     <div class="row secondary"><button class="btn" disabled={pageNumber<=1} onclick={()=>pageNumber--}>Previous</button><span>{sortedRuns.length} records · {pageNumber} / {Math.max(1,Math.ceil(sortedRuns.length/PAGE_SIZE))}</span><button class="btn" disabled={pageNumber>=Math.ceil(sortedRuns.length/PAGE_SIZE)} onclick={()=>pageNumber++}>Next</button></div>
 
 	{:else}

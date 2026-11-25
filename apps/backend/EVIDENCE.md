@@ -58,6 +58,39 @@ Sharpe of the returns themselves (`cashFreeSharpe`): it filters strategies that 
 T-bills it would also reject 127 of 637 backtests, mostly low-leverage variants rarely in the market, whose idle cash
 earns nothing in a CFD account. Promotion does not use Sharpe (trade t-statistics and the monkeys).
 
+## How often the backtest did this
+
+Every forward record with a closed trade carries `frequency` (`src/arena/frequency.ts`): how often the backtest of the
+same agent version, instrument and leverage returned what the record did over as many days.
+
+- The backtest's stored daily equity is cut into every period as long as the record has lived (whole days, at least
+  one), one per stored day a period can start on. A period that starts with no money left is skipped.
+- **Virtual:** the run's Return over its life. **Capital demo:** its cash return since the first deal. Backtests have
+  none: they are the history.
+- The count is of periods that returned at least as much (`atLeast`) and at most as much (`atMost`). A record is
+  described on the side it sits on: "did this well in 1.3% of 48-day periods", "never did this badly in 40 days".
+- It reads no future prices, draws no samples and uses no random numbers; the same inputs always give the same count.
+
+Periods overlap (neighbours share all but one day), so 12 of 956 is usually one or two episodes, not twelve;
+`independent` is how many fit end to end, and the record's screen draws every period. A backtest that holds fewer than
+four periods end to end, or fewer than 30 in all, gives no frequency, as does a backtest of another code version.
+A Capital record mirrored after its paper run had grown or shrunk trades larger or smaller than a fresh account,
+which this comparison does not correct.
+
+`wins` is the other reading: the chance of at least the record's number of winning trades at the backtest's win rate
+(a binomial tail, trades taken as independent). It ignores the size of each trade, so it can call ordinary what the
+periods call unseen. `visar-night-trading` US500 1:200 on Capital demo (2026-11-25): three wins of three at a 43.7%
+win rate happen 8.3% of the time, while the +166% they made in 40 days is above every 40-day period of that backtest
+(best +114.6%).
+
+The number says how the record compares with its own history, not whether it has an edge. A result its backtest
+rarely reached is luck, a different market or a backtest that understates the strategy; the rankings show the best
+of several hundred records, so some rare results are expected among them. Sharpe answers another question: return
+per unit of its swings, annualized, above T-bills.
+
+`GET /api/runs/<backtest id>/periods?days=N` returns every period by its end date with the median: the chart on
+the record's screen. Each current backtest's curve is read once and again only after it is re-run.
+
 ## Costs and coverage
 
 New fills store small derived midpoint/spread/provenance references, decision midpoints when known,

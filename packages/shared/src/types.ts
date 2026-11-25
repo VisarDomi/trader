@@ -93,6 +93,39 @@ export interface Hurdles {
   /** The dates run past the latest CPI release; those weeks continue the trailing 12-month pace. */
   estimated: boolean;
 }
+/**
+ * How often the record's result happened in its own backtest: the backtest of the same agent version, instrument and
+ * leverage, cut into every period as long as the record has lived (apps/backend/src/arena/frequency.ts).
+ */
+export interface BacktestFrequency {
+  /** The backtest the periods come from. */
+  runId: string;
+  /** Period length: the record's age in whole days, at least one. */
+  days: number;
+  /** The record's return over its life, which the periods are counted against. */
+  observed: number;
+  /** Periods of `days` in the backtest, one per stored day one can start on. They overlap. */
+  periods: number;
+  /** How many of them fit end to end without overlapping. */
+  independent: number;
+  /** Periods that returned at least / at most `observed`. */
+  atLeast: number;
+  atMost: number;
+  best: number;
+  worst: number;
+  /** Wins alone: the chance of at least `won` wins in `trades` trades at the backtest's win rate, sizes ignored. */
+  wins?: { won: number; trades: number; rate: number; backtestTrades: number; chance: number };
+}
+/** Every period of a backtest by its end date, for the chart behind a BacktestFrequency. */
+export interface BacktestPeriods {
+  runId: string;
+  days: number;
+  /** The backtest's first and last stored day. */
+  from: number;
+  through: number;
+  median: number | null;
+  points: { t: number; ret: number }[];
+}
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';
   since: number;
@@ -105,6 +138,8 @@ export interface AgentEvidence {
   basis: 'virtual-equity' | 'historical-equity' | 'broker-realized-cash';
   admission: 'control' | 'user-experiment' | 'calibration' | 'backtest-qualified' | 'backtest-rejected';
   benchmark: BenchmarkComparison;
+  /** Forward records with closed trades and a backtest of the same code long enough to count; absent otherwise. */
+  frequency?: BacktestFrequency;
   costs: CostSummary | null;
   exposure: number | null;
   openPosition: boolean;

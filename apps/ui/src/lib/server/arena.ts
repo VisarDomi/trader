@@ -15,6 +15,7 @@ import type {
 	RunKind,
 	GraveyardEntry,
 	EvidenceOverview,
+	BacktestPeriods,
 } from '@trader/shared';
 
 const DEFAULT_ARENA_URL = 'http://127.0.0.1:4120';
@@ -55,6 +56,8 @@ export const arena = {
 	graveyard: () => call<GraveyardEntry[]>('/api/graveyard'),
 	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
+	/** Every period of `days` in a backtest: the chart behind a record's frequency. */
+	periods: (backtestId: string, days: number) => call<BacktestPeriods>(`/api/runs/${encodeURIComponent(backtestId)}/periods?days=${days}`),
 	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
 	twins: (days: number, sinceEngine = false) => call<any>(`/api/twins?days=${days}${sinceEngine ? '&since=engine' : ''}`),
 	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),
