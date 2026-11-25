@@ -5,6 +5,46 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — how often a record's own backtest did this; the eight Capital rows above +10%
+
+- The user asked for one more number on the rankings: how often a row's result happens (an earlier answer had put
+  `visar-night-trading`'s at about 8%), whether Sharpe already says that, and more about it on the record's screen.
+- `frequency` (feff4c1, EVIDENCE.md "How often the backtest did this"): the backtest of the same code, instrument and
+  leverage is cut into every period as long as the record has lived, and the periods that returned at least and at
+  most as much as the record are counted. Rows read "Backtest did this well in 1.3% of 48-day periods" or "Backtest
+  never did this well in 40 days (825 periods)"; the record's screen draws every period with the record's return
+  across them. 477 of 556 virtual and 439 of 575 Capital records have it (the rest have no closed trade, or ids from
+  before leverage tiers).
+- The earlier 8% counts wins only: three of three at the backtest's 43.7% win rate is 8.3%. It ignores size. The
+  record's screen shows it beside the period count.
+- Sharpe is a different number (return per unit of its swings, annualized, above T-bills) and says nothing about how
+  often. The app's Capital rows show it again; the website's table has a Sharpe column.
+- Capital demo on 2026-11-25: 493 records with closed deals, 201 up and 291 down, median −0.6%, 8 above +10%:
+
+  | Record | Cash return | Deals, days | Backtest 2024-01 → 2026-09 | Periods this good | Win count alone |
+  |---|---:|---:|---:|---:|---:|
+  | visar-night-trading US500 1:200 | +166.2% | 3, 40 | −99.98% | 0 of 825 (best +114.6%) | 8.3% |
+  | Swing Reversal (p10) US100 1:2 | +21.1% | 40, 48 | −26.4% | 0 of 818 (best +16.9%) | 2.2% |
+  | Visar US100 night v4 (every-night) US100 1:20 | +18.9% | 2, 1 | −89.2% | 1 of 858 | 24% |
+  | MACD Trend (ema200) ETHUSD 1:100 | +13.3% | 39, 48 | −38.5% | 12 of 956 (1.3%) | 7.8% |
+  | TimesFM Drift (h8) SILVER 1:50 | +12.7% | 32, 47 | −36.2% | 0 of 818 (best +4.1%) | 21% |
+  | Swing Reversal (p05) US100 1:2 | +12.1% | 176, 48 | −52.9% | 74 of 818 (9.0%) | 26% |
+  | Noise-Area Momentum (voltarget) US500 1:5 | +11.4% | 34, 42 | −17.6% | 0 of 823 (best +10.3%) | 49% |
+  | Hull MA Slope GOLD 1:50 | +11.2% | 24, 48 | +88.5% | 134 of 817 (16%) | 32% |
+
+  Seven of the eight have losing backtests and sit at or beyond the best those backtests did over as many days; only
+  Hull MA Slope GOLD is doing what its backtest does (median 48 days +3.7%). Periods overlap: 20–25 fit end to end,
+  so "0 of 818" means not once in about 20 separate tries.
+- The eight are the top of about 500. Over all 439 Capital records with a frequency, the share of backtest periods
+  at least as good has median 51% and quartiles 26% and 73%: as a group, live cash sits where the backtests put it,
+  and a few records far out on the good side are what the best of 500 looks like. No lifecycle rule changes;
+  promotion still needs 30 trades in 28 days at t ≥ 2 above the monkeys.
+- Cost: about 6 ms per evidence refresh for 1,044 records; the 501 backtest curves (440,000 daily points, 7 MB) are
+  read once after a start (170 ms) and again only when a backtest is re-run.
+- The deploy also carried the committed runtime-path changes since 9b3733e (comments, lab tools and the inspector
+  unit, which now finds the runtime through `ops/server/runtime.sh`): arena back with 97 agents and 4,630 runs, no
+  load errors; the inspector answers on 4140.
+
 ## 2026-11-22 (Sun, user-requested) — looser night cohort (v4) at 1:20; the iPhone app gets screens built by the server
 
 - Night check (the user asked whether the setup works after `visar-night-trading` went 3 for 3 and the only other
