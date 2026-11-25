@@ -2,6 +2,12 @@
 
 Newest first. Each entry records what was delivered, how it was checked and how it reached the phone.
 
+## November 25, 2026 · Unified Visar Night family, grouped Agents tab & Rule & settings card
+
+- Consolidated the 8 legacy Visar Night folders into `visar-night` (8 symmetric `US500`/`US100` variants) and `visar-night-control` (2 controls), normalized display names across all agents, grouped the Agents tab into 6 strategy categories (`Visar Night` first), and added a plain-English **Rule & settings** card at the top of every Agent Detail screen.
+- Updated `Logic.swift` (`visar` filter matches `visar-night*` slugs and run IDs). Eight Linux Swift logic tests, 255 backend tests (+2 native Rust), and 37 UI tests (`svelte-check` 0 errors) pass.
+- Job `20261125T185644Z-3aa021c421`, frozen source `56457a7`: **installed** in place on the phone and approved for renewal.
+
 ## November 25, 2026 · Manual Paper ↔ Demo & confirmed Demo ↔ Real stage controls
 
 - Wired `POST /api/native/v2/stage` in `Store.swift` and `ScreenController.swift` so live run screens expose manual stage controls: immediate `Paper ↔ Capital demo` and one-way `Paper → Backtest` transitions (no confirmation prompt), and `UIAlertController`-confirmed `Capital demo ↔ Real (tracked)` transitions in both directions.
