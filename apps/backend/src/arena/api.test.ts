@@ -7,7 +7,7 @@ import type { LoadedAgent } from '../engine/loader.ts';
 import { defineAgent } from '../sdk/index.ts';
 import { computeMetrics } from '../engine/metrics.ts';
 import type { BacktestResult } from '../lab/backtest-core.ts';
-import type { LeaderboardRow, RunDetail } from '@trader/shared';
+import type { AgentBundle, AgentListItem, LeaderboardRow, RunDetail } from '@trader/shared';
 const EPIC = 'EURUSD';
 const ID = 'agent';
 const RUN = 'demo:agent:EURUSD:x1:hash';
@@ -53,7 +53,18 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     expect(detail.metrics!.monthly).toHaveLength(1);
     expect(detail.evidence?.costs?.closedTrades).toBe(0);
     expect(db.run(RUN)!.snapshot).toBe(snapshot);
-    expect((await get<unknown[]>('/api/agents')).length).toBe(1);
+    expect((await get<AgentListItem[]>('/api/agents')).length).toBe(1);
+    const noneAgents = await get<AgentListItem[]>('/api/agents?runs=none');
+    expect(noneAgents).toHaveLength(1);
+    expect(noneAgents[0]!.demo).toHaveLength(0);
+    expect(noneAgents[0]!.backtest).toHaveLength(0);
+    const bundle = await get<AgentBundle>(`/api/agent-bundle/${encodeURIComponent(ID)}`);
+    expect(bundle.agent.id).toBe(ID);
+    expect(bundle.agent.versions[0]!.source).toBe('');
+    expect(bundle.liveRuns).toHaveLength(1);
+    expect(bundle.liveRuns[0]!.equityCurve).toHaveLength(0);
+    expect(bundle.capital).toHaveLength(1);
+    expect(bundle.backtests).toHaveLength(1);
     expect((await fetch(`http://127.0.0.1:${api.port}/api/evidence/cost-candidates?from=0`)).status).toBe(401);
     expect((await fetch(`http://127.0.0.1:${api.port}/api/evidence/costs`,{method:'POST',body:'[]'})).status).toBe(401);
     const waitingId = RUN.replace(':x1:', ':x2:');
@@ -68,4 +79,48 @@ test('stage leaderboards keep virtual equity separate from actual broker results
     const response = await fetch(`http://127.0.0.1:${api.port}/api/backtests`, { method: 'POST', body: '{}' });
     expect(response.status).toBe(401);
   } finally {recoveryLists.mockRestore();await api.stop(true); db.db.close(); }
+});
+
+test('materialized run_costs stay exact across appendTrade, replacement, attachExecution, and backtest archival', () => {
+  const db = new ArenaDB(':memory:');
+  try {
+    db.createDemoRun({ id: RUN, agentId: ID, codeHash: 'hash', epic: EPIC, leverage: 1, capital: 10_000, params: {}, now: 1 });
+    db.appendTrade(RUN, 0, {
+      side: 'long', size: 1, entryTime: 10, entryPrice: 100, exitTime: 20, exitPrice: 112,
+      pnl: 10, funding: -2, exitReason: 'signal', barsHeld: 1,
+    });
+    db.appendTrade(RUN, 1, {
+      side: 'short', size: 1, entryTime: 30, entryPrice: 110, exitTime: 40, exitPrice: 105,
+      pnl: 5, funding: 0, exitReason: 'signal', barsHeld: 1,
+      execution: { method: 'fill-quotes', midpointPnl: 6, spreadCost: 1, adjustmentPnl: 0, timingCost: 0.5 } as any,
+    });
+    expect(db.attachExecution(RUN, 0, { method: 'archived-quote-match', midpointPnl: 12, spreadCost: 2, adjustmentPnl: 0 } as any)).toBe(true);
+    let tot = db.costTotals('demo', false, RUN)[0]!;
+    expect(tot.closedTrades).toBe(2);
+    expect(tot.closedNetPnl).toBeCloseTo(15, 8);
+    expect(tot.closedFunding).toBeCloseTo(-2, 8);
+    expect(tot.beforeFundingPnl).toBeCloseTo(17, 8);
+    expect(tot.measuredTrades).toBe(2);
+    expect(tot.capturedTrades).toBe(1);
+    expect(tot.reconstructedTrades).toBe(1);
+    expect(tot.midpointPnl).toBeCloseTo(18, 8);
+    expect(tot.spreadCost).toBeCloseTo(3, 8);
+    expect(tot.timedTrades).toBe(1);
+    expect(tot.timingCost).toBeCloseTo(0.5, 8);
+    expect(tot.timedSignalPnl).toBeCloseTo(6.5, 8);
+    expect(tot.timedNetPnl).toBeCloseTo(5, 8);
+
+    // Replacing trade 0 updates run_costs cleanly without double counting.
+    db.appendTrade(RUN, 0, {
+      side: 'long', size: 1, entryTime: 10, entryPrice: 100, exitTime: 20, exitPrice: 120,
+      pnl: 20, funding: -1, exitReason: 'signal', barsHeld: 1,
+    });
+    tot = db.costTotals('demo', false, RUN)[0]!;
+    expect(tot.closedTrades).toBe(2);
+    expect(tot.closedNetPnl).toBeCloseTo(25, 8);
+    expect(tot.measuredTrades).toBe(1);
+    expect(tot.reconstructedTrades).toBe(0);
+  } finally {
+    db.db.close();
+  }
 });

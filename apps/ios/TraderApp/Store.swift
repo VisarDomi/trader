@@ -89,10 +89,15 @@ final class TraderDB {
         run("SELECT rev,fetched,body FROM screen WHERE key=?",{self.text($0,1,key)}){s in out=(String(cString:sqlite3_column_text(s,0)),sqlite3_column_double(s,1),self.data(s,2))}
         return out
     }
+    private var writesSincePrune = 0
     func save(_ key:String,rev:String,fetched:Double,body:Data) {
         run("INSERT INTO screen(key,rev,fetched,body) VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET rev=excluded.rev,fetched=excluded.fetched,body=excluded.body",{s in self.text(s,1,key);self.text(s,2,rev);sqlite3_bind_double(s,3,fetched);self.blob(s,4,body)})
-        // Bounded: the 400 most recently confirmed screens stay on the phone.
-        sqlite3_exec(db,"DELETE FROM screen WHERE key NOT IN (SELECT key FROM screen ORDER BY fetched DESC LIMIT 400)",nil,nil,nil)
+        writesSincePrune += 1
+        // Bounded: prune periodically instead of scanning the table on every single screen save.
+        if writesSincePrune >= 25 {
+            writesSincePrune = 0
+            sqlite3_exec(db,"DELETE FROM screen WHERE key NOT IN (SELECT key FROM screen ORDER BY fetched DESC LIMIT 400)",nil,nil,nil)
+        }
     }
     func confirm(_ key:String,fetched:Double){run("UPDATE screen SET fetched=? WHERE key=?",{s in sqlite3_bind_double(s,1,fetched);self.text(s,2,key)})}
     func value(_ key:String)->Data?{var out:Data?;run("SELECT value FROM kv WHERE key=?",{self.text($0,1,key)}){s in out=self.data(s,0)};return out}
@@ -147,7 +152,7 @@ actor TraderStore {
     }
     private func remember(_ key:String,_ c:Content) {
         decoded[key]=c;recent.removeAll{$0==key};recent.append(key)
-        while recent.count>16 {decoded.removeValue(forKey:recent.removeFirst())}
+        while recent.count>64 {decoded.removeValue(forKey:recent.removeFirst())}
     }
     func cachedContent(_ route:Route,state:ScreenState) -> Content {
         if let local=Presentation.local(route) {return local}

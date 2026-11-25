@@ -150,26 +150,72 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     }),
   );
 
-  add(METHOD_GET, '/api/agents', () => {
-    const demo = db.listRuns(RUN_KIND.DEMO);
-    const bt = db.listRuns(RUN_KIND.BACKTEST);
+  add(METHOD_GET, '/api/agents', (_req, _p, url) => {
+    const runsMode = url.searchParams.get('runs') ?? 'standard';
+    if (runsMode === 'none') {
+      return json(db.agents().map(a => ({ ...agentJson(a), demo: [], backtest: [] })));
+    }
+    const demoByAgent = Map.groupBy(db.listRuns(RUN_KIND.DEMO, false, runsMode !== 'all'), r => r.agent_id);
+    const btByAgent = Map.groupBy(db.listRuns(RUN_KIND.BACKTEST, false), r => r.agent_id);
     return json(
       db.agents().map(a => ({
         ...agentJson(a),
-        demo: demo.filter(r => r.agent_id === a.id).map(runSummary),
-        backtest: bt.filter(r => r.agent_id === a.id).map(runSummary),
+        demo: (demoByAgent.get(a.id) ?? []).map(compactRunSummary),
+        backtest: (btByAgent.get(a.id) ?? []).map(compactRunSummary),
       })),
     );
   });
   add(METHOD_GET, '/api/graveyard', () => json(graveyard(db)));
 
-  add(METHOD_GET, '/api/agents/*id', (_req, { id }) => {
+  add(METHOD_GET, '/api/agent-bundle/*id', (_req, { id }, url) => {
     const a = db.agent(id!);
     if (!a) return json({ error: 'agent not found' }, 404);
+    const tradesLimit = Math.max(0, Math.min(2000, Number(url.searchParams.get('trades') ?? 100) || 100));
+    const allRuns = db.listRunsForAgent(a.id, false);
+    const now = Date.now();
+    const liveRows = allRuns.filter(r => r.kind === RUN_KIND.DEMO && !r.retired && !isShadow(r.id));
+    const liveRuns = liveRows.map(r => {
+      const tracked = arena.tracked.get(r.id);
+      const full = tracked ? null : db.run(r.id);
+      const pos = tracked?.run.position ?? (full?.snapshot ? (JSON.parse(full.snapshot) as { position: unknown }).position : null);
+      return {
+        ...compactRunSummary(r),
+        evidence: evidence.forRun(r, now),
+        params: JSON.parse(r.params),
+        extra: r.extra ? JSON.parse(r.extra) : null,
+        position: pos,
+        state: null,
+        trades: tradesLimit > 0 ? db.viewTrades(r.id, tradesLimit) : [],
+        equityCurve: [],
+        logs: [],
+        deals: db.dealsForRun(r.id),
+      };
+    });
+    const only = new Set([a.id]);
+    const capitalRows = demoLeaderboard(arena, leaderboard(arena, RUN_KIND.DEMO, true, undefined, 'standard', only), evidence, true);
+    const backtestRows = leaderboard(arena, RUN_KIND.BACKTEST, false, evidence, null, only);
+    return json({
+      agent: {
+        ...agentJson(a),
+        versions: db.agentVersions(a.id, false),
+        runs: allRuns.map(compactRunSummary),
+      },
+      liveRuns,
+      capital: capitalRows,
+      backtests: backtestRows,
+      realService: arena.broker?.status().realService ?? null,
+    });
+  });
+
+  add(METHOD_GET, '/api/agents/*id', (_req, { id }, url) => {
+    const a = db.agent(id!);
+    if (!a) return json({ error: 'agent not found' }, 404);
+    const includeSource = url.searchParams.get('source') !== '0';
+    const includeShadows = url.searchParams.get('shadows') !== '0';
     return json({
       ...agentJson(a),
-      versions: db.agentVersions(a.id),
-      runs: db.listRunsForAgent(a.id).map(runSummary),
+      versions: db.agentVersions(a.id, includeSource),
+      runs: db.listRunsForAgent(a.id, includeShadows).map(runSummary),
     });
   });
 
@@ -200,7 +246,10 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
     return json(evidence.periods(r, days));
   });
 
-  add(METHOD_GET, '/api/broker', () => json({ status: arena.broker?.status() ?? null, deals: db.deals(300) }));
+  add(METHOD_GET, '/api/broker', (_req, _p, url) => {
+    const dealsLimit = url.searchParams.has('deals') ? Math.max(0, Math.min(1000, Number(url.searchParams.get('deals')) || 0)) : 300;
+    return json({ status: arena.broker?.status() ?? null, deals: dealsLimit > 0 ? db.deals(dealsLimit) : [] });
+  });
 
   add(METHOD_GET, '/api/twins', (_req, _p, url) => {
     const days = Number(url.searchParams.get('days') ?? TWIN_DEFAULT_DAYS);
@@ -340,19 +389,20 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
   const agents = new Map(db.agents().map(a => [a.id, a]));
   const now=Date.now();
   // A few agents: read only their runs (indexed) instead of every run of every kind.
-  const scoped=only?[...only].flatMap(id=>db.listRunsForAgent(id)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0):undefined;
-  const runsOf=(k:RunKind,retired:boolean)=>scoped?scoped.filter(r=>r.kind===k&&(retired||!r.retired)):db.listRuns(k,retired);
+  const standardOnly = scenario === 'standard';
+  const scoped=only?[...only].flatMap(id=>db.listRunsForAgent(id,!standardOnly)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0):undefined;
+  const runsOf=(k:RunKind,retired:boolean,stdOnly=false)=>scoped?scoped.filter(r=>r.kind===k&&(retired||!r.retired)&&(!stdOnly||!isShadow(r.id))):db.listRuns(k,retired,stdOnly);
   const backtests = new Map(runsOf(RUN_KIND.BACKTEST,false).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const demotions = db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
   const real = new Set(arena.broker?.realRuns ?? []);
-  const demoRows=runsOf(RUN_KIND.DEMO,false);
+  const demoRows=runsOf(RUN_KIND.DEMO,false,true);
   const forward = new Map(
     demoRows
       .filter(r => !isShadow(r.id))
       .map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]),
   );
-  const rows=kind===RUN_KIND.DEMO&&!includeRetired?demoRows:runsOf(kind,includeRetired);
+  const rows=kind===RUN_KIND.DEMO&&!includeRetired&&standardOnly?demoRows:runsOf(kind,includeRetired,kind===RUN_KIND.DEMO&&standardOnly);
   return rows.filter(r=>(!scenario||scenario==='all'||(r.extra?JSON.parse(r.extra).scenario??'standard':'standard')===scenario)).map(r => {
     const activeForward = forward.get(runKey(r.agent_id, r.epic, r.leverage ?? 0));
     const extra = r.extra ? JSON.parse(r.extra) : {};
@@ -580,6 +630,13 @@ function runSummary(r: RunRow) {
     updatedAt: r.updated_at,
     endedAt: r.ended_at,
     metrics: r.metrics ? (JSON.parse(r.metrics) as RunMetrics) : null,
+  };
+}
+
+function compactRunSummary(r: RunRow) {
+  return {
+    ...runSummary(r),
+    metrics: r.metrics ? compactMetrics(r.metrics) : null,
   };
 }
 

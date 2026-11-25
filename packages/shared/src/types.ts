@@ -445,6 +445,15 @@ export interface AgentDetail extends AgentInfo {
 	runs: RunSummary[];
 }
 
+/** Single-round-trip payload for the Agent Detail screen (avoids N+1 run calls and full leaderboards). */
+export interface AgentBundle {
+	agent: AgentDetail;
+	liveRuns: RunDetail[];
+	capital: LeaderboardRow[];
+	backtests: LeaderboardRow[];
+	realService: BrokerStatus['realService'] | null;
+}
+
 export const GRAVEYARD_CATEGORY = { AGENT: 'agent', VERSION: 'version', PLATFORM: 'platform', RUNS: 'runs' } as const;
 export type GraveyardCategory = typeof GRAVEYARD_CATEGORY[keyof typeof GRAVEYARD_CATEGORY];
 export interface GraveyardRun extends Pick<RunSummary, 'id' | 'kind' | 'epic' | 'leverage' | 'capital' | 'equity' | 'windowId' | 'startedAt' | 'endedAt'> {

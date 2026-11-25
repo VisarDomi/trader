@@ -25,8 +25,12 @@ const emptyCosts = (): CostSummary => ({reportedTrades:0,historyComplete:true,cl
 /** Cached read models: no per-quote scans, PostgreSQL, forecasts or broker requests. */
 export class AgentEvidenceService {
   private refreshed = -Infinity;
+  private cashflowsRefreshed = -Infinity;
   private rows = new Map<string,RunRow>();
+  private comparisonRunCount = 0;
   private comparisons = new Map<string,BenchmarkComparison>();
+  /** Backtest hold comparisons are immutable for a given (id, updated_at); keep them across 30s refreshes. */
+  private backtestComparisons = new Map<string,BenchmarkComparison>();
   private costs = new Map<string,CostSummary>();
   private costsRefreshed = new Map<string,number>();
   private agents = new Map<string,{slug:string;name:string;variant:string|null;uses_forecast:number;code_hash:string}>();
@@ -51,13 +55,18 @@ export class AgentEvidenceService {
   private demotions:Record<string,{at:number}> = {};
   private readonly judging:Judging;
   constructor(private readonly arena: Arena) { this.judging=arena.judging??new Judging(arena.db); }
-  invalidate():void { this.refreshed = -Infinity; this.costsRefreshed.clear(); }
+  invalidate():void { this.refreshed = -Infinity; this.cashflowsRefreshed = -Infinity; this.costsRefreshed.clear(); this.backtestComparisons.clear(); }
   private refresh(now: number): void {
     if (now-this.refreshed < CACHE_MS) return;
     this.refreshed=now; this.comparisons.clear(); this.lives.clear(); this.frequencies.clear(); this.parsed.clear(); this.clocks=null; this.held=null;
     this.demotions=this.arena.db.getSetting<Record<string,{at:number}>>('broker.demotions',{});
-    this.cashflows=this.arena.db.cashflowSummary();
-    const rows=[...this.arena.db.listRuns(RUN_KIND.DEMO,true),...this.arena.db.listRuns(RUN_KIND.BACKTEST,true)];
+    if (now - this.cashflowsRefreshed >= 5 * 60_000) {
+      this.cashflowsRefreshed = now;
+      this.cashflows=this.arena.db.cashflowSummary();
+    }
+    // Load only standard demo runs (skips 8,900+ :delay= shadow copies) + backtest runs.
+    const rows=[...this.arena.db.listRuns(RUN_KIND.DEMO,true,true),...this.arena.db.listRuns(RUN_KIND.BACKTEST,true)];
+    this.comparisonRunCount=this.arena.db.countShadowRuns(RUN_KIND.DEMO);
     this.rows=new Map(rows.map(r=>[r.id,r])); this.agents=new Map(this.arena.db.agents().map(a=>[a.id,a]));
     this.backtests=new Map(rows.filter(r=>r.kind===RUN_KIND.BACKTEST&&!r.retired&&r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r=>[runKey(r.agent_id,r.epic,r.leverage??0),r]));
     this.judging.keepBacktests(new Set([...this.backtests.values()].map(r=>r.id)));
@@ -72,7 +81,7 @@ export class AgentEvidenceService {
     for(const total of this.arena.db.costTotals(kind,true,runId,!runId)) {
       const {runId,...values}=total;
       const summary:CostSummary={...emptyCosts(),...values};
-      const row=this.rows.get(runId), metrics=row?.metrics?JSON.parse(row.metrics):null;
+      const row=this.rows.get(runId)??(runId?this.arena.db.run(runId):null), metrics=row?.metrics?JSON.parse(row.metrics):null;
       summary.reportedTrades=Math.max(total.closedTrades,metrics?.trades??0);
       summary.historyComplete=total.closedTrades>=summary.reportedTrades;
       summary.doubledSpreadPnl=summary.measuredTrades ? summary.measuredNetPnl-summary.spreadCost : null;
@@ -83,19 +92,20 @@ export class AgentEvidenceService {
   }
   comparison(row:RunRow,now=Date.now()):BenchmarkComparison {
     this.refresh(now);
-    const cached=this.comparisons.get(row.id);if(cached)return cached;
-    let result:BenchmarkComparison;
     if(row.kind===RUN_KIND.BACKTEST) {
+      const btKey=`${row.id}:${row.updated_at}`;
+      const kept=this.backtestComparisons.get(btKey);if(kept)return kept;
       const m=row.metrics?JSON.parse(row.metrics):null;
-      result=!m||!(m.endTime>m.startTime)?unavailable('No completed backtest metrics.')
+      const result=!m||!(m.endTime>m.startTime)?unavailable('No completed backtest metrics.')
         :this.versusHold(row.epic,m.startTime,m.endTime,m.totalReturn,'same-backtest-window',
           'Same historical window. Sizing differs; excess return is not risk-adjusted alpha.');
-    } else {
-      const life=this.life(row);
-      result=!life?unavailable('Waiting for the first hourly equity observation.')
-        :this.versusHold(row.epic,life.from,life.through,life.ret,'shared-hourly-equity',
-          'From the run\'s start to its latest hourly equity, on its starting capital. Sizing differs; excess return is not risk-adjusted alpha.');
+      this.backtestComparisons.set(btKey,result);return result;
     }
+    const cached=this.comparisons.get(row.id);if(cached)return cached;
+    const life=this.life(row);
+    const result=!life?unavailable('Waiting for the first hourly equity observation.')
+      :this.versusHold(row.epic,life.from,life.through,life.ret,'shared-hourly-equity',
+        'From the run\'s start to its latest hourly equity, on its starting capital. Sizing differs; excess return is not risk-adjusted alpha.');
     this.comparisons.set(row.id,result);return result;
   }
   private life(row:RunRow):{from:number;through:number;ret:number}|null {
@@ -319,7 +329,7 @@ export class AgentEvidenceService {
     const standard=[...this.rows.values()].filter(r=>r.kind===RUN_KIND.DEMO&&!r.retired&&!isShadow(r.id));
     const strategies=standard.filter(r=>!CONTROL_SLUGS.has(this.agents.get(r.agent_id)?.slug??r.agent_id));
     return {asOf:now,strategyVariants:this.variants,standardRuns:standard.length,strategyRuns:strategies.length,
-      comparisonRuns:[...this.rows.values()].filter(r=>r.kind===RUN_KIND.DEMO&&!r.retired&&isShadow(r.id)).length,
+      comparisonRuns:this.comparisonRunCount,
       measuredTrades:strategies.reduce((n,r)=>n+(this.costs.get(r.id)?.measuredTrades??0),0),
       storedTrades:strategies.reduce((n,r)=>n+(this.costs.get(r.id)?.closedTrades??0),0),
       accountCashflows:this.cashflows,

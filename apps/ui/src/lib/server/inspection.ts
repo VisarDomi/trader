@@ -8,5 +8,6 @@ async function read<T>(path:string):Promise<T>{
 export const inspection={
  trade:(id:string,trade:string,stage:string)=>read<Inspection>('/inspection?'+new URLSearchParams({id,trade,stage})),
  preview:(id:string,stage:string)=>read<Inspection[]>('/preview?'+new URLSearchParams({id,stage})),
- sparks:(id:string)=>read<import('./native/screens').Sparks>('/sparks?'+new URLSearchParams({id})),
+ sparks:(id:string,limit?:number)=>read<import('./native/screens').Sparks>('/sparks?'+new URLSearchParams({id,...(limit!==undefined?{limit:String(limit)}:{})})),
+ sparksBatch:(ids:readonly string[],limit=60)=>ids.length?read<Record<string,import('./native/screens').Sparks>>('/sparks?'+new URLSearchParams({ids:ids.join(','),limit:String(limit)})):Promise.resolve({}),
 };

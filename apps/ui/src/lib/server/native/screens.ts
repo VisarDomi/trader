@@ -297,9 +297,11 @@ export function agentScreen({ agent, runs, sparks, capital, backtests: board, st
 	}) });
 	if (records.length >= 3) sections.push({ title: '', rows: [{ id: 'markets-chart', title: 'Virtual return by market', chart: { kind: 'bars', unit: '%', height: Math.max(120, records.length * 24 + 20),
 		bars: records.map(r => ({ name: `${r.epic} ${tier(r.leverage)}`, value: (r.metrics?.totalReturn ?? 0) * 100, total: true })) } }] });
-	const trades = records.flatMap(r => runTrades(r, sparks.get(r.id) ?? null)).sort((a, b) => b.entryTime - a.entryTime);
+	const allTrades = records.flatMap(r => runTrades(r, sparks.get(r.id) ?? null)).sort((a, b) => b.entryTime - a.entryTime);
+	const trades = allTrades.slice(0, 60);
 	const many = new Set(records.map(r => r.id)).size > 1;
-	sections.push({ title: trades.length ? `Trades · ${trades.length}` : 'Trades', rows: trades.length ? trades.map(t => tradeRow(t, many)) : [{ id: 'no-trades', title: 'No trades yet' }] });
+	const tradeHeader = allTrades.length > trades.length ? `Trades · latest ${trades.length} of ${allTrades.length}` : trades.length ? `Trades · ${trades.length}` : 'Trades';
+	sections.push({ title: tradeHeader, rows: trades.length ? trades.map(t => tradeRow(t, many)) : [{ id: 'no-trades', title: 'No trades yet' }] });
 	const backtests = agent.runs.filter(r => r.kind === 'backtest' && r.status !== 'retired');
 	if (backtests.length) sections.push({ title: 'Backtests', rows: backtests.map(r => rankingRow(board?.get(r.id) ? { ...board.get(r.id)!, name: r.epic } : summaryRow(r, agent), 'backtest')) });
 	const archived = agent.runs.filter(r => r.status === 'retired' && !r.id.includes(':delay=') && !(r.kind === 'backtest' && r.codeHash === agent.codeHash));

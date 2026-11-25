@@ -198,6 +198,27 @@ CREATE TABLE IF NOT EXISTS macro_series (
   value REAL NOT NULL,
   PRIMARY KEY (series, t)
 ) WITHOUT ROWID;
+
+-- Materialized per-run trade & execution-cost aggregates; avoids full scans over 1M+ trades rows on API reads.
+CREATE TABLE IF NOT EXISTS run_costs (
+  run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+  closed_trades INTEGER NOT NULL DEFAULT 0,
+  closed_net_pnl REAL NOT NULL DEFAULT 0,
+  closed_funding REAL NOT NULL DEFAULT 0,
+  before_funding_pnl REAL NOT NULL DEFAULT 0,
+  measured_trades INTEGER NOT NULL DEFAULT 0,
+  captured_trades INTEGER NOT NULL DEFAULT 0,
+  reconstructed_trades INTEGER NOT NULL DEFAULT 0,
+  measured_net_pnl REAL NOT NULL DEFAULT 0,
+  measured_funding REAL NOT NULL DEFAULT 0,
+  midpoint_pnl REAL NOT NULL DEFAULT 0,
+  spread_cost REAL NOT NULL DEFAULT 0,
+  adjustment_pnl REAL NOT NULL DEFAULT 0,
+  timed_trades INTEGER NOT NULL DEFAULT 0,
+  timing_cost REAL NOT NULL DEFAULT 0,
+  timed_signal_pnl REAL NOT NULL DEFAULT 0,
+  timed_net_pnl REAL NOT NULL DEFAULT 0
+) WITHOUT ROWID;
 `;
 
 export interface RunRow {
@@ -331,6 +352,40 @@ export class ArenaDB {
     // Historical runs, including pre-tier backtests, belong in the graveyard rather than being deleted.
     this.db.exec(`UPDATE runs SET retired = 1 WHERE kind = 'backtest' AND leverage IS NULL`);
     this.preserveRetirementReasons();
+    this.backfillRunCosts();
+  }
+
+  /** Populate materialized per-run trade/cost aggregates once on existing databases. */
+  private backfillRunCosts(): void {
+    if (this.getSetting<number>('schema.run_costs.v1', 0) === 1) return;
+    const hasTrades = this.db.query<{ n: number }, []>(`SELECT 1 n FROM trades LIMIT 1`).get();
+    if (hasTrades) {
+      this.tx(() => {
+        this.db.exec(`DELETE FROM run_costs`);
+        this.db.exec(`
+          INSERT INTO run_costs (
+            run_id, closed_trades, closed_net_pnl, closed_funding, before_funding_pnl,
+            measured_trades, captured_trades, reconstructed_trades, measured_net_pnl, measured_funding,
+            midpoint_pnl, spread_cost, adjustment_pnl, timed_trades, timing_cost, timed_signal_pnl, timed_net_pnl
+          )
+          SELECT t.run_id, COUNT(*), SUM(t.pnl), SUM(t.funding), SUM(t.pnl - t.funding),
+            COUNT(t.execution),
+            SUM(CASE WHEN json_extract(t.execution,'$.method')='fill-quotes' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN json_extract(t.execution,'$.method')='archived-quote-match' THEN 1 ELSE 0 END),
+            SUM(CASE WHEN t.execution IS NOT NULL THEN t.pnl ELSE 0 END),
+            SUM(CASE WHEN t.execution IS NOT NULL THEN t.funding ELSE 0 END),
+            COALESCE(SUM(json_extract(t.execution,'$.midpointPnl')),0),
+            COALESCE(SUM(json_extract(t.execution,'$.spreadCost')),0),
+            COALESCE(SUM(json_extract(t.execution,'$.adjustmentPnl')),0),
+            COUNT(json_extract(t.execution,'$.timingCost')),
+            COALESCE(SUM(json_extract(t.execution,'$.timingCost')),0),
+            COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN json_extract(t.execution,'$.midpointPnl')+json_extract(t.execution,'$.timingCost') ELSE 0 END),0),
+            COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN t.pnl ELSE 0 END),0)
+          FROM trades t GROUP BY t.run_id
+        `);
+      });
+    }
+    this.setSetting('schema.run_costs.v1', 1);
   }
 
   tx<T>(fn: () => T): T {
@@ -385,12 +440,12 @@ export class ArenaDB {
     return this.db.query<AgentRow, [string]>(`SELECT * FROM agents WHERE id = ?`).get(id);
   }
 
-  agentVersions(id: string): { code_hash: string; source: string; first_seen: number }[] {
+  agentVersions(id: string, includeSource = true): { code_hash: string; source: string; first_seen: number }[] {
     return this.db
       .query<
         { code_hash: string; source: string; first_seen: number },
         [string]
-      >(`SELECT code_hash, source, first_seen FROM agent_versions WHERE agent_id = ? ORDER BY first_seen DESC`)
+      >(`SELECT code_hash, ${includeSource ? 'source' : "'' AS source"}, first_seen FROM agent_versions WHERE agent_id = ? ORDER BY first_seen DESC`)
       .all(id);
   }
 
@@ -407,13 +462,28 @@ export class ArenaDB {
   }
 
   /** Read models never need to materialize recovery snapshots. Recovery uses run()/runs(). */
-  listRuns(kind: RunKind, includeRetired = false): RunRow[] {
-    return this.db.query<RunRow, [string, number]>(`SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE kind=? AND (retired=0 OR ?) ORDER BY id`)
+  listRuns(kind: RunKind, includeRetired = false, standardOnly = false): RunRow[] {
+    return this.db
+      .query<RunRow, [string, number]>(
+        `SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE kind=? AND (retired=0 OR ?) ${standardOnly ? "AND instr(id,':delay=')=0" : ''} ORDER BY id`,
+      )
       .all(kind, includeRetired ? 1 : 0);
   }
 
-  listRunsForAgent(agentId: string): RunRow[] {
-    return this.db.query<RunRow, [string]>(`SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE agent_id=? ORDER BY kind,epic,started_at DESC`).all(agentId);
+  countShadowRuns(kind: RunKind): number {
+    return (
+      this.db
+        .query<{ n: number }, [string]>(`SELECT COUNT(*) n FROM runs WHERE kind=? AND retired=0 AND instr(id,':delay=')>0`)
+        .get(kind)?.n ?? 0
+    );
+  }
+
+  listRunsForAgent(agentId: string, includeShadows = true): RunRow[] {
+    return this.db
+      .query<RunRow, [string]>(
+        `SELECT ${RUN_LIST_COLUMNS} FROM runs WHERE agent_id=? ${includeShadows ? '' : "AND instr(id,':delay=')=0"} ORDER BY kind,epic,started_at DESC`,
+      )
+      .all(agentId);
   }
 
   runsForAgent(agentId: string): RunRow[] {
@@ -478,7 +548,81 @@ export class ArenaDB {
     this.db.query(`UPDATE runs SET extra = ? WHERE id = ?`).run(JSON.stringify(extra), id);
   }
 
-  appendTrade(runId: string, idx: number, t: Trade): void {
+  private tradeCostDelta(pnl: number, funding: number, execution: ExecutionCostEvidence | null | undefined, sign = 1) {
+    const hasExec = execution != null;
+    const mid = execution?.midpointPnl ?? 0;
+    const spread = execution?.spreadCost ?? 0;
+    const adj = execution?.adjustmentPnl ?? 0;
+    const hasTiming = hasExec && execution!.timingCost != null;
+    const timing = hasTiming ? execution!.timingCost! : 0;
+    return {
+      closedTrades: sign,
+      closedNetPnl: sign * pnl,
+      closedFunding: sign * funding,
+      beforeFundingPnl: sign * (pnl - funding),
+      measuredTrades: hasExec ? sign : 0,
+      capturedTrades: execution?.method === 'fill-quotes' ? sign : 0,
+      reconstructedTrades: execution?.method === 'archived-quote-match' ? sign : 0,
+      measuredNetPnl: hasExec ? sign * pnl : 0,
+      measuredFunding: hasExec ? sign * funding : 0,
+      midpointPnl: hasExec ? sign * mid : 0,
+      spreadCost: hasExec ? sign * spread : 0,
+      adjustmentPnl: hasExec ? sign * adj : 0,
+      timedTrades: hasTiming ? sign : 0,
+      timingCost: hasTiming ? sign * timing : 0,
+      timedSignalPnl: hasTiming ? sign * (mid + timing) : 0,
+      timedNetPnl: hasTiming ? sign * pnl : 0,
+    };
+  }
+
+  private addRunCostDelta(runId: string, d: Omit<CostAggregate, 'runId'>): void {
+    this.db
+      .query(
+        `INSERT INTO run_costs (
+           run_id, closed_trades, closed_net_pnl, closed_funding, before_funding_pnl,
+           measured_trades, captured_trades, reconstructed_trades, measured_net_pnl, measured_funding,
+           midpoint_pnl, spread_cost, adjustment_pnl, timed_trades, timing_cost, timed_signal_pnl, timed_net_pnl
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(run_id) DO UPDATE SET
+           closed_trades = closed_trades + excluded.closed_trades,
+           closed_net_pnl = closed_net_pnl + excluded.closed_net_pnl,
+           closed_funding = closed_funding + excluded.closed_funding,
+           before_funding_pnl = before_funding_pnl + excluded.before_funding_pnl,
+           measured_trades = measured_trades + excluded.measured_trades,
+           captured_trades = captured_trades + excluded.captured_trades,
+           reconstructed_trades = reconstructed_trades + excluded.reconstructed_trades,
+           measured_net_pnl = measured_net_pnl + excluded.measured_net_pnl,
+           measured_funding = measured_funding + excluded.measured_funding,
+           midpoint_pnl = midpoint_pnl + excluded.midpoint_pnl,
+           spread_cost = spread_cost + excluded.spread_cost,
+           adjustment_pnl = adjustment_pnl + excluded.adjustment_pnl,
+           timed_trades = timed_trades + excluded.timed_trades,
+           timing_cost = timing_cost + excluded.timing_cost,
+           timed_signal_pnl = timed_signal_pnl + excluded.timed_signal_pnl,
+           timed_net_pnl = timed_net_pnl + excluded.timed_net_pnl`,
+      )
+      .run(
+        runId,
+        d.closedTrades,
+        d.closedNetPnl,
+        d.closedFunding,
+        d.beforeFundingPnl,
+        d.measuredTrades,
+        d.capturedTrades,
+        d.reconstructedTrades,
+        d.measuredNetPnl,
+        d.measuredFunding,
+        d.midpointPnl,
+        d.spreadCost,
+        d.adjustmentPnl,
+        d.timedTrades,
+        d.timingCost,
+        d.timedSignalPnl,
+        d.timedNetPnl,
+      );
+  }
+
+  private writeTradeRow(runId: string, idx: number, t: Trade): void {
     this.db
       .query(
         `INSERT OR REPLACE INTO trades (run_id, idx, side, size, entry_time, entry_price, exit_time, exit_price, pnl, funding, exit_reason, entry_reason, exit_note, bars_held, bars_held_partial, execution)
@@ -504,26 +648,55 @@ export class ArenaDB {
       );
   }
 
-  costTotals(kind: RunKind, includeRetired = false, runId?:string, standardOnly=false): CostAggregate[] {
-    return this.db.query<CostAggregate, (string|number)[]>(`
-      SELECT t.run_id runId, COUNT(*) closedTrades, SUM(t.pnl) closedNetPnl, SUM(t.funding) closedFunding,
-        SUM(t.pnl-t.funding) beforeFundingPnl,
-        COUNT(t.execution) measuredTrades,
-        SUM(CASE WHEN json_extract(t.execution,'$.method')='fill-quotes' THEN 1 ELSE 0 END) capturedTrades,
-        SUM(CASE WHEN json_extract(t.execution,'$.method')='archived-quote-match' THEN 1 ELSE 0 END) reconstructedTrades,
-        SUM(CASE WHEN t.execution IS NOT NULL THEN t.pnl ELSE 0 END) measuredNetPnl,
-        SUM(CASE WHEN t.execution IS NOT NULL THEN t.funding ELSE 0 END) measuredFunding,
-        COALESCE(SUM(json_extract(t.execution,'$.midpointPnl')),0) midpointPnl,
-        COALESCE(SUM(json_extract(t.execution,'$.spreadCost')),0) spreadCost,
-        COALESCE(SUM(json_extract(t.execution,'$.adjustmentPnl')),0) adjustmentPnl,
-        COUNT(json_extract(t.execution,'$.timingCost')) timedTrades,
-        COALESCE(SUM(json_extract(t.execution,'$.timingCost')),0) timingCost,
-        COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN json_extract(t.execution,'$.midpointPnl')+json_extract(t.execution,'$.timingCost') ELSE 0 END),0) timedSignalPnl,
-        COALESCE(SUM(CASE WHEN json_extract(t.execution,'$.timingCost') IS NOT NULL THEN t.pnl ELSE 0 END),0) timedNetPnl
-      FROM trades t JOIN runs r ON r.id=t.run_id
-      WHERE r.kind=? AND (r.retired=0 OR ?) ${runId?'AND t.run_id=?':''}
-        ${standardOnly?"AND instr(r.id,':delay=')=0":''} GROUP BY t.run_id`)
-      .all(kind, includeRetired ? 1 : 0,...(runId?[runId]:[]));
+  appendTrade(runId: string, idx: number, t: Trade): void {
+    const prev = this.db
+      .query<{ pnl: number; funding: number; execution: string | null }, [string, number]>(
+        `SELECT pnl, funding, execution FROM trades WHERE run_id = ? AND idx = ?`,
+      )
+      .get(runId, idx);
+    this.writeTradeRow(runId, idx, t);
+    const add = this.tradeCostDelta(t.pnl, t.funding, t.execution, 1);
+    if (prev) {
+      const sub = this.tradeCostDelta(prev.pnl, prev.funding, prev.execution ? (JSON.parse(prev.execution) as ExecutionCostEvidence) : null, -1);
+      this.addRunCostDelta(runId, {
+        closedTrades: add.closedTrades + sub.closedTrades,
+        closedNetPnl: add.closedNetPnl + sub.closedNetPnl,
+        closedFunding: add.closedFunding + sub.closedFunding,
+        beforeFundingPnl: add.beforeFundingPnl + sub.beforeFundingPnl,
+        measuredTrades: add.measuredTrades + sub.measuredTrades,
+        capturedTrades: add.capturedTrades + sub.capturedTrades,
+        reconstructedTrades: add.reconstructedTrades + sub.reconstructedTrades,
+        measuredNetPnl: add.measuredNetPnl + sub.measuredNetPnl,
+        measuredFunding: add.measuredFunding + sub.measuredFunding,
+        midpointPnl: add.midpointPnl + sub.midpointPnl,
+        spreadCost: add.spreadCost + sub.spreadCost,
+        adjustmentPnl: add.adjustmentPnl + sub.adjustmentPnl,
+        timedTrades: add.timedTrades + sub.timedTrades,
+        timingCost: add.timingCost + sub.timingCost,
+        timedSignalPnl: add.timedSignalPnl + sub.timedSignalPnl,
+        timedNetPnl: add.timedNetPnl + sub.timedNetPnl,
+      });
+    } else {
+      this.addRunCostDelta(runId, add);
+    }
+  }
+
+  costTotals(kind: RunKind, includeRetired = false, runId?: string, standardOnly = false): CostAggregate[] {
+    return this.db
+      .query<CostAggregate, (string | number)[]>(
+        `SELECT c.run_id runId, c.closed_trades closedTrades, c.closed_net_pnl closedNetPnl,
+           c.closed_funding closedFunding, c.before_funding_pnl beforeFundingPnl,
+           c.measured_trades measuredTrades, c.captured_trades capturedTrades,
+           c.reconstructed_trades reconstructedTrades, c.measured_net_pnl measuredNetPnl,
+           c.measured_funding measuredFunding, c.midpoint_pnl midpointPnl,
+           c.spread_cost spreadCost, c.adjustment_pnl adjustmentPnl,
+           c.timed_trades timedTrades, c.timing_cost timingCost,
+           c.timed_signal_pnl timedSignalPnl, c.timed_net_pnl timedNetPnl
+         FROM run_costs c JOIN runs r ON r.id = c.run_id
+         WHERE r.kind = ? AND (r.retired = 0 OR ?) ${runId ? 'AND c.run_id = ?' : ''}
+           ${standardOnly ? "AND instr(r.id,':delay=')=0" : ''} AND c.closed_trades > 0`,
+      )
+      .all(kind, includeRetired ? 1 : 0, ...(runId ? [runId] : []));
   }
 
   costCandidates(from: number, limit: number): CostCandidate[] {
@@ -533,8 +706,27 @@ export class ArenaDB {
   }
 
   attachExecution(runId: string, idx: number, evidence: ExecutionCostEvidence): boolean {
-    return this.db.query(`UPDATE trades SET execution=? WHERE run_id=? AND idx=? AND execution IS NULL`)
-      .run(JSON.stringify(evidence), runId, idx).changes > 0;
+    const existing = this.db
+      .query<{ pnl: number; funding: number }, [string, number]>(
+        `SELECT pnl, funding FROM trades WHERE run_id = ? AND idx = ? AND execution IS NULL`,
+      )
+      .get(runId, idx);
+    if (!existing) return false;
+    const changed =
+      this.db
+        .query(`UPDATE trades SET execution=? WHERE run_id=? AND idx=? AND execution IS NULL`)
+        .run(JSON.stringify(evidence), runId, idx).changes > 0;
+    if (changed) {
+      const d = this.tradeCostDelta(existing.pnl, existing.funding, evidence, 1);
+      this.addRunCostDelta(runId, {
+        ...d,
+        closedTrades: 0,
+        closedNetPnl: 0,
+        closedFunding: 0,
+        beforeFundingPnl: 0,
+      });
+    }
+    return changed;
   }
 
   tradeRow(runId: string, idx: number): CostCandidate | null {
@@ -632,7 +824,7 @@ export class ArenaDB {
         this.db.exec('PRAGMA defer_foreign_keys = ON');
         this.db.query(`UPDATE runs SET id = ?, retired = 1, extra = ? WHERE id = ?`)
           .run(archivedId,JSON.stringify({...extra,retirement:{at:Date.now(),reason}}),id);
-        for (const table of ['trades','equity','logs']) this.db.query(`UPDATE ${table} SET run_id = ? WHERE run_id = ?`).run(archivedId,id);
+        for (const table of ['trades','equity','logs','run_costs']) this.db.query(`UPDATE ${table} SET run_id = ? WHERE run_id = ?`).run(archivedId,id);
       }
       this.db.query(`DELETE FROM runs WHERE id = ?`).run(id);
       this.db
@@ -667,7 +859,34 @@ export class ArenaDB {
             agentUsPerTick:r.agentUsPerTick,
           }),
         );
-      r.trades.forEach((t, i) => this.appendTrade(id, i, t));
+      if (r.trades.length > 0) {
+        const tot: Omit<CostAggregate, 'runId'> = {
+          closedTrades: 0, closedNetPnl: 0, closedFunding: 0, beforeFundingPnl: 0,
+          measuredTrades: 0, capturedTrades: 0, reconstructedTrades: 0, measuredNetPnl: 0, measuredFunding: 0,
+          midpointPnl: 0, spreadCost: 0, adjustmentPnl: 0, timedTrades: 0, timingCost: 0, timedSignalPnl: 0, timedNetPnl: 0,
+        };
+        r.trades.forEach((t, i) => {
+          this.writeTradeRow(id, i, t);
+          const d = this.tradeCostDelta(t.pnl, t.funding, t.execution, 1);
+          tot.closedTrades += d.closedTrades;
+          tot.closedNetPnl += d.closedNetPnl;
+          tot.closedFunding += d.closedFunding;
+          tot.beforeFundingPnl += d.beforeFundingPnl;
+          tot.measuredTrades += d.measuredTrades;
+          tot.capturedTrades += d.capturedTrades;
+          tot.reconstructedTrades += d.reconstructedTrades;
+          tot.measuredNetPnl += d.measuredNetPnl;
+          tot.measuredFunding += d.measuredFunding;
+          tot.midpointPnl += d.midpointPnl;
+          tot.spreadCost += d.spreadCost;
+          tot.adjustmentPnl += d.adjustmentPnl;
+          tot.timedTrades += d.timedTrades;
+          tot.timingCost += d.timingCost;
+          tot.timedSignalPnl += d.timedSignalPnl;
+          tot.timedNetPnl += d.timedNetPnl;
+        });
+        this.addRunCostDelta(id, tot);
+      }
       for (const p of r.equity) this.upsertEquity(id, p.t, p.equity);
       for (const l of r.logs) this.appendLog(id, l);
     });

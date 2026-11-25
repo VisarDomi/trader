@@ -17,6 +17,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     private var restoringScroll=false
     private var lastSave:CFTimeInterval=0
     private var renderKey=""
+    private var loadingNetwork=false
+    private let spinner=UIActivityIndicatorView(style:.medium)
     private let search=UISearchController(searchResultsController:nil)
     private let header=UIStackView(),notice=UILabel(),descriptionLabel=UILabel()
     private var stages:UISegmentedControl?
@@ -77,7 +79,10 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     }
     override func viewDidAppear(_ animated:Bool) {
         super.viewDidAppear(animated);visible=true
-        if !place.cacheKey.isEmpty {load(refresh:true)}
+        if !place.cacheKey.isEmpty {
+            let ageMs = Date().timeIntervalSince1970 * 1000 - content.refreshed
+            if content.sections.isEmpty || ageMs > 8_000 { load(refresh:true) }
+        }
         startTimer()
     }
     override func viewWillDisappear(_ animated:Bool) {
@@ -123,6 +128,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
     func load(refresh:Bool,debounce:Bool=false) {
         loadTask?.cancel()
         let current=place,saved=state
+        loadingNetwork = refresh && !current.cacheKey.isEmpty
+        if loadingNetwork && content.sections.isEmpty { updateHeader() }
         loadTask=Task { [weak self] in
             if debounce {try? await Task.sleep(for:.milliseconds(180))}
             guard !Task.isCancelled else{return}
@@ -137,12 +144,14 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
                 }
                 let result=try await TraderStore.shared.content(current,state:saved,refresh:refresh)
                 guard !Task.isCancelled,let self,self.place==current else{return}
+                self.loadingNetwork=false
                 self.statusText=""
                 self.refreshControl?.endRefreshing()
                 if self.tableView.isDragging || self.tableView.isDecelerating {self.deferred=result;self.deferredStatus=""}
                 else {self.apply(result)}
             } catch {
                 guard !Task.isCancelled,let self else{return}
+                self.loadingNetwork=false
                 let message=error is TraderError && (error as? TraderError) == .pairing ? "Connection required" : "Offline"
                 AppDiagnostics.save(route:self.place,content:self.content,phase:"offline")
                 self.refreshControl?.endRefreshing()
@@ -181,9 +190,12 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         layoutHeader()
         // Only a header that changed height moves the rows; re-anchoring otherwise would relayout them for nothing.
         if let anchor,abs((tableView.tableHeaderView?.frame.height ?? 0)-height)>0.5 {tableView.layoutIfNeeded();restore(anchor)}
-        if content.sections.isEmpty && content.refreshed>0 {
+        if content.sections.isEmpty && loadingNetwork {
+            spinner.startAnimating();tableView.backgroundView=spinner
+        } else if content.sections.isEmpty && content.refreshed>0 {
+            spinner.stopAnimating()
             let label=UILabel();label.text=state.query.isEmpty ? "No records yet.":"No matching records.";label.textColor = .secondaryLabel;label.textAlignment = .center;tableView.backgroundView=label
-        } else {tableView.backgroundView=nil}
+        } else {spinner.stopAnimating();tableView.backgroundView=nil}
     }
     private func layoutHeader() {
         if descriptionLabel.isHidden && notice.isHidden && stages==nil {
@@ -244,8 +256,8 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
         let toReal=action.hasPrefix("stage:real:")
         let title=toReal ? "Promote to Real account?":"Demote from Real to Capital demo?"
         let message=toReal
-            ? "Marks this Capital demo run as promoted to the Real stage (tracked; Capital API stays demo-only until live credentials are added)."
-            : "Moves this run from Real back to Capital demo."
+            ? "Moves this run to the live Real USD account on Hetzner (single-agent lock)."
+            : "Moves this run off Hetzner Real USD back to Capital demo."
         let alert=UIAlertController(title:title,message:message,preferredStyle:.alert)
         alert.addAction(UIAlertAction(title:"Cancel",style:.cancel))
         alert.addAction(UIAlertAction(title:toReal ? "Promote to Real":"Demote to Demo",style:toReal ? .default:.destructive){[weak self] _ in

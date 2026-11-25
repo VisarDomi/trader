@@ -10,32 +10,76 @@ import {
 	scenariosScreen, sourceScreen, statusScreen, strategyDetailScreen, tradeScreen, verdicts, type Sparks,
 } from './screens';
 import type { Screen } from './wire';
+import type { NativeScreen as ScreenName } from '../native-contract';
 
-/** Shared reads that several screens use, kept briefly so a burst of screens costs one arena read each. */
-function kept<T>(ms: number, read: () => Promise<T>) {
-	let at = 0, value: Promise<T> | null = null;
-	return () => {
-		if (!value || Date.now() - at > ms) { at = Date.now(); value = read(); value.catch(() => { value = null; }); }
-		return value;
+const invalidators: (() => void)[] = [];
+
+/** Stale-while-revalidate cache: after the first read, stale callers get the cached value immediately while one refresh runs in the background. */
+function swr<T>(ms: number, read: () => Promise<T>) {
+	let at = 0, ready: T | undefined, hasReady = false, inflight: Promise<T> | null = null;
+	const start = () => {
+		if (inflight) return inflight;
+		const p = read().then(
+			v => { ready = v; hasReady = true; at = Date.now(); if (inflight === p) inflight = null; return v; },
+			err => { if (inflight === p) inflight = null; throw err; },
+		);
+		inflight = p;
+		return p;
+	};
+	invalidators.push(() => { at = 0; hasReady = false; ready = undefined; inflight = null; });
+	return (): Promise<T> => {
+		if (hasReady) {
+			if (Date.now() - at > ms) void start().catch(() => {});
+			return Promise.resolve(ready!);
+		}
+		return start();
 	};
 }
-const capitalBoard = kept(30_000, () => arena.leaderboard('demo', true, 'demo', 'standard'));
-const broker = kept(15_000, () => arena.broker());
-const agentList = kept(60_000, () => arena.agents());
-const graveyard = kept(300_000, () => arena.graveyard());
-const backtestBoard = kept(300_000, () => arena.leaderboard('backtest'));
-const portfolios = kept(30_000, () => arena.portfolios());
-const sparks = (id: string): Promise<Sparks | null> => inspection.sparks(id).catch(() => null);
 
-import type { NativeScreen as ScreenName } from '../native-contract';
+const broker = swr(15_000, () => arena.broker());
+const brokerStatusOnly = swr(10_000, () => arena.broker(0));
+const agentList = swr(60_000, () => arena.agents('none'));
+const graveyard = swr(300_000, () => arena.graveyard());
+const portfolios = swr(30_000, () => arena.portfolios());
+
+const rankingCache = new Map<string, ReturnType<typeof swr<LeaderboardRow[]>>>();
+invalidators.push(() => rankingCache.clear());
+function cachedRankings(stage: string, scenario: string | null): Promise<LeaderboardRow[]> {
+	const key = `${stage}|${scenario ?? ''}`;
+	let entry = rankingCache.get(key);
+	if (!entry) {
+		const ttl = stage === 'backtest' ? 120_000 : 15_000;
+		entry = swr(ttl, () =>
+			arena.leaderboard(
+				stage === 'backtest' ? 'backtest' : 'demo',
+				false,
+				stage === 'capital' ? 'demo' : '',
+				stage === 'virtual' ? scenario ?? 'standard' : 'standard',
+			),
+		);
+		rankingCache.set(key, entry);
+	}
+	return entry();
+}
+
+/** Clear cached reads immediately after a stage or broker mutation so the next refresh sees the new state. */
+export function invalidateNativeCache(): void {
+	for (const fn of invalidators) fn();
+}
+
+const sparks = (id: string, limit?: number): Promise<Sparks | null> => inspection.sparks(id, limit).catch(() => null);
+const sparksBatch = (ids: readonly string[], limit = 60): Promise<Record<string, Sparks>> =>
+	inspection.sparksBatch(ids, limit).catch(() => ({}));
 
 export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal: string): Promise<Screen> {
 	const id = q.get('id') ?? '';
 	switch (screen) {
 		case 'rankings': {
 			const stage = q.get('stage') ?? 'capital', scenario = q.get('scenario');
-			const [rows, held] = await Promise.all([arena.leaderboard(stage === 'backtest' ? 'backtest' : 'demo', false, stage === 'capital' ? 'demo' : '', stage === 'virtual' ? scenario ?? 'standard' : 'standard'),
-				stage === 'backtest' ? [] : portfolios().catch(() => [])]);
+			const [rows, held] = await Promise.all([
+				cachedRankings(stage, scenario),
+				stage === 'backtest' ? [] : portfolios().catch(() => []),
+			]);
 			return rankingsScreen(verdicts(rows, stage), stage, scenario, held);
 		}
 		case 'agents': {
@@ -43,14 +87,28 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 			return agentsScreen(agents, buildStrategyCatalog(agents));
 		}
 		case 'agent': {
-			const agent = await arena.agent(id);
-			const liveRuns = agent.runs.filter(r => r.kind === 'demo' && r.status !== 'retired' && !r.id.includes(':delay='));
-			const [runs, board, lines, tested, b] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id))), backtestBoard().catch((): LeaderboardRow[] => []), broker().catch(() => null)]);
-			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))), strategy: findStrategyDocForSlug(agent.slug), realService: b?.status?.realService ?? null });
+			// Single-round-trip bundle from Arena (no N+1 run fetches, no all-agent leaderboards, no equity curves/logs/source).
+			const bundle = await arena.agentBundle(id, 60);
+			const liveIds = bundle.liveRuns.map(r => r.id);
+			const sparkMap = liveIds.length ? await sparksBatch(liveIds, 60) : {};
+			return agentScreen({
+				agent: bundle.agent,
+				runs: bundle.liveRuns,
+				capital: new Map(bundle.capital.map(r => [r.runId, r])),
+				backtests: new Map(bundle.backtests.map(r => [r.runId, r])),
+				sparks: new Map(Object.entries(sparkMap)),
+				strategy: findStrategyDocForSlug(bundle.agent.slug),
+				realService: bundle.realService ?? null,
+			});
 		}
 		case 'run': {
-			const run: RunDetail = await arena.run(id, 2000);
-			const [agent, board, b, line] = await Promise.all([arena.agent(run.agentId).catch(() => null), run.kind === 'backtest' ? Promise.resolve([]) : capitalBoard().catch((): LeaderboardRow[] => []), broker().catch(() => null), sparks(run.id)]);
+			const run: RunDetail = await arena.run(id, 500);
+			const [agent, board, b, line] = await Promise.all([
+				arena.agent(run.agentId, { source: false, shadows: false }).catch(() => null),
+				run.kind === 'backtest' ? Promise.resolve([]) : arena.leaderboard('demo', true, 'demo', 'standard', [run.agentId]).catch((): LeaderboardRow[] => []),
+				brokerStatusOnly().catch(() => null),
+				sparks(run.id, 500),
+			]);
 			const comparison = run.kind === 'backtest' ? null : agent?.runs.filter(x => x.kind === 'backtest' && x.status !== 'retired' && x.epic === run.epic && x.leverage === run.leverage && x.codeHash === run.codeHash).sort((a, c) => c.updatedAt - a.updatedAt)[0] ?? null;
 			const account = b?.status?.accounts.find(a => a.runs.includes(run.id))?.name ?? null, capital = board.find(r => r.runId === run.id) ?? null;
 			const mirrored = !!account || (b?.status?.promoted?.includes(run.id) ?? false);
@@ -96,6 +154,6 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 			}
 			return documentScreen(topics().find(t => t.slug === id)?.title ?? 'Research', doc(`research/topics/${id}.md`) ?? '');
 		}
-		case 'source': return sourceScreen(await arena.agent(id), q.get('version') ?? '');
+		case 'source': return sourceScreen(await arena.agent(id, { source: true, shadows: false }), q.get('version') ?? '');
 	}
 }

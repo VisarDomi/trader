@@ -5,7 +5,7 @@ import { agentRuleSpec, cleanAgentName } from '$lib/server/agent-spec';
 
 export async function load({ params }) {
 	try {
-		const agent=await arena.agent(params.id);
+		const agent=await arena.agent(params.id,{source:true,shadows:false});
 		const [rows,btRows]=await Promise.all([
 			arena.leaderboard('demo',false,'','standard',[agent.id]).catch(()=>[]),
 			arena.leaderboard('backtest',false,'','standard',[agent.id]).catch(()=>[]),

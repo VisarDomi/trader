@@ -6,19 +6,22 @@
 import { env } from '$env/dynamic/private';
 import { arena } from '$lib/server/arena';
 import { nativeResponse } from '$lib/server/native-contract';
-import { loadScreen } from '$lib/server/native/load';
+import { invalidateNativeCache, loadScreen } from '$lib/server/native/load';
 import journal from '../../../../../../../backend/agents/JOURNAL.md?raw';
 import type { RequestHandler } from './$types';
 
 const handler: RequestHandler = ({ request, params }) => nativeResponse(request, params.screen, {
 	hash: env.TRADER_NATIVE_ACCESS_SHA256,
 	build: (screen, q) => loadScreen(screen, q, journal),
-	mutate: (resource, body) =>
-		resource === 'mirror'
-			? arena.setMirror(body.enabled as boolean)
+	mutate: async (resource, body) => {
+		const res = resource === 'mirror'
+			? await arena.setMirror(body.enabled as boolean)
 			: resource === 'stage'
-				? arena.setStage(body.runId as string, body.target as 'backtest' | 'virtual' | 'demo' | 'real', Boolean(body.confirmed))
-				: arena.setExcluded(body.runId as string, body.excluded as boolean),
+				? await arena.setStage(body.runId as string, body.target as 'backtest' | 'virtual' | 'demo' | 'real', Boolean(body.confirmed))
+				: await arena.setExcluded(body.runId as string, body.excluded as boolean);
+		invalidateNativeCache();
+		return res;
+	},
 });
 export const GET = handler;
 export const POST = handler;

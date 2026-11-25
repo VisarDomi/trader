@@ -5,6 +5,7 @@
 import { env } from '$env/dynamic/private';
 import type {
 	PortfolioView,
+	AgentBundle,
 	AgentDetail,
 	AgentListItem,
 	ArenaEvent,
@@ -53,14 +54,24 @@ export const arena = {
 	status: () => call<ArenaStatus>('/api/status'),
 	events: (limit = 200) => call<ArenaEvent[]>(`/api/events?limit=${limit}`),
 	leaderboard: (kind: RunKind, retired = false, stage = '', scenario = '', agents: readonly string[] = []) => call<LeaderboardRow[]>(`/api/leaderboard?kind=${kind}${retired ? '&retired=1' : ''}${stage ? `&stage=${stage}` : ''}${scenario ? `&scenario=${encodeURIComponent(scenario)}` : ''}${agents.length ? `&agents=${encodeURIComponent(agents.join(','))}` : ''}`),
-	agents: () => call<AgentListItem[]>('/api/agents'),
+	agents: (runs: 'standard' | 'none' | 'all' = 'standard') =>
+		call<AgentListItem[]>(runs === 'standard' ? '/api/agents' : `/api/agents?runs=${runs}`),
 	graveyard: () => call<GraveyardEntry[]>('/api/graveyard'),
-	agent: (id: string) => call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}`),
+	agent: (id: string, opts?: { source?: boolean; shadows?: boolean }) => {
+		const qs = new URLSearchParams();
+		if (opts?.source === false) qs.set('source', '0');
+		if (opts?.shadows === false) qs.set('shadows', '0');
+		const suffix = qs.size ? `?${qs}` : '';
+		return call<AgentDetail>(`/api/agents/${id.split('/').map(encodeURIComponent).join('/')}${suffix}`);
+	},
+	agentBundle: (id: string, trades = 80) =>
+		call<AgentBundle>(`/api/agent-bundle/${id.split('/').map(encodeURIComponent).join('/')}?trades=${trades}`),
 	run: (id: string, trades = 2000) => call<RunDetail>(`/api/runs/${encodeURIComponent(id)}?trades=${trades}`),
 	/** Every period of `days` in a backtest: the chart behind a record's frequency. */
 	periods: (backtestId: string, days: number) => call<BacktestPeriods>(`/api/runs/${encodeURIComponent(backtestId)}/periods?days=${days}`),
 	portfolios: () => call<PortfolioView[]>('/api/portfolios'),
-	broker: () => call<{ status: BrokerStatus | null; deals: Deal[] }>('/api/broker'),
+	broker: (deals?: number) =>
+		call<{ status: BrokerStatus | null; deals: Deal[] }>(deals === undefined ? '/api/broker' : `/api/broker?deals=${deals}`),
 	twins: (days: number, sinceEngine = false) => call<any>(`/api/twins?days=${days}${sinceEngine ? '&since=engine' : ''}`),
 	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),
 	setExcluded: (runId: string, excluded: boolean) => post<BrokerStatus>('/api/broker/exclude', { runId, excluded }),

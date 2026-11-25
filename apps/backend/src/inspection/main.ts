@@ -38,10 +38,11 @@ function spark(epic:string,from:number,to:number,cacheKey?:string):number[]{
   if(cacheKey){sparkCache.set(cacheKey,out);if(sparkCache.size>INSPECTION_LIMITS.sparkCache)sparkCache.delete(sparkCache.keys().next().value!);}
   return out;
 }
-function sparks(runId:string){
+function sparks(runId:string, tradeLimit = INSPECTION_LIMITS.sparkTrades){
   const run=db.query<any,[string]>('SELECT epic,snapshot FROM runs WHERE id=?').get(runId);if(!run)throw Error('Run not found');
-  const trades=db.query<any,[string,number]>('SELECT idx,entry_time,exit_time FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT ?').all(runId,INSPECTION_LIMITS.sparkTrades);
-  const deals=db.query<any,[string]>("SELECT id,open_time,confirmed_time,close_time,status FROM broker_deals WHERE run_id=? AND account LIKE 'Arena%' AND status!='failed' AND open_price IS NOT NULL ORDER BY id DESC LIMIT 2000").all(runId);
+  const cap = Math.max(0, Math.min(INSPECTION_LIMITS.sparkTrades, tradeLimit));
+  const trades=cap > 0 ? db.query<any,[string,number]>('SELECT idx,entry_time,exit_time FROM trades WHERE run_id=? ORDER BY idx DESC LIMIT ?').all(runId, cap) : [];
+  const deals=cap > 0 ? db.query<any,[string,number]>("SELECT id,open_time,confirmed_time,close_time,status FROM broker_deals WHERE run_id=? AND account LIKE 'Arena%' AND status!='failed' AND open_price IS NOT NULL ORDER BY id DESC LIMIT ?").all(runId, cap) : [];
   const position=run.snapshot?JSON.parse(run.snapshot).position:null,now=Date.now();
   const round=(v:number[])=>v.map(x=>Number.isFinite(x)?x:null);
   return {epic:run.epic,points:INSPECTION_LIMITS.sparkPoints,
@@ -50,6 +51,7 @@ function sparks(runId:string){
     open:position?round(spark(run.epic,position.entryTime,now)):null};
 }
 const headers={'Content-Type':'application/json','Cache-Control':'private, no-store'};
+const RUN_ID_RE = /^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/;
 const server=Bun.serve({hostname:'127.0.0.1',port:Number(process.env.INSPECTION_PORT??4140),idleTimeout:60,async fetch(req){
   const url=new URL(req.url);if(req.method!=='GET')return Response.json({error:'Read only'},{status:405});
   if(url.pathname==='/health')return Response.json({ok:true,readOnly:true,cacheEntries:cache.size,queued:pending.size});
@@ -57,8 +59,17 @@ const server=Bun.serve({hostname:'127.0.0.1',port:Number(process.env.INSPECTION_
   try{
     if(url.pathname==='/inspection')return new Response(await inspection(id,url.searchParams.get('trade')??'',stage),{headers});
     if(url.pathname==='/sparks'){
-      if(!/^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/.test(id))return Response.json({error:'Invalid selection'},{status:400});
-      return new Response(JSON.stringify(sparks(id)),{headers});
+      const limit = Number(url.searchParams.get('limit') ?? INSPECTION_LIMITS.sparkTrades) || INSPECTION_LIMITS.sparkTrades;
+      const idsParam = url.searchParams.get('ids');
+      if (idsParam !== null) {
+        const ids = idsParam.split(',').filter(Boolean).slice(0, 64);
+        if (!ids.every(x => RUN_ID_RE.test(x))) return Response.json({error:'Invalid selection'},{status:400});
+        const out: Record<string, ReturnType<typeof sparks>> = {};
+        for (const runId of ids) { try { out[runId] = sparks(runId, limit); } catch { /* skip missing */ } }
+        return new Response(JSON.stringify(out),{headers});
+      }
+      if(!RUN_ID_RE.test(id))return Response.json({error:'Invalid selection'},{status:400});
+      return new Response(JSON.stringify(sparks(id, limit)),{headers});
     }
     if(url.pathname==='/preview'){
       if(!/^(demo|bt):[A-Za-z0-9_:./@=-]{1,240}$/.test(id)||!['virtual','capital','backtest'].includes(stage))return Response.json({error:'Invalid selection'},{status:400});

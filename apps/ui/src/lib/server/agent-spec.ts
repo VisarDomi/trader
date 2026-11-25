@@ -135,14 +135,14 @@ export function agentRuleSpec(
 					: `Standard (≥${trendPct}% move, ≥${bodyPct}% body, ≤${Number(p.maxRangePct ?? 2)}% range)`;
 		const entryDesc =
 			dir === 'long'
-				? 'Control: always long on qualifying midday-20 nights'
+				? 'Control: always Long on qualifying midday-20 nights (same dip/bounce filter dates)'
 				: dir === 'random'
-					? 'Control: fair coin flip on qualifying midday-20 nights'
+					? 'Control: 50/50 coin flip on qualifying midday-20 nights (same dip/bounce filter dates)'
 					: pullbackReq
 						? minGap > 0
-							? `Follow day direction after ≥${minGap} bp overnight pullback`
-							: 'Follow day direction after overnight pullback vs 16:00 NY close'
-						: 'Follow day direction at 21:27 NY (no pullback required)';
+							? `Bull day + ≥${minGap} bp dip below 16:00 NY → Long; Bear day + ≥${minGap} bp bounce above 16:00 NY → Short`
+							: 'Bull day + dip below 16:00 NY → Long; Bear day + bounce above 16:00 NY → Short (overnight retracement)'
+						: 'Bull day → Long; Bear day → Short at 21:27 NY (no overnight dip/bounce required)';
 
 		const us100 = btRows.find(r => r.epic === 'US100');
 		const us500 = btRows.find(r => r.epic === 'US500');
