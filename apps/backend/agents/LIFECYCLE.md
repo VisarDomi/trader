@@ -83,8 +83,10 @@ Sharpe ratio of 3.2 for two years, or 2 for five. Slow strategies need years; no
 Candidates are compared on t, not return, because the return grows with position size and runs trade at
 different leverages; the t-statistic does not.
 
-Every record is also judged with its **family** as one record: the average of its members' weekday returns at
-equal risk, retired members included on the days they ran. A family is an agent file with its variants,
+Beside its own verdict, every record's **family** is judged as one record: the average of its members' weekday
+returns at equal risk, retired members included on the days they ran. The family has its own section on the
+record's and the agent's screens (the family's verdict, where the record ranks in it and the record's t with
+the luck taken out) and changes nothing in the record's own verdict. A family is an agent file with its variants,
 instruments and tiers, or several files joined under `families` in `roster.json` (the night rule's files are
 `visar-night`). Its verdicts are early, keep, candidate and confirmed; confirmed families are counted over every
 family ever started (39 on 2026-11-25: the first needs a t of 3.8 after a year, against 4.6 for one record). This

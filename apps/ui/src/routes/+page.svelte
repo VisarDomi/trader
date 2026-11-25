@@ -145,7 +145,7 @@
 			const capital = ms.reduce((s, m) => s + m.initialCapital, 0);
 			const equity = ms.reduce((s, m) => s + m.finalEquity, 0);
 			const bt = rs.map(r => r.backtest?.metrics?.sharpe).filter((x): x is number => typeof x === 'number');
-			const family = group==='family'?rs.map(r=>r.evidence?.clock?.family).find(Boolean):undefined, judged=family?assessFamily(family):null;
+			const family = group==='family'?rs.map(r=>r.evidence?.family).find(Boolean):undefined, judged=family?assessFamily(family):null;
 			return {
 				agentId,
 				name: group==='family'?(rs[0]!.family?.name??rs[0]!.name):rs[0]!.name,

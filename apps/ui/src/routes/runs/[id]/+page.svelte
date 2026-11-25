@@ -8,6 +8,7 @@
  import AgentEvidence from'$lib/components/AgentEvidence.svelte';
  import BacktestFrequency from'$lib/components/BacktestFrequency.svelte';
  import RecordClock from'$lib/components/RecordClock.svelte';
+ import FamilyView from'$lib/components/FamilyView.svelte';
  import LiveRefresh from'$lib/components/LiveRefresh.svelte';
  import type{Inspection}from'$lib/server/inspection';
  let{data}=$props();
@@ -36,6 +37,7 @@
  {#if run.extra?.retirement}<p class="status-line">Retired · {String((run.extra.retirement as {reason:string}).reason)}</p>{/if}
  {#if !actual}<section class="card"><div class="section-heading"><h2>Equity</h2><span class="muted small">{run.kind==='backtest'?'Daily':'Hourly'} snapshots · {utc(run.startedAt)} → {utc(run.updatedAt)}</span></div><TimeChart series={[{name:'Equity',points:curve}]} height={220}/><details><summary>Snapshot drawdown</summary><TimeChart series={[{name:'Drawdown',points:dd}]} unit="%" height={140}/></details></section>{/if}
  {#if run.kind!=='backtest'&&run.evidence?.clock}<RecordClock row={{...run,runId:run.id,slug:run.agentId.split('/')[0]}}/>{/if}
+ {#if run.kind!=='backtest'&&run.evidence?.family&&run.evidence.family.everRecords>1}<FamilyView views={[{label:'',family:run.evidence.family}]}/>{/if}
  {#if data.frequency}<BacktestFrequency frequency={data.frequency} periods={data.periods}/>{/if}
  <div class="section-heading"><h2>Trades</h2><select aria-label="Inspect trade" value={key} onchange={e=>choose(e.currentTarget.value)}>{#if !actual&&run.position}<option value="open">Open position</option>{/if}{#each options as option}<option value={option.key}>{option.label}</option>{/each}</select></div>
  {#if selected}<TradeInspector inspection={selected}/>{:else if loading}<p class="status-line">Loading trade history…</p>{:else if failure}<p class="status-line" role="status">{failure}</p>{:else}<p class="muted">No completed trades.</p>{/if}

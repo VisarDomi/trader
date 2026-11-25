@@ -152,8 +152,6 @@ export interface RecordClock {
   aloneAt: number | null;
   /** Past the floor, agreeing with its backtest and clearing the bar for every record tried. */
   confirmed: boolean;
-  /** The record's family judged as one record; absent for controls. */
-  family?: FamilyClock;
 }
 /**
  * A family on the daily clock: each weekday it is worth the average of its records' returns, each divided by that
@@ -185,6 +183,18 @@ export interface FamilyClock {
   aloneAt: number | null;
   confirmed: boolean;
 }
+/**
+ * What a record's family says about it (`evidence.family`). It changes nothing in the record's own clock or verdict.
+ */
+export interface FamilyView extends FamilyClock {
+  /**
+   * The record among the family's members with ten or more weekdays, by whole-life t. `estimate` is the family's
+   * reading of the record's own t with the luck taken out: the members' average plus the share of the record's
+   * lead that the spread between members supports (none of it while they differ by no more than chance, which is
+   * a spread of 1). Absent with fewer than three such members.
+   */
+  member?: { t: number; rank: number; of: number; average: number; spread: number; kept: number; estimate: number };
+}
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';
   since: number;
@@ -201,6 +211,8 @@ export interface AgentEvidence {
   frequency?: BacktestFrequency;
   /** Forward records only. */
   clock?: RecordClock;
+  /** Strategy records only: the family judged as one record, and where this record stands in it. */
+  family?: FamilyView;
   costs: CostSummary | null;
   exposure: number | null;
   openPosition: boolean;

@@ -1,4 +1,4 @@
-import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, FamilyClock, LeaderboardRow, EvidenceOverview, RecordClock } from '@trader/shared/types';
+import type { AgentEvidence, BacktestFrequency, BacktestPeriods, BenchmarkComparison, CostSummary, FamilyClock, FamilyView, LeaderboardRow, EvidenceOverview, RecordClock } from '@trader/shared/types';
 import type { Arena } from './arena.ts';
 import type { RunRow } from './db.ts';
 import { RUN_KIND } from './db.ts';
@@ -41,6 +41,8 @@ export class AgentEvidenceService {
   /** Parsed metrics, the daily clocks of every live record and their confirmed set: built once per refresh. */
   private parsed = new Map<string,{trades?:number;winRate?:number}|null>();
   private clocks:Map<string,RecordClock>|null = null;
+  /** What each live strategy record's family says about it; kept apart from the record's own clock. */
+  private views = new Map<string,FamilyView>();
   private monkeys = new Map<string,number>();
   private trials = 0;
   private demotions:Record<string,{at:number}> = {};
@@ -144,16 +146,33 @@ export class AgentEvidenceService {
     const offered=live.filter(r=>!this.control(r)).map(r=>({id:r.id,c:clocks.get(r.id)!}))
       .filter(({c})=>floorMet(c.trades,c.days)&&c.backtestZ!==null&&c.backtestZ<=LIFECYCLE.AGREE_Z);
     const confirmed=confirmedSet(offered.map(({id,c})=>({id,e:c.life.e})),this.trials,LIFECYCLE.CONFIRM_FDR);
-    const families=this.families(demo,now);
     for(const [id,c] of clocks) {
-      const row=this.rows.get(id)!;
-      c.monkey=this.monkeys.get(row.epic)??null;
+      c.monkey=this.monkeys.get(this.rows.get(id)!.epic)??null;
       c.confirmed=confirmed.ids.has(id);
       if(c.life.observations>=2)c.confirmAt=tAt(c.confirmed?this.trials/(LIFECYCLE.CONFIRM_FDR*confirmed.ids.size):confirmed.needs,c.life.observations);
-      const family=this.control(row)?undefined:families.get(this.familyOf(row).id);
-      if(family)c.family=family;
     }
+    this.standings(this.families(demo,now),live.filter(r=>!this.control(r)),clocks);
     return this.clocks=clocks;
+  }
+  /**
+   * Where each record stands in its family, and the family's reading of its t with the luck taken out. Members'
+   * t-statistics each carry a sampling spread of about 1, so a spread between members of 1 is what chance alone
+   * gives: then nothing separates them and each is read at the members' average. Only the excess of the spread
+   * over chance keeps a member's lead (the positive-part shrinkage of Efron and Morris). Members that move
+   * together spread less than chance and are read as one.
+   */
+  private standings(families:Map<string,FamilyClock>,strategies:RunRow[],clocks:Map<string,RecordClock>):void {
+    this.views.clear();
+    for(const [id,rows] of Map.groupBy(strategies,r=>this.familyOf(r).id)) {
+      const family=families.get(id);
+      if(!family)continue;
+      const judged=rows.filter(r=>clocks.get(r.id)!.life.observations>=10).sort((a,b)=>clocks.get(b.id)!.life.t-clocks.get(a.id)!.life.t);
+      const stats=statsOf(judged.map(r=>clocks.get(r.id)!.life.t)), kept=stats.sd>1?1-1/stats.sd**2:0;
+      for(const r of rows) {
+        const rank=judged.indexOf(r)+1, t=clocks.get(r.id)!.life.t;
+        this.views.set(r.id,{...family,...(rank>0&&judged.length>=3?{member:{t,rank,of:judged.length,average:stats.mean,spread:stats.sd,kept,estimate:stats.mean+kept*(t-stats.mean)}}:{})});
+      }
+    }
   }
   familyOf(row:Pick<RunRow,'agent_id'>):{id:string;name:string} {
     const slug=row.agent_id.split('/')[0]!;
@@ -274,10 +293,10 @@ export class AgentEvidenceService {
       frequency=life?this.frequency(row,life.ret,life.from,life.through,this.metricsOf(row)):undefined;
       this.frequencies.set(row.id,frequency);
     }
-    const clock=this.clockOf(row,now);
+    const clock=this.clockOf(row,now), family=this.views.get(row.id);
     return {asOf:now,basis:row.kind===RUN_KIND.BACKTEST?'historical-equity':'virtual-equity',
       admission:control?'control':extra.demoAdmission?'user-experiment':row.kind===RUN_KIND.BACKTEST&&!passes?'backtest-rejected':extra.grandfathered||!passes?'calibration':'backtest-qualified',
-      benchmark:this.comparison(row,now),...(frequency?{frequency}:{}),...(clock?{clock}:{}),costs:this.costs.get(row.id)??emptyCosts(),
+      benchmark:this.comparison(row,now),...(frequency?{frequency}:{}),...(clock?{clock}:{}),...(family?{family}:{}),costs:this.costs.get(row.id)??emptyCosts(),
       exposure:p&&q&&equity>0?p.size*(q.bid+q.ask)/2/equity:p?null:0,
       openPosition:!!p,
       stopRisk:p&&exit!==null&&stop!==null&&equity>0?Math.max(0,(p.side==='long'?exit-stop:stop-exit)*p.size)/equity:null,
@@ -311,7 +330,7 @@ export class AgentEvidenceService {
     this.refresh(Date.now());
     const meta=this.rows.get(row.runId);if(!meta)return;
     // The virtual run's frequency describes its own return and days; Capital's counts its cash since the first deal.
-    // The clock stays the virtual record's: the strategy is judged on it, at full size and from its first day.
+    // The clock and the family's view stay the virtual record's: the strategy is judged on it, at full size and from its first day.
     const {frequency:_virtual,...base}=this.forRun(meta),m=row.metrics;
     const frequency=m&&m.startTime?this.frequency(meta,m.totalReturn,m.startTime,m.endTime,m):undefined;
     return {...base,basis:'broker-realized-cash',costs:null,benchmark:this.cashComparison(row),...(frequency?{frequency}:{}),

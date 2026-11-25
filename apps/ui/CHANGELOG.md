@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-- **Families** — every forward row adds its family judged as one record ("Family Visar night (16 records): Keep · daily t 1.27 over 43 days"); the record's screen, the agent's screen and the run page show the family's t, the bars it needs among the families tried and whether it agrees with its backtests. The website's Per family view groups by the same families (the night rule's files are one) and has a sortable Family t column with the verdict.
+- **Family section** — the record's screen, the agent's screen and their website pages have a Family section, apart from the record's own lines: where the record ranks among its family's members, its t with the luck taken out, and the family judged as one record (its t, the bars it needs among the families tried, whether it agrees with its backtests). Ranking rows show only the record. The website's Per family view groups by the same families (the night rule's files are one) and has a sortable Family t column with the verdict.
 
 - **Edge or luck** — every Virtual and Capital demo row leads with its verdict on the daily clock ("Early · 3 trades in 40 days · daily t 1.63", "Candidate · daily t 2.05 over 49 days · may still be luck", "Confirmed · …"). The record's screen and the run page show the t it has, the bar for a candidate, the bar to be confirmed with every record tried (and the one it would need alone) and whether it agrees with its backtest. The results table has a sortable Daily t column; the Stage column reads early, keep, candidate, confirmed or retire.
 

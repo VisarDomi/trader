@@ -3,6 +3,7 @@
 	import { day, num, pct, pctPlain, sign, utc } from '$lib/format';
 	import { page } from '$app/state';
     import ValueBars from '$lib/components/ValueBars.svelte';
+	import FamilyView from '$lib/components/FamilyView.svelte';
 	import { goto } from '$app/navigation';
 
 	let { data } = $props();
@@ -41,6 +42,7 @@
 		</div>
 	</header>
 
+	{#if data.family[0]&&data.family[0].family.everRecords>1}<FamilyView views={data.family}/>{/if}
     <section class="card"><h2>Virtual return by market</h2><ValueBars height={460} items={agent.runs.filter(r=>r.kind==='demo'&&r.status!=='retired'&&r.metrics).map(r=>({label:`${r.epic} · 1:${r.leverage}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.id)}`}))}/></section>
 	<section class="card">
 		<h2>Virtual / backtest results</h2>

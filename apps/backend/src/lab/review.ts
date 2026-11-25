@@ -110,7 +110,7 @@ const monkeyCandidates = standard.filter(r => {
 const monkeys = standard.filter(r => r.slug === RANDOM_BASELINE_SLUG).length;
 
 // Families judged as one record: every member row carries its family's clock.
-const families = [...new Map(standard.flatMap(r => (r.evidence?.clock?.family ? [[r.evidence.clock.family.id, r.evidence.clock.family] as const] : []))).values()]
+const families = [...new Map(standard.flatMap(r => (r.evidence?.family ? [[r.evidence.family.id, r.evidence.family] as const] : []))).values()]
   .map(f => ({ ...f, ...assessFamily(f) }))
   .sort((a, b) => b.t - a.t);
 

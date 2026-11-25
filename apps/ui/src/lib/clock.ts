@@ -2,7 +2,7 @@
  * Words for a record's verdict on the daily clock (apps/backend/EVIDENCE.md "The daily clock"; the verdict itself
  * comes from the shared policy). Shared by the website and the native screens.
  */
-import type { FamilyClock, LeaderboardRow, RecordClock } from '@trader/shared';
+import type { FamilyClock, FamilyView, LeaderboardRow, RecordClock } from '@trader/shared';
 import { assess, assessFamily, LIFECYCLE, VERDICT, type Verdict } from '@trader/shared';
 
 const minus = (n: number, digits = 2) => n.toFixed(digits).replace(/^-/, '−');
@@ -34,15 +34,18 @@ export function agreementLine(c: RecordClock): string {
 	const side = `${minus(Math.abs(c.backtestZ), 1)} standard errors ${c.backtestZ >= 0 ? 'above' : 'below'}`;
 	return c.backtestZ > LIFECYCLE.AGREE_Z ? `Better than its backtest allows (${side}; agrees up to ${LIFECYCLE.AGREE_Z})` : `Agrees with its backtest (${side})`;
 }
-/**
- * The record's family judged as one record: "Family Visar night (16 records): Keep · daily t 1.27 over 43 days".
- * Empty for a family that never had a second record: it says what the record says.
- */
-export function familyLine(c: RecordClock | undefined): string {
-	const f = c?.family;
-	if (!f || f.everRecords < 2) return '';
-	const { verdict } = assessFamily(f), days = Math.floor(f.days), t = `daily t ${minus(f.t)}`;
-	return `Family ${f.name} (${f.records} ${f.records === 1 ? 'record' : 'records'}): ${verdictWord(verdict)} · ${verdict === VERDICT.EARLY ? `${f.trades} ${f.trades === 1 ? 'trade' : 'trades'} in ${days} days · ${t}` : `${t} over ${days} days`}`;
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+/** Where the record stands among its family's judged members: "1st of 16 in Visar night". */
+export function standingTitle(f: FamilyView): string {
+	return f.member ? `${ordinal(f.member.rank)} of ${f.member.of} in ${f.name}` : `In ${f.name}`;
+}
+/** What the spread between the members supports: nothing while it is no wider than chance, else a share of each lead. */
+export function standingLine(f: FamilyView): string {
+	const m = f.member;
+	if (!m) return '';
+	const spread = `Members' t-statistics differ by ${minus(m.spread)}; chance alone gives 1.00`;
+	return m.kept > 0 ? `${spread}. ${(m.kept * 100).toFixed(0)}% of this record's lead over the average member is kept`
+		: `${spread}. The members cannot be told apart yet, so each is read at their average`;
 }
 /** What the family needs: "confirmed at t 4.62 with 39 families tried (3.57 alone)". */
 export function familyBarsLine(f: FamilyClock): string {

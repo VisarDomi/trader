@@ -2,11 +2,11 @@
  * The native app's screens, built on the server from arena records (see wire.ts for the format).
  * Each builder is a pure function of the records it is given; `loadScreen` fetches them.
  */
-import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
+import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, FamilyView, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
 import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily } from '@trader/shared';
 import type { Inspection } from '../inspection';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
-import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, familyLine, verdictWord } from '../../clock';
+import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, standingLine, standingTitle, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
 
 type Json = Record<string, any>;
@@ -73,7 +73,7 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage !== 'capital' || m.sharpe != null ? `Sharpe ${num(m.sharpe)}` : '', stage === 'capital' ? `cash drawdown ${dd}` : `drawdown ${dd}`,
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
 	const judged = stage === 'backtest' || r.comparisonOnly ? '' : clockLine(r as LeaderboardRow, Date.now(), !!r.forwardVerdict && badge === verdictWord(r.forwardVerdict));
-	const facts = [judged, judged ? familyLine(e.clock) : '', frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
+	const facts = [judged, frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
 	return compact({
 		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
@@ -166,8 +166,10 @@ const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' 
 export function agentScreen({ agent, runs, sparks, capital, backtests: board }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
-	const family = records.map(r => (r.evidence as AgentEvidence | undefined)?.clock?.family).find(Boolean);
-	if (family && family.everRecords > 1) sections.push({ title: 'Edge or luck', rows: [familyRow(family)] });
+	// What the family says about this agent's records, apart from their own lines.
+	const views = records.flatMap(r => { const f = (r.evidence as AgentEvidence | undefined)?.family; return f ? [{ r, f }] : []; });
+	if (views[0] && views[0].f.everRecords > 1) sections.push({ title: 'Family', rows: [familyRow(views[0].f),
+		...views.flatMap(({ r, f }) => { const row = standingRow(f, `family-member-${r.id}`, `${r.epic} ${tier(r.leverage)}`); return row ? [row] : []; })] });
 	if (records.length) sections.push({ title: 'Live records', rows: records.map(r => {
 		const c = capital.get(r.id), cm = c?.metrics, m = r.metrics;
 		return compact({ id: r.id, title: `${r.epic} · ${tier(r.leverage)}`, subtitle: `Virtual ${usd(r.equity)}${c ? ` · Demo ${c.mirrored ? 'mirrored' : 'past assignment'}` : ''} · since ${day(r.startedAt)}`,
@@ -204,7 +206,18 @@ export function clockRow(row: LeaderboardRow, now = Date.now()): Row | null {
 		chart: c.confirmAt != null ? { kind: 'meter' as const, height: 18, meter: { value: c.life.t, limit: c.confirmAt, above: true } } : undefined,
 		body: [barsLine(c), agreementLine(c), since].filter(Boolean).join('\n') });
 }
-/** The record's family judged as one record: what it has, what it needs and whether it agrees with its backtests. */
+/**
+ * What the family says about one record: where it stands among the members and its t with the luck taken out. The
+ * family has its own section; it changes nothing in the record's own lines.
+ */
+export function standingRow(f: FamilyView, id = 'family-member', what = ''): Row | null {
+	const m = f.member;
+	if (!m) return null;
+	return { id, title: `${what ? what + ' · ' : ''}${standingTitle(f)}`,
+		stats: [{ label: 'Own daily t', value: num(m.t), tone: tone(m.t) }, { label: "Family's estimate for it", value: num(m.estimate), tone: tone(m.estimate) }, { label: 'Average member', value: num(m.average), tone: tone(m.average) }],
+		body: standingLine(f) };
+}
+/** The family judged as one record: what it has, what it needs and whether it agrees with its backtests. */
 export function familyRow(f: FamilyClock): Row {
 	const a = assessFamily(f);
 	return compact({ id: 'family', title: `Family ${f.name} · ${verdictWord(a.verdict)} · daily t ${num(f.t)}`,
@@ -256,7 +269,9 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	if (priced.length) { let cash = 0; charts.push({ id: 'cash', title: 'Capital demo closed P&L', chart: { kind: 'line', height: 140, series: [series('P&L', priced.map(d => ({ t: d.close_time!, value: (cash += d.pnl!) })))] } }); }
 	if (charts.length) sections.push({ title: '', rows: charts });
 	const judged = historical ? null : clockRow({ ...run, runId: run.id, slug: run.agentId.split('/')[0]!, evidence: e } as unknown as LeaderboardRow);
-	if (judged) sections.push({ title: 'Edge or luck', rows: [judged, ...(e?.clock?.family && e.clock.family.everRecords > 1 ? [familyRow(e.clock.family)] : [])] });
+	if (judged) sections.push({ title: 'Edge or luck', rows: [judged] });
+	const family = historical ? undefined : e?.family;
+	if (family && family.everRecords > 1) sections.push({ title: 'Family', rows: [standingRow(family), familyRow(family)].filter((r): r is Row => !!r) });
 	const often = ([['frequency-virtual', 'Virtual', e?.frequency], ['frequency-capital', 'Capital demo', capital?.evidence?.frequency]] as const)
 		.flatMap(([id, what, f]) => (f ? [frequencyRow(id, what, f, periods.find(p => p?.runId === f.runId && p.days === f.days))] : []));
 	if (often.length) sections.push({ title: 'How often its backtest did this', rows: often });

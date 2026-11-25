@@ -218,17 +218,27 @@ test('families are judged as one record: files joined by the roster, retired run
   db.db.run('UPDATE runs SET retired=1,ended_at=? WHERE id=?', [day(14), ids[4]!]);
   const roster = { families: { night: { name: 'Night', slugs: ['night', 'night-old', 'night-v2'] } } };
   const service = new AgentEvidenceService({ db, tracked: new Map(), roster } as unknown as Arena);
-  const clock = (id: string) => service.forRun(db.run(id)!, now).clock!;
-  const alone = clock(ids[0]!), family = alone.family!;
+  const clock = (id: string) => service.forRun(db.run(id)!, now).clock!, view = (id: string) => service.forRun(db.run(id)!, now).family;
+  const alone = clock(ids[0]!), family = view(ids[0]!)!;
+  // The family sits beside the record's clock, not in it: the record's own numbers are what they were.
+  expect(alone).not.toHaveProperty('family');
   // Alone: three trades, early for years. Together: 12 trades on two markets, each member winning on its own days.
   expect(alone.trades).toBe(3);
   expect(family).toMatchObject({ id: 'night', name: 'Night', records: 4, everRecords: 5, markets: 2, trades: 12, since: MON, observations: 50, trials: 2 });
   expect(family.t).toBeGreaterThan(alone.t * 1.8);
-  expect(clock(ids[3]!).family).toEqual(family);
+  expect(view(ids[3]!)).toMatchObject({ id: 'night', t: family.t, e: family.e, records: 4 });
   // The monkeys judged as one family are the yardstick; the other file is its own family, named without its variant.
   expect(family.monkey).toBeCloseTo(clock(monkey).life.t, 6);
-  expect(clock(monkey).family).toBeUndefined();
-  expect(clock(other).family).toMatchObject({ id: 'trend', name: 'trend', records: 1, everRecords: 1, trials: 2 });
+  expect(view(monkey)).toBeUndefined();
+  expect(view(other)).toMatchObject({ id: 'trend', name: 'trend', records: 1, everRecords: 1, trials: 2 });
+  expect(view(other)!.member).toBeUndefined();                              // nothing to stand among
+  // Where a record stands: the four running members have almost the same t, so the family reads each at their average.
+  const standing = family.member!;
+  expect(standing).toMatchObject({ of: 4, kept: 0 });
+  expect(standing.t).toBeCloseTo(alone.life.t, 12);
+  expect(standing.spread).toBeLessThan(1);
+  expect(standing.estimate).toBeCloseTo(standing.average, 12);
+  expect([0, 1, 2, 3].map(i => view(ids[i]!)!.member!.rank).sort()).toEqual([1, 2, 3, 4]);
   expect(service.familyOf({ agent_id: 'night/a' })).toEqual({ id: 'night', name: 'Night' });
   // Confirmed among families: two tried, so the first needs e ≥ 20.
   expect(family.confirmAt!).toBeCloseTo(tAt(2 / LIFECYCLE.CONFIRM_FDR, 50), 9);
@@ -236,7 +246,18 @@ test('families are judged as one record: files joined by the roster, retired run
   expect(family.confirmed).toBe(true);
   // Without the roster each file stands alone: the three-variant file is a family of three, the others of one.
   const plain = new AgentEvidenceService({ db, tracked: new Map() } as unknown as Arena);
-  expect(plain.forRun(db.run(ids[0]!)!, now).clock!.family).toMatchObject({ id: 'night', name: 'night', records: 3, everRecords: 3, trials: 4 });
-  expect(plain.forRun(db.run(ids[3]!)!, now).clock!.family).toMatchObject({ id: 'night-old', records: 1 });
+  expect(plain.forRun(db.run(ids[0]!)!, now).family).toMatchObject({ id: 'night', name: 'night', records: 3, everRecords: 3, trials: 4 });
+  expect(plain.forRun(db.run(ids[3]!)!, now).family).toMatchObject({ id: 'night-old', records: 1 });
+  // A family whose members really differ: a strong winner, a flat one and a loser spread far more than chance (1),
+  // so most of the winner's lead over the average is kept; it is still read below its own t.
+  const mixed = [add('mix/up', 'mix', 'up', i => 0.01 + (i % 2 ? 0.004 : -0.004), 30), add('mix/flat', 'mix', 'flat', i => (i % 2 ? 0.004 : -0.004), 30), add('mix/down', 'mix', 'down', i => -0.01 + (i % 2 ? 0.004 : -0.004), 30)];
+  const fresh = new AgentEvidenceService({ db, tracked: new Map(), roster } as unknown as Arena);
+  const [up, flat, down] = mixed.map(id => fresh.forRun(db.run(id)!, now).family!.member!);
+  expect([up!.rank, flat!.rank, down!.rank]).toEqual([1, 2, 3]);
+  expect(up!.spread).toBeGreaterThan(5);
+  expect(up!.kept).toBeCloseTo(1 - 1 / up!.spread ** 2, 12);
+  expect(up!.estimate).toBeLessThan(up!.t);
+  expect(up!.estimate).toBeGreaterThan(up!.average + 0.9 * (up!.t - up!.average));
+  expect(down!.estimate).toBeGreaterThan(down!.t);                          // pulled toward the average from below too
   db.db.close();
 });

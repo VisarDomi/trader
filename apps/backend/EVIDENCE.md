@@ -106,10 +106,11 @@ a matched control on the same days (the night cohort's direction controls) can a
 
 ### Families
 
-Every strategy record is also judged with its family, as one record (`evidence.clock.family`; `pool` in
-`src/arena/judging.ts`). A family is an agent file with all its variants, instruments and tiers, unless
-`families` in `agents/roster.json` joins several files: the night rule's files, running and retired, are the
-family `visar-night`.
+Every strategy record's family is judged as one record (`evidence.family`; `pool` in `src/arena/judging.ts`). It
+sits beside the record's clock and changes nothing in it: the record's verdict, its row and its slots are its
+own, and the family has a section of its own on the record's and the agent's screens. A family is an agent file
+with all its variants, instruments and tiers, unless `families` in `agents/roster.json` joins several files: the
+night rule's files, running and retired, are the family `visar-night`.
 
 - **One record.** Each weekday the family is worth the average of its members' returns, each divided by that
   member's volatility (its same-code backtest's; for a record of an older code version, its own), over the
@@ -128,6 +129,15 @@ family `visar-night`.
   39 families and none confirmed (2026-11-25) the first needs a t of 3.8 after a year (a Sharpe ratio of 2.7 for
   two years, 1.7 for five), against 4.6 for a single record. A confirmed family says the family has an edge on
   average, not which member has it.
+
+- **What the family says about one record** (`evidence.family.member`): its rank by whole-life t among the
+  members with ten or more weekdays, and its t with the luck taken out. Each member's t carries a sampling
+  spread of about 1, so members whose t-statistics differ by 1 differ by chance alone, and each is read at their
+  average. Only the excess keeps a lead: estimate = average + (1 − 1 ÷ spread²) × (own t − average), nothing
+  while the spread is under 1 (the positive-part shrinkage of Efron and Morris). Members that move together
+  spread less than chance and read as one. On 2026-11-25 no family's leader was above what the best of as many
+  no-edge members reaches (33 families: 29 leaders inside the middle 80% of luck's best, 4 below), and 300 of 342
+  other members could not be told from their leader on the same days.
 
 A family verdict moves nothing: Capital slots, demotion and retirement stay per record.
 
