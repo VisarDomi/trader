@@ -5,6 +5,51 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — the arena portfolio; the night rule follows New York time
+
+- The user asked for the portfolio recommended below to be built, and for the night agents to use New York's
+  time for their usual 03:27 and 08:27, because the Tirana clock moves against the US day in clock-change weeks
+  (4d95a41).
+- Arena portfolio (EVIDENCE.md "The arena portfolio"; `portfolios` in `roster.json`, id `backtest-half`): every
+  running strategy record whose same-code backtest has a Sharpe ratio before T-bills of 0.5 or more, at equal
+  risk, judged as one claim made in advance.
+  - First pick 2026-11-25 13:00 UTC: 74 records from 32 agent files on 14 markets. Largest files: tsmom 14.0%,
+    ibs-dip 13.3%, volatility-breakout 8.3%. Largest markets: US100 21.5%, GOLD 18.1%, US500 13.0%. The four
+    night records that qualify hold 1.8% together. Next pick in the first hour of December.
+  - The pick's weights over its members' backtests give a Sharpe ratio of 2.98. Holding it, the portfolio is
+    confirmed about 12 months after the pick (367 days); at half of it, about 4.3 years (1,568 days). The bar is
+    an e-value of 40: a t of 3.8 after a month, 3.0 after a year. Earliest verdict 2027-01-06 (42 days).
+  - Its record starts at the pick. A dry run on a database snapshot with the pick backdated 35 days read
+    t 1.09 over 25 weekdays, +1.0% and 586 trades; those days are not counted, because the 0.5 threshold was
+    chosen after looking at them.
+  - Correction to the note below: the 74 records and the Sharpe of 3.0 were on the Sharpe before T-bills. On the
+    Sharpe above T-bills that the rankings show, 27 records qualify (2.85 together). The rule uses the Sharpe
+    before T-bills, like the backtest gate: the clock judges returns against zero, and idle cash earns nothing
+    in a CFD account.
+  - Agreement with the backtests is shown and not required: the members were picked on them, so the forward
+    record is expected to fall short, and requiring agreement would refuse a real but smaller edge.
+  - It is pinned above the app's Capital demo and Virtual rankings, has a card on the results page, its own
+    page and screen, and a section in `bun run review`. It holds no slot and changes no record.
+- Night rule on New York clocks: reference at the 16:00 close, entry 21:27, exit 02:27. In Tirana that is 22:00,
+  03:27 and 08:27 except while Europe and the US change their clocks apart (next 14–28 March 2027, then
+  31 October–7 November 2027), when it is 21:00, 02:27 and 07:27.
+  - Only the night rule used the user's local time: the original, the v3 and v4 cohort files, their two control
+    files and the backtest-only `night-risk-twin`. `TZ.TIRANA` remains in the frozen study replay and in the
+    retired copies.
+  - All eight sources changed, so all 20 night records (136 runs with their execution comparisons) were retired
+    as "agent code changed" and restarted at 13:47 CET from their admissions, mirrored as before (410 of 556).
+    Nothing else was retired. The original's three-trade +166% record is archived and stays in the
+    `visar-night` family's record (t 1.26 over 29 weekdays, 100 records ever). Strategy records tried: 860.
+  - Backtests 2024-01 to 2026-09, Tirana clocks → New York clocks: the original 71 trades, −99.98% → 70 trades,
+    −99.99%; US100 base +127.6% → +106.7% (67 → 66 trades); US100 no-pullback +242.6% → +214.7%; US500 base
+    +18.0% → +9.3%; US500 no-pullback +69.8% → +53.0%. Most variants are slightly lower. The two clocks differ
+    on about 11 weeks of the window (4 of the original's 70 nights), too few trades to read anything into.
+  - Night Lab: the cohort is `research/night-cohort-v5-20261125.json` (the same twenty settings, new hashes).
+    Its study tables keep Tirana clocks. The nightly paper grid runs the live v4 source, so its whole replay
+    moves to New York clocks at tonight's run.
+- Checks: 258 backend and 43 UI tests, both typechecks. After the deploy the arena shows 97 agents and 4,622
+  demo runs, and the phone's screens were read through the loopback native API.
+
 ## 2026-11-25 (Wed, user-requested) — the family is a section of its own; what four months would take
 
 - The user reads the family as an average that says nothing about which member to pick, wants each agent judged on

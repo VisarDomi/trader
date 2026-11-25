@@ -9,13 +9,14 @@
  let{portfolio:p,detail=false}:{portfolio:PortfolioView;detail?:boolean}=$props();
  const a=$derived(assessPortfolio(p)),tone=(v:number|null)=>v==null?'':v>0?'up':v<0?'down':'';
  const curve=$derived(p.since===null?[]:[{t:p.since,value:0},...p.curve.map(x=>({t:x.t,value:x.value*100}))]);
+ const lines=$derived([portfolioBarsLine(p),portfolioPaceLine(p),portfolioBacktestLine(p)].filter(Boolean));
  const utc=(t:number)=>new Date(t).toISOString().slice(0,10);
 </script>
 <section class="card stack">
  <div class="heading"><h2>{#if detail}{p.name}{:else}<a href="/portfolio/{p.id}">{p.name}</a>{/if}</h2><span class="muted small">{a.reason}</span></div>
  <div class="row"><StatTile label="Verdict" value={verdictWord(a.verdict)}/><StatTile label={`t · ${p.observations} weekdays`} value={num(p.t)} tone={tone(p.t)}/><StatTile label="Return since its first pick" value={pct(p.ret)} tone={tone(p.ret)}/><StatTile label={`Records · ${p.markets} markets`} value={String(p.records)} hint={`${p.agents} agent files`}/><StatTile label="Confirmed at" value={num(p.confirmAt)} hint="One claim made in advance: the always-valid bar for one record on its own"/></div>
  <p class="muted small">{portfolioRuleLine(p)}. {#if p.since}First pick {utc(p.since)}; the days before it do not count.{:else}No records picked yet.{/if}</p>
- <p class="muted small">{[portfolioBarsLine(p),portfolioPaceLine(p),portfolioBacktestLine(p)].filter(Boolean).join('. ')}.</p>
+ {#if lines.length}<p class="muted small">{lines.join('. ')}.</p>{/if}
  {#if detail}
   {#if curve.length>2}<TimeChart series={[{name:'Return',points:curve}]} unit="%" height={220}/>{/if}
   {#if p.members.length}
