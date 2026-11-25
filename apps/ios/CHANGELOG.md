@@ -2,6 +2,12 @@
 
 Newest first. Each entry records what was delivered, how it was checked and how it reached the phone.
 
+## November 25, 2026 · Manual Paper ↔ Demo & confirmed Demo ↔ Real stage controls
+
+- Wired `POST /api/native/v2/stage` in `Store.swift` and `ScreenController.swift` so live run screens expose manual stage controls: immediate `Paper ↔ Capital demo` and one-way `Paper → Backtest` transitions (no confirmation prompt), and `UIAlertController`-confirmed `Capital demo ↔ Real (tracked)` transitions in both directions.
+- Eight Linux Swift logic tests, 256 backend tests (plus native Rust checks), and 37 UI tests (`svelte-check` 0 errors) pass; `/api/native/v2/stage` exposed on Caddy via `ops/server/native-access.py edge`.
+- Job `20261125T171605Z-e1b65ee3dd`, frozen source `6fd5fcc`: **installed** in place on the phone and approved for renewal.
+
 ## November 25, 2026 · 4-tab layout restored, SOTA briefs in Agents & Sharpe & Trust
 
 - Restored the four-tab bar (`Rankings | Agents | Accounts | Explore`) and keyed saved navigation stacks by screen name (`navigation-<screen>.json`) instead of tab index, clearing legacy `navigation-0..4.json` files on startup so existing phones never shift tabs.
