@@ -5,6 +5,40 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — the family is a section of its own; what four months would take
+
+- The user reads the family as an average that says nothing about which member to pick, wants each agent judged on
+  its own, and wants the family only as a section showing what it says about that agent (2890efe).
+  - `evidence.family` now sits beside the record's clock. Ranking rows show only the record. The record's and the
+    agent's screens, and their website pages, have a Family section: the record's rank among the judged members,
+    its t with the luck taken out (the members' average plus the share of its lead that the spread between
+    members supports), and the family judged as one record.
+  - First reading: in 31 of the 34 families with a standing, members differ by no more than chance, so every
+    member is read at the average. `visar-night-trading` is 1st of 6 with t 1.63 and is read at 0.11;
+    `volatility-breakout/k08` GOLD is 1st of 12 with 2.05 and is read at 1.13.
+  - No family's leader is above what the best of as many no-edge members reaches (29 inside the middle 80% of
+    luck's best, 4 below), and 300 of 342 other members cannot be told from their leader on the same days.
+    Two members a full Sharpe point apart need about 16 years to separate on different markets (correlation 0.1)
+    and about 2 on the same market (0.9).
+- The user asked whether confirmation can come down to about four months. Not for these strategies:
+  - Time is about 12 months × (bar ÷ Sharpe)². Months until the expected t reaches the bar, for a true Sharpe of
+    1 / 2 / 3 / 5: one record alone 127 / 29 / 12 / 5; first family of 39: 186 / 43 / 19 / 7; first record of 844:
+    264 / 63 / 28 / 10; candidate (t 2): 48 / 12 / 5 / 2. Four months needs a Sharpe of 5.4, 6.8, 8.4 and 3.4.
+  - The best backtest in the arena has a Sharpe of 1.44 (median −0.28, top tenth from 0.78). The median strategy
+    trades 0.4 times a weekday; four months at the single-record bar needs about 10 trades a day at a 55% net win
+    rate, or 3 a day at 60%.
+  - Counting every claim instead of one costs a factor of about 2.5 in time and no more. Looking more often than
+    daily adds nothing: the precision of a mean return depends on elapsed time.
+  - What moves it is breadth. The 379 records with 30 weekdays have a mean pairwise correlation of 0.02 (0.08 on
+    the same market), about 40 independent bets. Portfolios chosen by backtest alone and judged forward over 35
+    weekdays: all 408 strategies t −0.12; backtest Sharpe ≥ 0.5 (74 records) t +0.73 with a forward Sharpe near 2
+    and a backtest Sharpe as a portfolio of 3.0; the top tenth (41) t +0.65; backtest Sharpe below zero (258)
+    t −0.09. A portfolio rule fixed in advance is one claim at the lowest bar: at a Sharpe of 3 it is confirmed
+    in about a year and a candidate in five months; four months needs about three times the independent
+    profitable bets.
+- Nothing was built for the second point. The arena portfolio (one judged record from a rule fixed in advance)
+  is the proposal.
+
 ## 2026-11-25 (Wed, user-requested) — families judged as one record; the night rule's files are one family
 
 - The user asked for the family judging left open below, and for a family for the slow strategies without one.
