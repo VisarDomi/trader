@@ -1,3 +1,9 @@
+export interface NativeBlock {
+	title: string;
+	body: string;
+	code?: boolean;
+}
+
 /** Plain-text Markdown/LaTeX cleanup for UIKit labels on iPhone (no raw **, backticks, or $...$). */
 export function stripMarkdownInline(text: string): string {
 	return text
@@ -13,22 +19,51 @@ export function stripMarkdownInline(text: string): string {
 		.trim();
 }
 
-/** Turns a Markdown section into native rows: titled cards for labeled list items, plain paragraphs otherwise. */
-export function plainNativeBlocks(body: string): { title: string; body: string }[] {
-	const out: { title: string; body: string }[] = [];
+/** Turns a Markdown section into native rows: titled cards for labeled list items, monospace blocks for equations, plain paragraphs otherwise. */
+export function plainNativeBlocks(body: string): NativeBlock[] {
+	const out: NativeBlock[] = [];
 	let para: string[] = [];
+	let inCode = false;
+	let codeLines: string[] = [];
+	let codeLabel = '';
 	const flushPara = () => {
 		const joined = stripMarkdownInline(para.join(' '));
 		if (joined) out.push({ title: '', body: joined });
 		para = [];
 	};
 	for (const rawLine of body.split(/\r?\n/)) {
-		const line = rawLine.trim();
-		if (!line) {
+		const trimmed = rawLine.trim();
+		if (trimmed.startsWith('```')) {
+			if (inCode) {
+				const eq = codeLines.join('\n').trim();
+				if (eq) {
+					const prev = out.at(-1);
+					if (!codeLabel && prev && !prev.title && !prev.code && prev.body.endsWith(':') && prev.body.length <= 80) {
+						out.pop();
+						out.push({ title: prev.body.slice(0, -1), body: eq, code: true });
+					} else {
+						out.push({ title: codeLabel, body: eq, code: true });
+					}
+				}
+				codeLines = [];
+				codeLabel = '';
+				inCode = false;
+			} else {
+				flushPara();
+				codeLabel = trimmed.slice(3).trim();
+				inCode = true;
+			}
+			continue;
+		}
+		if (inCode) {
+			codeLines.push(rawLine.trimEnd());
+			continue;
+		}
+		if (!trimmed) {
 			flushPara();
 			continue;
 		}
-		const item = /^(?:[-*]|\d+\.)\s+(.*)$/.exec(line);
+		const item = /^(?:[-*]|\d+\.)\s+(.*)$/.exec(trimmed);
 		if (item) {
 			flushPara();
 			const content = item[1]!;
@@ -40,7 +75,11 @@ export function plainNativeBlocks(body: string): { title: string; body: string }
 			}
 			continue;
 		}
-		para.push(line);
+		para.push(trimmed);
+	}
+	if (inCode && codeLines.length) {
+		const eq = codeLines.join('\n').trim();
+		if (eq) out.push({ title: codeLabel, body: eq, code: true });
 	}
 	flushPara();
 	return out;

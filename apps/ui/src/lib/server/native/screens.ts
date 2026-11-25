@@ -618,10 +618,27 @@ export function strategyDetailScreen(item: StrategyEntry): Screen {
 	for (const [i, sec] of item.sections.entries()) {
 		const blocks = plainNativeBlocks(sec.body);
 		if (!blocks.length) continue;
-		sections.push({
-			title: stripMarkdownInline(sec.title),
-			rows: blocks.map((b, j) => compact({ id: `sec-${i}-${j}`, title: b.title, body: b.body })),
-		});
+		const rows: Row[] = blocks.map((b, j) => compact({ id: `sec-${i}-${j}`, title: b.title, body: b.body, code: b.code }));
+		if (item.id === 'sharpe-guide' && sec.title.toLowerCase().includes('six ways')) {
+			rows.unshift({
+				id: 'noise-max-chart',
+				title: 'Expected best 1-year Sharpe from pure noise',
+				subtitle: 'Zero-edge independent trials · E[max SR] ≈ √(2 ln N)',
+				chart: {
+					kind: 'bars',
+					unit: '',
+					height: 165,
+					bars: [
+						{ name: '1 trial', value: 0.0, total: true },
+						{ name: '10 trials', value: 1.57, total: true },
+						{ name: '50 trials', value: 2.28, total: true },
+						{ name: '200 trials', value: 2.77, total: true },
+						{ name: '844 trials (Trader)', value: 3.21, total: true },
+					],
+				},
+			});
+		}
+		sections.push({ title: stripMarkdownInline(sec.title), rows });
 	}
 	if (item.variants.length) {
 		sections.push({

@@ -251,7 +251,7 @@ test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail s
 		id: 'sharpe-guide', name: 'How to Read Sharpe & Trust', group: 'guide', status: 'researched',
 		verdict: 'Guide', verdictTone: 0, bestFit: 'All strategies', expectedEdge: 'Context',
 		tldr: 'High **Sharpe** is a smoothness score.', slugs: [],
-		sections: [{ title: 'Six ways', body: '- **Leaderboard luck:** Pick from 844 strategies.\n- **Steamroller:** Low variance ($\\sigma$) before crash.' }],
+		sections: [{ title: 'Six ways a high Sharpe lies', body: '```Equation\nt ≈ SR̂ × √T_years\n```\n\n- **Leaderboard luck:** Pick from 844 strategies.\n- **Steamroller:** Low variance ($\\sigma$) before crash.' }],
 		sources: [{ title: 'Lo 2002', url: 'https://example.com/lo' }], markdown: '',
 		variants: [], timeframes: [], instruments: [], usesForecast: false,
 	};
@@ -286,7 +286,9 @@ test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail s
 	const sharpe = strategyDetailScreen(guide);
 	expect(sharpe.title).toBe('Sharpe & Trust');
 	expect(sharpe.sections[0]!.rows[0]!.chart).toMatchObject({ kind: 'bars', unit: ' yr' });
-	expect(sharpe.sections[1]!.rows[1]).toEqual({ id: 'sec-0-1', title: 'Steamroller', body: 'Low variance (σ) before crash.' });
+	expect(sharpe.sections[1]!.rows[0]!.chart).toMatchObject({ kind: 'bars', unit: '' });
+	expect(sharpe.sections[1]!.rows[1]).toEqual({ id: 'sec-0-0', title: 'Equation', body: 't ≈ SR̂ × √T_years', code: true });
+	expect(sharpe.sections[1]!.rows[3]).toEqual({ id: 'sec-0-2', title: 'Steamroller', body: 'Low variance (σ) before crash.' });
 
 	const withBrief = agentScreen({ agent: { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'TSMOM', description: '', codeHash: 'h', runs: [], versions: [] } as any, runs: [], sparks: new Map(), capital: new Map(), strategy: item });
 	expect(withBrief.sections[0]!.title).toBe('SOTA brief');
