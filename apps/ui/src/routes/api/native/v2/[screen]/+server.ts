@@ -13,7 +13,12 @@ import type { RequestHandler } from './$types';
 const handler: RequestHandler = ({ request, params }) => nativeResponse(request, params.screen, {
 	hash: env.TRADER_NATIVE_ACCESS_SHA256,
 	build: (screen, q) => loadScreen(screen, q, journal),
-	mutate: (resource, body) => resource === 'mirror' ? arena.setMirror(body.enabled as boolean) : arena.setExcluded(body.runId as string, body.excluded as boolean),
+	mutate: (resource, body) =>
+		resource === 'mirror'
+			? arena.setMirror(body.enabled as boolean)
+			: resource === 'stage'
+				? arena.setStage(body.runId as string, body.target as 'backtest' | 'virtual' | 'demo' | 'real', Boolean(body.confirmed))
+				: arena.setExcluded(body.runId as string, body.excluded as boolean),
 });
 export const GET = handler;
 export const POST = handler;

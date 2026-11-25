@@ -123,19 +123,37 @@ test('queued broker opens use rebased profit protection and resync changes that 
  }finally{mirror.stop();db.db.close()}
 });
 
-test('an explicit demo experiment takes a full account slot while an ordinary unproven run waits', async () => {
+test('Paper <-> Capital demo and Capital demo <-> Real promotion/demotion are manual, with confirmation only on Real', async () => {
   const incumbents = Array.from({ length: 50 }, (_, i): MirrorCandidate => ({
     runId: `demo:incumbent-${i}:${EPIC}:x1:hash`, epic: EPIC, tier: 1, score: 0, side: null, entry: null,
   }));
-  const special: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: -1_000_000, side: null, entry: null, eligible: true, specialAdmission: true };
-  const ordinary: MirrorCandidate = { ...special, runId: `demo:ordinary:${EPIC}:x1:hash`, eligible: false, specialAdmission: false };
-  const { db, mirror } = fixture([...incumbents, ordinary, special], Object.fromEntries(incumbents.map(c => [c.runId, ACCOUNT])));
+  const waiting: MirrorCandidate = { runId: RUN, epic: EPIC, tier: 1, score: 100, side: null, entry: null, eligible: true, specialAdmission: true };
+  const { db, mirror } = fixture([...incumbents, waiting], Object.fromEntries(incumbents.map(c => [c.runId, ACCOUNT])));
   try {
     await mirror.start();
     await settled(mirror);
+    // Automatic rebalance keeps existing promoted incumbents and never auto-promotes or auto-swaps waiting runs.
     expect(mirror.mirroredRuns).toHaveLength(50);
+    expect(mirror.mirroredRuns).not.toContain(RUN);
+    // Promoting when the tier is full is rejected cleanly until a slot is freed.
+    expect(() => mirror.promoteToDemo(RUN)).toThrow(/No free 1:1 slot/);
+    // Demoting an incumbent frees its slot immediately (no confirm); promoting the waiting run takes it.
+    const freed = incumbents[0]!.runId;
+    mirror.demoteToPaper(freed);
+    expect(mirror.mirroredRuns).not.toContain(freed);
+    mirror.promoteToDemo(RUN);
     expect(mirror.mirroredRuns).toContain(RUN);
-    expect(mirror.mirroredRuns).not.toContain(ordinary.runId);
+    // Demo <-> Real requires explicit confirmation in both directions, and blocks direct Demo -> Paper while in Real.
+    expect(() => mirror.setReal(RUN, true, false)).toThrow(/Confirmation required/);
+    mirror.setReal(RUN, true, true);
+    expect(mirror.realRuns).toContain(RUN);
+    expect(() => mirror.demoteToPaper(RUN)).toThrow(/Demote from Real/);
+    expect(() => mirror.setReal(RUN, false, false)).toThrow(/Confirmation required/);
+    mirror.setReal(RUN, false, true);
+    expect(mirror.realRuns).not.toContain(RUN);
+    expect(mirror.mirroredRuns).toContain(RUN);
+    mirror.demoteToPaper(RUN);
+    expect(mirror.mirroredRuns).not.toContain(RUN);
   } finally { mirror.stop(); db.db.close(); }
 });
 

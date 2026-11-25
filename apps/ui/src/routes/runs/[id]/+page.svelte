@@ -1,6 +1,7 @@
 <script lang="ts">
  import{page}from'$app/state';
  import{replaceState}from'$app/navigation';
+ import{enhance}from'$app/forms';
  import{usd,pct,pctPlain,num,utc,sign,duration}from'$lib/format';
  import TimeChart from'$lib/components/TimeChart.svelte';
  import ValueBars from'$lib/components/ValueBars.svelte';
@@ -11,8 +12,10 @@
  import FamilyView from'$lib/components/FamilyView.svelte';
  import LiveRefresh from'$lib/components/LiveRefresh.svelte';
  import type{Inspection}from'$lib/server/inspection';
- let{data}=$props();
+ let{data,form}=$props();
  const run=$derived(data.run),actual=$derived(data.stage==='capital'),m=$derived(actual?data.capital?.metrics:run.metrics);
+ const liveControl=$derived(run.kind!=='backtest'&&run.status!=='retired'&&!run.id.includes(':delay='));
+ function confirmReal(e:SubmitEvent,prompt:string){if(!window.confirm(prompt))e.preventDefault()}
  let choice=$state<string|null>(null),loaded=$state<Inspection|null>(null),loading=$state(false),failure=$state('');
 
  const curve=$derived(run.equityCurve.map(p=>({t:p.t,value:p.equity})));
@@ -34,6 +37,23 @@
 <div class="stack">
  <header class="page-heading"><div><a class="muted breadcrumb" href="/agents/{run.agentId}">{data.agentName}</a><h1>{run.epic} <span class="badge">{run.leverage?`1:${run.leverage}`:'—'}</span><span class="badge">{run.evidence?.admission==='user-experiment'?'Experiment':run.status}</span></h1></div><div class="pill-group">{#if run.kind==='backtest'}<span class="stage-name">Backtest · {run.windowId}</span>{:else}<a href="?stage=virtual" class:active={!actual}>Virtual</a><a href="?stage=capital" class:active={actual}>Capital demo</a>{/if}</div></header>
  <div class="metrics-strip">{#each [{label:actual?'Realized cash':'Equity',value:usd(actual?data.capital?.equity:run.equity)},{label:'Return',value:pct(m?.totalReturn)},{label:actual?'Closed-cash DD':'Max drawdown',value:pctPlain(m?.maxDrawdown)},{label:'Closed trades',value:m?String(m.trades):'—'}]as stat}<div><small>{stat.label}</small><strong>{stat.value}</strong></div>{/each}</div>
+ {#if form?.message}<p class="status-line" role="status">{form.message}</p>{/if}
+ {#if liveControl}
+  <section class="card stage-bar">
+   <div><strong>Stage: {data.real?'Real (tracked · demo API only)':data.mirrored?`Capital demo${data.account?' · '+data.account:''}`:'Paper (virtual)'}</strong></div>
+   <div class="stage-actions">
+    {#if data.real}
+     <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Demote this run from Real back to Capital demo?')} use:enhance><input type="hidden" name="target" value="demo"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Demote to Capital demo</button></form>
+    {:else if data.mirrored}
+     <form method="POST" action="?/stage" onsubmit={e=>confirmReal(e,'Promote this Capital demo run to Real stage (tracked; Capital API stays demo-only)?')} use:enhance><input type="hidden" name="target" value="real"/><input type="hidden" name="confirmed" value="true"/><button class="btn">Promote to Real</button></form>
+     <form method="POST" action="?/stage" use:enhance><input type="hidden" name="target" value="virtual"/><button class="btn">Demote to Paper</button></form>
+    {:else}
+     <form method="POST" action="?/stage" use:enhance><input type="hidden" name="target" value="demo"/><button class="btn">Promote to Capital demo</button></form>
+     <form method="POST" action="?/stage" use:enhance><input type="hidden" name="target" value="backtest"/><button class="btn">Demote to Backtest</button></form>
+    {/if}
+   </div>
+  </section>
+ {/if}
  {#if run.extra?.retirement}<p class="status-line">Retired · {String((run.extra.retirement as {reason:string}).reason)}</p>{/if}
  {#if !actual}<section class="card"><div class="section-heading"><h2>Equity</h2><span class="muted small">{run.kind==='backtest'?'Daily':'Hourly'} snapshots · {utc(run.startedAt)} → {utc(run.updatedAt)}</span></div><TimeChart series={[{name:'Equity',points:curve}]} height={220}/><details><summary>Snapshot drawdown</summary><TimeChart series={[{name:'Drawdown',points:dd}]} unit="%" height={140}/></details></section>{/if}
  {#if run.kind!=='backtest'&&run.evidence?.clock}<RecordClock row={{...run,runId:run.id,slug:run.agentId.split('/')[0]}}/>{/if}
@@ -46,4 +66,4 @@
  <details class="card"><summary>Run statistics & cost coverage</summary>{#if actual&&data.capital?.evidence}<AgentEvidence evidence={data.capital.evidence}/>{:else if run.evidence}<AgentEvidence evidence={run.evidence}/>{/if}<div class="table-wrap"><table class="data"><tbody>{#each [{label:'Sharpe',value:num(m?.sharpe)},{label:'Win rate',value:m?.trades?pctPlain(m.winRate):'—'},{label:'Profit factor',value:num(m?.profitFactor)},{label:'Trade t',value:num(m?.tStat)},{label:'Funding',value:usd(m?.funding)},{label:'Source',value:run.codeHash}]as stat}<tr><th>{stat.label}</th><td>{stat.value}</td></tr>{/each}</tbody></table></div></details>
  <details class="card"><summary>Parameters & logs</summary><pre>{JSON.stringify(run.params,null,2)}</pre><pre>{run.logs.map(l=>`${utc(l.time)}  ${l.message}`).join('\n')}</pre></details>
 </div>
-<style>.page-heading,.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.page-heading h1{display:flex;align-items:center;gap:8px}.breadcrumb{font-size:13px;text-decoration:none}.section-heading h2{margin:0}.section-heading select{max-width:100%}.stage-name{padding:5px 12px}.small{font-size:11px}.status-line{padding:12px;border-left:2px solid var(--warning);color:var(--ink-2)}summary{cursor:pointer;font-size:13px}details .table-wrap,details pre{margin-top:14px}pre{max-height:300px;overflow:auto;white-space:pre-wrap;font-size:11px}.data small{display:block;color:var(--ink-muted)}.text-button{all:unset;text-decoration:underline;cursor:pointer}.metrics-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:16px 0;border-block:1px solid var(--grid)}.metrics-strip small{display:block;color:var(--ink-muted);font-size:11px}.metrics-strip strong{font-size:24px;font-variant-numeric:tabular-nums;font-weight:600}@media(max-width:600px){.metrics-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metrics-strip strong{font-size:22px}.page-heading{align-items:flex-start}}</style>
+<style>.stage-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.stage-actions{display:flex;gap:8px;flex-wrap:wrap}.page-heading,.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.page-heading h1{display:flex;align-items:center;gap:8px}.breadcrumb{font-size:13px;text-decoration:none}.section-heading h2{margin:0}.section-heading select{max-width:100%}.stage-name{padding:5px 12px}.small{font-size:11px}.status-line{padding:12px;border-left:2px solid var(--warning);color:var(--ink-2)}summary{cursor:pointer;font-size:13px}details .table-wrap,details pre{margin-top:14px}pre{max-height:300px;overflow:auto;white-space:pre-wrap;font-size:11px}.data small{display:block;color:var(--ink-muted)}.text-button{all:unset;text-decoration:underline;cursor:pointer}.metrics-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:16px 0;border-block:1px solid var(--grid)}.metrics-strip small{display:block;color:var(--ink-muted);font-size:11px}.metrics-strip strong{font-size:24px;font-variant-numeric:tabular-nums;font-weight:600}@media(max-width:600px){.metrics-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metrics-strip strong{font-size:22px}.page-heading{align-items:flex-start}}</style>

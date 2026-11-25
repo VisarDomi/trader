@@ -9,15 +9,15 @@ Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writi
 | Stage | Meaning | Promotion / demotion |
 |---|---|---|
 | Backtest | historical simulation on the lab PC | current-code result passes the gate below before a new virtual record starts |
-| Virtual engine | forward execution on live quotes, $10,000 per run, independent cash | candidates on the daily clock (≥10 trades and 42 days observed, daily t ≥2, above the instrument's standard monkeys) can compete for Capital slots |
-| Capital demo | actual demo orders on Arena accounts at 0.2× size | new candidates compete within a leverage tier, with a daily-t advantage ≥0.25; swaps wait for the incumbent to be flat |
+| Virtual engine (Paper) | forward execution on live quotes, $10,000 per run, independent cash | automatic losing/silent/busted/error retirement to backtest, plus one-way manual demotion to backtest (no confirm) |
+| Capital demo | actual demo orders on Arena accounts at 0.2× size | two-way **manual** promotion/demotion with Paper (no confirm); never auto-promoted, auto-swapped, or auto-demoted on performance |
+| Real (tracked) | runs promoted from Capital demo for real-money trading | two-way **manual** promotion/demotion with Capital demo (**confirmation required**); Capital API stays demo-only until live credentials and risk caps are configured |
 
-Demotion goes **Capital demo → virtual → backtest**. Losing actual cash on the daily clock (realized cash per
-weekday since the first deal: t ≤−1 after 30 deals and 42 days, or 10 deals and 90 days) removes a Capital slot.
-That run continues virtually, waits 28 days, and returns only as a candidate on the weekdays and trades since its
-demotion. A mature virtual loser, silent run, busted
-account or agent error is archived back to backtest automatically. If still on Capital, it first loses that
-slot and gets the virtual observation window. Historical records remain available. A changed idea needs
+Promotion and demotion across **Paper ↔ Capital demo** (no confirmation) and **Capital demo ↔ Real**
+(confirmation required) are manual (`POST /api/stage`, Web `/runs/<id>` and `/broker`, and iPhone Run Detail).
+**Paper → Backtest** keeps automatic losing/silent/busted/error retirement on unpromoted Paper runs, plus a
+one-way manual demote button (no confirmation). Technical safety stops (run busted, fatal agent error, runaway
+opens, account kill switch) still stop broken runs. Historical records remain available. A changed idea needs
 new source/version and a new passing backtest; same-code archived runs never silently restart.
 
 The Capital assignments made before the evidence gate existed are a **calibration cohort**, not

@@ -64,6 +64,8 @@ export const arena = {
 	twins: (days: number, sinceEngine = false) => call<any>(`/api/twins?days=${days}${sinceEngine ? '&since=engine' : ''}`),
 	setMirror: (enabled: boolean) => post<BrokerStatus>('/api/broker/mirror', { enabled }),
 	setExcluded: (runId: string, excluded: boolean) => post<BrokerStatus>('/api/broker/exclude', { runId, excluded }),
+	setStage: (runId: string, target: 'backtest' | 'virtual' | 'demo' | 'real', confirmed = false) =>
+		post<{ ok: boolean; runId: string; target: string; broker: BrokerStatus | null }>('/api/stage', { runId, target, confirmed }),
 };
 
 function post<T>(path: string, body: unknown): Promise<T> {

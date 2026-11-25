@@ -7,13 +7,17 @@
 	const status = $derived(data.broker.status);
 	const accountOf = $derived(new Map((status?.accounts ?? []).flatMap(a => a.runs.map(id => [id, a.name] as const))));
 	const capacity = $derived((status?.accounts ?? []).reduce((n, a) => n + (a.killed || a.retiring ? 0 : a.slots), 0));
-	const excluded = $derived(new Set(status?.excluded ?? []));
+	const realRuns = $derived(new Set(status?.real ?? []));
 	const runs = $derived(
 		[...data.demo]
 			.filter(r => r.status === 'running')
 			.sort((a, b) => (b.metrics?.totalReturn ?? 0) - (a.metrics?.totalReturn ?? 0)),
 	);
 	let filter = $state('');
+
+	function confirmReal(e: SubmitEvent, msg: string) {
+		if (!confirm(msg)) e.preventDefault();
+	}
 
 	function slippage(broker: number | null, paper: number | null, side: string, opening: boolean): string {
 		if (broker === null || paper === null) return '—';
@@ -97,28 +101,58 @@
 	<section class="card">
 		<h2>Runs</h2>
 		<p class="secondary small">
-			Every live run is mirrored on an account of its leverage while capacity lasts, best demo equity first; a run keeps its
-			account once assigned. Excluding a run closes its deal and frees its slot.
+			Stage transitions between Paper, Capital demo, and Real are manual. Paper ↔ Capital demo and Paper → Backtest apply
+			immediately; Capital demo ↔ Real requires confirmation (Real is tracked while the Capital API remains demo-only).
 		</p>
 		<input type="search" placeholder="Filter" bind:value={filter} style="max-width: 260px; margin-bottom: 8px" />
 		<div class="table-wrap" style="max-height: 480px">
 			<table class="data">
-				<thead><tr><th>Agent</th><th>Instrument</th><th>Lev.</th><th>Account</th><th class="num">Demo trades</th><th class="num">Demo return</th><th></th></tr></thead>
+				<thead><tr><th>Agent</th><th>Instrument</th><th>Lev.</th><th>Stage / Account</th><th class="num">Demo trades</th><th class="num">Demo return</th><th>Stage controls</th></tr></thead>
 				<tbody>
 					{#each runs as r (r.runId)}
-						<tr class:hidden={filter !== '' && !`${r.name} ${r.epic} ${accountOf.get(r.runId) ?? ''}`.toLowerCase().includes(filter.toLowerCase())}>
+						{@const isReal = realRuns.has(r.runId)}
+						{@const acct = accountOf.get(r.runId) ?? null}
+						<tr class:hidden={filter !== '' && !`${r.name} ${r.epic} ${acct ?? 'paper'} ${isReal ? 'real' : ''}`.toLowerCase().includes(filter.toLowerCase())}>
 							<td><a href="/runs/{encodeURIComponent(r.runId)}">{r.name}</a></td>
 							<td>{r.epic}</td>
 							<td title={levTitle(r)}>{lev(r)}</td>
-							<td class:muted={!accountOf.has(r.runId)}>{excluded.has(r.runId) ? 'excluded' : (accountOf.get(r.runId) ?? 'no free slot')}</td>
+							<td class:muted={!acct && !isReal}>{isReal ? `Real (${acct ?? 'tracked'})` : (acct ?? 'Paper')}</td>
 							<td class="num">{r.metrics?.trades ?? 0}</td>
 							<td class="num {sign(r.metrics?.totalReturn)}">{pct(r.metrics?.totalReturn)}</td>
 							<td>
-								<form method="POST" action="?/exclude" use:enhance>
-									<input type="hidden" name="runId" value={r.runId} />
-									<input type="hidden" name="excluded" value={excluded.has(r.runId) ? 'false' : 'true'} />
-									<button class="btn small">{excluded.has(r.runId) ? 'Allow' : 'Exclude'}</button>
-								</form>
+								<div class="actions">
+									{#if isReal}
+										<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Demote ${r.name} (${r.epic}) from Real back to Capital demo?`)} use:enhance>
+											<input type="hidden" name="runId" value={r.runId} />
+											<input type="hidden" name="target" value="demo" />
+											<input type="hidden" name="confirmed" value="true" />
+											<button class="btn small">Demote to Demo</button>
+										</form>
+									{:else if acct}
+										<form method="POST" action="?/stage" onsubmit={e => confirmReal(e, `Promote ${r.name} (${r.epic}) from Capital demo to Real stage (tracked; Capital API stays demo-only)?`)} use:enhance>
+											<input type="hidden" name="runId" value={r.runId} />
+											<input type="hidden" name="target" value="real" />
+											<input type="hidden" name="confirmed" value="true" />
+											<button class="btn small">Promote to Real</button>
+										</form>
+										<form method="POST" action="?/stage" use:enhance>
+											<input type="hidden" name="runId" value={r.runId} />
+											<input type="hidden" name="target" value="virtual" />
+											<button class="btn small">Demote to Paper</button>
+										</form>
+									{:else}
+										<form method="POST" action="?/stage" use:enhance>
+											<input type="hidden" name="runId" value={r.runId} />
+											<input type="hidden" name="target" value="demo" />
+											<button class="btn small">Promote to Demo</button>
+										</form>
+										<form method="POST" action="?/stage" use:enhance>
+											<input type="hidden" name="runId" value={r.runId} />
+											<input type="hidden" name="target" value="backtest" />
+											<button class="btn small">To Backtest</button>
+										</form>
+									{/if}
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -171,6 +205,11 @@
 	}
 	button.small {
 		padding: 2px 8px;
+	}
+	.actions {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
 	}
 	tr.hidden {
 		display: none;

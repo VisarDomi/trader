@@ -1,8 +1,6 @@
-import { loserMature } from './pipeline.ts';
-import { cashStats, judgedT } from './judging.ts';
 import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
 /**
- * BrokerMirror — copies the paper trades of demo runs onto Capital.com DEMO
+ * BrokerMirror — copies the paper trades of manually promoted runs onto Capital.com DEMO
  * accounts as real demo orders. It measures how far real fills drift from the
  * paper fills the leaderboard is built on.
  *
@@ -18,15 +16,14 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
  * there, so a deal gets the same leverage as its paper run. Accounts without a
  * tier get no runs.
  *
- * Capacity: a new account is topped up to the 100k demo maximum and switched
+ * Capacity and manual promotion: a new account is topped up to the 100k demo maximum and switched
  * to hedging mode, so it can hold many runs on the same instrument, each as its
  * own deal. Every mirrored order is SCALE × the paper size, and each run
  * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
  * account that cannot be switched to hedging holds one run per instrument.
- * Runs are assigned to free slots of their tier, candidates on the daily clock first. When
- * every slot is taken, a waiting run whose daily t beats the weakest
- * mirrored run of the tier by PROMOTION_MARGIN takes its slot once that run is
- * flat (promotion/demotion; see slots.ts).
+ * Paper ↔ Capital demo assignment and Capital demo ↔ Real tracking are manual
+ * (`broker.promoted` and `broker.real`): the mirror never auto-promotes, auto-swaps,
+ * or auto-demotes runs on performance metrics.
  *
  * Requests: one Capital session per account (BrokerOptions.sessionFor), so no
  * account switching; each account runs its own job queue (orders before
@@ -71,6 +68,10 @@ export const BROKER_SETTINGS = {
   ENABLED: 'broker.enabled',
   /** runId → accountId */
   RUN_ACCOUNTS: 'broker.runAccounts',
+  /** runIds manually promoted to Capital demo slots */
+  PROMOTED: 'broker.promoted',
+  /** runIds manually promoted from Capital demo to the tracked Real stage (confirmed) */
+  REAL: 'broker.real',
   /** runIds never to mirror (set by hand or by the runaway guard) */
   EXCLUDED: 'broker.excluded',
   /** accountId → StoredAccount */
@@ -125,9 +126,6 @@ const JOB_MAX_WAIT_MS = 10_000;
 const JOB_RETRY_DELAY_MS = 5_000;
 /** Do not over-size: skip when the minimum deal is more than this multiple of the scaled size. */
 const MAX_MIN_SIZE_INFLATION = 3;
-/** Trade t-statistic advantage required for a mature eligible run to replace an incumbent. */
-const PROMOTION_MARGIN = 0.25;
-const MAX_PROMOTIONS_PER_CYCLE = 10;
 /** A rejected open is tried again this many times, this far apart, while its paper position is open. */
 const OPEN_RETRIES = 4;
 const OPEN_RETRY_MS = 5 * 60_000;
@@ -326,6 +324,8 @@ export interface BrokerStatus {
     accountsNeeded: number;
   };
   excluded: string[];
+  promoted: string[];
+  real: string[];
   queued: number;
   opensLastHour: number;
   maxOpensPerHour: number;
@@ -423,6 +423,20 @@ export class BrokerMirror {
     return this.db.getSetting<string[]>(BROKER_SETTINGS.EXCLUDED, []);
   }
 
+  /** Manually promoted Capital demo run ids; on first run, seeds from existing assignments. */
+  private get promoted(): string[] {
+    const stored = this.db.getSetting<string[] | null>(BROKER_SETTINGS.PROMOTED, null);
+    if (stored !== null) return stored;
+    const seeded = Object.keys(this.runAccounts);
+    this.db.setSetting(BROKER_SETTINGS.PROMOTED, seeded);
+    return seeded;
+  }
+
+  /** Run ids promoted from Capital demo to the tracked Real stage. */
+  get realRuns(): string[] {
+    return this.db.getSetting<string[]>(BROKER_SETTINGS.REAL, []);
+  }
+
   private get stored(): Record<string, StoredAccount> {
     return this.db.getSetting<Record<string, StoredAccount>>(BROKER_SETTINGS.ACCOUNTS, {});
   }
@@ -513,6 +527,8 @@ export class BrokerMirror {
         accountsNeeded: accountsNeeded(this.unassigned, MAX_BALANCE / RUN_ALLOCATION, false),
       },
       excluded,
+      promoted: this.promoted.filter(id => liveIds.has(id)),
+      real: this.realRuns.filter(id => liveIds.has(id)),
       queued: this.queue.length,
       opensLastHour: this.opens.filter(t => now - t < HOUR_MS).length,
       maxOpensPerHour: MAX_OPENS_PER_HOUR,
@@ -537,20 +553,90 @@ export class BrokerMirror {
   /** Exclude a run from mirroring (closing its deals) or allow it again. */
   setExcluded(runId: string, excluded: boolean, why = 'by hand'): void {
     const set = new Set(this.excluded);
-    if (excluded) set.add(runId);
-    else set.delete(runId);
+    if (excluded) {
+      set.add(runId);
+      const promoted = new Set(this.promoted);
+      if (promoted.delete(runId)) this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+      const real = new Set(this.realRuns);
+      if (real.delete(runId)) this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
+    } else {
+      set.delete(runId);
+    }
     this.db.setSetting(BROKER_SETTINGS.EXCLUDED, [...set]);
     this.db.event('info', 'broker', `${runId} ${excluded ? 'excluded from' : 'allowed back into'} the mirror (${why})`);
     this.rebalance();
   }
 
+  /** Manually promote a running paper run into a free Capital demo slot of its tier (no confirm). */
+  promoteToDemo(runId: string): void {
+    const live = this.live.length ? this.live : this.candidates();
+    const candidate = live.find(c => c.runId === runId);
+    if (!candidate) throw new Error('Run is not an active paper run');
+    const slug = parseDemoRunId(runId)?.agentId.split('/')[0];
+    if (slug === 'bold-play' || slug === 'martingale-monkey') throw new Error('Ruin controls are paper-only');
+    const before = this.runAccounts;
+    if (!before[runId]) {
+      const active = [...this.accounts.values()].filter(
+        a => a.allocation !== null && !a.retiring && !this.isKilled(a.id) && a.tier === candidate.tier && a.leverageOk,
+      );
+      if (active.length > 0) {
+        const hasRoom = active.some(a => {
+          const used = Object.values(before).filter(id => id === a.id).length;
+          return used < slotsOf(a);
+        });
+        if (!hasRoom) throw new Error(`No free 1:${candidate.tier} slot; demote a Capital demo run on that tier first`);
+      }
+    }
+    const excluded = new Set(this.excluded);
+    if (excluded.delete(runId)) this.db.setSetting(BROKER_SETTINGS.EXCLUDED, [...excluded]);
+    const promoted = new Set(this.promoted);
+    promoted.add(runId);
+    this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+    this.db.event('info', 'broker', `manually promoted ${runId} from paper to Capital demo`);
+    this.rebalance();
+  }
+
+  /** Manually demote a Capital demo run back to paper (no confirm; closes demo deals and frees its slot). */
+  demoteToPaper(runId: string): void {
+    if (this.realRuns.includes(runId)) throw new Error('Demote from Real to Capital demo (with confirmation) first');
+    const promoted = new Set(this.promoted);
+    promoted.delete(runId);
+    this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+    this.db.event('info', 'broker', `manually demoted ${runId} from Capital demo to paper`);
+    this.rebalance();
+  }
+
+  /** Manually promote a Capital demo run to Real, or demote Real back to Capital demo (confirmation required). */
+  setReal(runId: string, enabled: boolean, confirmed: boolean): void {
+    if (!confirmed) throw new Error('Confirmation required for Real account stage changes');
+    const real = new Set(this.realRuns);
+    if (enabled) {
+      if (!this.promoted.includes(runId) && !this.runAccounts[runId]) {
+        throw new Error('Promote this run to Capital demo before promoting to Real');
+      }
+      real.add(runId);
+      this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
+      this.db.event('info', 'broker', `confirmed promotion of ${runId} from Capital demo to Real stage (tracked; Capital API remains demo-only)`);
+    } else {
+      real.delete(runId);
+      this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
+      this.db.event('info', 'broker', `confirmed demotion of ${runId} from Real stage back to Capital demo`);
+    }
+  }
+
   demoteToVirtual(runId: string, reason: string): void {
+    const promoted = new Set(this.promoted);
+    promoted.delete(runId);
+    this.db.setSetting(BROKER_SETTINGS.PROMOTED, [...promoted]);
+    const real = new Set(this.realRuns);
+    real.delete(runId);
+    this.db.setSetting(BROKER_SETTINGS.REAL, [...real]);
     const all = this.db.getSetting<Record<string, { at: number; reason: string }>>('broker.demotions', {});
-    if (all[runId] && Date.now() - all[runId]!.at < LIFECYCLE.REENTRY_DAYS * 86_400_000) return;
     all[runId] = { at: Date.now(), reason };
     this.db.setSetting('broker.demotions', all);
     this.closeRunDeals(runId, `demoted to virtual: ${reason}`);
     this.db.event('info', 'pipeline', `demoted ${runId} from Capital demo to virtual: ${reason}`);
+    this.rebalance();
   }
 
   /** Paper-trade event from the arena. */
@@ -799,12 +885,13 @@ export class BrokerMirror {
     }
   }
 
-  /** Assign live runs to free slots; runs that lose their slot have their deals closed. */
+  /** Keep manually promoted runs in their Capital demo slots; close deals for runs that leave. */
   private rebalance(): void {
-    const live = [...this.candidates()].sort((a, b) => Number(!!b.specialAdmission) - Number(!!a.specialAdmission) || b.score - a.score);
+    const live = [...this.candidates()];
     const before = this.runAccounts;
     if (live.length === 0 && Object.keys(before).length > 0) return; // arena not ready; keep what we have
     this.live = live;
+    const liveIds = new Set(live.map(c => c.runId));
     const active = [...this.accounts.values()].filter(a => a.allocation !== null && !a.retiring && !this.isKilled(a.id) && a.tier !== null);
     // Modes are read on the next reconcile (due at once); until then keep what we have.
     if (active.some(a => a.hedging === null || a.leverageOk === null)) return;
@@ -817,61 +904,28 @@ export class BrokerMirror {
         blockedEpics: a.foreignEpics,
         tier: a.tier!,
       }));
-    const flat = new Set(live.filter(c => c.side === null).map(c => c.runId));
-    const withDeal = new Set(this.db.openDeals().map(d => d.run_id));
-    // Incumbents continue as the calibration cohort; new entries need mature virtual evidence.
-    const demotions = this.db.getSetting<Record<string, { at: number; reason: string }>>('broker.demotions', {});
-    for (const c of live) {
-      if (!before[c.runId]) continue;
-      const slug = parseDemoRunId(c.runId)?.agentId.split('/')[0] ?? '';
-      if (CONTROL_SLUGS.has(slug)) continue;
-      const deals = this.db
-        .dealsForRun(c.runId)
-        .filter(d => d.status === DEAL_STATUS.CLOSED && d.pnl !== null && d.open_time >= (demotions[c.runId]?.at ?? 0));
-      const now = Date.now(), first = deals[0]?.open_time ?? now;
-      // Losing actual cash on the daily clock: realized cash per weekday since the first deal (judging.ts).
-      const cash = cashStats(deals.map(d => ({ close_time: d.close_time, pnl: d.pnl! + (d.cash_adjustment ?? 0) })), first, now);
-      if (loserMature(deals.length, (now - first) / 86_400_000) && judgedT(cash) <= LIFECYCLE.RETIRE_TSTAT) {
-        demotions[c.runId] = {
-          at: now,
-          reason: 'losing Capital demo cash on the daily clock',
-        };
-        this.db.event('info', 'pipeline', `demoted ${c.runId} from Capital demo to virtual: losing actual execution results`);
-      }
-    }
-    this.db.setSetting('broker.demotions', demotions);
+    const promotedSet = new Set(this.promoted);
     const eligible = live.filter(c => {
       const slug = parseDemoRunId(c.runId)?.agentId.split('/')[0];
       if (slug === 'bold-play' || slug === 'martingale-monkey') return false;
-      const d = demotions[c.runId];
-      // A demoted run waits before it can return, then needs candidate evidence from after its demotion.
-      if (d && Date.now() - d.at < LIFECYCLE.REENTRY_DAYS * 86_400_000) return false;
-      return before[c.runId] !== undefined || c.eligible;
+      return promotedSet.has(c.runId);
     });
-    const slotCandidates = eligible.map(c => ({ ...c, score: c.specialAdmission ? Number.MAX_SAFE_INTEGER : c.score }));
-    const plan = assignSlots(before, usable, slotCandidates, new Set(this.excluded), {
-      margin: PROMOTION_MARGIN,
-      maxSwaps: MAX_PROMOTIONS_PER_CYCLE,
-      canDemote: id => flat.has(id) && !withDeal.has(id),
-    });
+    // Manual promotion only: assignSlots keeps sticky slots for promoted runs without auto-swapping or auto-demoting.
+    const plan = assignSlots(before, usable, eligible, new Set(this.excluded));
     this.db.setSetting(BROKER_SETTINGS.RUN_ACCOUNTS, plan.assignments);
+    // Prune tracked Real entries only when a run is no longer live (e.g. code changed, retired, busted).
+    const real = this.realRuns;
+    const activeReal = real.filter(id => liveIds.has(id) && plan.assignments[id] !== undefined);
+    if (activeReal.length !== real.length) this.db.setSetting(BROKER_SETTINGS.REAL, activeReal);
     this.unassigned = live.filter(c => !plan.assignments[c.runId] && !this.excluded.includes(c.runId));
     const dropped = Object.keys(before).filter(id => plan.assignments[id] === undefined);
     const added = Object.keys(plan.assignments).filter(id => before[id] === undefined);
     for (const id of dropped) this.closeRunDeals(id, 'run no longer mirrored');
-    for (let i = 0; i < plan.promoted.length; i++) {
-      this.db.event(
-        'info',
-        'broker',
-        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (${live.find(c => c.runId === plan.promoted[i])?.specialAdmission ? 'user-requested demo experiment' : 'stronger virtual evidence'})`,
-      );
-    }
     if (dropped.length > 0 || added.length > 0) {
       this.db.event(
         'info',
         'broker',
-        `mirroring ${Object.keys(plan.assignments).length} of ${live.length} live runs on ${usable.length} accounts (+${added.length} −${dropped.length})` +
-          (plan.unassigned.length > 0 ? `; ${plan.unassigned.length} without a slot` : ''),
+        `mirroring ${Object.keys(plan.assignments).length} of ${live.length} live runs on ${usable.length} accounts (+${added.length} −${dropped.length})`,
       );
     }
   }

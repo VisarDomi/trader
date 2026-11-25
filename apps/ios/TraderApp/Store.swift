@@ -185,13 +185,20 @@ actor TraderStore {
     func mutate(_ action:String) async throws {
         guard let credentials else{throw TraderError.pairing}
         let parts=action.split(separator:":",maxSplits:2).map(String.init)
-        guard parts.count>=2,["mirror","exclude"].contains(parts[0]) else{throw TraderError.unavailable}
+        guard parts.count>=2,["mirror","exclude","stage"].contains(parts[0]) else{throw TraderError.unavailable}
         guard let url=URL(string:credentials.serverURL.trimmingCharacters(in:CharacterSet(charactersIn:"/"))+"/api/native/v2/"+parts[0]) else{throw TraderError.unavailable}
         var r=URLRequest(url:url);r.httpMethod="POST";r.setValue("application/json",forHTTPHeaderField:"Content-Type")
         r.setValue("Bearer \(credentials.token)",forHTTPHeaderField:"Authorization")
         struct Mirror:Encodable{var enabled:Bool}
         struct Exclude:Encodable{var runId:String;var excluded:Bool}
+        struct Stage:Encodable{var runId:String;var target:String;var confirmed:Bool}
         if parts[0]=="mirror" {r.httpBody=try JSONEncoder().encode(Mirror(enabled:parts[1]=="on"))}
+        else if parts[0]=="stage" {
+            guard parts.count==3 else{throw TraderError.unavailable}
+            let target=parts[1]=="demo-from-real" ? "demo":parts[1]
+            let confirmed=parts[1]=="real" || parts[1]=="demo-from-real"
+            r.httpBody=try JSONEncoder().encode(Stage(runId:parts[2],target:target,confirmed:confirmed))
+        }
         else {
             guard parts.count==3 else{throw TraderError.unavailable}
             r.httpBody=try JSONEncoder().encode(Exclude(runId:parts[2],excluded:parts[1]=="true"))

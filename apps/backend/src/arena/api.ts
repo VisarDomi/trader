@@ -241,6 +241,36 @@ export function startApi(arena: Arena, port: number, token: string): ReturnType<
 
   add(
     METHOD_POST,
+    '/api/stage',
+    async req => {
+      const body = (await req.json()) as { runId?: string; target?: string; confirmed?: boolean };
+      if (typeof body.runId !== 'string' || !['backtest', 'virtual', 'demo', 'real'].includes(body.target ?? '')) {
+        return json({ error: 'runId and target (backtest|virtual|demo|real) are required' }, 400);
+      }
+      try {
+        if (body.target === 'backtest') {
+          arena.demotePaperToBacktest(body.runId);
+        } else {
+          if (!arena.broker) return json({ error: 'broker disabled' }, 400);
+          if (body.target === 'real') arena.broker.setReal(body.runId, true, body.confirmed === true);
+          else if (body.target === 'demo') {
+            if (arena.broker.realRuns.includes(body.runId)) arena.broker.setReal(body.runId, false, body.confirmed === true);
+            else arena.broker.promoteToDemo(body.runId);
+          } else {
+            arena.broker.demoteToPaper(body.runId);
+          }
+        }
+        evidence.invalidate();
+        return json({ ok: true, runId: body.runId, target: body.target, broker: arena.broker?.status() ?? null });
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : String(err) }, 400);
+      }
+    },
+    true,
+  );
+
+  add(
+    METHOD_POST,
     '/api/history/daily',
     async req => {
       // Daily bars from the lab's 1-minute history, used at the next start to warm 1d series (arena.ts seedDaily).
@@ -315,6 +345,7 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
   const backtests = new Map(runsOf(RUN_KIND.BACKTEST,false).filter(r=>r.window_id===PRIMARY_BACKTEST_WINDOW_ID).map(r => [runKey(r.agent_id, r.epic, r.leverage ?? 0), r]));
   const demotions = db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
   const mirrored = new Set(arena.broker?.mirroredRuns ?? []);
+  const real = new Set(arena.broker?.realRuns ?? []);
   const demoRows=runsOf(RUN_KIND.DEMO,false);
   const forward = new Map(
     demoRows
@@ -360,18 +391,23 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
           }
         : null,
       mirrored: mirrored.has(r.id),
+      ...(real.has(r.id) ? { real: true } : {}),
       stage:
         kind === RUN_KIND.BACKTEST
           ? activeForward?.code_hash === r.code_hash
-            ? mirrored.has(activeForward.id)
-              ? STAGE.DEMO
-              : STAGE.VIRTUAL
+            ? real.has(activeForward.id)
+              ? 'real'
+              : mirrored.has(activeForward.id)
+                ? STAGE.DEMO
+                : STAGE.VIRTUAL
             : STAGE.BACKTEST
           : extra.demotedTo === STAGE.BACKTEST
             ? STAGE.BACKTEST
-            : mirrored.has(r.id)
-              ? STAGE.DEMO
-              : STAGE.VIRTUAL,
+            : real.has(r.id)
+              ? 'real'
+              : mirrored.has(r.id)
+                ? STAGE.DEMO
+                : STAGE.VIRTUAL,
       scenario: extra.scenario ?? 'standard',
       comparisonOnly: isShadow(r.id),
       ...(extra.demoAdmission ? { demoAdmission: extra.demoAdmission } : {}),

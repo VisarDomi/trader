@@ -8,7 +8,7 @@ import { gzipSync } from 'node:zlib';
 
 export const NATIVE_SCREENS = ['rankings', 'agents', 'agent', 'run', 'trade', 'accounts', 'account', 'status', 'scenarios', 'graveyard', 'archive', 'journal', 'research', 'document', 'source'] as const;
 export type NativeScreen = typeof NATIVE_SCREENS[number];
-const MUTATIONS = ['mirror', 'exclude'];
+const MUTATIONS = ['mirror', 'exclude', 'stage'];
 const base = { 'Cache-Control': 'private, no-cache', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...base, 'Content-Type': 'application/json' } });
 const text = (v: string | null) => v !== null && v.length <= 512 && !/[\x00-\x1f]/.test(v);
@@ -49,7 +49,8 @@ export async function nativeResponse(request: Request, resource: string, context
 		try { b = JSON.parse(raw); } catch { return json({ error: 'Invalid request' }, 400); }
 		if (!b || typeof b !== 'object' || Array.isArray(b)) return json({ error: 'Invalid request' }, 400);
 		if ((resource === 'mirror' && typeof b.enabled !== 'boolean') || (resource === 'exclude' &&
-			(typeof b.runId !== 'string' || !b.runId.startsWith('demo:') || b.runId.length > 512 || typeof b.excluded !== 'boolean')))
+			(typeof b.runId !== 'string' || !b.runId.startsWith('demo:') || b.runId.length > 512 || typeof b.excluded !== 'boolean')) || (resource === 'stage' &&
+			(typeof b.runId !== 'string' || !b.runId.startsWith('demo:') || b.runId.length > 512 || !['backtest', 'virtual', 'demo', 'real'].includes(String(b.target)) || (b.confirmed !== undefined && typeof b.confirmed !== 'boolean') || (b.target === 'real' && b.confirmed !== true))))
 			return json({ error: 'Invalid demo control' }, 400);
 		try { return json(await context.mutate(resource, b)); }
 		catch { return json({ error: 'The demo control could not be confirmed. Refresh before trying again.' }, 502); }

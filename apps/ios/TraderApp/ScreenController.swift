@@ -231,17 +231,25 @@ final class ScreenController:UITableViewController,LiveScreen,UISearchResultsUpd
             } else {saveAnchor();liveNavigation?.open(ScreenController(route:route))}
         } else if row.action=="pair" {pair()}
         else if row.action=="refresh" {load(refresh:true)}
-        else if row.action.hasPrefix("mirror:") || row.action.hasPrefix("exclude:") {confirm(row.action)}
+        else if row.action.hasPrefix("stage:real:") || row.action.hasPrefix("stage:demo-from-real:") {confirmReal(row.action)}
+        else if row.action.hasPrefix("stage:") || row.action.hasPrefix("mirror:") || row.action.hasPrefix("exclude:") {perform(row.action)}
     }
-    private func confirm(_ action:String) {
-        let excluding=action.hasPrefix("exclude:")
-        let enable=excluding ? action.hasPrefix("exclude:false:"):action.hasSuffix("on")
-        let title=excluding ? (enable ? "Allow this demo strategy?":"Exclude this demo strategy?"):(enable ? "Resume Capital demo orders?":"Pause Capital demo orders?")
-        let alert=UIAlertController(title:title,message:"This changes the demo broker mirror. Virtual testing and tick recording continue.",preferredStyle:.alert)
+    private func perform(_ action:String) {
+        Task{@MainActor in
+            do{try await TraderStore.shared.mutate(action);self.load(refresh:true)}
+            catch{self.statusText="Could not complete the stage change. Refresh before retrying.";self.updateHeader()}
+        }
+    }
+    private func confirmReal(_ action:String) {
+        let toReal=action.hasPrefix("stage:real:")
+        let title=toReal ? "Promote to Real account?":"Demote from Real to Capital demo?"
+        let message=toReal
+            ? "Marks this Capital demo run as promoted to the Real stage (tracked; Capital API stays demo-only until live credentials are added)."
+            : "Moves this run from Real back to Capital demo."
+        let alert=UIAlertController(title:title,message:message,preferredStyle:.alert)
         alert.addAction(UIAlertAction(title:"Cancel",style:.cancel))
-        let button=excluding ? (enable ? "Allow strategy":"Exclude strategy"):(enable ? "Resume demo":"Pause demo")
-        alert.addAction(UIAlertAction(title:button,style:enable ? .default:.destructive){[weak self] _ in
-            Task{@MainActor in do{try await TraderStore.shared.mutate(action);self?.load(refresh:true)}catch{self?.statusText="Could not confirm the change. Refresh before retrying.";self?.updateHeader()}}
+        alert.addAction(UIAlertAction(title:toReal ? "Promote to Real":"Demote to Demo",style:toReal ? .default:.destructive){[weak self] _ in
+            self?.perform(action)
         });present(alert,animated:true)
     }
     private func pair() {

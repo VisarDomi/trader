@@ -30,4 +30,12 @@ export const actions = {
 		const excluded = form.get('excluded') === 'true';
 		return attempt(() => arena.setExcluded(runId, excluded), excluded ? 'Run excluded; its deals are being closed.' : 'Run allowed back into the mirror.');
 	},
+	stage: async ({ request }) => {
+		const form = await request.formData();
+		const runId = String(form.get('runId'));
+		const target = String(form.get('target')) as 'backtest' | 'virtual' | 'demo' | 'real';
+		const confirmed = form.get('confirmed') === 'true';
+		const msg = target === 'real' ? 'Promoted to Real stage (tracked · demo API only).' : target === 'demo' ? 'Moved to Capital demo.' : target === 'virtual' ? 'Demoted to Paper.' : 'Demoted to Backtest.';
+		return attempt(() => arena.setStage(runId, target, confirmed), msg);
+	},
 };

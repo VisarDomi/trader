@@ -383,7 +383,9 @@ export interface LeaderboardRow {
 	data?:ReplayDataInfo|null;
 	/** Demo rows: mirrored onto a broker demo account. */
 	mirrored: boolean;
-	stage?: 'backtest' | 'virtual' | 'demo';
+	/** Demo rows promoted to the tracked Real stage (Capital API remains demo-only). */
+	real?: boolean;
+	stage?: 'backtest' | 'virtual' | 'demo' | 'real';
 	scenario?: string;
 	comparisonOnly?: boolean;
 	/** User-requested, source-version-specific demo admission, independent of earned rank. */
@@ -585,6 +587,8 @@ export interface BrokerStatus {
 		accountsNeeded: number;
 	};
 	excluded: string[];
+	promoted: string[];
+	real: string[];
 	queued: number;
 	opensLastHour: number;
 	maxOpensPerHour: number;

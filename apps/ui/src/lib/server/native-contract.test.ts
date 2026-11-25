@@ -25,8 +25,16 @@ test('screens and demo controls are allowlisted and validated', async () => {
 	expect((await call('mirror', ctx, TOKEN, { enabled: 'yes' })).status).toBe(400);
 	expect((await call('exclude', ctx, TOKEN, { runId: 'Visi', excluded: true })).status).toBe(400);
 	expect((await call('mirror', ctx, TOKEN, { enabled: false })).status).toBe(200);
+	expect((await call('stage', ctx, TOKEN, { runId: 'demo:a:US500:x200:h', target: 'demo', confirmed: false })).status).toBe(200);
+	expect((await call('stage', ctx, TOKEN, { runId: 'demo:a:US500:x200:h', target: 'real', confirmed: false })).status).toBe(400);
+	expect((await call('stage', ctx, TOKEN, { runId: 'demo:a:US500:x200:h', target: 'real', confirmed: true })).status).toBe(200);
 	expect((await call('status', ctx, TOKEN, {})).status).toBe(405);
-	expect(calls).toEqual(['status', ['mirror', { enabled: false }]]);
+	expect(calls).toEqual([
+		'status',
+		['mirror', { enabled: false }],
+		['stage', { runId: 'demo:a:US500:x200:h', target: 'demo', confirmed: false }],
+		['stage', { runId: 'demo:a:US500:x200:h', target: 'real', confirmed: true }],
+	]);
 });
 test('scenario labels may contain display punctuation but cannot contain controls', async () => {
 	const ctx: NativeContext = { hash: HASH, build: async (_s, q) => ({ v: 2, scenario: q.get('scenario') }), mutate: async () => null };

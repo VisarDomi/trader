@@ -766,11 +766,58 @@ export class Arena {
     if (withMetrics && this.ready) this.cpu.measure('demotions', () => this.demoteVirtual(now));
   }
 
+  /** One-way manual demotion from Paper (virtual) to Backtest (no confirm). */
+  demotePaperToBacktest(runId: string, reason = 'manual demotion to backtest'): void {
+    const t = this.tracked.get(runId);
+    if (!t || isShadow(runId)) throw new Error('Run is not an active paper run');
+    if (this.broker?.realRuns.includes(runId)) throw new Error('Demote from Real to Capital demo (with confirmation) first');
+    if (this.broker?.mirroredRuns.includes(runId)) throw new Error('Demote from Capital demo to paper first');
+    const row = this.db.run(runId)!;
+    const now = Date.now();
+    this.retireTrackedRun(runId, t, row, now, reason);
+  }
+
+  private retireTrackedRun(id: string, t: Tracked, row: ReturnType<ArenaDB['run']>, now: number, reason: string): void {
+    t.run.stop();
+    // Persist the close before archiving the run.
+    for (let i = t.persistedTrades; i < t.run.trades.length; i++) this.db.appendTrade(id, i, t.run.trades[i]!);
+    this.db.saveRunState({
+      id,
+      status: t.run.status,
+      equity: t.run.markToMarket(),
+      snapshot: t.run.snapshot(),
+      metrics: t.run.metrics(),
+      now,
+    });
+    this.db.setRunExtra(id, {
+      ...(row?.extra ? JSON.parse(row.extra) : {}),
+      demotedTo: 'backtest',
+      demotedAt: now,
+      demotionReason: reason,
+    });
+    this.db.retireRun(id, now, RUN_STATUS.STOPPED, reason);
+    this.engines.get(t.epic)!.removeRun(t.run);
+    this.tracked.delete(id);
+    this.db.event('info', 'pipeline', `demoted ${id} from virtual to backtest: ${reason}`);
+  }
+
   private demoteVirtual(now: number): void {
     for (const [id, t] of this.tracked) {
       const control = CONTROL_SLUGS.has(t.agent.slug);
       if (control) continue;
+      const onDemo = this.broker?.mirroredRuns.includes(id) || this.broker?.realRuns.includes(id);
       const row = this.db.run(id)!;
+      const broken =
+        t.run.status === RUN_STATUS.BUSTED
+          ? 'virtual account busted'
+          : t.run.status === RUN_STATUS.ERROR
+            ? 'agent errors'
+            : null;
+      // Demo <-> Paper promotion/demotion is manual: never auto-demote a promoted Demo/Real run for performance or silence.
+      if (onDemo) {
+        if (broken) this.broker?.demoteToVirtual(id, broken);
+        continue;
+      }
       const demoted = this.db.getSetting<Record<string, { at: number }>>('broker.demotions', {})[id];
       const since = demoted?.at ?? row.started_at;
       const pausedMs = t.agent.def.forecast ? (this.forecastAvailability.evidence(since,now)?.pausedMs??0) : 0;
@@ -779,42 +826,15 @@ export class Arena {
       // Judged on the daily clock since its start (or its demotion from Capital), like the candidates.
       const daily = judgedT(this.judging.forward(row, since, now), this.judging.backtestFor(row, now)?.daily);
       const reason =
-        t.run.status === RUN_STATUS.BUSTED
-          ? 'virtual account busted'
-          : t.run.status === RUN_STATUS.ERROR
-            ? 'agent errors'
-            : trades.length === 0 && !t.run.position && days >= silentDaysFor(t.agent.id)
-              ? `no trades in ${silentDaysFor(t.agent.id)} days`
-              : loserMature(trades.length, days) && daily <= LIFECYCLE.RETIRE_TSTAT
-                ? 'losing virtual evidence'
-                : null;
+        broken ??
+        (trades.length === 0 && !t.run.position && days >= silentDaysFor(t.agent.id)
+          ? `no trades in ${silentDaysFor(t.agent.id)} days`
+          : loserMature(trades.length, days) && daily <= LIFECYCLE.RETIRE_TSTAT
+            ? 'losing virtual evidence'
+            : null);
       if (!reason) continue;
-      if (this.broker?.mirroredRuns.includes(id)) {
-        this.broker.demoteToVirtual(id, reason);
-        continue;
-      }
       if (demoted && days < LIFECYCLE.REENTRY_DAYS) continue;
-      t.run.stop();
-      // Persist the close before archiving the run.
-      for (let i = t.persistedTrades; i < t.run.trades.length; i++) this.db.appendTrade(id, i, t.run.trades[i]!);
-      this.db.saveRunState({
-        id,
-        status: t.run.status,
-        equity: t.run.markToMarket(),
-        snapshot: t.run.snapshot(),
-        metrics: t.run.metrics(),
-        now,
-      });
-      this.db.setRunExtra(id, {
-        ...(row.extra ? JSON.parse(row.extra) : {}),
-        demotedTo: 'backtest',
-        demotedAt: now,
-        demotionReason: reason,
-      });
-      this.db.retireRun(id, now, RUN_STATUS.STOPPED, reason);
-      this.engines.get(t.epic)!.removeRun(t.run);
-      this.tracked.delete(id);
-      this.db.event('info', 'pipeline', `demoted ${id} from virtual to backtest: ${reason}`);
+      this.retireTrackedRun(id, t, row, now, reason);
     }
   }
 
