@@ -5,6 +5,21 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-25 (Wed, user-requested) — full clean restart (generation r2)
+
+- After manual position closes and a stray EURUSD position on Arena 02, the user asked for a full clean restart
+  of all agents from today.
+- Before restarting, `pc-server-trader-arena` was stopped, all 209 open positions across Arena 01–09 (208 tracked
+  deals plus the untracked EURUSD position on Arena 02) were closed on Capital.com demo (`Visi` untouched), and
+  all 556 active standard runs + 4,066 latency comparison runs were archived in `arena.db` as a non-losing
+  platform milestone (`category: 'platform'`) so the full Oct 7 – Nov 25 history remains intact in the Graveyard.
+- Bumped `RUN_EPOCH = 'r2'` in `apps/backend/src/engine/run-id.ts` so every admitted same-code agent starts a
+  fresh $10,000 paper record (`:r2`) today without deleting prior records. The 160 previously grandfathered runs
+  whose backtests fail `backtestGate` are not restarted; admitted runs keep their tier slots cleanly on Arena
+  01–09 with zero prior deals, and the Arena portfolio resets to pick from the fresh `r2` cohort.
+
+
+
 ## 2026-11-25 (Wed, user-requested) — the arena portfolio; the night rule follows New York time
 
 - The user asked for the portfolio recommended below to be built, and for the night agents to use New York's

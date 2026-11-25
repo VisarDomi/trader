@@ -5,8 +5,10 @@
  */
 
 export const PRIMARY_BACKTEST_WINDOW_ID='2024-01_2026-09';
+/** Forward run generation: bumped on a full clean restart so same-code agents start fresh records while prior runs stay archived. */
+export const RUN_EPOCH = 'r2';
 export function demoRunId(agentId: string, epic: string, leverage: number, codeHash: string): string {
-  return `demo:${agentId}:${epic}:x${leverage}:${codeHash}`;
+  return `demo:${agentId}:${epic}:x${leverage}:${codeHash}:${RUN_EPOCH}`;
 }
 
 /** Stable id for the latest backtest; superseded code/engine results receive archived ids in the arena. */
@@ -20,6 +22,6 @@ export function runKey(agentId: string, epic: string, leverage: number): string 
 }
 
 export function parseDemoRunId(id: string): { agentId: string; epic: string; leverage: number; codeHash: string } | null {
-  const m = /^demo:([^:]+):([^:]+):x(\d+):([^:]+)(?::delay=\d+)?$/.exec(id);
+  const m = /^demo:([^:]+):([^:]+):x(\d+):([^:]+?)(?::r\d+)?(?::delay=\d+)?$/.exec(id);
   return m ? { agentId: m[1]!, epic: m[2]!, leverage: Number(m[3]), codeHash: m[4]! } : null;
 }

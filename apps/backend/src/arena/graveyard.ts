@@ -34,11 +34,16 @@ export function graveyard(db: ArenaDB): GraveyardEntry[] {
     }
     return entry;
   };
+  const platformOnly = new Map<string, boolean>();
   for (const r of db.runs(RUN_KIND.DEMO,true)) {
     if (!r.retired) continue;
     const entry = group(r.agent_id,r.code_hash);
     if (isShadow(r.id)) entry.comparisonRuns++;
-    else entry.runs.push(archivedRun(r));
+    else {
+      entry.runs.push(archivedRun(r));
+      const cat = r.extra ? JSON.parse(r.extra).retirement?.category : undefined;
+      platformOnly.set(entry.key, (platformOnly.get(entry.key) ?? true) && cat === GRAVEYARD_CATEGORY.PLATFORM);
+    }
     entry.startedAt = Math.min(entry.startedAt || r.started_at,r.started_at);
     entry.endedAt = Math.max(entry.endedAt ?? 0,r.ended_at ?? 0) || null;
   }
@@ -57,6 +62,8 @@ export function graveyard(db: ArenaDB): GraveyardEntry[] {
     if (!entry.startedAt) entry.startedAt = agents.get(entry.agentId)?.first_seen ?? 0;
     const history = [...entry.runs,...entry.backtests];
     if (entry.category === GRAVEYARD_CATEGORY.RUNS && history.length && history.every(r => r.leverage === null))
+      entry.category = GRAVEYARD_CATEGORY.PLATFORM;
+    if (entry.category === GRAVEYARD_CATEGORY.RUNS && entry.runs.length && platformOnly.get(entry.key))
       entry.category = GRAVEYARD_CATEGORY.PLATFORM;
     if (entry.category === GRAVEYARD_CATEGORY.RUNS && !entry.runs.length && entry.backtests.some(r => r.engineVersion !== ENGINE_VERSION))
       entry.category = GRAVEYARD_CATEGORY.PLATFORM;
