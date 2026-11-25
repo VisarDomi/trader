@@ -9,6 +9,12 @@ test('Capital cash uses actual demo evidence and frozen run identity, including 
  expect(stages).toEqual(['','demo']);expect(result.rows[0]!.codeHash).toBe(cohort[0]!.codeHash);expect(result.rows).toHaveLength(20);
  expect(result.rows[0]!.totalReturn).toBe(.8);expect(result.rows[0]!.capitalReturn).toBe(.12);expect(result.rows[0]!.capitalTrades).toBe(2);expect(result.rows[0]!.status).toBe('retired');expect(result.schema).toBe(3);
 });
+test('prefers the live run over an archived same-hash run from an earlier epoch',async()=>{
+ const make=(c:typeof cohort[number],status:string,startedAt:number,ret:number)=>({agentId:c.id,codeHash:c.codeHash,epic:c.epic,leverage:c.leverage,status,startedAt,mirrored:status==='running',metrics:{totalReturn:ret,trades:1}}as unknown as LeaderboardRow);
+ const result=await nightLabForward({leaderboard:async()=>[...cohort.map(c=>make(c,'retired',100,-0.5)),...cohort.map(c=>make(c,'running',200,0.05))]});
+ expect(result.rows).toHaveLength(20);
+ expect(result.rows.every(r=>r.status==='running'&&r.startedAt===200&&r.totalReturn===0.05)).toBe(true);
+});
 test('one arena read serves every open Night Lab until it is stale; failures are not kept',async()=>{
  let t=0,calls=0,fail=false;
  const get=sharedForward(async()=>{calls++;if(fail)throw Error('arena down');return {schema:3,at:t,rows:[]}},20_000,()=>t);
