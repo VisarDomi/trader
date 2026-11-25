@@ -178,7 +178,7 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   confirmations follow; new positions are checked by the account's next reconciliation, not one request per
   order. Top-of-hour bursts take about 0.35 s per order (see `agents/LIFECYCLE.md`, twins). The rest of the
   login's 10 req/s is left to the lab (≤3.3/s) and position-opener. Beyond the 450-run capacity only the best
-  runs are mirrored (promotion by trade t-statistic); a second Capital.com login would bring its own limits.
+  runs are mirrored (promotion by daily t-statistic); a second Capital.com login would bring its own limits.
 
 ### Leverage tiers
 
@@ -206,24 +206,36 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   OIL_CRUDE and FX positions, while Arena 06 (1:20) paid on all of them. The engine exempts every 1:1
   position except NATURALGAS. Index dividend adjustments (credited to longs, charged to shorts, seen on Arena
   01) are recorded from Capital's transactions but not simulated by the paper engine.
-- **Leaders are compared with monkeys on t, not return,** because returns scale with position size and so
-  with leverage; a trade t-statistic does not.
+- **Candidates are compared with monkeys on t, not return,** because returns scale with position size and so
+  with leverage; a t-statistic does not.
 - **The roster decides tiers, not agent files,** so moving an agent between tiers never changes its code
   hash.
 
 ### Lifecycle and babysitting
 
-- **Judged on demo trades, not backtests or calendar time alone.** A run needs 30 closed trades and 4 weeks
-  (slow agents: 90 days and 10 trades) before any verdict. Retire at a trade t-statistic of −1: an agent
-  without an edge pays the spread on every trade, so its t drifts negative, while a real edge rarely shows
-  t ≤ −1 after 30 trades. Leaders need t ≥ 2 and a return above every monkey on the instrument; the
-  monkeys double as a check on the bar itself.
+- **Judged on daily returns, not trade counts or backtests.** One return per weekday, flat days included,
+  measures a strategy that trades ten times a day and one that trades twice a month in the same unit; 30
+  trades took the fastest tenth of strategies 38 days and would take the slowest tenth 3.5 years. The evidence
+  in a record is about its Sharpe ratio × √years whatever its trade count. A record is judged from 10 closed
+  trades and 42 days (30 weekdays); the trade floor keeps one long-held position from counting as 30
+  decisions. Retire at a daily t of −1 after 30 trades (10 over 90 days): an agent without an edge pays the
+  spread on every trade, so its t drifts negative, while a real edge rarely shows t ≤ −1.
+- **Candidate and confirmed are separate claims.** A daily t ≥ 2 above every monkey on the instrument makes a
+  candidate for Capital demo slots: cheap to be wrong about, and wrong for about one no-edge record in six
+  within a year when checked daily. Confirmed means an edge and needs three things: an e-value (evidence
+  that stays valid however often it is read), the e-BH bar over every strategy record ever started at a 10%
+  false discovery rate, and a forward record that agrees with its backtest. The bar for one record alone
+  (t 3.0–3.7) would in time let several lucky ones through among 844 records; counting them all puts it
+  near 4.6 and roughly doubles the track record needed, the honest price of having tried 844.
+- **Volatility never below the backtest's.** A short record of small steady wins has not yet shown its
+  losses: the martingale monkey, a no-edge control, had a daily t of 5.2 after 31 weekdays on its own
+  volatility and 1.2 on its backtest's.
 - **The policy lives in shared code** (`packages/shared/src/lifecycle.ts`) so the dashboard and the
   babysitter's review never disagree.
 - **Retiring a single instrument goes through `agents/roster.json`,** because editing the agent's
   instrument list would change its code hash and restart every other instrument's record.
-- **Promotion to the broker is by trade t-statistic with a 0.25 margin** (`PROMOTION_MARGIN` in
-  `src/arena/broker.ts`), counted on the trades since the run's last demotion, applied only when a tier's slots
+- **Promotion to the broker is by daily t-statistic with a 0.25 margin** (`PROMOTION_MARGIN` in
+  `src/arena/broker.ts`), counted on the weekdays since the run's last demotion, applied only when a tier's slots
   are full and only while the weaker run is flat, so the mirror never cuts a trade short and does not churn on
   noise.
 - **Deterministic watchdog, judgement on a schedule.** Outages need minutes, not days: a 10-minute timer on

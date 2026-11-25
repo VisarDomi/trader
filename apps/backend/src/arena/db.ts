@@ -864,6 +864,10 @@ export class ArenaDB {
     this.db.query(`DELETE FROM kv WHERE key = ?`).run(key);
   }
 
+  /** The run's stored equity at `t`: its latest observation at or before it. */
+  equityAt(runId: string, t: number): number | null {
+    return this.db.query<{ equity: number }, [string, number]>(`SELECT equity FROM equity WHERE run_id=? AND t<=? ORDER BY t DESC LIMIT 1`).get(runId, t)?.equity ?? null;
+  }
   /** The run's latest stored equity observation. */
   lastEquity(runId: string): { t: number; equity: number } | null {
     return this.db.query<{ t: number; equity: number }, [string]>(`SELECT t,equity FROM equity WHERE run_id=? ORDER BY t DESC LIMIT 1`).get(runId) ?? null;

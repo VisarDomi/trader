@@ -17,18 +17,33 @@ export const CONTROL_SLUGS: ReadonlySet<string> = new Set([
 export const RANDOM_BASELINE_SLUG = 'random-baseline';
 
 export const LIFECYCLE = {
-  /** A run is judged after this many closed trades and days live... */
-  MIN_TRADES: 30,
-  MIN_DAYS: 28,
+  /**
+   * The floor under which a record says nothing either way: closed trades and days observed (42 days are 30
+   * weekdays of the daily clock, the fewest its statistics are meant for).
+   */
+  MIN_TRADES: 10,
+  MIN_DAYS: 42,
+  /** Losing evidence acts from this many closed trades... */
+  LOSER_MIN_TRADES: 30,
   /** ...or, for slow agents, after this many days with at least SLOW_MIN_TRADES trades. */
   SLOW_MIN_DAYS: 90,
   SLOW_MIN_TRADES: 10,
   /** A run that has not traded at all for this long is retired. */
   SILENT_DAYS: 60,
-  /** Judged runs with a trade t-statistic at or below this are retired: with no edge the spread drags t below zero. */
+  /** Runs with enough losing evidence and a daily t-statistic at or below this are retired: with no edge the spread drags t below zero. */
   RETIRE_TSTAT: -1,
-  /** Judged runs at or above this, and above every random monkey's t on the same instrument, lead. */
-  LEADER_TSTAT: 2,
+  /** Records past the floor at or above this, and above every random monkey's t on the same instrument, are candidates: they may compete for Capital demo slots. */
+  CANDIDATE_TSTAT: 2,
+  /** Confirmed records: the expected share of them that is luck, counted over every strategy record ever started. */
+  CONFIRM_FDR: 0.1,
+  /** The chance a record with no edge ever clears the bar for one record on its own. */
+  ALONE_ALPHA: 0.025,
+  /** Weight of the e-value's prior in days: its bar is lowest for records about a year long. */
+  EVALUE_PRIOR_DAYS: 31,
+  /** A forward mean daily return more than this many standard errors above its backtest's does not agree with it. */
+  AGREE_Z: 2,
+  /** A run demoted from Capital demo waits this long before it can return or be archived. */
+  REENTRY_DAYS: 28,
   /** An agent is retired as a whole when at least this share of its judged runs (and at least 3) are retired. */
   AGENT_RETIRE_SHARE: 2 / 3,
   AGENT_RETIRE_MIN_JUDGED: 3,
@@ -51,4 +66,17 @@ export function silentDaysFor(agentId:string):number {
   if(agentId==='visar-night-lab/clean-50x')return 365;
   if(SPARSE_NIGHT_IDS.has(agentId)||V2_SPARSE_NIGHT_IDS.has(agentId)||V3_SPARSE_NIGHT_IDS.has(agentId))return 180;
   return LIFECYCLE.SILENT_DAYS;
+}
+
+/** Enough of a record to be judged at all (the floor of the daily clock). */
+export function floorMet(trades: number, days: number): boolean {
+  return trades >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS;
+}
+/** Enough of a record for losing evidence to retire or demote it. */
+export function loserMature(trades: number, days: number): boolean {
+  return (trades >= LIFECYCLE.LOSER_MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) || (trades >= LIFECYCLE.SLOW_MIN_TRADES && days >= LIFECYCLE.SLOW_MIN_DAYS);
+}
+/** A candidate for Capital demo slots: past the floor, daily t at the bar and above the instrument's luckiest monkey. */
+export function isCandidate(trades: number, days: number, t: number, monkeyT: number | null): boolean {
+  return floorMet(trades, days) && t >= LIFECYCLE.CANDIDATE_TSTAT && (monkeyT === null || t > monkeyT);
 }

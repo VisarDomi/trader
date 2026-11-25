@@ -4,7 +4,7 @@
 
 - [ ] Arena memory as the run count grows (`bun run review` shows it; about 435 MB at 4,600 runs). The arena
       runs inside `trader.slice` with no service-level memory cap of its own.
-- [ ] Capital capacity: 450 slots (9 accounts × 50) are filled best-first by trade t-statistic; a second
+- [ ] Capital capacity: 450 slots (9 accounts × 50) are filled best-first by daily t-statistic; a second
       Capital.com login would add 10 more accounts and its own request budget.
 
 ## Next

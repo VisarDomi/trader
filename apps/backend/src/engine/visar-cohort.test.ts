@@ -19,10 +19,10 @@ test('twenty Visar experiments retain the original and one frozen instrument/tie
 });
 test('sparse experiments have enough observation time while errors and ordinary silence still retire',()=>{
  const now=Date.UTC(2027,2,1),row={agentId:'visar-night-lab/clean-50x',slug:'visar-night-lab',status:'active',startedAt:now-90*86400000,metrics:{trades:0,tStat:0}} as LeaderboardRow;
- expect(silentDaysFor(row.agentId)).toBe(365);expect(assess(row,new Map(),now).verdict).toBe(VERDICT.EARLY);
- expect(assess({...row,agentId:'other'},new Map(),now).verdict).toBe(VERDICT.RETIRE);
- expect(assess({...row,status:'error'},new Map(),now).verdict).toBe(VERDICT.RETIRE);
- expect(assess({...row,startedAt:now-366*86400000},new Map(),now).verdict).toBe(VERDICT.RETIRE);
+ expect(silentDaysFor(row.agentId)).toBe(365);expect(assess(row,now).verdict).toBe(VERDICT.EARLY);
+ expect(assess({...row,agentId:'other'},now).verdict).toBe(VERDICT.RETIRE);
+ expect(assess({...row,status:'error'},now).verdict).toBe(VERDICT.RETIRE);
+ expect(assess({...row,startedAt:now-366*86400000},now).verdict).toBe(VERDICT.RETIRE);
  expect(silentDaysFor('visar-night-lab/body-20x')).toBe(180);
  expect(silentDaysFor('visar-night-v2-us100/largest-gap')).toBe(180);
  expect(silentDaysFor('visar-night-v2-us100/frequent-core')).toBe(60);

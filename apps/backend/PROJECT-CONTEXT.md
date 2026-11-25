@@ -65,13 +65,15 @@ virtual experiments. Track accounts by stable Capital account ID, not names.
   checked against real demo behavior. Most virtual runs are labeled latency comparisons of the standard
   runs (cap 5,000 runs in total, 450 Capital assignments; `bun run review` shows the current counts).
 - Correlated latency copies are not independently invented strategies: they never multiply statistical
-  evidence, monkey counts or earned leaders.
+  evidence, monkey counts, candidates or confirmed records.
 - Capital assignments made before the evidence gate are a calibration cohort. New slots require current-code/current-engine
   backtests and mature forward evidence. Promotion and demotion wait for appropriate execution safety;
   today's weak backtest does not retroactively erase an existing forward record.
-- Normal maturity: 30 trades and 28 days, or 10 trades and 90 days for slow strategies. Leaders need
-  trade t ≥2 and must beat the instrument's standard random monkeys. Mature t ≤−1, silence, errors or
-  ruin trigger demotion/retirement. Full details: [LIFECYCLE.md](agents/LIFECYCLE.md).
+- Records are judged on the daily clock (one return per weekday) from 10 trades and 42 days. Candidates for
+  Capital slots need a daily t ≥2 above the instrument's standard random monkeys; confirmed records clear the
+  bar for every strategy record ever started and agree with their backtest. A daily t ≤−1 after 30 trades (10
+  over 90 days for slow strategies), silence, errors or ruin trigger demotion/retirement. Full details:
+  [LIFECYCLE.md](agents/LIFECYCLE.md).
 - Random monkeys, buy/hold and leverage controls are deliberate baselines. `bold-play` and
   `martingale-monkey` are permanent virtual-only ruin controls, including new source versions.
 - Infrastructure changes retain records and annotate model changes. Changing agent source deliberately
@@ -79,7 +81,7 @@ virtual experiments. Track accounts by stable Capital account ID, not names.
 
 ## The user's night strategy
 
-`visar-night-trading` is an explicit **special Capital demo experiment**, not an earned leader:
+`visar-night-trading` is an explicit **special Capital demo experiment**, not an earned candidate:
 US500, consistently directional 09:30–16:00 New York session, next local 03:27 pullback entry relative
  to 22:00, 08:27 exit or a stop targeting half the strategy capital, 1:200. Local means Europe/Tirane.
 The user clarified that the path matters, neutral/volatile days should be skipped, FOMC/BOJ decisions

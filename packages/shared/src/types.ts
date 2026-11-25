@@ -126,6 +126,33 @@ export interface BacktestPeriods {
   median: number | null;
   points: { t: number; ret: number }[];
 }
+/**
+ * A forward record on the daily clock: one return per weekday, flat days included (apps/backend/src/arena/judging.ts).
+ * Capital demo rows carry their virtual record's clock: the strategy is judged on that record.
+ */
+export interface RecordClock {
+  /** Where the judged window starts: the record's start, or its last demotion from Capital demo. */
+  since: number;
+  /** Days observed since then, known forecast outages removed, and trades closed that were entered since then. */
+  days: number;
+  trades: number;
+  /** Weekdays in the window and their t-statistic: mean / volatility × √days, volatility never below the backtest's. */
+  observations: number;
+  t: number;
+  /** The highest whole-life t among the instrument's random monkeys; null when it has none. */
+  monkey: number | null;
+  /** The whole record: its weekdays, t, and the e-value against "no edge" (valid however often it is looked at). */
+  life: { observations: number; t: number; e: number };
+  /** The forward mean daily return against the same-code backtest's, in standard errors; null without such a backtest. */
+  backtestZ: number | null;
+  /** Strategy records ever started: what the confirmed bar is counted over. */
+  trials: number;
+  /** The whole-life t this record needs to be confirmed today, and the one it would need were it the only record. */
+  confirmAt: number | null;
+  aloneAt: number | null;
+  /** Past the floor, agreeing with its backtest and clearing the bar for every record tried. */
+  confirmed: boolean;
+}
 export interface DependencyEvidence {
   state: 'available' | 'unavailable' | 'user-paused';
   since: number;
@@ -140,6 +167,8 @@ export interface AgentEvidence {
   benchmark: BenchmarkComparison;
   /** Forward records with closed trades and a backtest of the same code long enough to count; absent otherwise. */
   frequency?: BacktestFrequency;
+  /** Forward records only. */
+  clock?: RecordClock;
   costs: CostSummary | null;
   exposure: number | null;
   openPosition: boolean;
@@ -259,7 +288,6 @@ export interface LeaderboardRow {
 	/** User-requested, source-version-specific demo admission, independent of earned rank. */
 	demoAdmission?: { date: string; reason: string };
 	stageReason?: string;
-	observation?: { since: number; trades: number; tStat: number; pausedMs?: number };
 	brokerEvidence?: { closed: number; priced: number; failed: number; open: number; basis: string };
 }
 

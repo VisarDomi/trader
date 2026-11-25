@@ -19,7 +19,7 @@ Actual Capital demo cashflows are ranked separately from virtual performance.
 | Capital demo | actual orders and deal-linked cashflows on Arena accounts, 0.2× size | measure realized execution and rank actual results |
 
 Every agent × instrument × leverage has a record. Existing Capital assignments form a calibration cohort;
-new assignments need mature virtual evidence. Demotion reverses the stages and retains history.
+new assignments need candidate evidence on the daily clock. Demotion reverses the stages and retains history.
 A changed source file starts a new record. Standard monkey controls measure luck; correlated latency
 comparisons do not count as independent hypotheses. See [`EXECUTION.md`](EXECUTION.md) for details and limits.
 Internally a virtual run has the kind `demo` (it is part of every stored run id).
@@ -58,7 +58,7 @@ do nothing new; backtests wait for the next nightly job.
 | `src/engine/` | Simulation shared by backtest and demo: `BarSeries` (1m → any timeframe, owns the indicator cache), `AgentRun` (account, sizing, stops, trailing stops, funding, margin call, session close), `MarketEngine` (one instrument, many runs), metrics, agent loader, instrument registry. |
 | `src/capital/` | Capital.com REST client. **Demo URL only** — no live endpoint exists in the code. |
 | `src/lab/` | Lab tools: `ingest`, `backtest` (worker pool), `check-agent`, `forecasts` (precompute), `push-history`, `sync-ticks`, `storage`, `review`, `twins`, `watchdog`, audits, benchmarks, `night-study/`. |
-| `src/arena/` | The arena service: live loop, SQLite store, HTTP API, broker mirror, forecast client, tick spool, twins, evidence. |
+| `src/arena/` | The arena service: live loop, SQLite store, HTTP API, broker mirror, forecast client, tick spool, twins, evidence, the daily clock records are judged on. |
 | `src/inspection/` | The read-only trade inspector (`trader-inspector`). |
 | `src/strategy/` | Version-pinned strategy explanations for entries ([README](src/strategy/README.md)). |
 | `agents/` | One file per agent (+ `GUIDE.md`, `_template.ts`). |
@@ -137,9 +137,9 @@ closes).
   instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
   An account that cannot be switched to hedging holds one run per instrument.
 - **Assignment:** every live run is mirrored on an account of its tier while
-  capacity lasts, mature virtual evidence first, spread over the accounts with the most
+  capacity lasts, candidates on the daily clock first, spread over the accounts with the most
   free slots; assignments are sticky. When a tier is full, a waiting run takes the slot of
-  the weakest mirrored run of that tier once its trade t-statistic is higher by 0.25 and
+  the weakest mirrored run of that tier once its daily t-statistic is higher by 0.25 and
   the weaker run is flat (`PROMOTION_MARGIN`, `src/arena/slots.ts`). Runs can be excluded
   by hand. A run never has more than one open deal.
 - **Renames:** deals are re-attached by deal id if an account is renamed;
@@ -175,8 +175,9 @@ Toggle the mirror and exclude runs on the dashboard's Broker page.
 ## Lifecycle
 
 Agents move Backtest → Virtual engine → Capital demo, with reverse demotion ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
-Verdicts (early, keep, leader, retire) come from `packages/shared/src/lifecycle.ts`, used by both the
-dashboard's Stage column and `bun run review`. `agents/roster.json` (read by the arena and the lab;
+Verdicts (early, keep, candidate, confirmed, retire) come from `packages/shared/src/lifecycle.ts`, read off each
+record's daily clock (`src/arena/judging.ts`, [`EVIDENCE.md`](EVIDENCE.md)) and used by the dashboard's Stage column,
+the native screens and `bun run review`. `agents/roster.json` (read by the arena and the lab;
 `src/engine/roster.ts`) holds what is decided without touching agent code: each account's leverage,
 each agent's leverage tiers, and retired single runs. A run is agent × instrument × leverage (its id
 includes all three and the code hash). Whole agents are retired by moving them to `agents/_retired/`.

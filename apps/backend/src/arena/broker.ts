@@ -1,4 +1,5 @@
-import { judged, tradeT } from './pipeline.ts';
+import { loserMature } from './pipeline.ts';
+import { cashStats, judgedT } from './judging.ts';
 import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
 /**
  * BrokerMirror — copies the paper trades of demo runs onto Capital.com DEMO
@@ -22,8 +23,8 @@ import { CONTROL_SLUGS, LIFECYCLE } from '../engine/policy.ts';
  * own deal. Every mirrored order is SCALE × the paper size, and each run
  * reserves SCALE × $10,000 of an account: 50 runs per $100,000 account. An
  * account that cannot be switched to hedging holds one run per instrument.
- * Runs are assigned to free slots of their tier, mature virtual evidence first. When
- * every slot is taken, a waiting run whose paper equity beats the weakest
+ * Runs are assigned to free slots of their tier, candidates on the daily clock first. When
+ * every slot is taken, a waiting run whose daily t beats the weakest
  * mirrored run of the tier by PROMOTION_MARGIN takes its slot once that run is
  * flat (promotion/demotion; see slots.ts).
  *
@@ -545,7 +546,7 @@ export class BrokerMirror {
 
   demoteToVirtual(runId: string, reason: string): void {
     const all = this.db.getSetting<Record<string, { at: number; reason: string }>>('broker.demotions', {});
-    if (all[runId] && Date.now() - all[runId]!.at < LIFECYCLE.MIN_DAYS * 86_400_000) return;
+    if (all[runId] && Date.now() - all[runId]!.at < LIFECYCLE.REENTRY_DAYS * 86_400_000) return;
     all[runId] = { at: Date.now(), reason };
     this.db.setSetting('broker.demotions', all);
     this.closeRunDeals(runId, `demoted to virtual: ${reason}`);
@@ -827,14 +828,13 @@ export class BrokerMirror {
       const deals = this.db
         .dealsForRun(c.runId)
         .filter(d => d.status === DEAL_STATUS.CLOSED && d.pnl !== null && d.open_time >= (demotions[c.runId]?.at ?? 0));
-      const first = deals[0]?.open_time ?? Date.now();
-      if (
-        judged(deals, first, Date.now()) &&
-        tradeT(deals.map(d => ({ pnl: d.pnl! + (d.cash_adjustment ?? 0) }))) <= LIFECYCLE.RETIRE_TSTAT
-      ) {
+      const now = Date.now(), first = deals[0]?.open_time ?? now;
+      // Losing actual cash on the daily clock: realized cash per weekday since the first deal (judging.ts).
+      const cash = cashStats(deals.map(d => ({ close_time: d.close_time, pnl: d.pnl! + (d.cash_adjustment ?? 0) })), first, now);
+      if (loserMature(deals.length, (now - first) / 86_400_000) && judgedT(cash) <= LIFECYCLE.RETIRE_TSTAT) {
         demotions[c.runId] = {
-          at: Date.now(),
-          reason: 'losing Capital demo trade t-statistic',
+          at: now,
+          reason: 'losing Capital demo cash on the daily clock',
         };
         this.db.event('info', 'pipeline', `demoted ${c.runId} from Capital demo to virtual: losing actual execution results`);
       }
@@ -844,8 +844,8 @@ export class BrokerMirror {
       const slug = parseDemoRunId(c.runId)?.agentId.split('/')[0];
       if (slug === 'bold-play' || slug === 'martingale-monkey') return false;
       const d = demotions[c.runId];
-      // A demotion requires a fresh 28-day observation window before re-entry.
-      if (d && Date.now() - d.at < LIFECYCLE.MIN_DAYS * 86_400_000) return false;
+      // A demoted run waits before it can return, then needs candidate evidence from after its demotion.
+      if (d && Date.now() - d.at < LIFECYCLE.REENTRY_DAYS * 86_400_000) return false;
       return before[c.runId] !== undefined || c.eligible;
     });
     const slotCandidates = eligible.map(c => ({ ...c, score: c.specialAdmission ? Number.MAX_SAFE_INTEGER : c.score }));
@@ -863,7 +863,7 @@ export class BrokerMirror {
       this.db.event(
         'info',
         'broker',
-        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (${live.find(c => c.runId === plan.promoted[i])?.specialAdmission ? 'user-requested demo experiment' : 'stronger virtual trade evidence'})`,
+        `promoted ${plan.promoted[i]} to the broker in place of ${plan.demoted[i]} (${live.find(c => c.runId === plan.promoted[i])?.specialAdmission ? 'user-requested demo experiment' : 'stronger virtual evidence'})`,
       );
     }
     if (dropped.length > 0 || added.length > 0) {

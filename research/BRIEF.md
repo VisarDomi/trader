@@ -23,8 +23,9 @@ the notes and the saved material must let us answer without searching again.
   position per run** (no portfolios or pairs yet), market orders only, stops/take-profit/trailing stops,
   sizing by risk to a stop, by exposure, or by `marginPct` (uses the leverage on purpose). TimesFM 3
   forecasts available on request. Code: `apps/backend/agents/GUIDE.md`.
-- **Lifecycle:** judged after 30 trades and 28 days by the trade t-statistic; retired at t ≤ −1; "leader" at
-  t ≥ 2 and above every random-entry monkey. New agents: 1–3 at a time, at most every 7 days, parameters fixed up front (no backtest
+- **Lifecycle:** judged on daily returns (one per weekday) from 10 trades and 42 days; retired at a daily t ≤ −1
+  after 30 trades; "candidate" at t ≥ 2 and above every random-entry monkey; "confirmed" only at the bar for every
+  record tried (false discovery rate 10%) with a backtest that agrees. New agents: 1–3 at a time, at most every 7 days, parameters fixed up front (no backtest
   tuning), a documented reason to work. `apps/backend/agents/LIFECYCLE.md`.
 - **What exists already** (see the idea log at the end of `apps/backend/agents/JOURNAL.md`): trend
   (EMA/MACD/SuperTrend/Donchian/Keltner/HMA/ADX/TSMOM), mean reversion (RSI2, z-score, Bollinger fade,

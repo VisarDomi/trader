@@ -204,7 +204,7 @@ ten near-identical variants is how you overfit a backtest.
   **backtest** (2024-01 → 2026-09, all instruments) is for information; a large gap between
   backtest and demo means the agent was overfit.
 - After deployment an agent moves through the lifecycle in [`LIFECYCLE.md`](LIFECYCLE.md): judged
-  after 30 trades and 4 weeks, retired if it loses, mirrored on the broker while it ranks well.
+  on its daily returns from 10 trades and 6 weeks, retired if it loses, mirrored on the broker while it ranks well.
   Retiring one instrument (or one leverage) goes in `roster.json`, never in the agent file.
 
 ## Instruments

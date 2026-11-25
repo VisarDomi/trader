@@ -178,13 +178,14 @@ test('a scoped model resume leaves other holds intact and a later global stop ta
 });
 test('a live held position is not silent and recorded forecast downtime does not manufacture maturity',()=>{
   const row={status:'running',slug:'holder',startedAt:T-65*DAY,metrics:{trades:0,tStat:0},evidence:{openPosition:true}}as LeaderboardRow;
-  expect(assess(row,new Map(),T).verdict).toBe(VERDICT.EARLY);
+  expect(assess(row,T).verdict).toBe(VERDICT.EARLY);
   row.evidence!.openPosition=false;
-  expect(assess(row,new Map(),T).verdict).toBe(VERDICT.RETIRE);
-  row.observation={since:row.startedAt,trades:40,tStat:3,pausedMs:64*DAY};
-  expect(assess(row,new Map(),T).verdict).toBe(VERDICT.EARLY);
+  expect(assess(row,T).verdict).toBe(VERDICT.RETIRE);
+  // 64 of its 65 days were a known forecast outage: one day observed, however many trades and whatever t.
+  row.evidence!.clock={since:row.startedAt,days:1,trades:40,observations:46,t:3,monkey:null,life:{observations:46,t:3,e:20},backtestZ:0,trials:800,confirmAt:4.6,aloneAt:3.4,confirmed:false};
+  expect(assess(row,T).verdict).toBe(VERDICT.EARLY);
   row.status='busted';
-  expect(assess(row,new Map(),T).verdict).toBe(VERDICT.RETIRE);
+  expect(assess(row,T).verdict).toBe(VERDICT.RETIRE);
 });
 test('a target exit at its level matches the archived quote that crossed it, and only that way',()=>{
   const db=new ArenaDB(':memory:');add(db,RUN,'fixture',T);db.appendTrade(RUN,0,{...fixtureTrade(),exitReason:EXIT_REASON.TAKE_PROFIT});

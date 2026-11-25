@@ -1,8 +1,7 @@
 import { ENGINE_VERSION } from '../engine/version.ts';
 import { describe, expect, test } from 'bun:test';
-import { admissionGate, backtestGate, virtualEligible, tradeT } from './pipeline.ts';
+import { admissionGate, backtestGate, floorMet, isCandidate, loserMature } from './pipeline.ts';
 import type { RunRow } from './db.ts';
-import type { Trade } from '../sdk/types.ts';
 import { closingDirection, confirmsDeal, scaledSize } from './broker.ts';
 import { getInstrument } from '../engine/instruments.ts';
 import { RUN_STATUS } from '../engine/run.ts';
@@ -62,14 +61,23 @@ describe('stage gates', () => {
     expect(backtestGate(losing, HASH, SLUG)).toEqual({ passed: false, reason: 'backtest Sharpe before T-bills -0.60 below -0.5' });
   });
   test('a lucky early winner cannot jump straight into Capital demo', () => {
-    const trades = Array.from({ length: 30 }, (_, i) => ({
-      pnl: i % 2 ? 10 : 20,
-    })) as Trade[];
-    expect(tradeT(trades)).toBeGreaterThan(2);
-    expect(virtualEligible(trades, NOW - 27 * DAY, NOW, 0)).toBe(false);
-    expect(virtualEligible(trades, NOW - 28 * DAY, NOW, 0)).toBe(true);
-    expect(virtualEligible(trades, NOW - 28 * DAY, NOW, 100)).toBe(false);
-    expect(virtualEligible(trades.slice(0, 10), NOW - 28 * DAY, NOW, 0)).toBe(false);
+    // Candidates need ten closed trades, 42 days observed, a daily t of 2 and to be above the instrument's luckiest monkey.
+    expect(isCandidate(30, 41, 3.5, null)).toBe(false);
+    expect(isCandidate(30, 42, 3.5, null)).toBe(true);
+    expect(isCandidate(9, 400, 3.5, null)).toBe(false);
+    expect(isCandidate(10, 42, 1.99, null)).toBe(false);
+    expect(isCandidate(10, 42, 2, null)).toBe(true);
+    expect(isCandidate(10, 42, 2.4, 2.4)).toBe(false);
+    expect(isCandidate(10, 42, 2.4, 2.39)).toBe(true);
+    expect(floorMet(10, 42)).toBe(true);
+    expect(floorMet(10, 41.9)).toBe(false);
+  });
+  test('losing evidence acts after thirty trades, or ten on a record three months long', () => {
+    expect(loserMature(30, 42)).toBe(true);
+    expect(loserMature(30, 41)).toBe(false);
+    expect(loserMature(29, 89)).toBe(false);
+    expect(loserMature(10, 90)).toBe(true);
+    expect(loserMature(9, 400)).toBe(false);
   });
 });
 describe('broker confirmation identity', () => {
@@ -121,9 +129,21 @@ describe('broker confirmation identity', () => {
   });
 });
 
-test('demoted runs are assessed on their fresh virtual window, not their old losing record', async () => {
+test('verdicts read the record clock: early, keep, candidate, confirmed and retire', async () => {
   const { assess, VERDICT } = await import('@trader/shared');
-  const r = { slug: SLUG, status: 'running', epic: EPIC, startedAt: NOW - 100 * DAY,
-    metrics: { trades: 100, tStat: -3 }, observation: { since: NOW - DAY, trades: 0, tStat: 0 } } as any;
-  expect(assess(r, new Map(), NOW).verdict).toBe(VERDICT.EARLY);
+  const clock = { since: NOW - 60 * DAY, days: 60, trades: 40, observations: 43, t: 0.4, monkey: 1.1, life: { observations: 43, t: 0.4, e: 0.5 }, backtestZ: 0.3, trials: 844, confirmAt: 5.4, aloneAt: 3.4, confirmed: false };
+  const row = (c: object, extra: object = {}) => ({ slug: SLUG, agentId: SLUG, status: 'running', epic: EPIC, startedAt: NOW - 100 * DAY, metrics: { trades: 100, tStat: -3 }, evidence: { clock: { ...clock, ...c } }, ...extra }) as any;
+  expect(assess(row({}), NOW)).toMatchObject({ verdict: VERDICT.KEEP, reason: 'daily t = 0.40 over 60 days and 40 trades' });
+  // A demoted run is judged on its fresh window, not its old losing record.
+  expect(assess(row({ since: NOW - DAY, days: 1, trades: 0, t: 0 }), NOW).verdict).toBe(VERDICT.EARLY);
+  expect(assess(row({ trades: 9 }), NOW).reason).toBe('9 trades in 60 days (judged from 10 trades and 42 days)');
+  expect(assess(row({ t: 2.3 }), NOW)).toMatchObject({ verdict: VERDICT.CANDIDATE, reason: 'daily t = 2.30 over 60 days and 40 trades, above every monkey; may still be luck' });
+  expect(assess(row({ t: 2.3, monkey: 2.5 }), NOW).verdict).toBe(VERDICT.KEEP);
+  expect(assess(row({ t: 2.3, trades: 12 }), NOW).verdict).toBe(VERDICT.CANDIDATE);
+  expect(assess(row({ t: 5.1, confirmed: true }), NOW)).toMatchObject({ verdict: VERDICT.CONFIRMED, reason: 'daily t = 5.10 over 60 days and 40 trades; clears the bar for all 844 records tried and agrees with its backtest' });
+  // Losing evidence needs thirty trades (or ten over three months); below that a losing t only keeps.
+  expect(assess(row({ t: -1 }), NOW)).toMatchObject({ verdict: VERDICT.RETIRE, reason: 'losing: daily t = -1.00 over 60 days and 40 trades' });
+  expect(assess(row({ t: -1.5, trades: 12 }), NOW).verdict).toBe(VERDICT.KEEP);
+  expect(assess(row({ t: -1.5, trades: 12, days: 90 }), NOW).verdict).toBe(VERDICT.RETIRE);
+  expect(assess(row({ t: 9, confirmed: true }, { slug: 'random-baseline' }), NOW).verdict).toBe(VERDICT.CONTROL);
 });

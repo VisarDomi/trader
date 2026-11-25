@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen } from './screens';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts } from './screens';
+import { agreementLine, barsLine, clockLine } from '../../clock';
 import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
 
@@ -101,6 +102,43 @@ test('a record says how often its own backtest did this well or this badly, at a
 	const often = screen.sections.find(s => s.title === 'How often its backtest did this')!;
 	expect(often.rows.map(r => [r.id, !!r.chart])).toEqual([['frequency-virtual', false], ['frequency-capital', true]]);
 	expect(screen.sections.findIndex(s => s === often)).toBeLessThan(screen.sections.findIndex(s => s.title.startsWith('Trades')));
+});
+test('every forward row says where it stands on the daily clock, and the record screen what it would take', () => {
+	const NOW = Date.UTC(2026, 10, 25);
+	const clock = { since: NOW - 41 * 86400000, days: 40.8, trades: 3, observations: 29, t: 1.6307, monkey: 1.29, life: { observations: 29, t: 1.6307, e: 2.38 }, backtestZ: 1.88, trials: 844, confirmAt: 5.992, aloneAt: 3.713, confirmed: false };
+	const row = (c: object = {}, extra: object = {}): any => ({ runId: 'demo:visar-night-trading:US500:x200:h', agentId: 'visar-night-trading', slug: 'visar-night-trading', name: 'visar-night-trading', epic: 'US500', leverage: 200,
+		status: 'running', mirrored: true, startedAt: clock.since, metrics: { totalReturn: 1.662, sharpe: 9.27, trades: 3, maxDrawdown: 0 }, evidence: { clock: { ...clock, ...c } }, ...extra });
+	expect(clockLine(row(), NOW)).toBe('Early · 3 trades in 40 days · daily t 1.63');
+	expect(clockLine(row({ trades: 14, days: 49.2, t: 0.42 }), NOW)).toBe('Keep · daily t 0.42 over 49 days');
+	expect(clockLine(row({ trades: 14, days: 49.2, t: 2.05, monkey: 0.19 }), NOW)).toBe('Candidate · daily t 2.05 over 49 days · may still be luck');
+	expect(clockLine(row({ trades: 400, days: 720, t: 4.9, confirmed: true }), NOW)).toBe('Confirmed · daily t 4.90 over 720 days');
+	expect(clockLine(row({ trades: 40, days: 49.2, t: -1.31 }), NOW)).toBe('Retire · daily t −1.31 over 49 days');
+	expect(clockLine(row({}, { slug: 'random-baseline' }), NOW)).toBe('');
+	expect(clockLine(row({}, { evidence: {} }), NOW)).toBe('');
+	expect(barsLine(clock)).toBe("Confirmed at t 5.99 with 844 records tried (3.71 alone) · candidate at 2.00, above the luckiest monkey's 1.29");
+	expect(agreementLine(clock)).toBe('Agrees with its backtest (1.9 standard errors above)');
+	expect(agreementLine({ ...clock, backtestZ: 2.63 })).toBe('Better than its backtest allows (2.6 standard errors above; agrees up to 2)');
+	expect(agreementLine({ ...clock, backtestZ: null })).toBe('No backtest of this code: it cannot be confirmed');
+	// Capital rows carry the virtual record's clock and lead with its verdict; a virtual row whose badge already names it does not repeat the word.
+	expect(rankingRow(row(), 'capital').body).toBe('Early · 3 trades in 40 days · daily t 1.63\nSharpe 9.27 · cash drawdown 0.0%');
+	const judged = verdicts([row({ trades: 14, days: 49.2, t: 0.42 })], 'virtual')[0]!;
+	expect(judged.forwardVerdict).toBe('keep');
+	expect(rankingRow(judged, 'virtual')).toMatchObject({ badge: 'Keep', body: 'Daily t 0.42 over 49 days\nSharpe 9.27 · drawdown 0.0%' });
+	expect(rankingRow({ ...judged, demoAdmission: { date: '2026-10-15', reason: 'x' } }, 'virtual')).toMatchObject({ badge: 'User experiment', body: 'Keep · daily t 0.42 over 49 days\nSharpe 9.27 · drawdown 0.0%' });
+	expect(rankingRow(row(), 'backtest').body).toBe('Sharpe 9.27 · drawdown 0.0%');
+	const detail = clockRow(row(), NOW)!;
+	expect(detail.title).toBe('Early · daily t 1.63');
+	expect(detail.subtitle).toBe('3 trades · 40 days · judged from 10 trades and 42 days');
+	expect(detail.stats).toEqual([{ label: 'Daily t over 29 weekdays', value: '1.63', tone: 1 }, { label: 'Candidate at', value: '2.00' }, { label: 'Confirmed at, 844 tried', value: '5.99' }]);
+	expect(detail.chart).toEqual({ kind: 'meter', height: 18, meter: { value: 1.6307, limit: 5.992, above: true } });
+	expect(detail.body).toBe("Confirmed at t 5.99 with 844 records tried (3.71 alone) · candidate at 2.00, above the luckiest monkey's 1.29\nAgrees with its backtest (1.9 standard errors above)");
+	expect(clockRow(row({ since: clock.since + 20 * 86400000, days: 20, trades: 1 }), NOW)!.body).toContain('Since its demotion from Capital demo on');
+	expect(clockRow(row({}, { slug: 'random-baseline' }), NOW)).toBeNull();
+	// The record's screen: the verdict on the virtual summary, then its own section before the backtest periods and the trades.
+	const screen = runScreen({ run: { ...run, agentId: 'visar-night-trading', status: 'running', evidence: { clock } }, agentName: 'X', capital: null, excluded: false, comparison: null, sparks: null, account: null });
+	expect(screen.sections[0]!.rows[0]!.body?.split('\n')[0]).toBe('Early · 3 trades in 40 days · daily t 1.63');
+	expect(screen.sections.find(s => s.title === 'Edge or luck')!.rows.map(r => r.id)).toEqual(['clock']);
+	expect(screen.sections.findIndex(s => s.title === 'Edge or luck')).toBeLessThan(screen.sections.findIndex(s => s.title.startsWith('Trades')));
 });
 test('thinning keeps extremes and packing round-trips', () => {
 	const pts = Array.from({ length: 5000 }, (_, i) => ({ t: i, value: i === 2500 ? 99 : Math.sin(i / 50) }));

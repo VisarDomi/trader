@@ -9,18 +9,19 @@ Repo-wide hard rules come first: [`../../../setup.md`](../../../setup.md). Writi
 | Stage | Meaning | Promotion / demotion |
 |---|---|---|
 | Backtest | historical simulation on the lab PC | current-code result passes the gate below before a new virtual record starts |
-| Virtual engine | forward execution on live quotes, $10,000 per run, independent cash | mature evidence: ≥30 trades/28 days or ≥10/90 days; trade t ≥2 and above the instrument's standard monkeys can compete for Capital slots |
-| Capital demo | actual demo orders on Arena accounts at 0.2× size | new eligible virtual runs compete within a leverage tier, with a t-statistic advantage ≥0.25; swaps wait for the incumbent to be flat |
+| Virtual engine | forward execution on live quotes, $10,000 per run, independent cash | candidates on the daily clock (≥10 trades and 42 days observed, daily t ≥2, above the instrument's standard monkeys) can compete for Capital slots |
+| Capital demo | actual demo orders on Arena accounts at 0.2× size | new candidates compete within a leverage tier, with a daily-t advantage ≥0.25; swaps wait for the incumbent to be flat |
 
-Demotion goes **Capital demo → virtual → backtest**. Losing mature actual broker trade evidence (t ≤−1)
-removes a Capital slot. That run continues virtually and needs a fresh 28-day observation window before
-re-entry; promotion uses only trades entered after demotion. A mature virtual loser, silent run, busted
+Demotion goes **Capital demo → virtual → backtest**. Losing actual cash on the daily clock (realized cash per
+weekday since the first deal: t ≤−1 after 30 deals and 42 days, or 10 deals and 90 days) removes a Capital slot.
+That run continues virtually, waits 28 days, and returns only as a candidate on the weekdays and trades since its
+demotion. A mature virtual loser, silent run, busted
 account or agent error is archived back to backtest automatically. If still on Capital, it first loses that
 slot and gets the virtual observation window. Historical records remain available. A changed idea needs
 new source/version and a new passing backtest; same-code archived runs never silently restart.
 
 The Capital assignments made before the evidence gate existed are a **calibration cohort**, not
-statistically proven leaders. They keep their records so execution drift can be compared. New assignments
+candidates or confirmed records. They keep their records so execution drift can be compared. New assignments
 require the evidence gate. Backtest gates apply to new admissions; forward records are retained even if
 their backtest would fail the current gate. Engine model changes are annotated; history is never rewritten.
 
@@ -28,7 +29,7 @@ An explicit user request can admit a **special demo experiment** through `roster
 Each exception names one `agent:EPIC@tier`, its exact source hash, date and reason. It requires a current
 source/current-engine backtest without an error status, but may bypass historical performance and virtual
 maturity gates. It has slot priority (only flat incumbents can be displaced) and is labeled **user experiment**;
-it is not a control or a proven leader. Normal runtime safety, kill switches and subsequent demotion apply.
+it is not a control, a candidate or a confirmed record. Normal runtime safety, kill switches and subsequent demotion apply.
 After its first demotion the exception no longer grants re-entry. Changed source needs a new explicit review
 of the exception. `visar-night-trading:US500@200` is one; `roster.json` lists them all.
 
@@ -63,20 +64,31 @@ Computed by `packages/shared/src/lifecycle.ts`, shown in the dashboard's Stage c
 
 | Verdict | Rule |
 |---|---|
-| early | fewer than 30 closed trades or fewer than 28 days live (slow agents: judged at 90 days with ≥ 10 trades) |
-| retire | judged and trade t-statistic ≤ −1; or zero closed trades while flat after 60 observed days; or busted; or stopped on errors |
-| leader | judged, t ≥ 2 and a higher t than every random monkey on the same instrument |
-| keep | judged, anything else |
+| early | fewer than 10 closed trades or fewer than 42 days observed |
+| retire | daily t ≤ −1 after 30 closed trades and 42 days (slow agents: 10 trades and 90 days); or zero closed trades while flat after 60 observed days; or busted; or stopped on errors |
+| candidate | past the floor, daily t ≥ 2 and higher than every random monkey's on the same instrument |
+| confirmed | past the floor, agreeing with its same-code backtest, and clearing the bar for every strategy record ever started (false discovery rate 10%) |
+| keep | past the floor, anything else |
 
-An agent with no edge pays the spread on every trade, so its t-statistic drifts below zero as trades
-accumulate: −1 retires most no-edge runs within a few months while rarely retiring a real edge.
-"Leader" is a strong claim with ~400 runs: about 2% of no-skill runs reach t ≥ 2 by luck. The review's
-monkey sanity line shows how many random monkeys would pass the bar; if that is not ~0, distrust leaders.
-Leaders are compared on t, not return, because the return grows with position size and runs trade at
+Every record is judged on the daily clock ([EVIDENCE.md](../EVIDENCE.md), "The daily clock"): its return on each
+weekday, flat days included, so a strategy that trades ten times a day and one that trades twice a month are
+measured in the same unit. t = mean ÷ volatility × √weekdays, the volatility never below the same-code backtest's.
+
+A **candidate** may compete for Capital demo slots and may still be luck: checked every day, about one no-edge
+record in six shows t ≥ 2 at some point within a year. That is acceptable for demo slots and for nothing else.
+**Confirmed** is the claim of an edge. It stays valid however often the record is checked and counts every
+strategy record ever started, retired ones included, so at most about one confirmed record in ten is expected to
+be luck. With 844 records tried and none confirmed (2026-11-25) the first needs a daily t near 4.6 over a year: a
+Sharpe ratio of 3.2 for two years, or 2 for five. Slow strategies need years; no rule shortens that honestly.
+Candidates are compared on t, not return, because the return grows with position size and runs trade at
 different leverages; the t-statistic does not.
 
-Do not change these thresholds casually. If the evidence says they are wrong (e.g. monkeys keep passing
-the leader bar), change them in `lifecycle.ts` and explain why in the journal.
+An agent with no edge pays the spread on every trade, so its t-statistic drifts below zero as days
+accumulate: −1 retires most no-edge runs within a few months while rarely retiring a real edge.
+The review's monkey sanity line shows how many random monkeys pass the candidate bar.
+
+Do not change these thresholds casually. If the evidence says they are wrong (e.g. a no-edge control is
+confirmed), change them in `src/engine/policy.ts` and explain why in the journal.
 
 Known forecast-dependency outages, including the resource hold, are removed from virtual observation
 time. Calendar age/P&L remain intact; an open holding with zero closed trades is not silent. Newly
@@ -148,7 +160,7 @@ agents that size with `marginPct` use the high leverage.
   (time-series momentum, short-term reversal, volatility breakouts, opening-range and session effects,
   overnight and turn-of-month drift, volatility-regime filters, funding-aware holding), new mechanisms not
   yet on the leaderboard, and TimesFM used for volatility or uncertainty rather than direction (see the
-  note in `GUIDE.md`). Prefer families that are under-represented. A leader may inspire a related but
+  note in `GUIDE.md`). Prefer families that are under-represented. A candidate or a confirmed record may inspire a related but
   distinct idea (another timeframe or mechanism), never a parameter tweak of itself.
 - **Before writing,** read the idea log at the end of `JOURNAL.md`. Do not repeat a retired or rejected idea
   unless the new version is substantially different and the journal says why.
@@ -281,7 +293,7 @@ and one journal entry.
 ```
 ## 2026-10-12 (Mon) — demo day 5
 - Health: all green / what broke and what was done
-- Verdicts: early 344, keep 0, leader 0, retire 0; monkey sanity 0 of 36
+- Verdicts: early 241, keep 166, candidate 1, confirmed 0, retire 0; monkey sanity 0 of 36
 - Retired: <agentId>:<EPIC>@<tier> (reason), …
 - Added: <agent> — idea, instruments, variants, leverage tier; backtest median Sharpe
 - Rejected: <idea> — why

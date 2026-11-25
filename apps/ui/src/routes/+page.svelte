@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Assessment, LeaderboardRow, RunMetrics, Verdict } from '@trader/shared';
-	import { assess, luckBands, VERDICT } from '@trader/shared';
+	import { assess, VERDICT } from '@trader/shared';
 	import { page } from '$app/state';
 	import { goto, replaceState } from '$app/navigation';
   import { untrack } from 'svelte';
@@ -68,10 +68,11 @@
 	const filtered = $derived(rows.filter(matches));
 
 	// ------------------------------------------------------------ lifecycle stage (demo)
-	const bands = $derived(luckBands(data.demo.filter(r => !r.comparisonOnly)));
-	const stages = $derived(new Map<string, Assessment>(data.demo.map(r => [r.runId, assess(r, bands)])));
+	// Verdicts on the daily clock; Capital rows carry their virtual record's clock.
+	const stages = $derived(new Map<string, Assessment>((view === 'demo' ? data.capital : data.demo).map(r => [r.runId, assess(r)])));
 	const STAGE_RANK: Record<Verdict, number> = {
-		[VERDICT.LEADER]: 5,
+		[VERDICT.CONFIRMED]: 6,
+		[VERDICT.CANDIDATE]: 5,
 		[VERDICT.KEEP]: 4,
 		[VERDICT.EARLY]: 3,
 		[VERDICT.CONTROL]: 2,
@@ -79,8 +80,8 @@
 		[VERDICT.RETIRED]: 0,
 	};
 	const STAGE_DOT: Partial<Record<Verdict, string>> = {
-		[VERDICT.LEADER]: 'status-good',
-		[VERDICT.KEEP]: 'status-good',
+		[VERDICT.CONFIRMED]: 'status-good',
+		[VERDICT.CANDIDATE]: 'status-good',
 		[VERDICT.RETIRE]: 'status-critical',
 	};
 
@@ -88,6 +89,7 @@
 	function metric(r: LeaderboardRow, key: string): number {
 		if(key==='excess')return r.evidence?.benchmark.excessReturn??-Infinity;
 		if(key==='exposure')return r.evidence?.exposure??-Infinity;
+		if(key==='dailyT')return r.evidence?.clock&&r.evidence.clock.observations>=2?r.evidence.clock.t:-Infinity;
 		// The share of backtest periods that did at least as well: low for a result its backtest rarely reached.
 		if(key==='frequency')return r.evidence?.frequency?r.evidence.frequency.atLeast/r.evidence.frequency.periods:-Infinity;
 		if(key==='activeDays')return observedDays(r)??-Infinity;
@@ -219,7 +221,7 @@
 	}
 	function observedDays(r:LeaderboardRow):number|undefined {
 		if(view!=='virtual')return r.metrics?.days;
-		return Math.max(0,(r.evidence?.asOf??Date.now())-(r.observation?.since??r.startedAt)-(r.observation?.pausedMs??0))/86_400_000;
+		return r.evidence?.clock?.days??Math.max(0,(r.evidence?.asOf??Date.now())-r.startedAt)/86_400_000;
 	}
 	const accountFunding=$derived(data.evidence?.accountCashflows.totals.find(r=>r.type==='SWAP')?.amount);
 	const unallocatedFunding=$derived(data.evidence?.accountCashflows.unallocated.find(r=>r.type==='SWAP')?.amount);
@@ -299,20 +301,22 @@
       <th class="num"><button onclick={()=>sortBy('activeDays')}>Days{arrow('activeDays')}</button></th><th class="num"><button onclick={()=>sortBy('trades')}>Trades{arrow('trades')}</button></th>
       <th class="num"><button onclick={()=>sortBy('totalReturn')}>Return{arrow('totalReturn')}</button></th>
       {#if view!=='backtest'}<th class="num" title="How often the backtest of the same code, instrument and leverage did this well (or this badly) over the record's own number of days. Periods overlap."><button onclick={()=>sortBy('frequency')}>In backtest{arrow('frequency')}</button></th>{/if}
+      {#if view!=='backtest'}<th class="num" title="The record's t-statistic on the daily clock: mean daily return over its volatility, times the square root of its weekdays. Candidate at 2 after 10 trades and 42 days; confirmed at the bar for every record tried."><button onclick={()=>sortBy('dailyT')}>Daily t{arrow('dailyT')}</button></th>{/if}
       <th class="num" title="Annualized, above 3-month T-bills"><button onclick={()=>sortBy('sharpe')}>Sharpe{arrow('sharpe')}</button></th>
       <th class="num"><button onclick={()=>sortBy('maxDrawdown')}>{view==='demo'?'Cash DD':'Max DD'}{arrow('maxDrawdown')}</button></th>
       <th class="num" title="Excess over holding the instrument 1:1 over the same dates (Capital: realized cash since the first deal); sizing differs"><button onclick={()=>sortBy('excess')}>Excess{arrow('excess')}</button></th><th>Status</th>
     </tr></thead><tbody>{#each sortedRuns.slice((pageNumber-1)*PAGE_SIZE,pageNumber*PAGE_SIZE)as r(r.runId)}
-      {@const m=r.metrics}{@const verdict=stages.get(r.runId)}{@const f=r.evidence?.frequency}{@const side=f?frequencySide(f):null}
+      {@const m=r.metrics}{@const verdict=stages.get(r.runId)}{@const f=r.evidence?.frequency}{@const side=f?frequencySide(f):null}{@const c=r.evidence?.clock}
       <tr class:control={isControl(r)}><td><a class="agent-name" href="/agents/{r.agentId}">{r.name}</a>{#if r.demoAdmission}<span class="badge">Experiment</span>{/if}{#if isControl(r)}<span class="badge">Control</span>{/if}{#if r.usesForecast}<small>TimesFM{r.dependency&&r.dependency.state!=='available'?' · paused':''}</small>{/if}</td>
         <td><a href="/runs/{encodeURIComponent(r.runId)}{view==='demo'?'?stage=capital':''}">{r.epic}</a></td>
         <td>{lev(r)}<small>{r.timeframe}{#if r.evidence?.exposure!=null} · {num(r.evidence.exposure)}× used{/if}{#if r.comparisonOnly} · {r.scenario}{/if}</small></td>
         <td class="num">{num(observedDays(r),1)}</td><td class="num">{m?.trades??'—'}</td><td class="num {sign(m?.totalReturn)}">{pct(m?.totalReturn)}</td>
         {#if view!=='backtest'}<td class="num" title={f?`${frequencyLine(f)}${f.independent<f.periods?`; ${f.independent} fit end to end`:''}. Best ${pct(f.best)}, worst ${pct(f.worst)}.`:'No closed trades yet, or no backtest of this code long enough to count'}>{#if f&&side}{shareText(side.count,f.periods)}<small>this {side.well?'well':'badly'} · {f.days}d × {f.periods}</small>{:else}—{/if}</td>{/if}
+        {#if view!=='backtest'}<td class="num" title={c&&c.confirmAt!=null?`${verdict?.reason??''}. Confirmed at ${num(c.confirmAt)} with ${c.trials} records tried (${num(c.aloneAt)} alone).`:verdict?.reason??''}>{#if c&&c.observations>=2&&verdict&&verdict.verdict!==VERDICT.CONTROL}{num(c.t)}<small>of {num(c.confirmAt)} · {c.observations}d</small>{:else}—{/if}</td>{/if}
         <td class="num">{num(m?.sharpe)}</td><td class="num">{pctPlain(m?.maxDrawdown)}</td>
         <td class="num {sign(r.evidence?.benchmark.excessReturn)}" title={r.evidence?.benchmark.status==='matched'?`${utc(r.evidence.benchmark.from)} → ${utc(r.evidence.benchmark.through)}: hold ${pct(r.evidence.benchmark.benchmarkReturn)}${r.evidence.benchmark.hurdles?`, 3-month T-bills ${pct(r.evidence.benchmark.hurdles.cash)}, US CPI ${pct(r.evidence.benchmark.hurdles.inflation)}`:''}`:'No common-date benchmark'}>{r.evidence?.benchmark.excessReturn!==undefined?`${num(r.evidence.benchmark.excessReturn*100)} pp`:'—'}{#if r.evidence?.benchmark.hurdles}<small>T-bills {pct(r.evidence.benchmark.hurdles.cash)} · CPI {pct(r.evidence.benchmark.hurdles.inflation)}</small>{/if}</td>
-        <td><span class="badge">{view==='virtual'?(verdict?.verdict??r.status):view==='demo'?(r.mirrored?'Active':'Past'):r.status}</span>{#if view==='virtual'&&r.mirrored}<small>Capital demo</small>{/if}</td>
-      </tr>{:else}<tr><td colspan="11" class="muted">No matching records.</td></tr>{/each}</tbody></table></div>
+        <td title={view==='backtest'?'':verdict?.reason??''}><span class="badge">{view==='virtual'?(verdict?.verdict??r.status):view==='demo'?(r.mirrored?'Active':'Past'):r.status}</span>{#if view==='virtual'&&r.mirrored}<small>Capital demo</small>{/if}{#if view==='demo'&&verdict&&verdict.verdict!==VERDICT.CONTROL&&verdict.verdict!==VERDICT.RETIRED}<small>{verdict.verdict}</small>{/if}</td>
+      </tr>{:else}<tr><td colspan="12" class="muted">No matching records.</td></tr>{/each}</tbody></table></div>
     <div class="row secondary"><button class="btn" disabled={pageNumber<=1} onclick={()=>pageNumber--}>Previous</button><span>{sortedRuns.length} records · {pageNumber} / {Math.max(1,Math.ceil(sortedRuns.length/PAGE_SIZE))}</span><button class="btn" disabled={pageNumber>=Math.ceil(sortedRuns.length/PAGE_SIZE)} onclick={()=>pageNumber++}>Next</button></div>
 
 	{:else}

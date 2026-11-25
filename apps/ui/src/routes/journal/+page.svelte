@@ -19,10 +19,11 @@
 		<h2>How agents move</h2>
 		<ul>
 			<li><strong>Backtest</strong> — a new agent is backtested first; only clearly broken ideas are stopped here, because good backtests are easy to fake.</li>
-			<li><strong>Virtual engine</strong> — admitted agents trade live quotes with independent virtual capital. A run is judged after {LIFECYCLE.MIN_TRADES} trades and {LIFECYCLE.MIN_DAYS} days (slow agents: {LIFECYCLE.SLOW_MIN_DAYS} days).</li>
-			<li><strong>Capital demo</strong> — eligible virtual leaders compete for real demo orders on the nine "Arena" accounts. The existing calibration cohort and user experiments remain labeled separately.</li>
-			<li><strong>Leader</strong> — trade t-statistic of {LIFECYCLE.LEADER_TSTAT} or more and better than every random monkey on the same instrument.</li>
-			<li><strong>Retired</strong> — t-statistic of {LIFECYCLE.RETIRE_TSTAT} or less once judged, no trades in {LIFECYCLE.SILENT_DAYS} days, or a busted account. A whole agent goes when most of its judged runs do.</li>
+			<li><strong>Virtual engine</strong> — admitted agents trade live quotes with independent virtual capital. Every record is judged on one clock: its return on each weekday, flat days included, from {LIFECYCLE.MIN_TRADES} trades and {LIFECYCLE.MIN_DAYS} days.</li>
+			<li><strong>Capital demo</strong> — candidates compete for real demo orders on the nine "Arena" accounts. The existing calibration cohort and user experiments remain labeled separately.</li>
+			<li><strong>Candidate</strong> — daily t-statistic of {LIFECYCLE.CANDIDATE_TSTAT} or more and better than every random monkey on the same instrument. It may still be luck: about one no-edge record in six gets there within a year.</li>
+			<li><strong>Confirmed</strong> — clears the bar that keeps luck under {LIFECYCLE.CONFIRM_FDR * 100}% of confirmed records, counted over every strategy record ever started and valid however often it is checked, and agrees with its backtest. Slow strategies need years.</li>
+			<li><strong>Retired</strong> — daily t-statistic of {LIFECYCLE.RETIRE_TSTAT} or less after {LIFECYCLE.LOSER_MIN_TRADES} trades ({LIFECYCLE.SLOW_MIN_TRADES} over {LIFECYCLE.SLOW_MIN_DAYS} days for slow agents), no trades in {LIFECYCLE.SILENT_DAYS} days, or a busted account. A whole agent goes when most of its judged runs do.</li>
 		</ul>
 		<p class="secondary small">
 			Full policy: <a href="{REPO}/LIFECYCLE.md" rel="noopener">LIFECYCLE.md</a> · retired runs:

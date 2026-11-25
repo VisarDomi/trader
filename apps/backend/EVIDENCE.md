@@ -56,7 +56,63 @@ treasury.gov) and kept when a refresh fails. Dates before the stored history (20
 on live runs, Capital cash and backtests alike, measured from each record's stored equity curve. The backtest admission gate (−0.5) keeps checking the
 Sharpe of the returns themselves (`cashFreeSharpe`): it filters strategies that lose on their own. On the Sharpe above
 T-bills it would also reject 127 of 637 backtests, mostly low-leverage variants rarely in the market, whose idle cash
-earns nothing in a CFD account. Promotion does not use Sharpe (trade t-statistics and the monkeys).
+earns nothing in a CFD account. Promotion does not use Sharpe (the daily clock and the monkeys, below).
+
+## The daily clock
+
+Every forward record is judged on one clock (`src/arena/judging.ts`): its return on each weekday since it started,
+flat days included as zero. Trade counts differ a hundredfold between strategies (at their November 2026 rates the
+fastest tenth made 30 trades in under 38 days and the slowest tenth needed 3.5 years); weekdays do not, and the
+evidence in a record is about its Sharpe ratio × √years whatever its trade count. Each record carries the result as
+`evidence.clock`; Capital demo rows carry their virtual record's, since the strategy is judged on that record.
+
+- **Observations:** one per weekday (UTC): the stored equity at each midnight that closes Monday … Friday, the
+  latest stored value carried forward. Weekend changes belong to Monday's observation. A day counts an hour after
+  it closes, once its midnight value is stored.
+- **t** = mean ÷ volatility × √weekdays. The volatility is the larger of the record's own and its same-code
+  backtest's: a short record of small steady wins has not yet shown its losses, and the long backtest has. On its
+  own volatility the martingale monkey, a no-edge control, had t 5.2 after 31 weekdays; on its backtest's, 1.2.
+- **Windows:** slot eligibility and losing evidence use the weekdays since the record's last demotion from Capital
+  demo (its start otherwise); confirmation uses the whole record.
+- **Capital demo cash** is judged the same way for demotion: realized cash per weekday since the first deal.
+
+Verdicts come from `packages/shared/src/lifecycle.ts`, the thresholds from `src/engine/policy.ts`, and what is done
+with them from `agents/LIFECYCLE.md`:
+
+- **Floor:** 10 closed trades and 42 days observed (30 weekdays, the fewest these statistics are meant for). Below
+  it a record is early. The trade floor keeps one long-held position from counting as thirty decisions.
+- **Candidate:** t ≥ 2 and above every random monkey's on the instrument. Candidates compete for Capital demo
+  slots. A candidate may be luck: checked daily, 16% of no-edge records pass t ≥ 2 at some point within a year and
+  22% within five (20,000 simulated records).
+- **Confirmed:** the claim of an edge. It needs all three:
+  1. *Evidence that survives daily checking.* An e-value: the likelihood of the record's daily returns under
+     positive edges (weighted half-normally, widest near one year) over their likelihood under none. Under no
+     edge it exceeds 1/α at any time, ever, with probability at most α. For one record on its own at α = 2.5%
+     that is a t of 3.7 after 30 weekdays, 3.1 after six months and 3.0 after a year (`aloneAt`).
+  2. *The bar for everything tried.* The e-BH procedure over every strategy record ever started, retired ones
+     included, at a false discovery rate of 10%: a group of k records is confirmed when each e-value is at least
+     trials ÷ (0.1 × k). Whatever the dependence between records, the expected share of lucky ones among the
+     confirmed is at most 10%, and several strong records confirm each other. With 844 records and none
+     confirmed (2026-11-25) the first needs e ≥ 8,440: a t of 4.6 after a year, a Sharpe ratio of 3.2 for two
+     years or 2.0 for five (`confirmAt`).
+  3. *Agreement with its backtest.* The forward mean daily return is not more than 2 standard errors above the
+     same-code backtest's (`backtestZ`). A record without such a backtest cannot be confirmed. Over 392 records
+     (2026-11-25) this z has mean 0.1 and spread 1.0: as a group, forward records are what their backtests say.
+- **Retire:** t ≤ −1 once the record has 30 closed trades and 42 days, or 10 trades and 90 days.
+
+No test shortens this. A real Sharpe-1 strategy clears even the bar for one record alone only 33% of the time
+within five years (simulation), so slow strategies stay unproven for years. A matched control on the same days
+(the night cohort's direction controls) or a family of variants judged together can answer sooner; a lower bar
+cannot.
+
+Method: [probabilistic Sharpe ratio and minimum track record length](https://www.risk.net/journal-risk/2223785/sharpe-ratio-efficient-frontier)
+and [How to Use the Sharpe Ratio](https://www.adialab.ae/research-series/how-to-use-the-sharpe-ratio) (time, not
+trades; the count of trials); [always-valid inference](https://arxiv.org/abs/1512.04922),
+[confidence sequences](https://projecteuclid.org/journals/annals-of-statistics/volume-49/issue-2/Time-uniform-nonparametric-nonasymptotic-confidence-sequences/10.1214/20-AOS1991.full)
+and [their asymptotic form](https://arxiv.org/abs/2103.06476) (the mixture bar);
+[FDR control with e-values](https://arxiv.org/abs/2009.02824) and
+[bandit multiple testing](https://arxiv.org/abs/2107.07322) (many records at different speeds, checked at any time);
+[t > 3 for new factors](https://nber.org/papers/w20592).
 
 ## How often the backtest did this
 

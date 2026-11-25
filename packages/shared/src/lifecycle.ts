@@ -1,5 +1,5 @@
-// Lifecycle policy: when a demo run has shown enough to be judged, and what the verdict is.
-// Used by the dashboard (verdict column) and by `bun run review` (the babysitter's input), so both agree.
+// Lifecycle policy: when a forward record has shown enough to be judged, and what the verdict is.
+// Used by the dashboard (verdict column), the native screens and `bun run review` (the babysitter's input), so all agree.
 // The full policy, including what the babysitter does with each verdict: apps/backend/agents/LIFECYCLE.md.
 
 import type { LeaderboardRow } from './types.ts';
@@ -8,14 +8,15 @@ import type { LeaderboardRow } from './types.ts';
  * Agents that are yardsticks, not strategies; they are never judged or retired: random entries,
  * buy and hold, and the leverage ladder (one signal at every leverage, to show what leverage does).
  */
-export { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE } from '../../../apps/backend/src/engine/policy.ts';
-import { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE,silentDaysFor } from '../../../apps/backend/src/engine/policy.ts';
+export { CONTROL_SLUGS, RANDOM_BASELINE_SLUG, LIFECYCLE, floorMet, loserMature, isCandidate } from '../../../apps/backend/src/engine/policy.ts';
+import { CONTROL_SLUGS, LIFECYCLE, floorMet, loserMature, isCandidate, silentDaysFor } from '../../../apps/backend/src/engine/policy.ts';
 
 export const VERDICT = {
 	CONTROL: 'control',
 	EARLY: 'early',
 	KEEP: 'keep',
-	LEADER: 'leader',
+	CANDIDATE: 'candidate',
+	CONFIRMED: 'confirmed',
 	RETIRE: 'retire',
 	RETIRED: 'retired',
 } as const;
@@ -26,12 +27,6 @@ export interface Assessment {
 	reason: string;
 }
 
-/**
- * Range of random-monkey trade t-statistics per instrument. The t-statistic, unlike the return,
- * does not grow with position size, so monkeys on one leverage tier are a yardstick for every tier.
- */
-export type LuckBands = Map<string, { min: number; max: number; n: number }>;
-
 const DAY_MS = 86_400_000;
 const STATUS_RETIRED = 'retired';
 const STATUS_BUSTED = 'busted';
@@ -41,42 +36,35 @@ export function isControlSlug(slug: string): boolean {
 	return CONTROL_SLUGS.has(slug);
 }
 
-export function luckBands(rows: readonly LeaderboardRow[]): LuckBands {
-	const bands: LuckBands = new Map();
-	for (const r of rows) {
-		if (r.slug !== RANDOM_BASELINE_SLUG || !r.metrics || r.status === STATUS_RETIRED) continue;
-		const t = r.metrics.tStat;
-		const b = bands.get(r.epic);
-		if (!b) bands.set(r.epic, { min: t, max: t, n: 1 });
-		else bands.set(r.epic, { min: Math.min(b.min, t), max: Math.max(b.max, t), n: b.n + 1 });
-	}
-	return bands;
-}
-
-/** Verdict for one demo run. */
-export function assess(row: LeaderboardRow, bands: LuckBands, now = Date.now()): Assessment {
+/**
+ * Verdict for one forward record, from its daily clock (`evidence.clock`, built by the arena: EVIDENCE.md "The daily
+ * clock"). A candidate may compete for Capital demo slots and may still be luck; confirmed is the claim of an edge.
+ */
+export function assess(row: LeaderboardRow, now = Date.now()): Assessment {
 	if (row.status === STATUS_RETIRED) return { verdict: VERDICT.RETIRED, reason: 'retired' };
 	if (isControlSlug(row.slug)) return { verdict: VERDICT.CONTROL, reason: 'control agent' };
 	if (row.status === STATUS_BUSTED) return { verdict: VERDICT.RETIRE, reason: 'account busted' };
 	if (row.status === STATUS_ERROR) return { verdict: VERDICT.RETIRE, reason: 'agent stopped on errors (fix the bug or retire)' };
 
-	const days = Math.max(0,now - (row.observation?.since ?? row.startedAt) - (row.observation?.pausedMs??0)) / DAY_MS;
-	const trades = row.observation?.trades ?? row.metrics?.trades ?? 0;
-	const t = row.observation?.tStat ?? row.metrics?.tStat ?? 0;
+	const c = row.evidence?.clock;
+	const days = c?.days ?? Math.max(0, now - row.startedAt) / DAY_MS;
+	const trades = c?.trades ?? row.metrics?.trades ?? 0;
+	const t = c?.t ?? 0;
 	if (trades === 0 && !row.evidence?.openPosition && days >= silentDaysFor(row.agentId)) return { verdict: VERDICT.RETIRE, reason: `no trades in ${Math.floor(days)} days` };
 
-	const judged =
-		(trades >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) || (days >= LIFECYCLE.SLOW_MIN_DAYS && trades >= LIFECYCLE.SLOW_MIN_TRADES);
-	if (!judged) {
+	const over = `daily t = ${t.toFixed(2)} over ${Math.floor(days)} days and ${trades} trades`;
+	if (loserMature(trades, days) && t <= LIFECYCLE.RETIRE_TSTAT) return { verdict: VERDICT.RETIRE, reason: `losing: ${over}` };
+	if (!floorMet(trades, days)) {
 		return {
 			verdict: VERDICT.EARLY,
-			reason: `${trades} trades in ${Math.floor(days)} days (judged at ${LIFECYCLE.MIN_TRADES} trades and ${LIFECYCLE.MIN_DAYS} days)`,
+			reason: `${trades} trades in ${Math.floor(days)} days (judged from ${LIFECYCLE.MIN_TRADES} trades and ${LIFECYCLE.MIN_DAYS} days)`,
 		};
 	}
-	if (t <= LIFECYCLE.RETIRE_TSTAT) return { verdict: VERDICT.RETIRE, reason: `losing: t = ${t.toFixed(2)} over ${trades} trades` };
-	const band = bands.get(row.epic);
-	if (t >= LIFECYCLE.LEADER_TSTAT && (!band || t > band.max)) {
-		return { verdict: VERDICT.LEADER, reason: `t = ${t.toFixed(2)} over ${trades} trades${band ? ', above every monkey' : ''}` };
+	if (c?.confirmed) {
+		return { verdict: VERDICT.CONFIRMED, reason: `${over}; clears the bar for all ${c.trials} records tried and agrees with its backtest` };
 	}
-	return { verdict: VERDICT.KEEP, reason: `t = ${t.toFixed(2)} over ${trades} trades` };
+	if (isCandidate(trades, days, t, c?.monkey ?? null)) {
+		return { verdict: VERDICT.CANDIDATE, reason: `${over}${c?.monkey != null ? ', above every monkey' : ''}; may still be luck` };
+	}
+	return { verdict: VERDICT.KEEP, reason: over };
 }

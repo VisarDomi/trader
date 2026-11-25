@@ -7,10 +7,10 @@
  *
  * Reads the arena API (ARENA_URL, loopback) and applies the
  * shared lifecycle policy (packages/shared/src/lifecycle.ts): health, capacity,
- * verdict counts, leaders, runs and agents to retire.
+ * verdict counts, confirmed records and candidates, runs and agents to retire.
  */
 import type { ArenaEvent, ArenaStatus, BrokerStatus, LeaderboardRow } from '@trader/shared';
-import { assess, LIFECYCLE, luckBands, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
+import { assess, isCandidate, LIFECYCLE, RANDOM_BASELINE_SLUG, VERDICT, type Assessment } from '@trader/shared';
 import { FORECASTER_UNIT,resourcePaused } from './runtime.ts';
 
 const ARENA_URL = process.env.ARENA_URL ?? 'http://127.0.0.1:4120';
@@ -33,7 +33,11 @@ interface RunReview {
   days: number;
   trades: number;
   totalReturn: number;
+  /** Daily t of the judged window, and what the whole record needs to be confirmed today. */
   tStat: number;
+  lifeT: number;
+  confirmAt: number | null;
+  backtestZ: number | null;
   mirrored: boolean;
   verdict: Assessment['verdict'];
   reason: string;
@@ -44,7 +48,8 @@ interface AgentReview {
   runs: number;
   judged: number;
   retire: number;
-  leaders: number;
+  /** Candidates and confirmed records. */
+  ahead: number;
   /** Retire the whole agent (move its file to agents/_retired/). */
   retireAgent: boolean;
 }
@@ -58,46 +63,50 @@ const [status, broker, demo, events] = await Promise.all([
 
 const now = Date.now();
 const standard = demo.filter(r => !r.comparisonOnly);
-const bands = luckBands(standard);
 const runs: RunReview[] = standard.map(r => {
-  const a = assess(r, bands, now);
+  const a = assess(r, now), c = r.evidence?.clock;
   return {
     runId: r.runId,
     agentId: r.agentId,
     epic: r.epic,
     leverage: r.leverage,
     timeframe: r.timeframe,
-    days: Math.round((Math.max(0,now - (r.observation?.since ?? r.startedAt) - (r.observation?.pausedMs??0)) / DAY_MS) * 10) / 10,
-    trades: r.observation?.trades ?? r.metrics?.trades ?? 0,
+    days: Math.round((c?.days ?? Math.max(0, now - r.startedAt) / DAY_MS) * 10) / 10,
+    trades: c?.trades ?? r.metrics?.trades ?? 0,
     totalReturn: r.metrics?.totalReturn ?? 0,
-    tStat: r.observation?.tStat ?? r.metrics?.tStat ?? 0,
+    tStat: c?.t ?? 0,
+    lifeT: c?.life.t ?? 0,
+    confirmAt: c?.confirmAt ?? null,
+    backtestZ: c?.backtestZ ?? null,
     mirrored: r.mirrored,
     verdict: a.verdict,
     reason: a.reason,
   };
 });
 
-const judgedVerdicts: ReadonlySet<string> = new Set([VERDICT.KEEP, VERDICT.LEADER, VERDICT.RETIRE]);
+const aheadVerdicts: ReadonlySet<string> = new Set([VERDICT.CANDIDATE, VERDICT.CONFIRMED]);
+const judgedVerdicts: ReadonlySet<string> = new Set([VERDICT.KEEP, VERDICT.CANDIDATE, VERDICT.CONFIRMED, VERDICT.RETIRE]);
 const agents: AgentReview[] = [...Map.groupBy(runs.filter(r => r.verdict !== VERDICT.CONTROL), r => r.agentId)].map(([agentId, rs]) => {
   const judged = rs.filter(r => judgedVerdicts.has(r.verdict)).length;
   const retire = rs.filter(r => r.verdict === VERDICT.RETIRE).length;
-  const leaders = rs.filter(r => r.verdict === VERDICT.LEADER).length;
+  const ahead = rs.filter(r => aheadVerdicts.has(r.verdict)).length;
   return {
     agentId,
     runs: rs.length,
     judged,
     retire,
-    leaders,
+    ahead,
     retireAgent:
       retire === rs.length ||
-      (judged >= LIFECYCLE.AGENT_RETIRE_MIN_JUDGED && leaders === 0 && retire / judged >= LIFECYCLE.AGENT_RETIRE_SHARE),
+      (judged >= LIFECYCLE.AGENT_RETIRE_MIN_JUDGED && ahead === 0 && retire / judged >= LIFECYCLE.AGENT_RETIRE_SHARE),
   };
 });
 
-// Sanity check on the leader bar: random monkeys that would pass it are luck by definition.
-const monkeyLeaders = standard.filter(
-  r => r.slug === RANDOM_BASELINE_SLUG && (r.metrics?.trades ?? 0) >= LIFECYCLE.MIN_TRADES && (r.metrics?.tStat ?? 0) >= LIFECYCLE.LEADER_TSTAT,
-).length;
+// Sanity check on the candidate bar: random monkeys that would pass it are luck by definition.
+const monkeyCandidates = standard.filter(r => {
+  const c = r.evidence?.clock;
+  return r.slug === RANDOM_BASELINE_SLUG && !!c && isCandidate(c.trades, c.days, c.t, null);
+}).length;
 const monkeys = standard.filter(r => r.slug === RANDOM_BASELINE_SLUG).length;
 
 const count = (v: string) => runs.filter(r => r.verdict === v).length;
@@ -139,8 +148,15 @@ const report = {
   },
   capacity: { liveRuns: demo.length, standardRuns: standard.length, comparisonRuns: demo.length - standard.length, paperSoftCap: LIFECYCLE.PAPER_RUN_SOFT_CAP, roomForRuns: LIFECYCLE.PAPER_RUN_SOFT_CAP - demo.length },
   verdicts: Object.fromEntries(Object.values(VERDICT).map(v => [v, count(v)])),
-  monkeySanity: { monkeys, wouldLead: monkeyLeaders },
-  leaders: runs.filter(r => r.verdict === VERDICT.LEADER).sort((a, b) => b.tStat - a.tStat),
+  monkeySanity: { monkeys, wouldBeCandidates: monkeyCandidates },
+  /** Strategy records ever started: what the confirmed bar is counted over. */
+  trials: standard.find(r => r.evidence?.clock)?.evidence?.clock?.trials ?? null,
+  confirmed: runs.filter(r => r.verdict === VERDICT.CONFIRMED).sort((a, b) => b.lifeT - a.lifeT),
+  candidates: runs.filter(r => r.verdict === VERDICT.CANDIDATE).sort((a, b) => b.tStat - a.tStat),
+  closestToConfirmed: runs
+    .filter(r => r.verdict !== VERDICT.CONTROL && r.verdict !== VERDICT.CONFIRMED && r.verdict !== VERDICT.EARLY && r.confirmAt !== null)
+    .sort((a, b) => b.lifeT - b.confirmAt! - (a.lifeT - a.confirmAt!))
+    .slice(0, 5),
   retireRuns: runs.filter(r => r.verdict === VERDICT.RETIRE),
   retireAgents: agents.filter(a => a.retireAgent),
   closestToJudgement: runs
@@ -186,10 +202,14 @@ if (process.argv.includes(FLAG_JSON)) {
   lines.push(`- per leverage: ${perTier.map(([l, rs]) => `1:${l} ${rs.length}`).join(', ')}`);
   lines.push('', '## Verdicts');
   lines.push(`- ${Object.entries(report.verdicts).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-  lines.push(`- monkey sanity: ${report.monkeySanity.wouldLead} of ${report.monkeySanity.monkeys} random monkeys pass the leader bar (should be ~0)`);
-  lines.push('', '## Leaders');
-  if (report.leaders.length === 0) lines.push('- none yet');
-  for (const r of report.leaders) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
+  lines.push(`- monkey sanity: ${report.monkeySanity.wouldBeCandidates} of ${report.monkeySanity.monkeys} random monkeys pass the candidate bar (about ${LIFECYCLE.CANDIDATE_TSTAT === 2 ? '2%' : 'a few %'} of no-edge records do at any one look)`);
+  lines.push('', `## Confirmed (false discovery rate ${LIFECYCLE.CONFIRM_FDR * 100}% over ${report.trials ?? '?'} strategy records ever started)`);
+  if (report.confirmed.length === 0) lines.push('- none yet');
+  for (const r of report.confirmed) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
+  for (const r of report.closestToConfirmed) lines.push(`- closest: ${r.agentId} ${r.epic} 1:${r.leverage}: life t ${r.lifeT.toFixed(2)} of ${r.confirmAt!.toFixed(2)} needed${r.backtestZ === null ? ', no same-code backtest' : r.backtestZ > LIFECYCLE.AGREE_Z ? `, ${r.backtestZ.toFixed(1)} standard errors above its backtest` : ''}`);
+  lines.push('', '## Candidates (may compete for Capital demo slots; may still be luck)');
+  if (report.candidates.length === 0) lines.push('- none yet');
+  for (const r of report.candidates) lines.push(`- ${r.agentId} ${r.epic} 1:${r.leverage} (${r.timeframe}): ${pct(r.totalReturn)}, ${r.reason}${r.mirrored ? '' : ' — not mirrored'}`);
   lines.push('', '## Retire: agents (move file to agents/_retired/)');
   if (report.retireAgents.length === 0) lines.push('- none');
   for (const a of report.retireAgents) lines.push(`- ${a.agentId}: ${a.retire} of ${a.runs} runs retire (${a.judged} judged)`);

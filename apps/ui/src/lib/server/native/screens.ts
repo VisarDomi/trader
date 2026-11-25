@@ -3,9 +3,10 @@
  * Each builder is a pure function of the records it is given; `loadScreen` fetches them.
  */
 import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, GraveyardEntry, LeaderboardRow, RunDetail, RunSummary, Trade } from '@trader/shared';
-import { CONTROL_SLUGS, assess, luckBands } from '@trader/shared';
+import { CONTROL_SLUGS, LIFECYCLE, assess } from '@trader/shared';
 import type { Inspection } from '../inspection';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
+import { agreementLine, barsLine, clockLine, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
 
 type Json = Record<string, any>;
@@ -56,7 +57,7 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	else if (r.control) badge = stage === 'capital' && !r.mirrored ? 'Control · past assignment' : 'Control';
 	else if (r.demoAdmission) badge = 'User experiment';
 	else if (stage === 'capital') badge = r.mirrored ? '' : 'Past assignment';
-	else if (stage === 'virtual' && r.forwardVerdict) badge = r.forwardVerdict[0].toUpperCase() + r.forwardVerdict.slice(1);
+	else if (stage === 'virtual' && r.forwardVerdict) badge = verdictWord(r.forwardVerdict);
 	const e: Json = r.evidence ?? {}, b: Json = e.benchmark ?? {}, m: Json = r.metrics ?? {};
 	if (!badge && e.admission === 'calibration') badge = 'Calibration';
 	if (!badge && e.admission === 'backtest-rejected') badge = 'Fails admission gate';
@@ -66,11 +67,13 @@ export function rankingRow(row: RankingRow | Json, stage = 'virtual', name?: str
 	// Every stage compares over the same dates with T-bills (the safe floor) and with holding the instrument outright.
 	const dd = pct(m.maxDrawdown ? -m.maxDrawdown : m.maxDrawdown);
 	const stats = worthStats('Return', m.totalReturn, b);
-	// How often its own backtest did this; what the same dates paid elsewhere; this record after inflation, then its risk.
+	// The verdict on the daily clock; how often its own backtest did this; what the same dates paid elsewhere; this record
+	// after inflation, then its risk. Capital rows carry their virtual record's clock.
 	const real = afterInflation(b);
 	const risk = [real != null ? `After inflation ${pct(real)}` : '', stage !== 'capital' || m.sharpe != null ? `Sharpe ${num(m.sharpe)}` : '', stage === 'capital' ? `cash drawdown ${dd}` : `drawdown ${dd}`,
 		e.exposure > 0 ? `exposure ${num(e.exposure)}×` : ''].filter(Boolean).join(' · ');
-	const facts = [frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
+	const judged = stage === 'backtest' || r.comparisonOnly ? '' : clockLine(r as LeaderboardRow, Date.now(), !!r.forwardVerdict && badge === verdictWord(r.forwardVerdict));
+	const facts = [judged, frequencyLine(e.frequency), alternatives(b), risk].filter(Boolean).join('\n');
 	return compact({
 		id, title: name ?? (r.name || r.epic), subtitle: [r.epic, tier(r.leverage), period, count(m.trades, 'trade', 'trades')].filter(Boolean).join(' · '),
 		body: facts, badge, stats, route: runRoute(id, stage),
@@ -188,6 +191,17 @@ const summaryRow = (r: RunSummary, agent: AgentDetail): Json => ({ ...r, name: r
 // ---------------------------------------------------------------- run
 
 export interface RunInputs { run: RunDetail; agentName: string; capital: LeaderboardRow | null; excluded: boolean; comparison: RunSummary | null; sparks: Sparks | null; account: string | null; periods?: (BacktestPeriods | null)[] }
+/** The record on the daily clock: its verdict, the t it has, the bars it needs and whether it agrees with its backtest. */
+export function clockRow(row: LeaderboardRow, now = Date.now()): Row | null {
+	const c = row.evidence?.clock, a = assess(row, now);
+	if (!c || a.verdict === 'control' || a.verdict === 'retired') return null;
+	const since = c.since > row.startedAt + 60_000 ? `Since its demotion from Capital demo on ${day(c.since)}; whole record t ${num(c.life.t)} over ${num(c.life.observations, 0)} weekdays` : '';
+	return compact({ id: 'clock', title: `${verdictWord(a.verdict)} · daily t ${num(c.t)}`,
+		subtitle: `${num(c.trades, 0)} ${c.trades === 1 ? 'trade' : 'trades'} · ${num(Math.floor(c.days), 0)} days · judged from ${LIFECYCLE.MIN_TRADES} trades and ${LIFECYCLE.MIN_DAYS} days`,
+		stats: [{ label: `Daily t over ${num(c.observations, 0)} weekdays`, value: num(c.t), tone: tone(c.t) }, { label: 'Candidate at', value: num(LIFECYCLE.CANDIDATE_TSTAT) }, { label: `Confirmed at, ${num(c.trials, 0)} tried`, value: num(c.confirmAt) }],
+		chart: c.confirmAt != null ? { kind: 'meter' as const, height: 18, meter: { value: c.life.t, limit: c.confirmAt, above: true } } : undefined,
+		body: [barsLine(c), agreementLine(c), since].filter(Boolean).join('\n') });
+}
 /** The backtest's every period as long as the record has lived, with the record's own return drawn across them. */
 export function frequencyRow(id: string, what: string, f: BacktestFrequency, p: BacktestPeriods | null | undefined): Row {
 	const { well, count } = frequencySide(f), points = (p?.points ?? []).map(x => ({ t: x.t, value: x.ret * 100 }));
@@ -206,7 +220,7 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 		subtitle: [tier(run.leverage), date(run.startedAt), count(m?.trades, 'closed trade', 'closed trades')].filter(Boolean).join(' · '),
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
 		stats: worthStats('Return', m?.totalReturn, e?.benchmark as Json | undefined),
-		body: [frequencyLine(e?.frequency), alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
+		body: [historical ? '' : clockLine({ ...run, runId: run.id, slug: run.agentId.split('/')[0]!, evidence: e } as unknown as LeaderboardRow), frequencyLine(e?.frequency), alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
 			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
 	if (!historical && (capital || deals.length)) {
@@ -230,6 +244,8 @@ export function runScreen({ run, agentName, capital, excluded, comparison, spark
 	const priced = deals.filter(d => d.status === 'closed' && d.pnl != null && d.close_time).sort((a, b) => a.close_time! - b.close_time!);
 	if (priced.length) { let cash = 0; charts.push({ id: 'cash', title: 'Capital demo closed P&L', chart: { kind: 'line', height: 140, series: [series('P&L', priced.map(d => ({ t: d.close_time!, value: (cash += d.pnl!) })))] } }); }
 	if (charts.length) sections.push({ title: '', rows: charts });
+	const judged = historical ? null : clockRow({ ...run, runId: run.id, slug: run.agentId.split('/')[0]!, evidence: e } as unknown as LeaderboardRow);
+	if (judged) sections.push({ title: 'Edge or luck', rows: [judged] });
 	const often = ([['frequency-virtual', 'Virtual', e?.frequency], ['frequency-capital', 'Capital demo', capital?.evidence?.frequency]] as const)
 		.flatMap(([id, what, f]) => (f ? [frequencyRow(id, what, f, periods.find(p => p?.runId === f.runId && p.days === f.days))] : []));
 	if (often.length) sections.push({ title: 'How often its backtest did this', rows: often });
@@ -438,7 +454,7 @@ export function documentScreen(title: string, markdown: string, extra: Section[]
 	return { v: 2, title, sections: [...extra.filter(s => s.rows.length), ...markdownSections(markdown)] };
 }
 export function verdicts(rows: LeaderboardRow[], stage: string): RankingRow[] {
-	const bands = luckBands(rows.filter(r => !r.comparisonOnly)), now = Date.now();
-	return rows.map(r => ({ ...r, control: CONTROL_SLUGS.has(r.slug), forwardVerdict: stage === 'virtual' && !r.comparisonOnly ? assess(r, bands, now).verdict : null }));
+	const now = Date.now();
+	return rows.map(r => ({ ...r, control: CONTROL_SLUGS.has(r.slug), forwardVerdict: stage === 'virtual' && !r.comparisonOnly ? assess(r, now).verdict : null }));
 }
 export type { Trade };

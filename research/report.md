@@ -41,9 +41,10 @@ records the first quote-supported audit and the frozen immediate/spread-gated br
   recent results, ensembles and "follow the crowd" can be tested on our own live record. The evidence
   says picking recent winners rarely beats equal weight; dropping strategies with a negative trailing
   year may. [Portfolios and meta-strategies](topics/portfolio.md)
-- **Our "leader" bar is too low to claim skill.** With about 480 no-skill runs, the best is expected to
-  show t ≈ 3, and about 10 would pass t ≥ 2 by luck. Keep t ≥ 2 for broker promotion, but call an edge
-  "confirmed" only at t ≥ 3 (or a deflated Sharpe ratio). [Anomalies](topics/anomalies.md)
+- **t ≥ 2 is too low to claim skill.** With about 480 no-skill runs, the best is expected to
+  show t ≈ 3, and about 10 would pass t ≥ 2 by luck. The arena keeps t ≥ 2 for broker promotion ("candidate")
+  and calls an edge "confirmed" only at the bar for every record tried (`apps/backend/EVIDENCE.md`, "The daily
+  clock"). [Anomalies](topics/anomalies.md)
 
 ## No overnight fee at 1:1 except on natural gas
 
@@ -146,7 +147,7 @@ TIPP's ratcheting floor), at 1:5 on US500, US100 and GOLD.
 
 | Change | What it enables | Size |
 |---|---|---|
-| Fairer judging: a "confirmed" verdict at t ≥ 3 or deflated Sharpe; t-statistics on % returns per trade; flags for strongly negative skew; pooled or daily-return judging for slow agents | honest leaders; calendar and monthly agents can be judged at all | 1–2 days |
+| Fairer judging beyond the daily clock and the confirmed verdict: flags for strongly negative skew; a family's variants judged together | slow families judged sooner | 1–2 days |
 | Checks other projects have: per-agent matched monkeys (100 random-entry twins with the same stops and holding times), Monte Carlo of trades, a cost "speed limit" in `check-agent` (it would have caught intraday-momentum), paper-vs-demo slippage per agent, lookahead and warm-up checks | "is the edge in the entry or in the stop?"; broken agents spotted early | about 1 day each |
 | Controls for timing agents: the same average exposure on shuffled dates; a warning when many mirrored runs pile into one instrument; a check that the monkeys never use information from before their entry | tells timing skill from exposure; avoids an accidental one-bet book | ~1 day each |
 | Start recording free data now: Capital.com client sentiment (% long per market), Kalshi FOMC and CPI odds | sentiment-fade and macro-surprise studies in 6 months | ~1 day |

@@ -1,6 +1,6 @@
 import { networkStats, percentile } from '../capital/telemetry.ts';
 import { computeMetrics } from '../engine/metrics.ts';
-import { isShadow, backtestGate, STAGE, tradeT } from './pipeline.ts';
+import { isShadow, backtestGate, STAGE } from './pipeline.ts';
 /**
  * Arena HTTP API (127.0.0.1 only; the dashboard calls it server-side, the lab
  * pushes backtests to it over loopback). Mutating endpoints need the
@@ -373,16 +373,6 @@ function leaderboard(arena: Arena, kind: typeof RUN_KIND.DEMO | typeof RUN_KIND.
       scenario: extra.scenario ?? 'standard',
       comparisonOnly: isShadow(r.id),
       ...(extra.demoAdmission ? { demoAdmission: extra.demoAdmission } : {}),
-      ...(demotions[r.id] || dependency
-        ? {
-            observation: {
-              since: demotions[r.id]?.at??r.started_at,
-              trades: (arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= (demotions[r.id]?.at??0)).length,
-              tStat: tradeT((arena.tracked.get(r.id)?.run.trades ?? []).filter(t => t.entryTime >= (demotions[r.id]?.at??0))),
-              pausedMs:dependency?.pausedMs??0,
-            },
-          }
-        : {}),
       stageReason:
         kind === RUN_KIND.BACKTEST
           ? backtestGate(r, a?.code_hash ?? r.code_hash, a?.slug ?? r.agent_id).reason

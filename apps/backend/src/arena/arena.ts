@@ -9,9 +9,10 @@ import {
   VIRTUAL_RUN_CAP,
   SHADOW_MARKER,
   isShadow,
-  virtualEligible,
-  tradeT,
+  isCandidate,
+  loserMature,
 } from './pipeline.ts';
+import { Judging, judgedT } from './judging.ts';
 import { runKey,PRIMARY_BACKTEST_WINDOW_ID } from '../engine/run-id.ts';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 /**
@@ -97,6 +98,8 @@ export class Arena {
   readonly forecastAvailability: ForecastAvailability;
   /** Treasury bill and CPI series for the cash and inflation comparisons. */
   readonly rates: Rates;
+  /** The daily clock records are judged on: candidates for Capital slots, losing evidence, the evidence shown. */
+  readonly judging: Judging;
   readonly broker: BrokerMirror | null;
   private readonly agentsDir?: string;
   private readonly liveMode: boolean;
@@ -140,6 +143,7 @@ export class Arena {
     this.forecasts = new LiveForecastProvider(opts.forecasterUrl);
     this.forecastAvailability = new ForecastAvailability(opts.db);
     this.rates = new Rates(opts.db);
+    this.judging = new Judging(opts.db);
     this.broker = opts.broker;
     this.agentsDir = opts.agentsDir;
     this.liveMode = opts.live !== false;
@@ -768,9 +772,8 @@ export class Arena {
       const pausedMs = t.agent.def.forecast ? (this.forecastAvailability.evidence(since,now)?.pausedMs??0) : 0;
       const days = Math.max(0,now-since-pausedMs) / DAY_MS;
       const trades = t.run.trades.filter(tr => tr.entryTime >= (demoted?.at ?? 0));
-      const mature =
-        (trades.length >= LIFECYCLE.MIN_TRADES && days >= LIFECYCLE.MIN_DAYS) ||
-        (trades.length >= LIFECYCLE.SLOW_MIN_TRADES && days >= LIFECYCLE.SLOW_MIN_DAYS);
+      // Judged on the daily clock since its start (or its demotion from Capital), like the candidates.
+      const daily = judgedT(this.judging.forward(row, since, now), this.judging.backtestFor(row, now)?.daily);
       const reason =
         t.run.status === RUN_STATUS.BUSTED
           ? 'virtual account busted'
@@ -778,15 +781,15 @@ export class Arena {
             ? 'agent errors'
             : trades.length === 0 && !t.run.position && days >= silentDaysFor(t.agent.id)
               ? `no trades in ${silentDaysFor(t.agent.id)} days`
-              : mature && tradeT(trades) <= LIFECYCLE.RETIRE_TSTAT
-                ? 'losing virtual trade evidence'
+              : loserMature(trades.length, days) && daily <= LIFECYCLE.RETIRE_TSTAT
+                ? 'losing virtual evidence'
                 : null;
       if (!reason) continue;
       if (this.broker?.mirroredRuns.includes(id)) {
         this.broker.demoteToVirtual(id, reason);
         continue;
       }
-      if (demoted && days < LIFECYCLE.MIN_DAYS) continue;
+      if (demoted && days < LIFECYCLE.REENTRY_DAYS) continue;
       t.run.stop();
       // Persist the close before archiving the run.
       for (let i = t.persistedTrades; i < t.run.trades.length; i++) this.db.appendTrade(id, i, t.run.trades[i]!);
@@ -828,22 +831,27 @@ export class Arena {
     const out: MirrorCandidate[] = [];
     const now = Date.now();
     const demotions = this.db.getSetting<Record<string, { at: number }>>('broker.demotions', {});
+    // The daily t of a record since `since`, its volatility never below its same-code backtest's (judging.ts).
+    const dailyT = (t: Tracked, since: number) =>
+      judgedT(
+        this.judging.forward({ id: t.run.runId, capital: t.run.capital, started_at: t.startedAt }, since, now),
+        this.judging.backtestFor({ agent_id: t.agent.id, epic: t.epic, leverage: t.leverage, code_hash: t.agent.codeHash }, now)?.daily,
+      );
     const monkeys = new Map<string, number>();
     for (const t of this.tracked.values())
       if (!isShadow(t.run.runId) && t.agent.slug === 'random-baseline')
-        monkeys.set(t.epic, Math.max(monkeys.get(t.epic) ?? -Infinity, tradeT(t.run.trades)));
+        monkeys.set(t.epic, Math.max(monkeys.get(t.epic) ?? -Infinity, dailyT(t, t.startedAt)));
 
     for (const t of this.tracked.values()) {
       if (t.run.status !== RUN_STATUS.RUNNING || isShadow(t.run.runId)) continue;
       const p = t.run.position;
       const since = demotions[t.run.runId]?.at ?? t.startedAt;
       const dependency = t.agent.def.forecast ? this.forecastAvailability.evidence(since,now) : undefined;
-      const eligible = (!dependency || dependency.state === 'available') && virtualEligible(
-        t.run.trades.filter(tr => tr.entryTime >= (demotions[t.run.runId]?.at ?? 0)),
-        since + (dependency?.pausedMs??0),
-        now,
-        monkeys.get(t.epic) ?? 0,
-      );
+      // Evidence since its last demotion: trades entered and days observed since then, known forecast outages removed.
+      const trades = demotions[t.run.runId] ? t.run.trades.filter(tr => tr.entryTime >= demotions[t.run.runId]!.at).length : t.run.trades.length;
+      const days = Math.max(0, now - since - (dependency?.pausedMs ?? 0)) / DAY_MS;
+      const daily = dailyT(t, since);
+      const eligible = (!dependency || dependency.state === 'available') && isCandidate(trades, days, daily, monkeys.get(t.epic) ?? null);
       // This bypass is admission-only: normal demotion and safety rules still apply.
       const experiment = !demotions[t.run.runId] && !!demoAdmissionFor(this.roster!, t.agent.id, t.epic, t.leverage, t.agent.codeHash);
       out.push({
@@ -864,8 +872,8 @@ export class Arena {
             }
           : null,
         pendingOpen: t.run.pendingOpen,
-        // Ranked on the same trades that made it eligible: those since its last demotion.
-        score: eligible ? tradeT(t.run.trades.filter(tr => tr.entryTime >= (demotions[t.run.runId]?.at ?? 0))) : -1_000_000,
+        // Ranked on the same evidence that made it eligible: its daily t since its last demotion.
+        score: eligible ? daily : -1_000_000,
         specialAdmission: experiment,
         eligible: eligible || experiment,
       });
