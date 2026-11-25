@@ -346,15 +346,15 @@
     "description": "Control for US100 base: trades exactly its eligible nights (10:30–15:30 NY day, any overnight counter-move, 1:20, 50% loss limit, 02:27 New York exit), but always long or in a random direction instead of following the previous day."
   },
   "visar-night-v4-us500": {
-    "hash": "c32f1cc9101a",
+    "hash": "0e6fcda9cad8",
     "timeframe": "1m",
     "extra": [],
-    "description": "US500 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). Frozen 03:27/08:27 Tirana clocks, 1:20. User-requested Capital demo research."
+    "description": "US500 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). New York clocks: 16:00 close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:20. User-requested Capital demo research."
   },
   "visar-night-v4-us100": {
-    "hash": "82461f1916df",
+    "hash": "506d56ed693e",
     "timeframe": "1m",
     "extra": [],
-    "description": "US100 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). Frozen 03:27/08:27 Tirana clocks, 1:20. User-requested Capital demo research."
+    "description": "US100 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). New York clocks: 16:00 close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:20. User-requested Capital demo research."
   }
 }

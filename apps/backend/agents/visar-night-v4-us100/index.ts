@@ -10,7 +10,7 @@ const anyDay = { trendPct: 0, minEfficiency: 0, minDirectionalShare: 0, maxRetra
 export default defineAgent({
   ...reference,
   name: 'Visar US100 night v4',
-  description: 'US100 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). Frozen 03:27/08:27 Tirana clocks, 1:20. User-requested Capital demo research.',
+  description: 'US100 night directions looser than the base: weaker day shape (loose-body), no overnight pullback needed (no-pullback), any up or down day (any-day), every weeknight (every-night) and the full NY day (full-day). New York clocks: 16:00 close, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in Tirana outside the clock-change weeks), 1:20. User-requested Capital demo research.',
   instruments: ['US100'],
   author: 'Visar / platform research',
   leverage: [20],
