@@ -45,76 +45,27 @@ Authelia. Repo-wide map and hard rules: [`../../setup.md`](../../setup.md); what
 
 ## Night Lab PWA
 
-`/night-lab/` redirects to the standalone installable `/night-lab/index.html` report. It has its own
+`/night-lab/` redirects to the standalone installable `/night-lab/index.html` page. It has its own
 manifest and service-worker scope and uses the ordinary Trader hosting/authentication; it needs no
-extra server. All 20,736 risk settings and 192 equity charts are shown (each section renders as it nears the screen): both NY windows,
-six day policies, four gap thresholds, nine leverage tiers, six loss targets and four profit exits.
-Exit choices are deadline-only or+20/+50/+100% of trade-entry capital, always with the loss stop
-and08:27Tirana deadline. Exit-mix bars show original1:200/50% risk; dimension summaries/curves use
-1:20/20%. Target-hit counts distinguish binding exits from historically unused thresholds. There is no gap
-selector or accordion. Each policy groups all four exit choices and their four gap charts before its detailed tables. Baseline
-trade paths show threshold membership without duplicating the same setup. CSV/JSON exports retain
-full precision. The historical
-study is frozen to January 2024–September 2026; `/night-lab/forward.json` updates only the twenty
-current cohort rows. Partial/outage responses preserve the bounded last complete snapshot offline.
-Forward schema3 includes source hashes. Both client and worker require complete, unique exact
-source/instrument/tier membership (the worker checks against the cohort of the saved summary). The
-server reads only the cohort's agents from the arena (`agents=`) and shares one read across tabs for 20 s.
-The live cohort is research/night-cohort-v4-20261122.json; the study's original selection and its
-finite-history constraints are in research/night-cohort-20261109.json. Reproduce that one with
-ops/lab/select-night-cohort.py before changing the frozen choice; new source-specific
-backtests are verified by ops/lab/verify-night-cohort.py against the raw study cells.
-Each historical strategy and dashed chart benchmark uses its own instrument's 1:1 hold:
-US500 against US500, US100 against US100, on the same dates and with zero overnight funding.
+extra server. All clocks are New York time (16:00 close reference, 21:27 entry Mon–Thu, 02:27 exit).
 
-The study's replays keep Tirana clocks (22:00, 03:27, 08:27). The cohort table shows the running agents,
-whose clocks are New York's (16:00, 21:27, 02:27) and differ from the study's only in the weeks when Europe
-and the US change their clocks apart.
+It renders four current sections:
+- **Matched 1:1 hold benchmarks** (`US500` and `US100` over `2024-01-01`–`2026-09-30`, zero funding).
+- **20 forward experiments** (`research/night-cohort-v5-20261125.json`): NY-clock backtest metrics plus
+  live virtual and Capital demo results polled from `/night-lab/forward.json` (schema 3, source-hash
+  pinned, reading only the 20 cohort agents and shared across tabs for 20 s).
+- **Direction controls**: same eligible nights as each index's base agent (previous day vs always long
+  vs coin flip).
+- **Nightly paper grid** (`/night-lab/grid.json`, built nightly by `apps/backend/src/lab/night-study/forward-grid.ts`
+  and published to `trader-ui/night-grid/`): 540 NY-clock settings per index (`NY window × day filter ×
+  overnight gap × leverage × side`) replayed from the first night after the backtest window.
 
-Data model: the published report is one SQLite file, written once per report by
-`python3 ops/lab/build-night-lab.py` (repo root, inside trader.slice) through `ops/lab/night_lab_db.py`.
-Tables hold every risk setting (`runs`, keyed by index, NY window, gap, profit exit, policy and profile),
-the equity curves, the trade ledgers, the cohort and the hold benchmarks; a small JSON skeleton keeps
-the rest, so `report.json` is rebuilt from it byte for byte. The CSV and JSON downloads are stored
-gzip-compressed, compressed once by the lab. The lab's copy is `apps/backend/data/night-lab/night-lab.db`
-(not in git); the builder and `ops/lab/nightly.sh` publish it to `trader-ui/night-lab/night-lab.db`,
-which deploys carry forward (`NIGHT_LAB_DB` overrides the path). Nothing data-sized is in `static/` or
-the UI build. `python3 ops/lab/night_lab_db.py report` prints the full report; `info` shows its version.
-`night_lab_db.py import --report … --exports …` rebuilds the database from a report and its exports (the
-original files are in git at df48bd0, `apps/ui/static/night-lab/`).
-
-Serving (`src/lib/server/night-lab.ts`, routes under `/night-lab/data/`): `summary.json` (benchmarks,
-cohort, events and every 1:20 /20% setting, enough for first paint, revalidated with an ETag) and
-`{version}/policy/{index}/{policy}.json` (one day policy's 1,728 settings and 32 curves),
-`{version}/ledger/{index}/{window}.json`, `{version}/stocks.json`, which never change for a version.
-Each response is built and compressed once per report version and kept in memory; a new publish is
-picked up by file identity. `/night-lab/report.json` and the CSVs keep their URLs. The page
-(`static/night-lab/index.html`, `night-lab.js`) renders each section when it nears the screen; the worker
-(`sw.js`) caches the shell and the sections viewed, never the downloads. The study is not in the page source,
-so a section that has not been viewed is not available offline.
-Generated data contains derived research and public market facts, never
-credentials, account identifiers or captured raw ticks. Current constituent purchase estimates
-are snapshots, not a reconstruction of historical index membership. Source URLs/as-of dates,
-whole-share assumptions, CFD coverage gaps and benchmark limitations remain in the report.
-
-Research source: `apps/backend/src/lab/night-study/`. `replay.ts EPIC SHARD` produces the central
-window control grids (two shards per instrument); `ops/lab/night_study_data.py` independently joins
-signals, features, context and ledgers. `gap-replay.ts EPIC full|central` evaluates all four gap
-minimums and refuses results unless every zero-gap financial control exactly matches the full
-strategy replay. Run the Python preparation again after gap replays, then publish with the builder.
-Profit sweep: exit-replay.ts EPIC full|central and ops/lab/night_exit_data.py; results are in
-night-exit-study-20261109/. All5,184deadline controls must exactly match the prior study.
-exit-sensitivity.ts EPIC runs the selected source versions on three additional quote paths;
-the report shows full ranges, including unfavorable results. Sections carry only rendered fields at
-full precision; report.json/CSV retain full derived data.
-Raw derived inputs stay in `apps/backend/data/night-session-study-20261109/`; existing full-window
-inputs remain in `night-breakdown-20261109/`. All heavy work belongs inside trader.slice.
-
-Major-event context lives in `research/night-lab-events.json`, with scheduled policy dates from the
-SDK calendar. It is curated historical context, not a live/exhaustive news feed or trading filter.
-Unknown timing stays unknown; source links and rarity counts are visible. Calendar updates must not
-be chosen by trade P&L or mark every routine release as major. The generator caps flagged-session
-share at15% and retains source/execution timing distinctions.
+Summary data (`src/lib/server/night-lab-summary.json` and `night-lab-cohort.json`) is generated by
+`python3 ops/lab/build-night-lab.py` from the current NY-clock backtests and candle hold benchmarks,
+served at `/night-lab/data/summary.json` via `src/lib/server/night-lab.ts` with ETag and Brotli/gzip
+negotiation. The service worker (`static/night-lab/sw.js`) caches the shell, summary, last complete
+forward snapshot and last complete grid offline. Generated data contains derived research and public
+market facts only—never credentials, account identifiers or raw captured ticks.
 
 ## Develop
 

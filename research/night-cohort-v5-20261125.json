@@ -2,7 +2,7 @@
   "date": "2026-11-25",
   "revision": "v5",
   "requestedBy": "user",
-  "method": "The v4 cohort with its clocks moved from Tirana to New York on the user’s request: the 16:00 close as reference, entry 21:27, exit 02:27 (22:00, 03:27 and 08:27 in Tirana outside the weeks when Europe and the US change their clocks apart). Every member is the same setting as in v4 with a new source version, so all twenty forward records restart; the study behind the grid tables used Tirana clocks. Base: 10:30–15:30 NY day, standard day filter, any overnight counter-move, 1:20, 50% loss limit, 02:27 New York exit. Members: the original US500 and US100 full-day-200, the base, the 1:200 points and the direction controls, and five looser variants per index at 1:20: weaker day shape, no pullback needed, any up or down day, every weeknight and the full NY day. Selected on design and entry frequency, not on backtest returns.",
+  "method": "Base: 10:30–15:30 NY day, standard day filter, any overnight counter-move below/above the 16:00 NY close, 1:20, 50% loss limit, 21:27 NY entry, 02:27 NY exit. Members: the original US500 and US100 full-day-200, the base, the 1:200 points and the direction controls, and five looser variants per index at 1:20: weaker day shape, no pullback needed, any up or down day, every weeknight and the full NY day. Selected on design and entry frequency, not on backtest returns.",
   "base": {
     "window": "central",
     "day": "Standard",
@@ -12,7 +12,6 @@
     "lossPct": 50,
     "side": "previous day"
   },
-  "previous": "research/night-cohort-v4-20261122.json",
   "members": [
     {
       "id": "visar-night-trading",

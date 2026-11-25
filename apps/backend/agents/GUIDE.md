@@ -126,7 +126,7 @@ from the arena's one-second clock; Capital closes are also requested independent
 Both survive restarts. The actual fill follows market availability, the execution delay and, on Capital,
 the mirror's request queue. In a
 backtest, a missing exit minute closes at the next observed candle's open instead of inventing a price.
-`TZ.TIRANA` provides DST-aware Albania time. See `visar-night-trading.ts` for a complete example.
+See `visar-night-trading.ts` for a complete `TZ.NEW_YORK` minute-clock example.
 
 Stop prices are absolute prices and must be on the correct side (long stop below the price,
 long take-profit above). Invalid orders are rejected and logged, not thrown.
