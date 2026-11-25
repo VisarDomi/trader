@@ -33,25 +33,31 @@
 </script>
 
 <div class="stack">
-	<header class="stack" style="gap: 6px">
+	<header class="row" style="justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px">
 		<h1>Agents</h1>
-
+		<div class="row" style="gap: 10px; font-size: 13px">
+			<a href="/strategies/sharpe-guide">Sharpe &amp; Trust guide</a>
+			{#if data.researchedCount}<span class="muted">· {data.researchedCount} SOTA briefs attached</span>{/if}
+		</div>
 	</header>
 	{#if data.error}<div class="card"><span class="status-dot status-critical"></span>{data.error}</div>{/if}
 	<input type="search" placeholder="Search agents" bind:value={query} style="max-width: 320px" />
 
 	<div class="grid">
 		{#each groups as [slug, variants] (slug)}
+			{@const brief = data.briefs[slug]}
 			<article class="card">
 				<div class="row" style="justify-content: space-between">
 					<h3>{variants[0]!.name.replace(/ \(.*\)$/, '')}</h3>
-					<div class="row" style="gap: 4px">
+					<div class="row" style="gap: 4px; flex-wrap: wrap; justify-content: flex-end">
+						{#if brief}<a class="badge" href="/strategies/{brief.id}">SOTA: {brief.verdict}</a>{/if}
 						<span class="badge">{variants[0]!.timeframe}</span>
 						{#if variants[0]!.usesForecast}<span class="badge">TimesFM</span>{/if}
 						{#if CONTROL_SLUGS.has(slug)}<span class="badge">control</span>{/if}
 					</div>
 				</div>
 				<p class="secondary desc">{variants[0]!.description}</p>
+				{#if brief}<p class="small"><a href="/strategies/{brief.id}">Read SOTA brief →</a></p>{/if}
 				<p class="muted small">{variants[0]!.instruments.join(' · ')}</p>
 				<table class="data small">
 					<thead>

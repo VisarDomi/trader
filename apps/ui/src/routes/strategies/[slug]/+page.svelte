@@ -4,7 +4,7 @@
 	const toneClass = (tone: number | null) => (tone === 1 ? 'good' : tone === -1 ? 'bad' : tone === 0 ? 'warn' : '');
 </script>
 
-<p class="back"><a href="/strategies">← All strategies</a></p>
+<p class="back"><a href="/agents">← Agents</a></p>
 
 <header class="card summary">
 	<div class="top">

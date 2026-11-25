@@ -3,11 +3,11 @@ import type { LeaderboardRow, RunDetail } from '@trader/shared';
 import { arena } from '../arena';
 import { inspection } from '../inspection';
 import { doc, sources, topics } from '../research';
-import { buildStrategyCatalog, findStrategy } from '../strategies';
+import { buildStrategyCatalog, findStrategy, findStrategyDocForSlug } from '../strategies';
 import { PLATFORM_HISTORY } from '$lib/platform-history';
 import {
 	accountScreen, accountsScreen, agentScreen, agentsScreen, archiveScreen, documentScreen, graveyardScreen, portfolioScreen, rankingsScreen, runScreen,
-	scenariosScreen, sourceScreen, statusScreen, strategiesScreen, strategyDetailScreen, tradeScreen, verdicts, type Sparks,
+	scenariosScreen, sourceScreen, statusScreen, strategyDetailScreen, tradeScreen, verdicts, type Sparks,
 } from './screens';
 import type { Screen } from './wire';
 
@@ -38,13 +38,15 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 				stage === 'backtest' ? [] : portfolios().catch(() => [])]);
 			return rankingsScreen(verdicts(rows, stage), stage, scenario, held);
 		}
-		case 'strategies': return strategiesScreen(buildStrategyCatalog(await agentList().catch(() => [])));
-		case 'agents': return agentsScreen(await agentList());
+		case 'agents': {
+			const agents = await agentList();
+			return agentsScreen(agents, buildStrategyCatalog(agents));
+		}
 		case 'agent': {
 			const agent = await arena.agent(id);
 			const liveRuns = agent.runs.filter(r => r.kind === 'demo' && r.status !== 'retired' && !r.id.includes(':delay='));
 			const [runs, board, lines, tested] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id))), backtestBoard().catch((): LeaderboardRow[] => [])]);
-			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))) });
+			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))), strategy: findStrategyDocForSlug(agent.slug) });
 		}
 		case 'run': {
 			const run: RunDetail = await arena.run(id, 2000);

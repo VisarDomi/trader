@@ -274,3 +274,10 @@ export function buildStrategyCatalog(agents: AgentListItem[]): StrategyCatalog {
 export function findStrategy(catalog: StrategyCatalog, id: string): StrategyEntry | null {
 	return catalog.all.find(x => x.id === id) ?? null;
 }
+
+/** Finds a researched markdown brief matching an agent slug (no arena call needed). */
+export function findStrategyDocForSlug(slug: string): StrategyDoc | null {
+	return DOCS.find(d => d.group === 'strategy' && d.status === 'researched' && (d.slugs.includes(slug) || d.id === slug)) ?? null;
+}
+
+export { plainNativeBlocks, stripMarkdownInline } from './strategy-text';

@@ -42,6 +42,20 @@
 		</div>
 	</header>
 
+	{#if data.brief}
+		<section class="card stack" style="gap: 6px">
+			<div class="row" style="justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px">
+				<h2>SOTA brief · {data.brief.name}</h2>
+				<span class="badge">{data.brief.verdict}</span>
+			</div>
+			<p class="secondary" style="margin: 0">{data.brief.tldr}</p>
+			<div class="row" style="justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12.5px">
+				<span class="muted">{[data.brief.bestFit, data.brief.expectedEdge].filter(Boolean).join(' · ')}</span>
+				<a href="/strategies/{data.brief.id}">Read full SOTA brief →</a>
+			</div>
+		</section>
+	{/if}
+
 	{#if data.family[0]&&data.family[0].family.everRecords>1}<FamilyView views={data.family}/>{/if}
     <section class="card"><h2>Virtual return by market</h2><ValueBars height={460} items={agent.runs.filter(r=>r.kind==='demo'&&r.status!=='retired'&&r.metrics).map(r=>({label:`${r.epic} · 1:${r.leverage}`,value:r.metrics!.totalReturn*100,href:`/runs/${encodeURIComponent(r.id)}`}))}/></section>
 	<section class="card">

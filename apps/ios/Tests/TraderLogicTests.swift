@@ -55,9 +55,20 @@ private func packed32(_ xs:[Float])->String {xs.withUnsafeBytes{Data($0)}.base64
     #expect(Route(screen:.run,id:id).cacheKey=="run?id=demo%3Avisar-night-v3-us100%2Ffull-day-200%3AUS100%3Ax200%3A6d175db7dd11")
     #expect(Route(screen:.trade,id:"demo:x",stage:"capital",version:"6706").cacheKey=="trade?id=demo%3Ax&trade=6706&stage=capital")
     #expect(Route(screen:.rankings,stage:"virtual",scenario:"delay=500").cacheKey=="rankings?stage=virtual&scenario=delay%3D500")
-    #expect(Route(screen:.strategies).cacheKey=="strategies")
+    #expect(Route(screen:.document,id:"strategy-sharpe-guide").cacheKey=="document?id=strategy-sharpe-guide")
     #expect(Route(screen:.document,id:"strategy-tsmom-12m").cacheKey=="document?id=strategy-tsmom-12m")
-    #expect(Route(screen:.more).cacheKey.isEmpty && Presentation.local(Route(screen:.more)) != nil)
+    let explore=Presentation.local(Route(screen:.more))
+    #expect(Route(screen:.more).cacheKey.isEmpty && explore?.sections[0].rows.first?.id=="sharpe-trust")
+}
+@Test func agentsSearchPreservesBriefSectionsAndUpdatesVariantCount() throws {
+    let c=try screen("""
+    {"v":2,"title":"Agents","sections":[
+     {"title":"SOTA strategy briefs · 1","rows":[{"id":"strategy-tsmom-12m","title":"Time-Series Momentum (12M)","body":"Trend"}]},
+     {"title":"2 active variants","rows":[{"id":"tsmom-12m","title":"Time-Series Momentum","route":{"screen":"agent","id":"tsmom-12m"}},{"id":"ibs-dip","title":"IBS Dip","route":{"screen":"agent","id":"ibs-dip"}}]}
+    ]}
+    """)
+    let filtered=Presentation.view(c,route:Route(screen:.agents),query:"momentum",sort:0)
+    #expect(filtered.sections.map(\.title)==["SOTA strategy briefs · 1","1 active variants"])
 }
 @Test func savedNavigationRoutesStillDecode() throws {
     // Routes written by the previous app version (every key present) and routes sent by the server (only some).

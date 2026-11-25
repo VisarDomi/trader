@@ -16,14 +16,14 @@ final class AppDelegate:UIResponder,UIApplicationDelegate {
 final class TraderTabs:UITabBarController,UITabBarControllerDelegate {
     init(startup:Startup) {
         super.init(nibName:nil,bundle:nil)
-        let labels=["Rankings","Strategies","Agents","Accounts","Explore"],icons=["chart.bar.xaxis","text.book.closed","person.3.sequence","building.columns","square.grid.2x2"]
+        let labels=["Rankings","Agents","Accounts","Explore"],icons=["chart.bar.xaxis","person.3.sequence","building.columns","square.grid.2x2"]
         viewControllers=AppFiles.roots.enumerated().map { i,root in
             let factory:LiveNavigationController.Factory={data,state in
                 guard let route=try? JSONDecoder().decode(Route.self,from:data) else{return nil}
                 let s=state.flatMap{try? JSONDecoder().decode(ScreenState.self,from:$0)} ?? ScreenState()
                 return ScreenController(route:route,state:s,prepared:startup.contents[AppFiles.key(route,s)])
             }
-            let nav=LiveNavigationController(file:AppFiles.navigation(i),factory:factory,root:ScreenController(route:root,prepared:startup.contents[AppFiles.key(root,ScreenState())]))
+            let nav=LiveNavigationController(file:AppFiles.navigation(root.screen),factory:factory,root:ScreenController(route:root,prepared:startup.contents[AppFiles.key(root,ScreenState())]))
             nav.tabBarItem=UITabBarItem(title:labels[i],image:UIImage(systemName:icons[i]),tag:i)
             nav.navigationBar.tintColor = .systemTeal
             return nav

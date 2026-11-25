@@ -17,7 +17,7 @@ UI=Path.home()/'.local/share/hetzner-pc/mirror'/env_value('TRADER_SERVER_HOME').
 SERVER=env_value('TRADER_SERVER_SSH')
 # The native API v2: screens built on the server, revalidated by ETag. Keep the list in step with
 # NATIVE_SCREENS in apps/ui/src/lib/server/native-contract.ts.
-SCREENS=['rankings','strategies','agents','agent','run','trade','accounts','account','status','scenarios','graveyard','archive','journal','research','document','source','mirror','exclude']
+SCREENS=['rankings','agents','agent','run','trade','accounts','account','status','scenarios','graveyard','archive','journal','research','document','source','mirror','exclude']
 SITE='trader.veron3.space'
 
 def private_write(path,data):

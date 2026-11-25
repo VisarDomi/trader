@@ -1,6 +1,6 @@
 import Foundation
 
-enum Screen: String, Codable, Sendable, Hashable { case rankings, strategies, agents, agent, run, trade, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
+enum Screen: String, Codable, Sendable, Hashable { case rankings, agents, agent, run, trade, accounts, account, more, status, scenarios, graveyard, archive, journal, research, document, source, connection, external }
 
 /** Where a screen is: saved in navigation stacks, sent by the server on rows, and the key of its stored copy. */
 struct Route: Codable, Sendable, Hashable {
@@ -21,7 +21,7 @@ struct Route: Codable, Sendable, Hashable {
     var cacheKey: String {
         switch screen {
         case .rankings: return "rankings?stage=\(stage)"+(scenario.map{"&scenario=\(Route.q($0))"} ?? "")
-        case .strategies,.agents,.accounts,.status,.scenarios,.graveyard,.journal,.research: return screen.rawValue
+        case .agents,.accounts,.status,.scenarios,.graveyard,.journal,.research: return screen.rawValue
         case .agent,.account,.archive,.document: return "\(screen.rawValue)?id=\(Route.q(id))"
         case .source: return "source?id=\(Route.q(id))&version=\(Route.q(version))"
         // One record shows paper and Capital demo together, so every stage shares one stored copy.
@@ -62,9 +62,12 @@ enum Presentation {
         guard !query.trimmingCharacters(in:.whitespaces).isEmpty else{return out}
         out.sections=out.sections.map{Section(title:$0.title,rows:$0.rows.filter{matches($0,query:query)})}.filter{!$0.rows.isEmpty}
         if !out.sections.isEmpty {
-            let n=out.sections[0].rows.count
-            if route.screen == .agents {out.sections[0].title="\(n) active variants"}
-            else if route.screen == .rankings,let dot=out.sections[0].title.range(of:" · ",options:.backwards) {out.sections[0].title=String(out.sections[0].title[..<dot.lowerBound])+" · \(n) records"}
+            if route.screen == .agents {
+                for i in out.sections.indices where out.sections[i].title.hasSuffix("active variants") {
+                    out.sections[i].title="\(out.sections[i].rows.count) active variants"
+                }
+            }
+            else if route.screen == .rankings,let dot=out.sections[0].title.range(of:" · ",options:.backwards) {out.sections[0].title=String(out.sections[0].title[..<dot.lowerBound])+" · \(out.sections[0].rows.count) records"}
         }
         return out
     }
@@ -73,6 +76,7 @@ enum Presentation {
         switch route.screen {
         case .more:
             return Content(title:"Explore",sections:[Section(title:"",rows:[
+                Row(id:"sharpe-trust",title:"Sharpe & Trust",subtitle:"Why high Sharpe lies and how Trader confirms an edge",route:Route(screen:.document,id:"strategy-sharpe-guide",title:"Sharpe & Trust")),
                 Row(id:"status",title:"Status",route:Route(screen:.status)),
                 Row(id:"scenarios",title:"Execution comparisons",route:Route(screen:.scenarios)),
                 Row(id:"graveyard",title:"Graveyard",route:Route(screen:.graveyard)),

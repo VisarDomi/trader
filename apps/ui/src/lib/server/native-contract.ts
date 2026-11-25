@@ -6,7 +6,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 
-export const NATIVE_SCREENS = ['rankings', 'strategies', 'agents', 'agent', 'run', 'trade', 'accounts', 'account', 'status', 'scenarios', 'graveyard', 'archive', 'journal', 'research', 'document', 'source'] as const;
+export const NATIVE_SCREENS = ['rankings', 'agents', 'agent', 'run', 'trade', 'accounts', 'account', 'status', 'scenarios', 'graveyard', 'archive', 'journal', 'research', 'document', 'source'] as const;
 export type NativeScreen = typeof NATIVE_SCREENS[number];
 const MUTATIONS = ['mirror', 'exclude'];
 const base = { 'Cache-Control': 'private, no-cache', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding' };

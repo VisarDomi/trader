@@ -20,9 +20,9 @@ enum TraderError: Error, Equatable { case pairing, unavailable }
 enum AppFiles {
     static var root: URL { FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("Trader",isDirectory:true) }
     static var bootstrap: URL { FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("TraderPairing.json") }
-    static func navigation(_ index:Int) -> URL { root.appendingPathComponent("navigation-\(index).json") }
+    static func navigation(_ screen:Screen) -> URL { root.appendingPathComponent("navigation-\(screen.rawValue).json") }
     static func key(_ route:Route,_ state:ScreenState) -> String { "\(route.screen.rawValue)|\(route.cacheKey)|\(route.id)|\(route.version)|\(state.query)|\(state.sort)" }
-    static let roots = [Route(screen:.rankings),Route(screen:.strategies),Route(screen:.agents),Route(screen:.accounts),Route(screen:.more)]
+    static let roots = [Route(screen:.rankings),Route(screen:.agents),Route(screen:.accounts),Route(screen:.more)]
 }
 
 enum Keychain {
@@ -125,12 +125,12 @@ actor TraderStore {
         var state=(db.value("app").flatMap{try? JSONDecoder().decode(AppState.self,from:$0)}) ?? AppState()
         let legacy=AppFiles.root.appendingPathComponent("app-state.json")
         if let old=try? DurableFile.readJSON(AppState.self,from:legacy) {state=old;if let data=try? JSONEncoder().encode(old){db.set("app",data)}}
-        for name in ["responses.json","app-state.json"] {try? FileManager.default.removeItem(at:AppFiles.root.appendingPathComponent(name))}
+        for name in ["responses.json","app-state.json","navigation-0.json","navigation-1.json","navigation-2.json","navigation-3.json","navigation-4.json"] {try? FileManager.default.removeItem(at:AppFiles.root.appendingPathComponent(name))}
         // The first frame needs each tab's visible screen; the screens under them load when they are rebuilt.
         var contents:[String:Content]=[:]
-        for (i,root) in AppFiles.roots.enumerated() {
+        for root in AppFiles.roots {
             var entries=[SavedStack.Entry(route:(try? JSONEncoder().encode(root)) ?? Data(),state:nil)]
-            if let stack=try? DurableFile.readJSON(SavedStack.self,from:AppFiles.navigation(i)),let top=stack.back.last {entries.append(top)}
+            if let stack=try? DurableFile.readJSON(SavedStack.self,from:AppFiles.navigation(root.screen)),let top=stack.back.last {entries.append(top)}
             for entry in entries {
                 guard let route=try? JSONDecoder().decode(Route.self,from:entry.route) else{continue}
                 let screenState=entry.state.flatMap{try? JSONDecoder().decode(ScreenState.self,from:$0)} ?? ScreenState()

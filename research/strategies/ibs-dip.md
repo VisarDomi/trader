@@ -26,7 +26,7 @@ At the 16:00 New York cash close (built from 30m bars), `ibs-dip.ts` computes `I
 
 ## What the SOTA says
 
-- **Pagonidis (2013, QUSMA / NAAIM):** Documented strong next-day mean reversion in equity ETFs: low-IBS closes ($\le 0.20$) averaged roughly **+0.35%** the next day vs. **−0.13%** after high-IBS closes ($\ge 0.80$).
+- **Pagonidis (2013, QUSMA / NAAIM):** Documented strong next-day mean reversion in equity ETFs: low-IBS closes (≤ 0.20) averaged roughly **+0.35%** the next day vs. **−0.13%** after high-IBS closes (≥ 0.80).
 - **International out-of-sample validation (Pandey & Joshi 2023):** Confirmed the IBS effect across global country ETFs outside the original US sample.
 - **Independent hobbyist stress test (2026):** In a controlled test of 100+ retail strategies (~700 variants, realistic costs, delisted data, and random-entry baselines), trend-filtered index dip-buying (IBS / RSI(2) / 3 down days above SMA200) was one of the handful of rules that survived.
 - **Why it may persist:** End-of-day institutional rebalancing, dealer hedging, and retail panic selling push cash closes temporarily below fair value; liquidity providers earn a small overnight bounce for taking the other side.

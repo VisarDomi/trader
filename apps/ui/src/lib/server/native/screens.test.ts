@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen, portfolioRow, portfolioScreen, strategiesScreen, strategyDetailScreen } from './screens';
+import { riskGuides, runTrades, tradeRow, rankingRow, rankingsScreen, hurdlesRow, holdParts, frequencyRow, runScreen, clockRow, verdicts, familyRow, standingRow, agentScreen, agentsScreen, portfolioRow, portfolioScreen, strategyDetailScreen } from './screens';
 import { agreementLine, barsLine, clockLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, spanText, standingLine, standingTitle } from '../../clock';
 import { frequencyLine, winsLine } from '../../frequency';
 import { thin, f32, f64 } from './wire';
@@ -246,26 +246,49 @@ test('thinning keeps extremes and packing round-trips', () => {
 	expect([...new Float64Array(Buffer.from(f64([1.5, 1794882420703]), 'base64').buffer.slice(0))].length).toBeGreaterThan(0);
 	expect(new Float32Array(new Uint8Array(Buffer.from(f32([27272.5]), 'base64')).buffer)[0]).toBe(27272.5);
 });
-test('strategies hub groups guides, researched, queued and controls, and opens each as a document', () => {
+test('agents folds Sharpe & Trust and SOTA briefs cleanly, and strategy detail strips Markdown/LaTeX into plain native rows', () => {
+	const guide: any = {
+		id: 'sharpe-guide', name: 'How to Read Sharpe & Trust', group: 'guide', status: 'researched',
+		verdict: 'Guide', verdictTone: 0, bestFit: 'All strategies', expectedEdge: 'Context',
+		tldr: 'High **Sharpe** is a smoothness score.', slugs: [],
+		sections: [{ title: 'Six ways', body: '- **Leaderboard luck:** Pick from 844 strategies.\n- **Steamroller:** Low variance ($\\sigma$) before crash.' }],
+		sources: [{ title: 'Lo 2002', url: 'https://example.com/lo' }], markdown: '',
+		variants: [], timeframes: [], instruments: [], usesForecast: false,
+	};
 	const item: any = {
 		id: 'tsmom-12m', name: 'Time-Series Momentum (12M)', group: 'strategy', status: 'researched',
 		verdict: 'Strong SOTA', verdictTone: 1, bestFit: '1:1 fee-free', expectedEdge: 'SR 0.5–0.8',
 		tldr: 'Multi-market trend following.', slugs: ['tsmom-12m'],
-		sections: [{ title: 'Bottom line', body: 'Works across many markets.' }],
+		sections: [{ title: 'Bottom line', body: 'Works across `10` markets.\n\n1. **Funding drag:** Pays overnight fees at **1:5**.' }],
 		sources: [{ title: 'MOP 2012', url: 'https://example.com/mop' }], markdown: '',
 		variants: [{ id: 'tsmom-12m', name: 'Time-Series Momentum (12 months)', timeframe: '1d', instruments: ['US500'], usesForecast: false }],
 		timeframes: ['1d'], instruments: ['US500'], usesForecast: false,
 	};
-	const queued: any = { ...item, id: 'adx-dmi', name: 'ADX DMI', status: 'queued', verdict: 'Queued', verdictTone: null, sections: [], sources: [] };
-	const list = strategiesScreen({ guides: [], researched: [item], queued: [queued], controls: [], all: [item, queued] });
-	expect(list.title).toBe('Strategies');
-	expect(list.subtitle).toContain('1 of 2 strategies researched');
-	expect(list.sections.map(s => s.title)).toEqual(['SOTA researched · 1', 'Queued for research · 1']);
-	expect(list.sections[0]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', badgeTone: 1, route: { screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' } });
+	const activeAgent: any = { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'Time-Series Momentum (12 months)', description: '12M trend', timeframe: '1d', instruments: ['US500'], active: true, usesForecast: false };
+	const list = agentsScreen([activeAgent], { guides: [guide], researched: [item], queued: [], controls: [], all: [guide, item] });
+	expect(list.title).toBe('Agents');
+	expect(list.sections.map(s => s.title)).toEqual(['Guides', 'SOTA strategy briefs · 1', '1 active variants']);
+	expect(list.sections[0]!.rows[0]!.route).toEqual({ screen: 'document', id: 'strategy-sharpe-guide', title: 'How to Read Sharpe & Trust' });
+	expect(list.sections[1]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', badgeTone: 1, route: { screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' } });
+	expect(list.sections[2]!.rows[0]).toMatchObject({ badge: 'Strong SOTA', route: { screen: 'agent', id: 'tsmom-12m' } });
 
 	const detail = strategyDetailScreen(item);
 	expect(detail.title).toBe('Time-Series Momentum (12M)');
 	expect(detail.sections.map(s => s.title)).toEqual(['', 'Bottom line', 'Active in Trader · 1', 'Key sources']);
-	expect(detail.sections[2]!.rows[0]!.route).toEqual({ screen: 'agent', id: 'tsmom-12m' });
-	expect(detail.sections[3]!.rows[0]!.route).toEqual({ screen: 'external', id: 'https://example.com/mop' });
+	expect(detail.sections[1]!.rows).toEqual([
+		{ id: 'sec-0-0', body: 'Works across 10 markets.' } as any,
+		{ id: 'sec-0-1', title: 'Funding drag', body: 'Pays overnight fees at 1:5.' },
+	]);
+	const serialized = JSON.stringify(detail);
+	expect(serialized).not.toContain('**');
+	expect(serialized).not.toContain('`');
+
+	const sharpe = strategyDetailScreen(guide);
+	expect(sharpe.title).toBe('Sharpe & Trust');
+	expect(sharpe.sections[0]!.rows[0]!.chart).toMatchObject({ kind: 'bars', unit: ' yr' });
+	expect(sharpe.sections[1]!.rows[1]).toEqual({ id: 'sec-0-1', title: 'Steamroller', body: 'Low variance (σ) before crash.' });
+
+	const withBrief = agentScreen({ agent: { id: 'tsmom-12m', slug: 'tsmom-12m', name: 'TSMOM', description: '', codeHash: 'h', runs: [], versions: [] } as any, runs: [], sparks: new Map(), capital: new Map(), strategy: item });
+	expect(withBrief.sections[0]!.title).toBe('SOTA brief');
+	expect(withBrief.sections[0]!.rows[0]!.route).toEqual({ screen: 'document', id: 'strategy-tsmom-12m', title: 'Time-Series Momentum (12M)' });
 });

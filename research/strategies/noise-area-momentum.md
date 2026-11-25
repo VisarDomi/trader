@@ -19,7 +19,7 @@ Its main risk is **post-publication crowding**: because it was published in 2024
 
 ## How it works here
 
-On every 30-minute close from 10:00 to 15:30 New York, `noise-area-momentum.ts` measures the average absolute move from the 09:30 open at that exact time of day over the past 14 sessions (the "noise area" $\sigma$):
+On every 30-minute close from 10:00 to 15:30 New York, `noise-area-momentum.ts` measures the average absolute move from the 09:30 open at that exact time of day over the past 14 sessions (the "noise area" σ):
 - **Upper band:** `max(open, prevClose) × (1 + σ)`; **Lower band:** `min(open, prevClose) × (1 − σ)`.
 - Goes **long** when price breaks above both the upper band and session VWAP; **short** below both the lower band and session VWAP.
 - **Trailing exit:** Closes on any 30m bar back inside the band or across VWAP, with a 2% crash stop, and closes flat at 16:00 NY.

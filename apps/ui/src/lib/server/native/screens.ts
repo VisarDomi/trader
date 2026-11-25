@@ -5,7 +5,8 @@
 import type { AgentDetail, AgentEvidence, AgentListItem, BacktestFrequency, BacktestPeriods, Deal, FamilyClock, FamilyView, GraveyardEntry, LeaderboardRow, PortfolioClock, PortfolioView, RunDetail, RunSummary, Trade } from '@trader/shared';
 import { CONTROL_SLUGS, LIFECYCLE, assess, assessFamily, assessPortfolio } from '@trader/shared';
 import type { Inspection } from '../inspection';
-import type { StrategyCatalog, StrategyEntry } from '../strategies';
+import type { StrategyCatalog, StrategyDoc, StrategyEntry } from '../strategies';
+import { plainNativeBlocks, stripMarkdownInline } from '../strategy-text';
 import { daysText, frequencyLine, frequencySide, shareText, winsLine } from '../../frequency';
 import { agreementLine, barsLine, clockLine, familyAgreementLine, familyBarsLine, portfolioBacktestLine, portfolioBarsLine, portfolioLine, portfolioPaceLine, portfolioRuleLine, standingLine, standingTitle, verdictWord } from '../../clock';
 import { candles as packCandles, clock, compact, date, day, f32, moment, num, pct, pp, series, signedUsd, span, tier, tone, usd, type Graph, type Guide, type Marker, type Row, type Screen, type Section, type Stat } from './wire';
@@ -121,10 +122,55 @@ export function portfolioScreen(p: PortfolioView): Screen {
 
 // ---------------------------------------------------------------- agents
 
-export function agentsScreen(items: AgentListItem[]): Screen {
+export function agentsScreen(items: AgentListItem[], catalog?: StrategyCatalog): Screen {
 	const active = items.filter(a => a.active).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-	return { v: 2, title: 'Agents', sections: [{ title: `${active.length} active variants`, rows: active.map(a => compact({
-		id: a.id, title: a.name, subtitle: `${a.timeframe} · ${a.instruments.join(', ')}`, body: a.description, badge: a.usesForecast ? 'TimesFM' : '', route: { screen: 'agent', id: a.id } })) }] };
+	const sections: Section[] = [];
+	const bySlug = new Map<string, StrategyEntry>();
+	if (catalog) {
+		for (const s of catalog.researched) for (const slug of s.slugs) bySlug.set(slug, s);
+		if (catalog.guides.length) {
+			sections.push({
+				title: 'Guides',
+				rows: catalog.guides.map(g => compact({
+					id: `strategy-${g.id}`,
+					title: g.name,
+					subtitle: g.bestFit,
+					body: stripMarkdownInline(g.tldr),
+					route: { screen: 'document', id: `strategy-${g.id}`, title: g.name },
+				})),
+			});
+		}
+		if (catalog.researched.length) {
+			sections.push({
+				title: `SOTA strategy briefs · ${catalog.researched.length}`,
+				rows: catalog.researched.map(s => compact({
+					id: `strategy-${s.id}`,
+					title: s.name,
+					subtitle: [s.timeframes.join('/'), s.instruments.length ? plural(s.instruments.length, 'market', 'markets') : '', s.expectedEdge].filter(Boolean).join(' · '),
+					badge: s.verdict,
+					badgeTone: s.verdictTone ?? undefined,
+					body: stripMarkdownInline(s.tldr),
+					route: { screen: 'document', id: `strategy-${s.id}`, title: s.name },
+				})),
+			});
+		}
+	}
+	sections.push({
+		title: `${active.length} active variants`,
+		rows: active.map(a => {
+			const brief = bySlug.get(a.slug);
+			return compact({
+				id: a.id,
+				title: a.name,
+				subtitle: `${a.timeframe} · ${a.instruments.join(', ')}`,
+				body: a.description,
+				badge: brief ? brief.verdict : a.usesForecast ? 'TimesFM' : '',
+				badgeTone: brief ? (brief.verdictTone ?? undefined) : undefined,
+				route: { screen: 'agent', id: a.id },
+			});
+		}),
+	});
+	return { v: 2, title: 'Agents', sections };
 }
 
 // ---------------------------------------------------------------- trades (shared by agent and run screens)
@@ -193,16 +239,30 @@ export function tradeRow(t: TradeItem, withMarket: boolean): Row {
 
 // ---------------------------------------------------------------- agent
 
-export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow> }
+export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow>; strategy?: StrategyDoc | null }
 /** "Virtual +167.72 pp vs T-bills · +177.22 pp vs hold": the lead over the safe floor and over holding outright. */
 const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${overCash(b) != null ? pp(overCash(b)) + ' vs T-bills · ' : ''}${pp(b.excessReturn)} vs hold` : '');
-export function agentScreen({ agent, runs, sparks, capital, backtests: board }: AgentInputs): Screen {
+export function agentScreen({ agent, runs, sparks, capital, backtests: board, strategy }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
 	// What the family says about this agent's records, apart from their own lines.
 	const views = records.flatMap(r => { const f = (r.evidence as AgentEvidence | undefined)?.family; return f ? [{ r, f }] : []; });
 	if (views[0] && views[0].f.everRecords > 1) sections.push({ title: 'Family', rows: [familyRow(views[0].f),
 		...views.flatMap(({ r, f }) => { const row = standingRow(f, `family-member-${r.id}`, `${r.epic} ${tier(r.leverage)}`); return row ? [row] : []; })] });
+	if (strategy) {
+		sections.push({
+			title: 'SOTA brief',
+			rows: [compact({
+				id: `strategy-${strategy.id}`,
+				title: strategy.name,
+				subtitle: [strategy.bestFit, strategy.expectedEdge].filter(Boolean).join(' · '),
+				badge: strategy.verdict,
+				badgeTone: strategy.verdictTone ?? undefined,
+				body: stripMarkdownInline(strategy.tldr),
+				route: { screen: 'document', id: `strategy-${strategy.id}`, title: strategy.name },
+			})],
+		});
+	}
 	if (records.length) sections.push({ title: 'Live records', rows: records.map(r => {
 		const c = capital.get(r.id), cm = c?.metrics, m = r.metrics;
 		return compact({ id: r.id, title: `${r.epic} · ${tier(r.leverage)}`, subtitle: `Virtual ${usd(r.equity)}${c ? ` · Demo ${c.mirrored ? 'mirrored' : 'past assignment'}` : ''} · since ${day(r.startedAt)}`,
@@ -514,62 +574,53 @@ export function documentScreen(title: string, markdown: string, extra: Section[]
 	return { v: 2, title, sections: [...extra.filter(s => s.rows.length), ...markdownSections(markdown)] };
 }
 
-/** Strategies hub: every strategy family in Trader, its SOTA verdict, and a tap-through plain-English breakdown. */
-export function strategiesScreen(catalog: StrategyCatalog): Screen {
-	const total = catalog.researched.length + catalog.queued.length;
-	const strategyRow = (item: StrategyEntry): Row => {
-		const meta = [
-			item.timeframes.length ? item.timeframes.join('/') : '',
-			item.instruments.length ? plural(item.instruments.length, 'market', 'markets') : '',
-			item.variants.length > 1 ? plural(item.variants.length, 'variant', 'variants') : '',
-			item.usesForecast ? 'TimesFM' : '',
-		].filter(Boolean).join(' · ');
-		return compact({
-			id: `strategy-${item.id}`,
-			title: item.name,
-			subtitle: meta || item.bestFit,
-			badge: item.verdict,
-			badgeTone: item.verdictTone ?? undefined,
-			body: item.tldr,
-			route: { screen: 'document', id: `strategy-${item.id}`, title: item.name },
-		});
-	};
-	const sections: Section[] = [];
-	if (catalog.guides.length) sections.push({ title: 'Reference', rows: catalog.guides.map(strategyRow) });
-	if (catalog.researched.length) sections.push({ title: `SOTA researched · ${catalog.researched.length}`, rows: catalog.researched.map(strategyRow) });
-	if (catalog.queued.length) sections.push({ title: `Queued for research · ${catalog.queued.length}`, rows: catalog.queued.map(strategyRow) });
-	if (catalog.controls.length) sections.push({ title: `Controls & baselines · ${catalog.controls.length}`, rows: catalog.controls.map(strategyRow) });
-	return compact({
-		v: 2 as const,
-		title: 'Strategies',
-		subtitle: `${catalog.researched.length} of ${total} strategies researched · SOTA plain-English hub`,
-		sections,
-	});
-}
-
-/** One strategy's SOTA breakdown, opened as a document so no extra native screen type is required. */
+/** One strategy's SOTA breakdown (or the Sharpe & Trust guide), rendered in clean plain text for UIKit. */
 export function strategyDetailScreen(item: StrategyEntry): Screen {
 	const sections: Section[] = [];
-	const stats: Stat[] = [
-		{ label: 'SOTA verdict', value: item.verdict, tone: item.verdictTone ?? 0 },
-		...(item.bestFit ? [{ label: 'Best fit', value: item.bestFit }] : []),
-		...(item.expectedEdge ? [{ label: 'Expected edge', value: item.expectedEdge }] : []),
-	];
+	const stats: Stat[] = item.group === 'guide'
+		? [
+			{ label: '1-yr Sharpe SE', value: '±1.0' },
+			{ label: 'Solo confirm (SR 2)', value: '~5 yr' },
+			{ label: 'Solo confirm (SR 1)', value: '~20 yr' },
+		]
+		: [
+			{ label: 'SOTA verdict', value: item.verdict, tone: item.verdictTone ?? 0 },
+			...(item.bestFit ? [{ label: 'Best fit', value: item.bestFit }] : []),
+			...(item.expectedEdge ? [{ label: 'Expected edge', value: item.expectedEdge }] : []),
+		];
+	const chart: Graph | undefined = item.id === 'sharpe-guide'
+		? {
+			kind: 'bars',
+			unit: ' yr',
+			height: 165,
+			bars: [
+				{ name: 'Sharpe 3.2 (844 tried)', value: 2.0, total: true },
+				{ name: 'Sharpe 2.0 (844 tried)', value: 5.1, total: true },
+				{ name: 'Sharpe 1.5 (844 tried)', value: 9.1, total: true },
+				{ name: 'Sharpe 1.0 (1 alone)', value: 13.8, total: true },
+				{ name: 'Sharpe 1.0 (844 tried)', value: 20.5, total: true },
+			],
+		}
+		: undefined;
 	sections.push({
 		title: '',
 		rows: [compact({
 			id: 'summary',
-			title: item.name,
-			subtitle: [item.timeframes.join('/'), item.instruments.length ? plural(item.instruments.length, 'market', 'markets') : ''].filter(Boolean).join(' · '),
+			title: item.id === 'sharpe-guide' ? 'Years needed to confirm a real edge' : item.name,
+			subtitle: item.id === 'sharpe-guide'
+				? 'Always-valid daily clock · 10% false-discovery bar'
+				: [item.timeframes.join('/'), item.instruments.length ? plural(item.instruments.length, 'market', 'markets') : ''].filter(Boolean).join(' · '),
 			stats: stats.slice(0, 3),
-			body: item.tldr,
+			chart,
+			body: stripMarkdownInline(item.tldr),
 		})],
 	});
 	for (const [i, sec] of item.sections.entries()) {
-		const paragraphs = sec.body.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+		const blocks = plainNativeBlocks(sec.body);
+		if (!blocks.length) continue;
 		sections.push({
-			title: sec.title,
-			rows: paragraphs.map((p, j) => ({ id: `sec-${i}-${j}`, title: '', body: p })),
+			title: stripMarkdownInline(sec.title),
+			rows: blocks.map((b, j) => compact({ id: `sec-${i}-${j}`, title: b.title, body: b.body })),
 		});
 	}
 	if (item.variants.length) {
@@ -595,7 +646,7 @@ export function strategyDetailScreen(item: StrategyEntry): Screen {
 			})),
 		});
 	}
-	return compact({ v: 2 as const, title: item.name, subtitle: item.group === 'guide' ? 'Strategy guide' : 'SOTA strategy brief', sections });
+	return compact({ v: 2 as const, title: item.id === 'sharpe-guide' ? 'Sharpe & Trust' : item.name, subtitle: item.group === 'guide' ? 'How to read Sharpe and live verdicts' : 'SOTA strategy brief', sections });
 }
 export function verdicts(rows: LeaderboardRow[], stage: string): RankingRow[] {
 	const now = Date.now();

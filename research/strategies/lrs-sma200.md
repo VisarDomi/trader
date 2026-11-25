@@ -25,7 +25,7 @@ On each daily close (`1d`), `lrs-sma200.ts` checks `close` against its 200-day s
 
 ## What the SOTA says
 
-- **Original paper (Gayed & Bilello 2016, Charles H. Dow Award):** Over 1928–2015 on the S&P 500 with a 1% borrowing assumption, leveraged rotation above the 200-day SMA reported Sharpe **0.51 vs. 0.30** for unlevered buy-and-hold because volatility below the 200-day average is far higher (crushing leveraged compounding via volatility drag $L(L-1)\sigma^2/2$).
+- **Original paper (Gayed & Bilello 2016, Charles H. Dow Award):** Over 1928–2015 on the S&P 500 with a 1% borrowing assumption, leveraged rotation above the 200-day SMA reported Sharpe **0.51 vs. 0.30** for unlevered buy-and-hold because volatility below the 200-day average is far higher (crushing leveraged compounding via volatility drag L(L−1)σ²/2).
 - **2026 revision with realistic borrowing costs:** When actual margin/borrowing rates are included, the Sharpe advantage disappears—net Sharpe sits roughly in line with the S&P 500 with **no statistically significant alpha**, and results show sensitivity to the exact lookback window and start date.
 - **Practitioner consensus (r/LETFs & Faber GTAA updates):** Live real-money tracking (2024–2026) settled on **2×** as the sweet spot; simulated **3× Nasdaq** from 1999 still fell **−95%** even with the 200-day filter (vs −99.9% unfiltered).
 
