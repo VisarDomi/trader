@@ -45,8 +45,9 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
   monkey sanity 0 of 36. Closest to confirmed: that run, at 2.05 of the 5.74 a 34-weekday record needs.
   `visar-night-trading` US500 1:200 is early: 3 trades, daily t 1.63.
 - The app and the website lead every forward row with the verdict and its t; the record's screen shows the bars
-  and the backtest agreement. The clock costs 0.2 ms per pass over 556 records once read (about 80 ms after a
-  start, then one stored value per record per weekday).
+  and the backtest agreement. The clock costs 0.2 ms per pass over 556 records once read; its first read after
+  the restart took 1.4 s on the live process (556 backtest curves, 35 stored values per record), then one stored
+  value per record per weekday. The broker's candidate step runs at 0.1% of a core (0.2% before).
 - Next: the trial count grows with every new record, raising the confirmed bar slowly (it moves with its
   logarithm). A family's variants judged together and matched controls on the same days are the two honest ways
   to learn sooner about slow strategies; neither is built.
