@@ -14,7 +14,7 @@ export async function load({params,url}){
   const mirrored=Boolean(account)||(broker?.status?.promoted?.includes(run.id)??false);
   const realHolder=broker?.status?.realService?.assignment?.runId??broker?.status?.real?.[0]??null;
   const real=(broker?.status?.real?.includes(run.id)??false)||realHolder===run.id;
-  return{run,agentName:agent?.name??run.agentId,stage,capital,inspections:previews,selected,frequency,periods,account,mirrored,real,realHolder};
+  return{run,agentName:agent?.name??run.agentId,stage,capital,inspections:previews,selected,frequency,periods,account,mirrored,real,realHolder,realService:broker?.status?.realService??null};
  }catch(e){error(404,e instanceof Error?e.message:'Run unavailable')}
 }
 export const actions={

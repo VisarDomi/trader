@@ -36,7 +36,7 @@
 <LiveRefresh recovering={!!failure}/>
 <div class="stack">
  <header class="page-heading"><div><a class="muted breadcrumb" href="/agents/{run.agentId}">{data.agentName}</a><h1>{run.epic} <span class="badge">{run.leverage?`1:${run.leverage}`:'—'}</span><span class="badge">{run.evidence?.admission==='user-experiment'?'Experiment':run.status}</span></h1></div><div class="pill-group">{#if run.kind==='backtest'}<span class="stage-name">Backtest · {run.windowId}</span>{:else}<a href="?stage=virtual" class:active={!actual}>Virtual</a><a href="?stage=capital" class:active={actual}>Capital demo</a>{/if}</div></header>
- <div class="metrics-strip">{#each [{label:actual?'Realized cash':'Equity',value:usd(actual?data.capital?.equity:run.equity)},{label:'Return',value:pct(m?.totalReturn)},{label:actual?'Closed-cash DD':'Max drawdown',value:pctPlain(m?.maxDrawdown)},{label:'Closed trades',value:m?String(m.trades):'—'}]as stat}<div><small>{stat.label}</small><strong>{stat.value}</strong></div>{/each}</div>
+ <div class="metrics-strip">{#each (data.real&&data.realService?[{label:`${data.realService.accountName??'Real USD'} (Hetzner)`,value:usd(data.realService.equity??data.realService.balance)},{label:'Available',value:usd(data.realService.available)},{label:'Leverage',value:data.realService.leverage?`1:${data.realService.leverage}`:'—'},{label:'Open real deals',value:String(data.realService.openDeals)}]:[{label:actual?'Realized cash':'Equity',value:usd(actual?data.capital?.equity:run.equity)},{label:'Return',value:pct(m?.totalReturn)},{label:actual?'Closed-cash DD':'Max drawdown',value:pctPlain(m?.maxDrawdown)},{label:'Closed trades',value:m?String(m.trades):'—'}])as stat}<div><small>{stat.label}</small><strong>{stat.value}</strong></div>{/each}</div>
  {#if form?.message}<p class="status-line" role="status">{form.message}</p>{/if}
  {#if liveControl}
   <section class="card stage-bar">
@@ -59,7 +59,7 @@
   </section>
  {/if}
  {#if run.extra?.retirement}<p class="status-line">Retired · {String((run.extra.retirement as {reason:string}).reason)}</p>{/if}
- {#if !actual}<section class="card"><div class="section-heading"><h2>Equity</h2><span class="muted small">{run.kind==='backtest'?'Daily':'Hourly'} snapshots · {utc(run.startedAt)} → {utc(run.updatedAt)}</span></div><TimeChart series={[{name:'Equity',points:curve}]} height={220}/><details><summary>Snapshot drawdown</summary><TimeChart series={[{name:'Drawdown',points:dd}]} unit="%" height={140}/></details></section>{/if}
+ {#if !actual}<section class="card"><div class="section-heading"><h2>{data.real?'Paper twin equity (PC · $10k sim)':'Equity'}</h2><span class="muted small">{run.kind==='backtest'?'Daily':'Hourly'} snapshots · {utc(run.startedAt)} → {utc(run.updatedAt)}</span></div><TimeChart series={[{name:'Equity',points:curve}]} height={220}/><details><summary>Snapshot drawdown</summary><TimeChart series={[{name:'Drawdown',points:dd}]} unit="%" height={140}/></details></section>{/if}
  {#if run.kind!=='backtest'&&run.evidence?.clock}<RecordClock row={{...run,runId:run.id,slug:run.agentId.split('/')[0]}}/>{/if}
  {#if run.kind!=='backtest'&&run.evidence?.family&&run.evidence.family.everRecords>1}<FamilyView views={[{label:'',family:run.evidence.family}]}/>{/if}
  {#if data.frequency}<BacktestFrequency frequency={data.frequency} periods={data.periods}/>{/if}

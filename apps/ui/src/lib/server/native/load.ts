@@ -45,8 +45,8 @@ export async function loadScreen(screen: ScreenName, q: URLSearchParams, journal
 		case 'agent': {
 			const agent = await arena.agent(id);
 			const liveRuns = agent.runs.filter(r => r.kind === 'demo' && r.status !== 'retired' && !r.id.includes(':delay='));
-			const [runs, board, lines, tested] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id))), backtestBoard().catch((): LeaderboardRow[] => [])]);
-			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))), strategy: findStrategyDocForSlug(agent.slug) });
+			const [runs, board, lines, tested, b] = await Promise.all([Promise.all(liveRuns.map(r => arena.run(r.id, 2000))), capitalBoard().catch((): LeaderboardRow[] => []), Promise.all(liveRuns.map(r => sparks(r.id))), backtestBoard().catch((): LeaderboardRow[] => []), broker().catch(() => null)]);
+			return agentScreen({ agent, runs, capital: new Map(board.map(r => [r.runId, r])), backtests: new Map(tested.filter(r => r.agentId === agent.id).map(r => [r.runId, r])), sparks: new Map(liveRuns.flatMap((r, i) => (lines[i] ? [[r.id, lines[i]!] as const] : []))), strategy: findStrategyDocForSlug(agent.slug), realService: b?.status?.realService ?? null });
 		}
 		case 'run': {
 			const run: RunDetail = await arena.run(id, 2000);

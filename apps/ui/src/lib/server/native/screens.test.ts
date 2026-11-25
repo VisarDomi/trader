@@ -308,8 +308,12 @@ test('runScreen exposes manual stage controls for Paper, Capital demo, and singl
 	const demoBusyStage = demoBusy.sections.find(s => s.title === 'Stage · Capital demo')!;
 	expect(demoBusyStage.rows.map(r => r.id)).toEqual(['stage-real-busy', 'stage-virtual']);
 
-	const real = runScreen({ ...base, mirrored: false, real: true, realHolder: run.id, account: null });
-	const realStage = real.sections.find(s => s.title === 'Stage · Real USD (Hetzner)')!;
+	const realService = { reachable: true, accountName: 'Real USD', currency: 'USD', balance: 0.23, available: 0.23, equity: 0.23, leverage: 200, streamConnected: true, openDeals: 0, deals: [] };
+	const real = runScreen({ ...base, run: { ...run, status: 'running', deals: [] }, mirrored: false, real: true, realHolder: run.id, realService, capital: { runId: run.id, mirrored: false, real: true, metrics: { totalReturn: 0 } } as any, account: null });
+	expect(real.sections[0]!.rows.map(r => r.id)).toEqual(['real', 'virtual']);
+	expect(real.sections[0]!.rows[0]).toMatchObject({ title: 'Real USD · $0.23', badge: 'Real · Hetzner' });
+	expect(real.sections[0]!.rows[1]!.title).toStartWith('Paper twin (PC) · ');
+	const realStage = real.sections.find(s => s.title === 'Stage · Real USD (USD) (Hetzner)')!;
 	expect(realStage.rows.map(r => r.action)).toEqual([`stage:demo-from-real:${run.id}`]);
 
 	const realRank = rankingRow({ runId: run.id, name: 'X', epic: 'US500', leverage: 200, status: 'running', mirrored: false, real: true, metrics: { totalReturn: 0.2, sharpe: 2, trades: 3, maxDrawdown: 0.05 } }, 'capital');

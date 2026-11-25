@@ -240,10 +240,10 @@ export function tradeRow(t: TradeItem, withMarket: boolean): Row {
 
 // ---------------------------------------------------------------- agent
 
-export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow>; strategy?: StrategyDoc | null }
+export interface AgentInputs { agent: AgentDetail; runs: RunDetail[]; sparks: Map<string, Sparks>; capital: Map<string, LeaderboardRow>; backtests?: Map<string, LeaderboardRow>; strategy?: StrategyDoc | null; realService?: Json | null }
 /** "Virtual +167.72 pp vs T-bills · +177.22 pp vs hold": the lead over the safe floor and over holding outright. */
 const versusHold = (b: Json | undefined, what = '') => (b?.status === 'matched' ? `${what}${overCash(b) != null ? pp(overCash(b)) + ' vs T-bills · ' : ''}${pp(b.excessReturn)} vs hold` : '');
-export function agentScreen({ agent, runs, sparks, capital, backtests: board, strategy }: AgentInputs): Screen {
+export function agentScreen({ agent, runs, sparks, capital, backtests: board, strategy, realService = null }: AgentInputs): Screen {
 	const sections: Section[] = [];
 	const records = runs.filter(live).sort((a, b) => a.epic.localeCompare(b.epic) || (a.leverage ?? 0) - (b.leverage ?? 0));
 	// What the family says about this agent's records, apart from their own lines.
@@ -266,9 +266,16 @@ export function agentScreen({ agent, runs, sparks, capital, backtests: board, st
 	}
 	if (records.length) sections.push({ title: 'Live records', rows: records.map(r => {
 		const c = capital.get(r.id), cm = c?.metrics, m = r.metrics;
-		return compact({ id: r.id, title: `${r.epic} · ${tier(r.leverage)}`, subtitle: `Virtual ${usd(r.equity)}${c ? ` · Demo ${c.mirrored ? 'mirrored' : 'past assignment'}` : ''} · since ${day(r.startedAt)}`,
-			badge: (r.extra as Json | null)?.demoAdmission ? 'User experiment' : CONTROL_SLUGS.has(agent.slug) ? 'Control' : '',
-			stats: [{ label: 'Virtual return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, { label: 'Demo return', value: cm ? pct(cm.totalReturn) : '—', tone: tone(cm?.totalReturn) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
+		const isReal = realService?.assignment?.runId === r.id || Boolean(c?.real);
+		return compact({ id: r.id, title: `${r.epic} · ${tier(r.leverage)}`,
+			subtitle: isReal
+				? `${realService?.accountName ?? 'Real USD'} ${usd(realService?.equity ?? realService?.balance)} (Hetzner) · Paper twin ${usd(r.equity)} · since ${day(r.startedAt)}`
+				: `Virtual ${usd(r.equity)}${c ? ` · Demo ${c.mirrored ? 'mirrored' : 'past assignment'}` : ''} · since ${day(r.startedAt)}`,
+			badge: isReal ? 'Real · Hetzner' : (r.extra as Json | null)?.demoAdmission ? 'User experiment' : CONTROL_SLUGS.has(agent.slug) ? 'Control' : '',
+			badgeTone: isReal ? (1 as const) : undefined,
+			stats: isReal
+				? [{ label: 'Real balance', value: usd(realService?.balance) }, { label: 'Available', value: usd(realService?.available) }, { label: 'Paper return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }]
+				: [{ label: 'Virtual return', value: pct(m?.totalReturn), tone: tone(m?.totalReturn) }, { label: 'Demo return', value: cm ? pct(cm.totalReturn) : '—', tone: tone(cm?.totalReturn) }, { label: 'Closed trades', value: num(m?.trades, 0) }],
 			body: [versusHold((r.evidence as Json | undefined)?.benchmark, 'Virtual '), versusHold((c?.evidence as Json | undefined)?.benchmark, 'Demo ')].filter(Boolean).join('\n'),
 			route: runRoute(r.id) });
 	}) });
@@ -335,14 +342,45 @@ export function frequencyRow(id: string, what: string, f: BacktestFrequency, p: 
 export function runScreen({ run, agentName, capital, excluded, mirrored, real = false, realHolder = null, realService = null, comparison, sparks, account, periods = [] }: RunInputs): Screen {
 	const onDemo = mirrored ?? (Boolean(account) || Boolean(capital?.mirrored));
 	const historical = run.kind === 'backtest', m = run.metrics, e = run.evidence as AgentEvidence | undefined, extra = (run.extra ?? {}) as Json;
-	const summary: Row[] = [compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : `Virtual · ${usd(run.equity)}`,
+	const realDeals: Json[] = real ? (realService?.deals ?? []).filter((d: Json) => d.run_id === run.id) : [];
+	const realClosed = realDeals.filter((d: Json) => d.status === 'closed');
+	const realPnl = realClosed.reduce((n: number, d: Json) => n + (d.pnl ?? 0), 0);
+	const summary: Row[] = [];
+	if (!historical && real) {
+		const acctName = realService?.accountName ?? 'Real USD';
+		const reachable = realService ? Boolean(realService.reachable) : true;
+		const bal = realService?.equity ?? realService?.balance ?? null;
+		const realBody = [
+			realClosed.length ? `Closed real P&L ${signedUsd(realPnl)}` : '',
+			realService?.lastError ? `Last error: ${realService.lastError}` : '',
+		].filter(Boolean).join('\n');
+		summary.push(compact({
+			id: 'real',
+			title: `${acctName} · ${usd(bal)}`,
+			subtitle: [
+				reachable ? 'Live on Hetzner' : 'Hetzner offline',
+				tier(realService?.leverage ?? run.leverage),
+				realService ? (realService.streamConnected ? 'live feed ok' : 'feed reconnecting') : '',
+				count(realClosed.length, 'closed deal', 'closed deals'),
+			].filter(Boolean).join(' · '),
+			badge: reachable ? 'Real · Hetzner' : 'Hetzner offline',
+			badgeTone: reachable ? (1 as const) : (-1 as const),
+			stats: [
+				{ label: 'Balance', value: usd(realService?.balance) },
+				{ label: 'Available', value: usd(realService?.available) },
+				{ label: 'Open deals', value: num(realService?.openDeals ?? 0, 0) },
+			],
+			body: realBody,
+		}));
+	}
+	summary.push(compact({ id: 'virtual', title: historical ? `Backtest · ${run.windowId ?? ''}` : real ? `Paper twin (PC) · ${usd(run.equity)}` : `Virtual · ${usd(run.equity)}`,
 		subtitle: [tier(run.leverage), date(run.startedAt), count(m?.trades, 'closed trade', 'closed trades')].filter(Boolean).join(' · '),
 		badge: extra.demoAdmission ? 'User experiment' : ['running', 'completed'].includes(run.status) ? '' : run.status,
 		stats: worthStats('Return', m?.totalReturn, e?.benchmark as Json | undefined),
 		body: [historical ? '' : clockLine({ ...run, runId: run.id, slug: run.agentId.split('/')[0]!, evidence: e } as unknown as LeaderboardRow), frequencyLine(e?.frequency), alternatives(e?.benchmark as Json | undefined), [afterInflation(e?.benchmark as Json | undefined) != null ? `After inflation ${pct(afterInflation(e?.benchmark as Json | undefined))}` : '',
-			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') })];
+			m ? `Sharpe ${num(m.sharpe)}` : '', `drawdown ${pct(m?.maxDrawdown ? -m.maxDrawdown : m?.maxDrawdown)}`].filter(Boolean).join(' · ')].filter(Boolean).join('\n') }));
 	const deals = (run.deals as (Deal & Json)[]).filter(d => d.account?.startsWith('Arena') && d.status !== 'failed');
-	if (!historical && (capital || deals.length)) {
+	if (!historical && ((!real && capital) || deals.length)) {
 		const cm = capital?.metrics, cash = deals.reduce((n, d) => n + (d.status === 'closed' ? (d.pnl ?? 0) : 0), 0);
 		summary.push(compact({ id: 'capital', title: `Capital demo · ${signedUsd(cash)}`,
 			subtitle: [capital?.mirrored ? `Mirrored on ${account ?? 'an Arena account'} at 0.2× size` : 'Not mirrored now · past deals', count(deals.filter(d => d.status === 'closed').length, 'closed deal', 'closed deals')].join(' · '),
@@ -357,12 +395,25 @@ export function runScreen({ run, agentName, capital, excluded, mirrored, real = 
 	const curve = run.equityCurve.map(p => ({ t: p.t, value: p.equity }));
 	if (curve.length > 1) {
 		let peak = run.capital;
-		charts.push({ id: 'equity', title: historical ? 'Equity · daily' : 'Virtual equity · hourly', chart: { kind: 'line', height: 200, series: [series('Equity', curve)] } });
-		charts.push({ id: 'drawdown', title: 'Drawdown', chart: { kind: 'line', unit: '%', height: 110, series: [series('Drawdown', curve.map(p => { peak = Math.max(peak, p.value); return { t: p.t, value: peak > 0 ? (p.value / peak - 1) * 100 : 0 }; }))] } });
+		charts.push({ id: 'equity', title: historical ? 'Equity · daily' : real ? 'Paper twin equity (PC · $10k sim)' : 'Virtual equity · hourly', chart: { kind: 'line', height: 200, series: [series('Equity', curve)] } });
+		charts.push({ id: 'drawdown', title: real ? 'Paper twin drawdown' : 'Drawdown', chart: { kind: 'line', unit: '%', height: 110, series: [series('Drawdown', curve.map(p => { peak = Math.max(peak, p.value); return { t: p.t, value: peak > 0 ? (p.value / peak - 1) * 100 : 0 }; }))] } });
 	}
 	const priced = deals.filter(d => d.status === 'closed' && d.pnl != null && d.close_time).sort((a, b) => a.close_time! - b.close_time!);
 	if (priced.length) { let cash = 0; charts.push({ id: 'cash', title: 'Capital demo closed P&L', chart: { kind: 'line', height: 140, series: [series('P&L', priced.map(d => ({ t: d.close_time!, value: (cash += d.pnl!) })))] } }); }
 	if (charts.length) sections.push({ title: '', rows: charts });
+	if (real && realDeals.length) {
+		sections.push({
+			title: `Real USD deals (Hetzner) · ${realDeals.length}`,
+			rows: realDeals.map((d: Json) => compact({
+				id: `real-deal-${d.id}`,
+				title: `${d.epic} · ${d.side === 'long' ? 'Long' : 'Short'} · ${num(d.size, 2)}`,
+				subtitle: `${d.status} · ${moment(d.close_time ?? d.open_time)}`,
+				badge: d.pnl != null ? signedUsd(d.pnl) : d.status,
+				badgeTone: d.pnl != null ? tone(d.pnl) : (d.status === 'failed' ? (-1 as const) : (0 as const)),
+				body: d.note ?? '',
+			})),
+		});
+	}
 	const judged = historical ? null : clockRow({ ...run, runId: run.id, slug: run.agentId.split('/')[0]!, evidence: e } as unknown as LeaderboardRow);
 	if (judged) sections.push({ title: 'Edge or luck', rows: [judged] });
 	const family = historical ? undefined : e?.family;
