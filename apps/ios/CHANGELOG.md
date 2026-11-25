@@ -2,6 +2,13 @@
 
 Newest first. Each entry records what was delivered, how it was checked and how it reached the phone.
 
+## November 25, 2026 · Strategies SOTA hub tab
+
+- Added a dedicated **Strategies** tab (`Rankings | Strategies | Agents | Accounts | Explore`) backed by `/api/native/v2/strategies` and server-built strategy briefs (`document?id=strategy-<id>`). Each brief shows the SOTA verdict, best fit, expected edge, plain-English breakdown, implementation audit, tappable links to active Trader variants, and Safari source links.
+- Future strategy briefs publish from `research/strategies/*.md` on push to `main` with no further iOS rebuild required.
+- Seven Linux logic tests (including `.strategies` and `strategy-*` document routes) and 44 UI tests pass; `/api/native/v2/strategies` exposed on Caddy via `ops/server/native-access.py edge`.
+- Job `20261125T132632Z-65761e325f`, frozen source `8bce3fc`: **installed** in place on the phone and approved for renewal.
+
 ## November 22, 2026 · server-built screens (API v2) and the SQLite store
 
 - Screens come built from `/api/native/v2`; the phone stores each as one row of `trader.sqlite` and revalidates it by
