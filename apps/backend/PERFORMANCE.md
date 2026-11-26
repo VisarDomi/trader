@@ -115,6 +115,56 @@ That is about **80–81% less CPU per received quote** in these short live sampl
 1 ms, no HeapHelper CPU threads remained, and account/recorder checks passed. This is evidence of the
 live improvement, not a guarantee for every future bar burst. Watch the higher RSS as history grows.
 
+## Read-path measurements (2026-11-25)
+
+Commits `1f37459` and `a8b5178`. Single API requests froze the arena for up to 22.9 s; the dashboard
+gives up on the arena after 15 s, so the iPhone app showed "Offline".
+
+Cause: every evidence refresh ran `costTotals()`, which summed costs over all 1,112,224 rows of `trades`
+(568 MB) with ten `json_extract()` calls per row. The arena is one Bun thread, so every request, quote and
+candle poll waited behind that query. Agent screens added to it: one tap fetched each live run in full
+(2,000 trades, equity curve, logs), one spark call per run, and both full leaderboards (3.3 MB + 2.2 MB) to
+show one agent's rows; the agent list sent all 4,276 virtual runs to a screen that shows none.
+
+What the read path does:
+
+- `run_costs` holds one row of cost totals per run. `appendTrade`, `attachExecution` and `saveBacktest`
+  update it in the same transaction; existing databases are backfilled once. `costTotals()` reads it.
+  `api.test.ts` checks that it stays exact across new, replaced and measured trades and backtest archival.
+- `/api/agents?runs=none` for lists, `/api/agent-bundle/*id` (one call, scoped to one agent, no equity
+  curve, logs or source), batch `/sparks?ids=` on the inspector and `/api/broker?deals=0`. Run lists skip
+  `:delay=` comparison runs in SQL.
+- The dashboard's native loader uses these endpoints, with stale-while-revalidate caches cleared on every
+  stage change.
+- Daily clocks read a run's equity in one range scan, not one lookup per weekday. Backtest and Capital cash
+  hold comparisons are cached. The arena fills its evidence caches once at startup; without that, the first
+  agent-bundle request after a restart took 4.0 s.
+
+Method: the live PC arena on loopback, `arena.db` 1.59 GB (13,358 runs). Query rows are timed with
+Python `sqlite3` on a read-only connection to the live database: the old aggregate over `trades` before,
+the `run_costs` join after. Endpoint rows are timed with Python `urllib`: single calls before (on the
+code just before `1f37459`, 20:31–20:34 CET; a range is several such calls), three calls each after
+`a8b5178` was deployed and had pre-warmed (21:46–21:47 CET), reported as the fastest with the first and the
+mean in brackets. Stall rows are the arena's own per-handler maximum (`/api/execution` → `cpuParts`)
+since process start: a 35-minute window before, about two minutes after a restart. Before times include waiting behind the frozen API, so the
+endpoint ratios are larger than the cost of each request alone. The 804× is one query, not the whole app.
+
+| Measurement | Before | After |
+|---|---:|---:|
+| `costTotals('backtest')`, 2,927 runs | 15,678.8 ms | 19.5 ms |
+| Arena `api` longest single handler | 22,896 ms | 153 ms |
+| Arena `quotes` / `candidates` longest call | 205 ms / 1,003 ms | 2 ms / 40 ms |
+| iPhone Agents list (`/api/agents`, then `?runs=none`) | 252–396 ms, 4,730 KB | 2.7 ms (first 33.9, mean 13.3), 107 KB |
+| Agent screen `visar-night/full-day-200` | 304–313 ms, + 5.5 MB leaderboards | 7.9 ms (14.1, 10.0), 25.6 KB |
+| Agent screen `tsmom/20d` (11 markets) | 298–12,795 ms, + 5.5 MB leaderboards | 21.4 ms (30.7, 26.0) + 10.5 ms batch sparks |
+| Backtest leaderboard | 5,719 ms | 74.6 ms (163.8, 109.9) |
+| Capital demo leaderboard | 670.7 ms | 82.3 ms (122.3, 99.9) |
+| Web `/agents` | 1,059 ms, 4.22 MB | 250 ms, 930 KB |
+| Web `/agents/visar-night/full-day-200` | 323 ms | 39.5 ms |
+
+`deploy-arena.sh` ran the backend suite before both deploys: 256 pass, and the 2 native tests skipped there
+pass in the native build step.
+
 ## Reproduce and continue
 
 Build, replay and profiling jobs run inside trader.slice. Respect any heavy-resource hold
