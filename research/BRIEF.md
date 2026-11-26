@@ -8,7 +8,8 @@ the notes and the saved material must let us answer without searching again.
 ## The platform in one screen
 
 - **Arena:** a few thousand paper "runs" (most of them latency comparisons) trade forward on live Capital.com
-  **demo** prices; the best 450 are mirrored as real demo orders on nine accounts. Demo only, never live money. Dashboard: trader.veron3.space.
+  **demo** prices; up to 450 runs picked by hand are mirrored as real demo orders on nine accounts. One run at
+  a time can trade a real USD account through a separate locked-down service on Hetzner. Dashboard: trader.veron3.space.
 - **Instruments (CFDs, all USD):** indices US100, US500, US30; commodities GOLD, SILVER, OIL_CRUDE,
   NATURALGAS; FX EURUSD, GBPUSD, AUDUSD; crypto BTCUSD, ETHUSD (7 days a week); shares NVDA, MSFT, AAPL,
   AMZN, AVGO, META, GOOGL, TSLA (24h on weekdays). 1-minute candles from 2024-01 on the lab PC.

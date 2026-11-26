@@ -1,8 +1,9 @@
 # Trader platform — architecture
 
 A place to collect many trading agents, run them forward on live demo prices,
-and rank them. **Backtest → Virtual engine → Capital demo** is the promotion path; demotion reverses it.
-Actual Capital demo cashflows are ranked separately from virtual performance.
+and rank them. **Backtest → Virtual engine → Capital demo → Real USD** is the promotion path; demotion reverses it.
+Moves onto Capital demo and Real USD are made by hand. Actual Capital demo cashflows are ranked separately
+from virtual performance.
 
 - Repo map, hard rules, operations: [`../../setup.md`](../../setup.md).
 - Writing an agent: [`agents/GUIDE.md`](agents/GUIDE.md) (one file, no other changes).
@@ -10,13 +11,14 @@ Actual Capital demo cashflows are ranked separately from virtual performance.
 - Execution contract, measured broker behavior and capacity: [`EXECUTION.md`](EXECUTION.md).
 - Tick capture, replay and the single-copy archive: [`TICKS.md`](TICKS.md).
 
-## Three execution stages
+## Execution stages
 
 | Stage | Data and costs | Purpose |
 |---|---|---|
 | Backtest | 2024-01 → 2026-09 bid candles, recorded spreads, estimated funding/margin | reject clearly broken ideas; qualify a current agent hash and engine version |
 | Virtual engine | forward live quotes, delayed fills, refreshed Capital dealing rules, isolated $10k accounts | establish out-of-sample evidence and execution robustness |
 | Capital demo | actual orders and deal-linked cashflows on Arena accounts, 0.2× size | measure realized execution and rank actual results |
+| Real USD | actual orders on one locked live USD account, from a separate service on Hetzner; one run at a time | trade one hand-picked run with real money under hard limits ([Real account](#real-account)) |
 
 Every agent × instrument × leverage has a record. Existing Capital assignments form a calibration cohort;
 new assignments need candidate evidence on the daily clock. Demotion reverses the stages and retains history.
@@ -42,13 +44,20 @@ Internally a virtual run has the kind `demo` (it is part of every stored run id)
  trader-lab.timer (03:30)            ingest → history → forecasts → backtests → night grid
  trader-watchdog.timer (10 min)      desktop notifications
         ▲
-        └── shared gateway ← Hetzner: Caddy trader.veron3.space + Authelia (public edge only)
+        └── shared gateway ← Hetzner: Caddy trader.veron3.space + Authelia (public edge)
+
+ Hetzner (shared server)
+ ───────────────────────────────────────────────────────────────────────────────────
+ trader-real              Bun, API 127.0.0.1:4125 (bearer token); systemd cap 300 MB RAM, 50% CPU
+                          - the Real USD stage: one run on one locked live USD account
+                          - SQLite <server home>/trader-real/data/real.db
 ```
 
-All services bind to 127.0.0.1 and talk over loopback. `<runtime>` is `TRADER_SERVER_ROOT` from
-`ops/server/runtime.sh`. The PC must stay on: when it is off, nothing trades or records and the
-dashboard is down. When the forecaster is paused or down, TimesFM agents get `ctx.forecast = null` and
-do nothing new; backtests wait for the next nightly job.
+All services bind to 127.0.0.1 and talk over loopback; the arena reaches `trader-real` at
+`REAL_SERVICE_URL` with `REAL_TOKEN`. `<runtime>` is `TRADER_SERVER_ROOT` from
+`ops/server/runtime.sh`. The PC must stay on: when it is off, nothing on the PC trades or records and the
+dashboard is down; only `trader-real` keeps trading its one run. When the forecaster is paused or down,
+TimesFM agents get `ctx.forecast = null` and do nothing new; backtests wait for the next nightly job.
 
 ## Code map (`apps/backend`)
 
@@ -56,7 +65,8 @@ do nothing new; backtests wait for the next nightly job.
 |---|---|
 | `src/sdk/` | The agent contract: `defineAgent`, `ctx` types, streaming indicators (`ta.ts`), `localTime`. The only thing agents import. |
 | `src/engine/` | Simulation shared by backtest and demo: `BarSeries` (1m → any timeframe, owns the indicator cache), `AgentRun` (account, sizing, stops, trailing stops, funding, margin call, session close), `MarketEngine` (one instrument, many runs), metrics, agent loader, instrument registry. |
-| `src/capital/` | Capital.com REST client. **Demo URL only** — no live endpoint exists in the code. |
+| `src/capital/` | Capital.com REST client. **Demo URL by default**; only `CapitalClient.forLiveRealAccount()` builds a live client, and only `src/real/main.ts` calls it. |
+| `src/real/` | The Real USD service (`trader-real`, Hetzner only): one-run executor, sizing, `real.db`. |
 | `src/lab/` | Lab tools: `ingest`, `backtest` (worker pool), `check-agent`, `forecasts` (precompute), `push-history`, `sync-ticks`, `storage`, `review`, `twins`, `watchdog`, audits, benchmarks, `night-study/`. |
 | `src/arena/` | The arena service: live loop, SQLite store, HTTP API, broker mirror, forecast client, tick spool, twins, evidence, the daily clock records are judged on. |
 | `src/inspection/` | The read-only trade inspector (`trader-inspector`). |
@@ -65,7 +75,7 @@ do nothing new; backtests wait for the next nightly job.
 | `apps/forecaster/` | Python TimesFM 3 HTTP service. |
 | `apps/ui/` | SvelteKit dashboard. |
 | `packages/shared/` | API wire types used by the arena API and the dashboard. |
-| `ops/` | systemd units, lab installer, nightly job, arena deploy script. |
+| `ops/` | systemd units, lab installer, nightly job, arena and real-service deploy scripts. |
 
 ## Simulation model (shared tick engine)
 
@@ -111,7 +121,7 @@ do nothing new; backtests wait for the next nightly job.
 
 ## Broker mirror
 
-Demo runs are copied as real orders onto Capital.com **demo** accounts
+Runs promoted by hand are copied as real orders onto Capital.com **demo** accounts
 (`src/arena/broker.ts`, `src/arena/slots.ts`). The virtual and Capital demo leaderboards are separate; the
 mirror measures execution drift (real vs paper fills, rejections, broker-side
 closes).
@@ -136,12 +146,11 @@ closes).
   0.7% of backtest trades fall below an
   instrument's minimum size and 0.9% round by more than 10% (mostly crypto).
   An account that cannot be switched to hedging holds one run per instrument.
-- **Assignment:** every live run is mirrored on an account of its tier while
-  capacity lasts, candidates on the daily clock first, spread over the accounts with the most
-  free slots; assignments are sticky. When a tier is full, a waiting run takes the slot of
-  the weakest mirrored run of that tier once its daily t-statistic is higher by 0.25 and
-  the weaker run is flat (`PROMOTION_MARGIN`, `src/arena/slots.ts`). Runs can be excluded
-  by hand. A run never has more than one open deal.
+- **Assignment:** by hand only. A run promoted from Paper takes a free slot on an account of its
+  tier, spread over the accounts with the most free slots; when the tier is full the promotion is
+  refused until a run on that tier is demoted. Assignments are sticky: the mirror never promotes,
+  swaps or demotes runs on performance. Runs can be excluded by hand. A run never has more than one
+  open deal.
 - **Renames:** deals are re-attached by deal id if an account is renamed;
   renaming an account away from the prefix closes the arena's deals there and
   stops using it.
@@ -170,11 +179,36 @@ closes).
   up the retries), and a close, refused or rejected, is retried every minute
   until it goes through.
 
-Toggle the mirror and exclude runs on the dashboard's Broker page.
+Toggle the mirror, promote, demote and exclude runs on the dashboard's Broker page.
+
+## Real account
+
+One run at a time trades a live Capital.com USD account through `trader-real`, a separate Bun
+service on Hetzner (`src/real/`, `ops/server/trader-real.service`). It never runs on the PC, and it
+keeps trading when the PC is off.
+
+- **Lock:** one account id from `CAPITAL_REAL_ACCOUNT_ID`; its currency must be USD and its status
+  enabled, checked again after every login. Other live accounts are never touched.
+- **Assignment:** by hand only, from a run already on Capital demo, with a confirmation (web, iPhone,
+  `confirmed: true` in the API). One run controls the account; promoting another is refused until the
+  first is demoted. The deployed agent's code hash must match the run's; TimesFM agents are refused.
+  Demotion closes the run's open real deals and returns it to its demo tier.
+- **Execution:** the service runs its own engine copy of the run ($10k reference account), warmed on
+  live 1-minute bars and fed by the live quote stream; run state is saved after every bar and restored
+  on restart. Scheduled exits are enforced on a one-second clock.
+- **Limits:** one open deal at a time; at most 6 opens an hour (rebuilt from `real.db` after a
+  restart); leverage confirmed at the broker before each open. Size is the paper size × real equity ÷
+  paper equity, with margin capped at 95% of available cash; an order below the broker's minimum
+  is skipped with the reason logged. Stop, trailing stop and target go to the broker with each order.
+- **Reconcile (every 60 s):** account, leverage and positions. A lost confirmation is adopted only
+  when exactly one position matches it; a deal gone at the broker is marked closed. The service never
+  tops up, never changes hedging mode and never touches positions it did not open.
+- **Not on this path:** the demo mirror's 50%-of-allocation kill switch and the daily paper twin
+  comparison.
 
 ## Lifecycle
 
-Agents move Backtest → Virtual engine → Capital demo, with reverse demotion ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
+Agents move Backtest → Virtual engine → Capital demo → Real USD, with reverse demotion ([`agents/LIFECYCLE.md`](agents/LIFECYCLE.md)).
 Verdicts (early, keep, candidate, confirmed, retire) come from `packages/shared/src/lifecycle.ts`, read off each
 record's daily clock (`src/arena/judging.ts`, [`EVIDENCE.md`](EVIDENCE.md)) and used by the dashboard's Stage column,
 the native screens and `bun run review`. The arena portfolio, every record picked by its backtest and judged as
@@ -194,6 +228,7 @@ watchdog (`src/lab/watchdog.ts`) notifies the desktop when the platform needs at
 |---|---|
 | New agent | write `agents/x.ts`, `bun run check-agent agents/x.ts`, `bun run backtest x`, commit, `ops/server/deploy-arena.sh` |
 | Deploy arena | `ops/server/deploy-arena.sh` (needs committed changes; runs typecheck + tests; restarts; runs resume) |
+| Deploy real service | `ops/server/deploy-real.sh` (needs committed shipped files; runs typecheck + real tests; ships `HEAD` to Hetzner, writes `DEPLOYED`, waits for health) |
 | Deploy dashboard | push `main`; the veron3 watcher builds `apps/ui` and restarts `pc-server-trader-ui` |
 | Lab services | `ops/lab/install.sh`; logs: `journalctl --user -u trader-forecaster -u trader-lab -u trader-tick-archive` |
 | Arena logs | `journalctl --user -u pc-server-trader-arena -f`; events also on the Status page |
@@ -203,7 +238,8 @@ watchdog (`src/lab/watchdog.ts`) notifies the desktop when the platform needs at
 
 Secrets live only in `.env` files (never committed): `apps/backend/.env` for the lab
 (Capital.com login, `ARENA_TOKEN`, the shared server's `TRADER_SERVER_SSH`/`TRADER_SERVER_HOME`),
-`<runtime>/trader-arena/.env` and `<runtime>/trader-ui/.env` for the services.
+`<runtime>/trader-arena/.env` and `<runtime>/trader-ui/.env` for the services, and
+`trader-real/.env` on Hetzner (live login, `CAPITAL_REAL_ACCOUNT_ID`, `REAL_TOKEN`; mode 600).
 
 ## Known limitations
 

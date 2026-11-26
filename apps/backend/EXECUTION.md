@@ -96,7 +96,7 @@ There is still no claim of exact equivalence:
   in bursts, which the twin report measures (decision → order accepted).
 - A stop during a disconnected stream or downtime cannot be reproduced exactly without the missed tick tape.
 - Scaling to 0.2× and conservative lot rounding change very small positions. Live market impact is outside
-  a demo-only experiment. Records from before the current execution model keep the model they ran under
+  the demo mirror's scope. Records from before the current execution model keep the model they ran under
   (see their engine version and `CHANGELOG.md`).
 
 Primary references: [Capital API](https://open-api.capital.com/),

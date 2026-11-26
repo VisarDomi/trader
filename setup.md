@@ -1,9 +1,10 @@
 # Trader — setup
 
 A platform for collecting many trading agents, running each one forward on live
-Capital.com prices, and ranking them through **Backtest → Virtual engine → Capital demo**.
-New runs pass a current-code backtest, then build a forward virtual record before competing for
-Capital demo slots. Actual demo cashflows are ranked separately. Dashboard: <https://trader.veron3.space> (Authelia login).
+Capital.com prices, and ranking them through **Backtest → Virtual engine → Capital demo → Real USD**.
+New runs pass a current-code backtest, then build a forward virtual record. Runs are moved onto Capital
+demo slots by hand, and one run at a time can be moved on to a real USD account, with a confirmation.
+Actual demo cashflows are ranked separately. Dashboard: <https://trader.veron3.space> (Authelia login).
 
 Start here. Before changing arena architecture or account behavior, read the
 [project intent and settled decisions](apps/backend/PROJECT-CONTEXT.md), reconciled against the full
@@ -22,7 +23,10 @@ conversation. Then read only what your task needs:
 
 ## Hard rules
 
-- **Demo only.** The Capital.com client has only the demo URL. Never add a live endpoint.
+- **Real money only through `trader-real` on Hetzner.** The Capital.com client defaults to the demo URL;
+  only `CapitalClient.forLiveRealAccount()` builds a live client, and only `src/real/main.ts` (the
+  `trader-real` service) calls it. The PC arena and the lab never reach a live account. The service is
+  locked to one USD account and one run at a time ([Real account](apps/backend/ARCHITECTURE.md#real-account)).
 - **The repo is public.** Secrets live only in `.env` files (see [Secrets](#secrets)); never commit them,
   never paste them into docs or logs.
 - **Keep one permanent copy of captured ticks**, losslessly compressed in PostgreSQL; the user set a
@@ -36,7 +40,8 @@ conversation. Then read only what your task needs:
 - **Shared infrastructure:** trader runs on this PC under `<runtime>/{trader-arena,trader-ui}` with
   user units `pc-server-trader-arena` and `pc-server-trader-ui`, both in `trader.slice` with the lab.
   `<runtime>` is `TRADER_SERVER_ROOT` from `ops/server/runtime.sh` (the PC mirror of the shared
-  server's home, selected by `~/.local/share/hetzner-pc/ACTIVE`). Hetzner hosts only the public edge.
+  server's home, selected by `~/.local/share/hetzner-pc/ACTIVE`). Hetzner hosts the public edge and the
+  separate real-money service `trader-real` (system unit, `<server home>/trader-real`).
   Touch only trader's runtimes, units, Caddy block and Authelia rule; never start the arena on Hetzner:
   its data there is stale.
 - **The Capital.com login is shared** with other apps (position-opener). Of its 10 demo accounts (the
@@ -66,11 +71,14 @@ conversation. Then read only what your task needs:
  trader-tick-archive.timer: one minute   trader-watchdog.timer: 10 minutes
        ▲
        └── shared gateway/tunnel ← Hetzner Caddy + Authelia ← public browser
+
+ Hetzner: trader-real (real-money service, one run, one USD account) :4125, ≤300 MB RAM, 50% CPU
 ```
 
 The PC must remain on, awake and connected for trading, recording and the dashboard to work: when it
-is off, nothing trades or records and the dashboard is down. Only the public edge (Caddy, Authelia) is
-on Hetzner. Arena, forecaster, inspector and lab talk over loopback; `trader-tunnel.service` (the SSH
+is off, nothing on the PC trades or records and the dashboard is down. On Hetzner are the public edge
+(Caddy, Authelia) and `trader-real`, which keeps trading its one run when the PC is off.
+Arena, forecaster, inspector and lab talk over loopback; `trader-tunnel.service` (the SSH
 tunnel for an arena on Hetzner) stays disabled, and `ops/lab/install.sh` disables it. Shared PC-server
 operations: `~/Documents/environment/services/hetzner-pc/README.md`.
 Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTURE.md).
@@ -86,13 +94,14 @@ Architecture in depth: [`apps/backend/ARCHITECTURE.md`](apps/backend/ARCHITECTUR
 | `packages/shared/` | API wire types shared by the arena and the dashboard |
 | `research/` | research report, topic notes and sources (saved copies in `research/files/`, not in git) |
 | `ops/lab/` | Lab PC systemd user units, installer, nightly job |
-| `ops/server/` | Arena deploy script, research sync, native-access tool, runtime discovery (`runtime.sh`); `trader-arena.service` is the Hetzner unit, unused while the PC runtime is active |
+| `ops/server/` | Arena and real-service deploy scripts, research sync, native-access tool, runtime discovery (`runtime.sh`); `trader-real.service` is the Hetzner real-money unit; `trader-arena.service` is the old Hetzner arena unit, unused while the PC runtime is active |
 
 ## Operations
 
 | Task | How |
 |---|---|
 | Deploy the arena | commit, then `ops/server/deploy-arena.sh` (typechecks, tests, copies the committed tree to `<runtime>/trader-arena/app`, restarts the arena and inspector; runs resume) |
+| Deploy the real service | commit, then `ops/server/deploy-real.sh` (typechecks, runs the real tests, ships the committed tree to Hetzner, restarts `trader-real` and waits for its health check) |
 | Deploy the dashboard | push `main`; the veron3 deploy watcher builds `apps/ui` and restarts `pc-server-trader-ui` |
 | Publish research files | `ops/server/sync-research.sh` (papers and snapshots to `<runtime>/trader-ui/research/files` for the Research tab) |
 | Install/refresh lab services | `ops/lab/install.sh` |
@@ -127,6 +136,7 @@ and `trader-lab.service` from the list and starts the timer; each run checks `la
 | `apps/ui/.env` (lab, for `vite dev`) | `ARENA_URL`, `ARENA_TOKEN` |
 | `<runtime>/trader-arena/.env` (PC runtime, mode 600) | Capital.com demo login, `ARENA_TOKEN`, arena settings (see `apps/backend/src/arena/main.ts`) |
 | `<runtime>/trader-ui/.env` (PC runtime) | `PORT`, `HOST`, `ORIGIN`, `ARENA_URL`, `ARENA_TOKEN` |
+| `<server home>/trader-real/.env` (Hetzner, mode 600) | Capital.com live login, `CAPITAL_REAL_ACCOUNT_ID`, `REAL_TOKEN` (see `apps/backend/src/real/main.ts`) |
 
 ## Fresh install (lab PC)
 

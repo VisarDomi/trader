@@ -80,4 +80,5 @@ npm run build               # adapter-node build in build/
 
 Push `main`. The shared veron3 deploy watcher builds `apps/ui` from the committed source and publishes
 to the PC runtime, restarting `pc-server-trader-ui.service`. The runtime and its `.env` live in
-`<runtime>/trader-ui` (`<runtime>` from `ops/server/runtime.sh`); Hetzner hosts only the public edge.
+`<runtime>/trader-ui` (`<runtime>` from `ops/server/runtime.sh`); Hetzner hosts the public edge and
+the real-money service, not the dashboard.

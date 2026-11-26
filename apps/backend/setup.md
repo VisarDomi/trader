@@ -10,8 +10,8 @@ and the arena service, all on the lab PC. Repo-wide map and hard rules:
 - [`TICKS.md`](TICKS.md) — tick callbacks, capture/replay, single-copy compression and storage budget.
 - [`PERFORMANCE.md`](PERFORMANCE.md) — CPU optimization loop, replay evidence and opt-in Rust risk core.
 - [`EVIDENCE.md`](EVIDENCE.md) — common-date controls, cost coverage/backfill and dependency observation clocks.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: three stages, topology, code map,
-  simulation model, arena, broker mirror, known limitations.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it fits together: stages, topology, code map,
+  simulation model, arena, broker mirror, real account, known limitations.
 - [`agents/LIFECYCLE.md`](agents/LIFECYCLE.md) — stages, verdicts, retiring and adding agents; the babysitter runbook.
 - [`agents/JOURNAL.md`](agents/JOURNAL.md) — every babysitter visit and the log of agent ideas tried.
 - [`WORKFLOW.md`](WORKFLOW.md) — git conventions, everyday commands, adding an agent end to end.

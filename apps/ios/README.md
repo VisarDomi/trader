@@ -1,6 +1,6 @@
 # Trader for iPhone
 
-Native UIKit client for the existing Backtest → Virtual engine → Capital demo platform.
+Native UIKit client for the existing Backtest → Virtual engine → Capital demo → Real USD platform.
 
 Content only: charts, trade facts/reasons, values, dates, thresholds and necessary controls.
 Generic guidance, repeated success badges and methodology prose stay out of the app.

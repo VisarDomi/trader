@@ -144,12 +144,16 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
 
 ### Where things run
 
-- **Everything on the PC; Hetzner is only the public edge.** The arena, dashboard, forecaster, inspector,
-  PostgreSQL and the lab jobs run on this PC (12 threads, 31 GB, RTX 3060), all inside `trader.slice` (50%
-  CPU/RAM cap). The shared Hetzner server keeps only Caddy and Authelia for trader.veron3.space and forwards to
-  the PC through the shared gateway. Services bind to 127.0.0.1 and talk over loopback, so the forecaster and
-  the lab need no tunnel. The cost: the PC must stay on; when it is off, nothing trades or records and the
-  dashboard is down. The arena's old copy on Hetzner holds stale data and must never be started.
+- **Everything on the PC except real money; Hetzner is the public edge and the real service.** The arena,
+  dashboard, forecaster, inspector, PostgreSQL and the lab jobs run on this PC (12 threads, 31 GB, RTX 3060),
+  all inside `trader.slice` (50% CPU/RAM cap). The shared Hetzner server keeps Caddy and Authelia for
+  trader.veron3.space and forwards to the PC through the shared gateway. Services bind to 127.0.0.1 and talk
+  over loopback, so the forecaster and the lab need no tunnel. The cost: the PC must stay on; when it is off,
+  nothing on the PC trades or records and the dashboard is down. The arena's old copy on Hetzner holds stale
+  data and must never be started.
+- **Real money in a separate small service on Hetzner** (`trader-real`). One run trades one locked
+  USD account, so its stops, entries and scheduled exits do not depend on the home PC. The PC arena never builds
+  a live client; it only assigns and clears the real run over HTTP with a token.
 - **SQLite for the arena, PostgreSQL for the lab.** The arena's store is small and single-writer, and SQLite
   needs no server process. The lab keeps the PostgreSQL candle store and the one compressed tick archive.
 
@@ -254,10 +258,9 @@ Response: `{ "status": "OK", "destination": "ping", "correlationId": "5", "paylo
   babysitter's review never disagree.
 - **Retiring a single instrument goes through `agents/roster.json`,** because editing the agent's
   instrument list would change its code hash and restart every other instrument's record.
-- **Promotion to the broker is by daily t-statistic with a 0.25 margin** (`PROMOTION_MARGIN` in
-  `src/arena/broker.ts`), counted on the weekdays since the run's last demotion, applied only when a tier's slots
-  are full and only while the weaker run is flat, so the mirror never cuts a trade short and does not churn on
-  noise.
+- **Promotion to the broker is by hand.** Paper ↔ Capital demo moves need no confirmation;
+  Capital demo ↔ Real USD moves do. The mirror never promotes, swaps or demotes runs on performance; a full
+  tier refuses a new promotion until a run on it is demoted.
 - **Deterministic watchdog, judgement on a schedule.** Outages need minutes, not days: a 10-minute timer on
   the PC checks the arena, the feeds, the broker accounts and the lab services and notifies the desktop
   (after three failed checks for transient things). Retiring and adding agents needs judgement and evidence

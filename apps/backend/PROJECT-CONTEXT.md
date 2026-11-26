@@ -11,8 +11,10 @@ Current runtime facts come from the API and the journal; later user instructions
   easily with an LLM. The SDK should be small and consistent across historical and forward runs.
 - Backtest success is weak evidence because of overfitting. Forward performance, ultimately actual
   Capital demo execution, matters most. Show historical/virtual/Capital differences honestly.
-- The settled pipeline is **Backtest → Virtual engine → Capital demo**; demotion reverses it.
-  There is no live-money stage. Virtual orders and actual demo-account orders are different evidence.
+- The pipeline is **Backtest → Virtual engine → Capital demo → Real USD**; demotion reverses it.
+  Moves onto Capital demo and Real USD are manual; Real takes one run at a time, with a confirmation, on a
+  separate Hetzner service locked to one USD account. Virtual orders, actual demo-account orders
+  and real orders are different evidence.
 - Leverage is an experimental dimension. The user is especially interested in 1:1 and 1:200,
   while all nine tiers should be represented. Account leverage is a ceiling, not a command to use it all.
 - The user guides direction and provides physical help. Coding agents own the repo and operations,
@@ -111,11 +113,13 @@ do not tune this or other strategies for a better reported profit.
 
 ## Operations, research and scope
 
-- Everything runs on this PC: arena, dashboard, PostgreSQL, backtests, ingestion and TimesFM 3 on the
-  RTX 3060 12 GB, all in `trader.slice`, ≤50% CPU/RAM. Hetzner is the public edge only (Caddy, Authelia).
-  The PC must stay on: when it is off, nothing trades or records. Never start the arena's stale Hetzner copy.
+- Everything but the real-money service runs on this PC: arena, dashboard, PostgreSQL, backtests,
+  ingestion and TimesFM 3 on the RTX 3060 12 GB, all in `trader.slice`, ≤50% CPU/RAM. Hetzner runs the public edge (Caddy, Authelia) and
+  the real-money service `trader-real`. The PC must stay on: when it is off, nothing on the PC trades or
+  records. Never start the arena's stale Hetzner copy.
   Deploy, storage and resource-cap handling: root [setup.md](../../setup.md).
-- Touch only trader's parts of the shared infrastructure. Demo only; public repository, no committed secrets.
+- Touch only trader's parts of the shared infrastructure. Real money only through `trader-real`; public
+  repository, no committed secrets.
 - Nightly lab work at 03:30; watchdog every ten minutes. Visits follow a schedule the owner sets from the
   results: up to once a day when the last visit found bugs, down to once a week after a quiet period.
   Usual additions: 1–3 agents at a time, at most every seven days, capacity permitting. Explicit user
