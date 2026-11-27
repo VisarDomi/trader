@@ -306,6 +306,8 @@ export interface DealRow {
 
 const MAX_LOGS_PER_RUN = 300;
 const MAX_EVENTS = 5000;
+/** Hourly equity is thinned to daily points up to this time (ms). */
+const EQUITY_THINNED_KEY = 'equity.thinnedThrough';
 
 export class ArenaDB {
   readonly db: Database;
@@ -807,15 +809,23 @@ export class ArenaDB {
     this.db.exec(`DELETE FROM events WHERE rowid NOT IN (SELECT rowid FROM events ORDER BY time DESC LIMIT ${MAX_EVENTS})`);
   }
 
-  /** Keep hourly equity for 30 days, then one point per day. */
+  /**
+   * Keep hourly equity for 30 days, then one point per day. Each pass thins only the hours that aged past 30 days
+   * since the last one, and only in runs alive then, through the (run_id, t) key: the table is the database's
+   * largest, and a pass over every run reads its cold pages from disk while the arena's only thread waits.
+   */
   thinEquity(now: number): void {
     const cutoff = now - 30 * 86_400_000;
+    // Without a mark the pass starts a week back: older hours were thinned by the full pass that preceded the mark.
+    const from = this.getSetting<number>(EQUITY_THINNED_KEY, cutoff - 7 * 86_400_000);
+    if (cutoff <= from) return;
     this.db
       .query(
-        `DELETE FROM equity WHERE t < ? AND (t % 86400000) != 0
-           AND run_id IN (SELECT id FROM runs WHERE kind = 'demo')`,
+        `DELETE FROM equity WHERE t >= ? AND t < ? AND (t % 86400000) != 0
+           AND run_id IN (SELECT id FROM runs WHERE kind = 'demo' AND started_at < ? AND (ended_at IS NULL OR ended_at >= ?))`,
       )
-      .run(cutoff);
+      .run(from, cutoff, cutoff, from);
+    this.setSetting(EQUITY_THINNED_KEY, cutoff);
   }
 
   /** Keep the latest backtest at its stable id; archive superseded source/engine versions with their full history. */
@@ -945,9 +955,21 @@ export class ArenaDB {
       .map(r => ({ time: r.t, open: r.o, high: r.h, low: r.l, close: r.c, spread: r.spread, volume: r.volume }));
   }
 
+  /**
+   * Both tables are keyed (epic, t): a bare `t < ?` scans every row, so each instrument (found by a skip-scan of
+   * the key) gets its own range delete that reads only the rows it removes.
+   */
   pruneCandles(before: number): void {
-    this.db.query(`DELETE FROM candles WHERE t < ?`).run(before);
-    this.db.query('DELETE FROM stream_candles WHERE t<?').run(before);
+    for (const table of ['candles', 'stream_candles']) {
+      const epics = this.db
+        .query<{ epic: string }, []>(
+          `WITH RECURSIVE e(epic) AS (SELECT MIN(epic) FROM ${table} UNION ALL SELECT (SELECT MIN(epic) FROM ${table} WHERE epic > e.epic) FROM e WHERE e.epic IS NOT NULL)
+           SELECT epic FROM e WHERE epic IS NOT NULL`,
+        )
+        .all();
+      const remove = this.db.query(`DELETE FROM ${table} WHERE epic = ? AND t < ?`);
+      for (const { epic } of epics) remove.run(epic, before);
+    }
   }
 
   // ------------------------------------------------------------------ broker

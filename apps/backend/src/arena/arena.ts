@@ -847,11 +847,14 @@ export class Arena {
 
   private housekeeping(now: number): void {
     if (now % HOUR_MS < MINUTE_MS + POLL_OFFSET_MS * 2) {
-      this.db.pruneCandles(now - (HISTORY_DAYS + 5) * DAY_MS);
-      this.db.pruneLogs();
-      this.db.thinEquity(now);
+      // Measured as wall time: these statements wait on disk reads, not CPU.
+      this.cpu.measure('housekeeping', () => {
+        this.db.pruneCandles(now - (HISTORY_DAYS + 5) * DAY_MS);
+        this.db.pruneLogs();
+        this.db.thinEquity(now);
+      });
       // Stored picks survive a restart; a month that began while the machine was off is picked at the next hour.
-      if (this.liveMode && this.ready) this.portfolios.repick(now);
+      if (this.liveMode && this.ready) this.cpu.measure('portfolio', () => this.portfolios.repick(now));
     }
   }
 
