@@ -20,7 +20,7 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
     thinning visited all 10,431 demo runs in the 598 MB equity table. Fixed in 3b20436 (key-range deletes,
     incremental thinning). 11:00 and 12:00 UTC: 5.2 s and 5.1 s, housekeeping 3.4 s and 3.1 s. Measured cold on a
     copy, the one-hour equity pass alone took 2.4 s (one month-old page per live run), so thinning runs daily
-    (second deploy). No tick archive failures since 3b20436.
+    (74cb568). 13:00 UTC: no stall, housekeeping 0.6 s, hourly save 0.6 s. No tick archive failures since 3b20436.
   - Forecast requests that time out or lose the connection are now retried once (c1103f2).
   - Still open: the first 10-minute demotion pass after a restart stalls about 16 s (10:19 UTC: `demotions` 10.1 s,
     mostly cold `pread64`). It happens only after deploys, so it was left alone; the monitor will show it if it
