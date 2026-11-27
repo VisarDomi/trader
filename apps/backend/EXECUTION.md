@@ -146,9 +146,11 @@ largest part (open positions are saved every minute so a restart replays ticks e
 agents that define one. Memory grows ~6 KB per run plus its trade history; most of the arena's memory is the
 shared 120-day candle history. The live arena reports CPU by part in `/api/execution` (`cpuParts`), which is
 where the remaining cost lives (metrics, API, broker candidates). Every event-loop stall of 5 s or more is a
-warn event (`src/arena/stall-monitor.ts`) that splits it into the parts that ran, the process's CPU time and the
-time its cgroup waited for CPU or memory, so it names our code, contention from other workloads or swapping;
-`/api/execution` carries the count, the longest and the last one (`stalls`) and `eventLoopMaxMs`. What remains per quote is runs that are never
+warn event (`src/arena/stall-monitor.ts`) that splits it into the parts that ran, the process's CPU time, the
+time its cgroup waited for CPU, memory or I/O, and where a worker thread found the blocked main thread (system
+call, file and kernel wait point, sampled each second from /proc: `src/arena/stall-probe.ts`). So it names our
+code, contention from other workloads, swapping or a blocking call such as an fsync; `/api/execution` carries
+the count, the longest and the last one (`stalls`) and `eventLoopMaxMs`. What remains per quote is runs that are never
 idle: open positions, pending orders and agents with an `onTick` callback (they are processed on every quote
 even when the callback returns at once).
 

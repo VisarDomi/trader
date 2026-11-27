@@ -58,6 +58,7 @@ import { riskBackend } from '../engine/risk-native.ts';
 import { ForecastAvailability } from './dependency.ts';
 import { CpuBudget } from './cpu-budget.ts';
 import { describeStall, StallMonitor } from './stall-monitor.ts';
+import { startStallProbe } from './stall-probe.ts';
 import { ENGINE_SINCE_KEY, ENGINE_VERSION_KEY } from './twins.ts';
 
 export const DEMO_CAPITAL = 10_000;
@@ -125,7 +126,7 @@ export class Arena {
   /** Time per part of the arena's work (quotes, bars, persistence, API …), see executionStatus(). */
   readonly cpu = new CpuBudget();
   /** Every event-loop stall of 5 s or more, split into its cause (stall-monitor.ts), as a warn event. */
-  readonly stalls = new StallMonitor(this.cpu, r => this.db.event('warn', 'arena', describeStall(r)));
+  readonly stalls: StallMonitor;
   private readonly cpuStarted = process.cpuUsage();
   private lastPollMs = 0;
   private maxPollMs = 0;
@@ -154,6 +155,7 @@ export class Arena {
     this.broker = opts.broker;
     this.agentsDir = opts.agentsDir;
     this.liveMode = opts.live !== false;
+    this.stalls = new StallMonitor(this.cpu, r => this.db.event('warn', 'arena', describeStall(r)));
   }
 
   async start(): Promise<void> {
@@ -213,7 +215,7 @@ export class Arena {
       this.tickJournal,
     );
     this.stream.start();
-    this.stalls.start();
+    this.stalls.start(startStallProbe());
     this.schedulePoll();
     this.clockTimer = setInterval(() => {
       const now = Date.now();
