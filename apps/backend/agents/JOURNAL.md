@@ -5,6 +5,37 @@ Newest entry first. Written by the coding agent on each babysitter visit; the ru
 
 
 
+## 2026-11-27 (Fri, scheduled repo check) — the hourly stall was housekeeping reading cold pages
+
+- Checked services, unit logs, arena events, `/api/status`, twins and the forecaster for 2026-11-24 → 27. No agent
+  added, retired or tuned.
+- Hour-boundary stalls: the arena stopped answering for over 30 s at a time (tick archive timeouts 2026-11-25
+  01:01 and 2026-11-26 00:01–00:03 UTC, `maxPollMs` 201 s). On 2026-11-26 at 00:00 UTC all 17 daily-bar
+  forecast requests were aborted by the arena's 20 s timeout, although the forecaster answered each in ~0.3 s, so
+  those TimesFM runs decided their daily bar without a forecast. Nothing measured said why.
+  - Added the stall monitor (c1103f2) and then the main-thread probe (19aabc6). 09:00:45 UTC: a 28.6 s stall with
+    2.4 s of CPU, no CPU or memory wait. 10:00:48 UTC: a 30.3 s stall, 25 of 29 samples in `pread64(arena.db)` in
+    uninterruptible page-cache waits, 11.7 s of cgroup I/O pressure.
+  - Cause: `DELETE … WHERE t < ?` on the (epic, t)-keyed candle tables scanned 163 + 59 MB every hour, and equity
+    thinning visited all 10,431 demo runs in the 598 MB equity table. Fixed in 3b20436 (key-range deletes,
+    incremental thinning). 11:00 and 12:00 UTC: 5.2 s and 5.1 s, housekeeping 3.4 s and 3.1 s. Measured cold on a
+    copy, the one-hour equity pass alone took 2.4 s (one month-old page per live run), so thinning runs daily
+    (second deploy). No tick archive failures since 3b20436.
+  - Forecast requests that time out or lose the connection are now retried once (c1103f2).
+  - Still open: the first 10-minute demotion pass after a restart stalls about 16 s (10:19 UTC: `demotions` 10.1 s,
+    mostly cold `pread64`). It happens only after deploys, so it was left alone; the monitor will show it if it
+    recurs at other times.
+- META and US500 market refreshes failed on `undefined … rules.minDealSize` (2026-11-25): Capital answered 200
+  without dealing rules. Previous rules are kept and the event now names the keys and error code Capital sent.
+- Checked and not ours: the stream runs 8–14 s behind its stamps through the European/US day and ~0.1 s at night,
+  every weekday since at least 2026-11-11 (US100 hourly medians from the tick archive), Capital's delay as
+  established 2026-11-18. It drives twin agreement 76% over two days and an exit lag p50 of −10 s, because
+  Capital's stops fire on prices our stream gets 10 s later. Also expected behavior: stream 1006 reconnects in
+  1–2 s at 22:00 UTC, 404s on stock candle polls when markets are closed, and tick-archive failures during arena
+  restarts.
+- Next: confirm the hour-boundary stalls stay under 5 s on a weekday open and at 00:00 UTC, when daily bars
+  and forecasts land together.
+
 ## 2026-11-25 (Wed, user-requested) — full clean restart (generation r2)
 
 - After manual position closes and a stray EURUSD position on Arena 02, the user asked for a full clean restart

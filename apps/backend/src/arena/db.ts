@@ -810,15 +810,16 @@ export class ArenaDB {
   }
 
   /**
-   * Keep hourly equity for 30 days, then one point per day. Each pass thins only the hours that aged past 30 days
-   * since the last one, and only in runs alive then, through the (run_id, t) key: the table is the database's
-   * largest, and a pass over every run reads its cold pages from disk while the arena's only thread waits.
+   * Keep hourly equity for 30 days, then one point per day. A pass runs once a day and thins only the hours that
+   * aged past 30 days since the last one, in runs alive then, through the (run_id, t) key. The table is the
+   * database's largest and its month-old pages are cold: each pass costs one disk read per live run (about 2.4 s
+   * for 4,300 runs) while the arena's only thread waits, so it runs daily, not hourly.
    */
   thinEquity(now: number): void {
     const cutoff = now - 30 * 86_400_000;
     // Without a mark the pass starts a week back: older hours were thinned by the full pass that preceded the mark.
     const from = this.getSetting<number>(EQUITY_THINNED_KEY, cutoff - 7 * 86_400_000);
-    if (cutoff <= from) return;
+    if (cutoff - from < 86_400_000) return;
     this.db
       .query(
         `DELETE FROM equity WHERE t >= ? AND t < ? AND (t % 86400000) != 0

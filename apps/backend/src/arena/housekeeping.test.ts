@@ -48,3 +48,14 @@ test('a database without the mark is thinned from a week back', () => {
   expect(Math.min(...hourly)).toBe(0.25);
   expect(Math.max(...hourly)).toBeLessThan(3);
 });
+
+test('thinning waits a day between passes', () => {
+  const db = new ArenaDB(':memory:');
+  db.createDemoRun({ id: 'r', agentId: 'a', codeHash: 'h', epic: 'GOLD', leverage: 1, capital: 100, params: {}, now: 0 });
+  for (let t = 0; t <= 40 * DAY; t += 6 * HOUR) db.upsertEquity('r', t, 100);
+  db.setSetting('equity.thinnedThrough', 5 * DAY);
+  db.thinEquity(35 * DAY + 23 * HOUR);
+  expect(db.equity('r').filter(p => p.t >= 5 * DAY && p.t < 6 * DAY)).toHaveLength(4);
+  db.thinEquity(36 * DAY);
+  expect(db.equity('r').filter(p => p.t >= 5 * DAY && p.t < 6 * DAY)).toHaveLength(1);
+});
