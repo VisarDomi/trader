@@ -44,7 +44,10 @@ export class LiveForecastProvider implements ForecastProvider {
   reachable = false;
   lastProbeAt = 0;
 
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly timeoutMs = REQUEST_TIMEOUT_MS,
+  ) {}
 
   async probe(): Promise<void> {
     try {
@@ -69,7 +72,7 @@ export class LiveForecastProvider implements ForecastProvider {
     const contexts = entries.map(([, w]) => w.series.bars.slice(-w.context).map(b => b.close));
     this.requests++;
     try {
-      const res = await requestForecasts(this.baseUrl, contexts, PRECOMPUTED_HORIZON);
+      const res = await requestWithRetry(this.baseUrl, contexts, this.timeoutMs);
       entries.forEach(([key], i) => this.cache.set(key, makeForecast(PRECOMPUTED_HORIZON, res.mean[i]!, res.quantiles[i]!)));
       this.lastSuccessAt = Date.now();
       this.lastError = null;
@@ -89,6 +92,20 @@ export class LiveForecastProvider implements ForecastProvider {
       f.mean.slice(0, spec.horizon),
       f.quantiles.map(q => q.slice(0, spec.horizon)),
     );
+  }
+}
+
+/**
+ * One retry after a timeout or a dropped connection. The timeout is wall time on the arena's single thread, so
+ * an event-loop stall longer than it aborts requests the forecaster has already answered; the retry reaches an
+ * idle GPU. A forecast that arrives after its bar's context has moved on is still dropped by the stale check.
+ */
+async function requestWithRetry(baseUrl: string, contexts: number[][], timeoutMs: number): Promise<ForecastResponse> {
+  try {
+    return await requestForecasts(baseUrl, contexts, PRECOMPUTED_HORIZON, timeoutMs);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('forecaster ')) throw err;
+    return await requestForecasts(baseUrl, contexts, PRECOMPUTED_HORIZON, timeoutMs);
   }
 }
 

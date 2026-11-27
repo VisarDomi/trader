@@ -25,6 +25,11 @@ export class CpuBudget {
     } else this.totals.set(part, { ms, calls: 1, maxMs: ms });
   }
 
+  /** Cumulative milliseconds per part, for differences over an interval (StallMonitor). */
+  totalsMs(): Map<string, number> {
+    return new Map([...this.totals].map(([part, t]) => [part, t.ms]));
+  }
+
   report(now = Date.now()): { sinceMs: number; parts: { part: string; ms: number; calls: number; maxMs: number; corePercent: number }[] } {
     const elapsed = Math.max(1, now - this.since);
     return {

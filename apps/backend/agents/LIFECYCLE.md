@@ -260,6 +260,7 @@ and one journal entry.
    "unexplained", in the journal; never tune an agent to the demo results.
    **Health.** Inspect the Status execution panel (or `/api/execution`): pacing/HTTP latency, slippage,
    pending commands, missing close values, CPU (`cpuParts` splits it by part: quotes, bars, persist, api …),
+   event-loop stalls (`stalls`, and the "event loop stalled" warn events that say what caused each one),
    Capital's quote delay (`feed`), poll duration and memory. Contract probe: `bun run audit-capital`
    is read-only; use `--orders` only for a concrete broker behavior investigation on Arena 01.
     Inspect tick capture/archive health and the Status storage projection (or `bun run storage --refresh`).

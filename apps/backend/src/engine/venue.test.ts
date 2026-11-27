@@ -58,6 +58,17 @@ function setup(action: (ctx: AgentContext) => void, delay = 500) {
   return { run, engine, venue, tick, setNow: (time: number) => (now = time) };
 }
 describe('Capital demo observed contract', () => {
+  test('a market response without dealing rules keeps the previous rules and names what Capital sent', () => {
+    const venue = new VirtualVenue({ ...getInstrument(EPIC) });
+    venue.update(structuredClone(fixture.markets.EURUSD) as CapitalMarket, START);
+    const minSize = venue.instrument.minSize;
+    expect(() => venue.update({ errorCode: 'error.service.unavailable' } as unknown as CapitalMarket, START + MINUTE)).toThrow(
+      'Capital sent no dealingRules for EURUSD (keys errorCode, errorCode error.service.unavailable); previous rules kept',
+    );
+    expect(() => venue.update(undefined as unknown as CapitalMarket, START + MINUTE)).toThrow('(body undefined)');
+    expect(venue.updatedAt).toBe(START);
+    expect(venue.instrument.minSize).toBe(minSize);
+  });
   test('minimum size and stop boundaries use the captured Capital dealing rules', () => {
     const { run, venue } = setup(c => c.buy({ size: 50 }));
     expect(run.position).toBeNull();

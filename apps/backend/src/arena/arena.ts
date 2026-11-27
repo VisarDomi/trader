@@ -57,6 +57,7 @@ import {ENGINE_VERSION} from '../engine/version.ts';
 import { riskBackend } from '../engine/risk-native.ts';
 import { ForecastAvailability } from './dependency.ts';
 import { CpuBudget } from './cpu-budget.ts';
+import { describeStall, StallMonitor } from './stall-monitor.ts';
 import { ENGINE_SINCE_KEY, ENGINE_VERSION_KEY } from './twins.ts';
 
 export const DEMO_CAPITAL = 10_000;
@@ -123,6 +124,8 @@ export class Arena {
   private readonly loopDelay = monitorEventLoopDelay({ resolution: 20 });
   /** Time per part of the arena's work (quotes, bars, persistence, API …), see executionStatus(). */
   readonly cpu = new CpuBudget();
+  /** Every event-loop stall of 5 s or more, split into its cause (stall-monitor.ts), as a warn event. */
+  readonly stalls = new StallMonitor(this.cpu, r => this.db.event('warn', 'arena', describeStall(r)));
   private readonly cpuStarted = process.cpuUsage();
   private lastPollMs = 0;
   private maxPollMs = 0;
@@ -210,6 +213,7 @@ export class Arena {
       this.tickJournal,
     );
     this.stream.start();
+    this.stalls.start();
     this.schedulePoll();
     this.clockTimer = setInterval(() => {
       const now = Date.now();
@@ -271,6 +275,7 @@ export class Arena {
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.probeTimer) clearInterval(this.probeTimer);
     this.rates.stop();
+    this.stalls.stop();
     this.stream?.stop();
     this.loopDelay.disable();
     this.persistAll(true);
@@ -944,6 +949,8 @@ export class Arena {
       meanDelayMs: totals.filled ? Math.round(totals.totalDelayMs / totals.filled) : null,
       cpuCorePercent: elapsedMs > 0 ? Math.round((cpu.user + cpu.system) / (elapsedMs * 10)) : 0,
       eventLoopP95Ms: Math.round(this.loopDelay.percentile(95) / 1e6),
+      eventLoopMaxMs: Math.round(this.loopDelay.max / 1e6),
+      stalls: { count: this.stalls.stalls, maxMs: Math.round(this.stalls.maxStallMs), last: this.stalls.last },
       lastPollMs: Math.round(this.lastPollMs),
       maxPollMs: Math.round(this.maxPollMs),
       cpuParts: this.cpu.report(),

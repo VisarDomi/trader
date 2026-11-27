@@ -39,7 +39,10 @@ export class VirtualVenue {
   updatedAt = 0;
   constructor(readonly instrument: Instrument) {}
   update(market: CapitalMarket, now: number): void {
-    const rules = market.dealingRules;
+    const rules = market?.dealingRules;
+    // Capital occasionally answers 200 without dealing rules; name what it sent so the next one shows why.
+    if (!rules || !market.snapshot || !market.instrument)
+      throw new Error(`Capital sent no ${!rules ? 'dealingRules' : !market.snapshot ? 'snapshot' : 'instrument'} for ${this.instrument.epic} (${describeBody(market)}); previous rules kept`);
     if (![rules.minDealSize?.value, rules.maxDealSize?.value, rules.minSizeIncrement?.value].every(v => Number.isFinite(v) && v! > 0))
       throw new Error(`invalid dealing rules for ${this.instrument.epic}`);
     this.market = market;
@@ -92,4 +95,12 @@ export interface LiveExecution {
   now?: () => number;
   /** Recording failures pause new entries while existing protections and closes continue. */
   entryAllowed?:()=>boolean;
+}
+
+/** The shape of an unexpected market response: its keys and any error code, never its prices. */
+function describeBody(body: unknown): string {
+  if (body === null || typeof body !== 'object') return `body ${body === null ? 'null' : typeof body}`;
+  const keys = Object.keys(body);
+  const code = (body as { errorCode?: unknown }).errorCode;
+  return `keys ${keys.join(',') || 'none'}${typeof code === 'string' ? `, errorCode ${code}` : ''}`;
 }

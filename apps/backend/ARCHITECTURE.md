@@ -57,7 +57,8 @@ All services bind to 127.0.0.1 and talk over loopback; the arena reaches `trader
 `REAL_SERVICE_URL` with `REAL_TOKEN`. `<runtime>` is `TRADER_SERVER_ROOT` from
 `ops/server/runtime.sh`. The PC must stay on: when it is off, nothing on the PC trades or records and the
 dashboard is down; only `trader-real` keeps trading its one run. When the forecaster is paused or down,
-TimesFM agents get `ctx.forecast = null` and do nothing new; backtests wait for the next nightly job.
+TimesFM agents get `ctx.forecast = null` and do nothing new; backtests wait for the next nightly job. A forecast
+request that times out or loses its connection is sent once more before its agents get `null`.
 
 ## Code map (`apps/backend`)
 
